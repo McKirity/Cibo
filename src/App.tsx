@@ -1,95 +1,80 @@
 import { useEffect, useState } from "react";
 import { useEvoluError, useQuery } from "@evolu/react";
 import { evolu } from "./db/evolu";
+import { LogForm } from "./log/LogForm";
 import "./App.css";
 
 /**
- * TEMPORARY dev verification panel for Build step 2 (Data Layer) — proves the
- * exit checks visually: the 11 seeded habits arrive archived and queryable
- * through a live query. Replaced when real screens land (step 3+).
+ * Build step 3 — the bare logging screen: the daily entry form (LogForm) on
+ * an unchromed page. Rail, titlebar, and theming are step 6's problem.
+ *
+ * The habit-activation panel below is TEMPORARY dev tooling: all seeds
+ * arrive archived, and activation properly belongs to the first-run setup
+ * screen (later step). Archive/delete UX proper (streak ending, danger
+ * confirms) arrives with Settings → Habits.
  */
 
-const habitsQuery = evolu.createQuery((db) =>
+const allHabitsQuery = evolu.createQuery((db) =>
   db
     .selectFrom("habits")
-    .selectAll()
+    .select(["id", "name", "kind", "archived"])
     .where("isDeleted", "is not", 1)
     .orderBy("sort_order"),
 );
 
-const vocabCountQuery = evolu.createQuery((db) =>
-  db
-    .selectFrom("vocab_options")
-    .select((eb) => eb.fn.countAll<number>().as("n"))
-    .where("isDeleted", "is not", 1),
-);
-
-const definitionCountQuery = evolu.createQuery((db) =>
-  db
-    .selectFrom("subunit_definitions")
-    .select((eb) => eb.fn.countAll<number>().as("n"))
-    .where("isDeleted", "is not", 1),
-);
+function DevHabitPanel() {
+  const habits = useQuery(allHabitsQuery);
+  return (
+    <details className="dev-panel">
+      <summary>
+        Dev: habit activation ({habits.filter((h) => !h.archived).length} active) —
+        temporary, replaced by first-run setup
+      </summary>
+      <table className="day-table">
+        <tbody>
+          {habits.map((h) => (
+            <tr key={h.id}>
+              <td>{h.name}</td>
+              <td>{h.kind}</td>
+              <td>{h.archived ? "archived" : "active"}</td>
+              <td>
+                <button
+                  type="button"
+                  className="btn-plain btn-sm"
+                  onClick={() =>
+                    evolu.update("habits", { id: h.id, archived: h.archived ? 0 : 1 })
+                  }
+                >
+                  {h.archived ? "Activate" : "Archive"}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
+  );
+}
 
 function App() {
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const evoluError = useEvoluError();
-  const habits = useQuery(habitsQuery);
-  const vocabCount = useQuery(vocabCountQuery);
-  const definitionCount = useQuery(definitionCountQuery);
 
   useEffect(() => {
     evolu.appOwner.then((owner) => setOwnerId(owner.id));
   }, []);
 
   return (
-    <main className="container">
-      <h1>Cibo — data layer check</h1>
-      <p>
+    <main className="shell">
+      <div className="boot-line">
         {evoluError
           ? `Evolu error: ${evoluError.type}`
           : ownerId
             ? `Evolu ready — owner ${ownerId}`
             : "Evolu starting…"}
-      </p>
-      <p>
-        {habits.length} habits · {String(definitionCount[0]?.n ?? 0)} definitions ·{" "}
-        {String(vocabCount[0]?.n ?? 0)} vocab options
-      </p>
-      <table style={{ margin: "0 auto", textAlign: "left", borderSpacing: "12px 2px" }}>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>habit</th>
-            <th>kind</th>
-            <th>sub-type</th>
-            <th>measures</th>
-            <th>slot</th>
-            <th>state</th>
-          </tr>
-        </thead>
-        <tbody>
-          {habits.map((h) => (
-            <tr key={h.id}>
-              <td>{h.sort_order}</td>
-              <td>{h.name}</td>
-              <td>{h.kind}</td>
-              <td>{h.sub_type ?? "—"}</td>
-              <td>
-                {[
-                  h.measures_time ? "time" : null,
-                  h.measures_count ? `count (${h.count_unit})` : null,
-                  h.kind === "range" ? "range" : null,
-                ]
-                  .filter(Boolean)
-                  .join(" + ") || "measureless"}
-              </td>
-              <td>{h.colour_slot}</td>
-              <td>{h.archived ? "archived" : "active"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      </div>
+      <LogForm />
+      <DevHabitPanel />
     </main>
   );
 }

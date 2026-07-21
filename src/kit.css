@@ -1,0 +1,74 @@
+/* == CIBO — LAYER 2: CLAIMED KIT RULES ==
+   Rules claimed from the staging sheet
+   (project-management/…/3. UI Design/Kit Stylesheet/kit-staging.css), which
+   only ever shrinks — each claim below LEFT that file when it landed here.
+   Bodies are the staging sheet's cascade-merged effective rules, verbatim;
+   no values of its own (Layer 1 = theme.css owns every value).
+
+   Claimed at Build step 3 (Core Logging Loop), 2026-07-20:
+   - the button family (.btn-accent · .btn-plain · .btn-ghost · .btn-danger
+     + .btn-sm + hover/disabled/.ico states). The mockups' forced-state
+     classes (.f-hover/.f-press/.f-focus) stay in staging — a live app never
+     sets them.
+   - the input chip family (.inp + .cap/.chevd/.num/.ph/.sel)
+   - the form-field family (.fld + .lbl children; the .fld.err rules stay in
+     staging until form-error chrome is claimed whole)
+   - .fieldnote · .kicker
+   - the segmented control (.segctl)
+   Screen-scoped [data-screen="…"] variants of these selectors stay in
+   staging until their screens are built. */
+
+/* ------- Buttons ------- */
+.btn-accent, .btn-plain, .btn-ghost, .btn-danger{display:inline-flex; align-items:center; gap:var(--space-3); font-family:var(--font-ui); font-size:var(--size-body); font-weight:var(--weight-medium); border-radius:var(--radius-small); padding:var(--space-4) var(--space-6); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard); white-space:nowrap;}
+.btn-accent{color:var(--text-on-filled); background:var(--accent); border:none;}
+.btn-accent .ico{color:var(--text-on-filled);}
+.btn-accent .ico, .btn-plain .ico{width:var(--icon-size); height:var(--icon-size);}
+.btn-accent:hover{background:color-mix(in oklch, var(--accent), var(--text-strong) var(--hover-shift));}
+.btn-accent[aria-disabled="true"]{background:var(--inset-background); color:var(--text-muted); pointer-events:none;}
+.btn-accent[aria-disabled="true"] .ico{color:var(--text-muted);}
+.btn-plain{color:var(--text-strong); background:var(--panel-background); border:var(--border-hairline) solid var(--border);}
+.btn-plain .ico{color:var(--text-secondary);}
+.btn-plain.ghost{background:transparent; border-color:transparent;}
+.btn-plain:hover{background:var(--hover-wash);}
+.btn-plain[aria-disabled="true"]{color:var(--text-muted); pointer-events:none; background:var(--inset-background); border-color:var(--divider);}
+.btn-plain[aria-disabled="true"] .ico{color:var(--text-muted);}
+.btn-ghost{color:var(--text-muted); background:transparent; border:var(--border-standard) dashed var(--border);}
+.btn-ghost .ico{color:var(--text-muted);}
+.btn-ghost:hover{background:var(--hover-wash);}
+.btn-ghost[aria-disabled="true"]{color:var(--text-muted); pointer-events:none;}
+.btn-ghost[aria-disabled="true"] .ico{color:var(--text-muted);}
+.btn-danger{color:var(--danger); background:var(--panel-background); border:var(--border-standard) solid color-mix(in oklch, var(--danger), var(--panel-background) var(--tint-border));}
+.btn-danger .ico{color:var(--danger);}
+.btn-danger:hover{background:color-mix(in oklch, var(--danger), var(--window-background) var(--tint-hover));}
+.btn-danger.filled{color:var(--text-on-filled); background:var(--danger); border-color:var(--danger);}
+.btn-danger.filled .ico{color:var(--text-on-filled);}
+.btn-danger.filled:hover{background:color-mix(in oklch, var(--danger), var(--text-strong) var(--hover-shift));}
+.btn-danger.filled[aria-disabled="true"]{color:var(--text-muted); background:var(--inset-background); border-color:var(--divider); pointer-events:none;}
+.btn-danger[aria-disabled="true"]{color:var(--text-muted); pointer-events:none; background:var(--inset-background); border-color:var(--divider);}
+.btn-danger[aria-disabled="true"] .ico{color:var(--text-muted);}
+.btn-sm{font-size:var(--size-small); padding:var(--space-3) var(--space-5);}
+
+/* ------- Input chips ------- */
+.inp{display:inline-flex; align-items:center; gap:var(--space-3); font-family:var(--font-ui); min-height:calc(var(--size-body) * var(--line-normal)); font-size:var(--size-body); color:var(--text-strong); background:var(--inset-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); padding:var(--space-3) var(--space-4);}
+.inp .cap{color:var(--text-muted);}
+.inp .chevd{color:var(--text-muted);}
+.inp.num{min-width:80px; font-family:var(--font-mono);}
+.inp.ph{color:var(--text-muted);}
+.inp.sel{justify-content:space-between; min-width:190px;}
+
+/* ------- Form fields ------- */
+.fld{display:flex; flex-direction:column; gap:var(--space-4);}
+.fld .lbl{display:flex; align-items:baseline; gap:var(--space-4);}
+.fld .lbl .l{font-size:var(--size-subheading); font-weight:var(--weight-medium); color:var(--text-strong);}
+.fld .lbl .opt{font-size:var(--size-caption); color:var(--text-muted); margin-left:auto;}
+.fld .lbl .req{font-size:var(--size-caption); font-weight:var(--weight-medium); color:var(--text-muted);}
+.fieldnote{font-size:var(--size-small); color:var(--text-secondary); line-height:var(--line-normal); margin:0;}
+.fieldnote .immut{color:var(--text-muted);}
+
+/* ------- Labels ------- */
+.kicker{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); font-weight:var(--weight-bold); margin-bottom:var(--space-3);}
+
+/* ------- Segmented control ------- */
+.segctl{display:inline-flex; background:var(--inset-background); border-radius:var(--radius-small); padding:var(--space-1); gap:var(--space-1);}
+.segctl button{font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-secondary); background:transparent; border:none; cursor:pointer; padding:var(--space-3) var(--space-6); border-radius:calc(var(--radius-small) - var(--space-1)); transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+.segctl button[aria-pressed="true"]{background:var(--panel-background); color:var(--text-strong); box-shadow:var(--shadow-low);}

@@ -1,0 +1,360 @@
+/* =====================================================================
+   Cibo — THEME  ·  Default (neutral light)
+   BUNDLED. The guaranteed theme, the ultimate fallback; it can never go
+   missing and it never retires.
+
+   Register-map line: light · neutral (humanist-soft).
+   Chrome treatment: seamless titlebar + a bottom hairline seam (--border)
+   + attached flush rail, single-register (rail dials = window/panel).
+   Ambience: backdrop + timer backdrop SILENT; the vignette is the
+   code-drawn tick-face clock (the data-bearing carve-out — no files).
+   ---------------------------------------------------------------------
+   233 dials (234 → 233 at the 2026-07-19 --mini-verdict-cell retirement,
+   tenantless; count corrected 2026-07-19 — was published as 220; 14 packed
+   declarations were invisible to a line-anchored count. Nothing changed).
+   Values are the frozen master
+   (3. UI Design/Briefing Package/token-sheet.css) — that sheet stays the
+   design-time source of truth and the session-traveling artifact; THIS
+   file is its shipping form, stripped of session history.
+
+   THE DERIVATION LAW. Raw values are legal HERE and nowhere else: this
+   file is the one place a hex or a pixel may be written, because every
+   theme replaces the whole file. A derivation performed at a use-site
+   mixes only toward OTHER DIALS — never a literal white/black, never a
+   hardcoded percentage. Mixing toward `transparent` is legal (it is
+   lightness-neutral); the amount is still a dial. brightness() is
+   forbidden — it inverts meaning under a dark theme.
+   ===================================================================== */
+
+:root {
+
+  /* -- Group 1 · Chrome colours (18) — interface, not data ------------- */
+  --window-background:   #f5f5f7;              /* base canvas — faint-cool near-white */
+  --panel-background:    #ffffff;              /* cards, tiles, the rail */
+  --raised-background:   rgba(255,255,255,.72);/* modals/popovers — translucent for the blur; resolves #ffffff under reduce-effects */
+  --inset-background:    #ececed;              /* inputs, wells — recessed */
+  --text-strong:         #1c1c1e;              /* top of the 3-step hierarchy */
+  --text-secondary:      #55555a;
+  --text-muted:          #8a8a8f;
+  --text-on-filled:      #ffffff;              /* text on ANY filled/inverted surface */
+  --border:              #d0d0d5;
+  --divider:             #e6e6ea;
+  --accent:              #007aff;              /* macOS-blue; also the year's compact colour */
+  --hover-wash:          rgba(0,0,0,.045);     /* pointer-over tint for UNFILLED surfaces */
+  --hover-shift:         10%;                  /* how far a FILLED colour/link moves toward --text-strong on hover */
+  --selected-wash:       rgba(0,122,255,.12);
+  --today-wash:          rgba(0,0,0,.07);      /* today's cell — chrome, deliberately NOT --selected-wash */
+  --focus-ring:          rgba(0,122,255,.55);
+  --danger:              #ff3b30;              /* destructive actions + error states ONLY */
+  --accent-on-inverted:  #5ea9ff;              /* the accent lifted to read on near-black surfaces */
+
+  /* -- Group 2 · Typography (15) --------------------------------------- */
+  /* Native system faces — no bundled font. Type is a BOUNDED theme lever
+     (the type budget): ~±12% per step, comparable-width families; beyond
+     that is structural re-accommodation by ruling. */
+  --font-ui:        -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-heading:   -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono:      "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --size-caption:        14px;
+  --size-small:          15px;
+  --size-body:           16px;   /* base */
+  --size-subheading:     18px;
+  --size-heading:        24px;
+  --size-display:        34px;
+  --size-stat-value:     48px;   /* dedicated stat-tile headline value */
+  --weight-regular:      400;
+  --weight-medium:       500;
+  --weight-bold:         600;
+  --line-tight:          1.2;
+  --line-normal:         1.5;
+
+  /* -- Group 3 · Spacing (8) — one scale ------------------------------- */
+  --space-1:             2px;
+  --space-2:             4px;
+  --space-3:             6px;
+  --space-4:             8px;
+  --space-5:             12px;
+  --space-6:             16px;
+  --space-7:             24px;
+  --space-8:             32px;
+
+  /* -- Group 4 · Shape (8) -------------------------------------------- */
+  --radius-small:        6px;    /* chips, buttons */
+  --radius-cell:         2px;    /* heatmap cells + ramp swatches */
+  --radius-medium:       10px;   /* tiles, cards */
+  --radius-large:        14px;   /* modals */
+  --radius-full:         999px;  /* pills, dots */
+  --border-hairline:     1px;
+  --border-standard:     1.5px;
+  --border-heavy:        2px;
+
+  /* -- Group 5 · Effects (7) — reduce-effects zeroes blur+glow, --------
+        flattens shadows; --overlay-dim SURVIVES (functional) ----------- */
+  --shadow-low:   0 1px 2px rgba(0,0,0,.06), 0 1px 1px rgba(0,0,0,.04);
+  --shadow-high:  0 10px 34px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.08);
+  --backdrop-blur:  blur(20px) saturate(180%); /* raised surfaces ONLY */
+  --glow:           none;
+  --overlay-dim:    rgba(0,0,0,.28);
+  --shadow-inset:   inset 0 1px 2px rgba(0,0,0,.05);
+  --scrim:          rgba(0,0,0,.25);           /* text over colour/art */
+
+  /* -- Group 6 · Meaning colours — the 34 slots + categorical ---------- */
+  /*    Habit slots (12) — Habit Canon hex, hard-unique --------------- */
+  --habit-1:  #7F77DD;   /* Writing */
+  --habit-2:  #BA7517;   /* Gaming */
+  --habit-3:  #1D9E75;   /* Reading */
+  --habit-4:  #378ADD;   /* Media */
+  --habit-5:  #0EA5A0;   /* Keyboard */
+  --habit-6:  #534AB7;   /* Sleep */
+  --habit-7:  #E24B4A;   /* Walking */
+  --habit-8:  #C2569E;   /* Embroidery (archived) */
+  --habit-9:  #D98A3D;   /* Drawing (archived) */
+  --habit-10: #4FA3A0;   /* Coding (archived) */
+  --habit-11: #9B59B6;   /* Gamedev (archived) */
+  --habit-12: #2C9CC9;   /* 12th pool slot — cyan */
+
+  /* Month slots (12) — SEASONALLY ANCHORED, binding, never edited ----- */
+  --month-jan: #5B7CA6;  --month-feb: #8385B5;  --month-mar: #4CA07C;
+  --month-apr: #6BB052;  --month-may: #B98BB0;  --month-jun: #D8A93C;
+  --month-jul: #E68A34;  --month-aug: #E2703E;  --month-sep: #C05E3A;
+  --month-oct: #A86A3E;  --month-nov: #93524A;  --month-dec: #47588F;
+
+  /* Heat (4) — always carries its WORD, colour secondary -------------- */
+  --heat-hot:      #E5484D;
+  --heat-warm:     #E0913A;
+  --heat-cooling:  #4A97C9;
+  --heat-cold:     #7C8CA0;
+
+  /* Day verdict (3) — NEVER colour alone ------------------------------ */
+  --verdict-done:    #2E9E6B;
+  --verdict-missed:  #C0524A;   /* calmer than --danger: data, not a destructive action */
+  --verdict-unknown: #A0A0A6;   /* streak pass-through */
+
+  /* Finalize markings (3) — bookkeeping, separate from verdicts ------- */
+  --finalize-mark:    #48484a;
+  --finalize-outline: #c7c7cc;
+  --marker-size:      5px;       /* nav-calendar day marker — NOT --dot-size */
+
+  /* Attention dot (2) — two tenants (health · catch-up), no third ----- */
+  --attention-dot: #ff9500;      /* "needs you", distinct from --danger by law */
+  --dot-size:      8px;
+
+  /* Categorical palette (8) + intensity ramp — managed vocab ----------
+     Meaning-FREE series colours. The ramp stops are the COLOUR's share;
+     a use-site color-mix names the BACKGROUND's share (22/48/74/100 is
+     written as background 78/52/26/0). */
+  --cat-1: #4E79A7;  --cat-2: #59A14F;  --cat-3: #E1A03C;  --cat-4: #B07AA1;
+  --cat-5: #76B7B2;  --cat-6: #EE6E5A;  --cat-7: #9C755F;  --cat-8: #8C8C92;
+  --cat-ramp: 22% 48% 74% 100%;
+
+  /* Derived-rule tunables (rules, not slots) — every mix AMOUNT is a
+     dial, and every mix goes toward another dial. ---------------------- */
+  --week-shade-mix:    24%;   /* a week wears its OWNING month's slot, lightened toward the canvas */
+  --quarter-treatment: wash;  /* wash | push | cast */
+  --quarter-wash-mix:  45%;   /* per month of the quarter's trio */
+  --tint-mix:          85%;   /* faint chip/badge background off a meaning colour (background share) */
+  --heatmap-ramp:      10% 38% 66% 100%;  /* subject over the canvas, 4 stops */
+  --tint-hover:        72%;   /* a TINTED surface intensifying on hover */
+  --tint-border:       55%;   /* the border off the same meaning colour as a tint fill */
+  --fade:              50%;   /* second-order muting of an already-muted colour */
+  --chart-area-mix:    88%;   /* the faint fill under a trend line (toward transparent) */
+  --absent-wash:       82%;   /* the unlogged/absent cover-wall tile */
+
+  /* -- Group 7 · Motion (3 durations + 3 easings) — tuned snappy ------ */
+  --motion-fast:        120ms;   /* hover, focus, presses */
+  --motion-standard:    200ms;   /* overlays, row expansion, palette morph */
+  --motion-deliberate:  320ms;   /* the few ceremonies */
+  --ease-standard:      cubic-bezier(.4, 0, .2, 1);
+  --ease-entering:      cubic-bezier(0, 0, .2, 1);
+  --ease-exiting:       cubic-bezier(.4, 0, 1, 1);
+
+  /* -- Group 8 · Icons (4) — lucide, doors/actions only, never data --- */
+  --icon-color:         currentColor;
+  --icon-size:          16px;
+  --icon-size-small:    14px;
+  --icon-stroke:        1.5px;
+
+  /* -- Structural frame dims (9) — theme-invariant --------------------
+     Pinned proportions, not paint. Named because law 5 admits no raw
+     size outside this file. A theme SHOULD NOT move these. */
+  --titlebar-height: 40px;
+  --rail-width:      380px;  /* the nav rail's reserved column, attached flush */
+  --cal-cell-min-h:  34px;
+  --week-col-width:  30px;
+  --swatch-size:     30px;
+  --strip-rest-h:    56px;
+  --popover-width:   288px;
+  --popover-pointer: 11px;
+  --step-btn-size:   26px;
+
+  /* -- Frame clearances (9) + the seam wash — theme-invariant px ------
+     The decoration layer's per-slot structural room: layouts pre-reserve
+     clearance INSIDE each slot's box so a theme's 9-slice frame paints
+     in built room. Ornament never moves a box at runtime. */
+  --frame-clear-modal:   28px;  /* big modal chassis; rider --space-5 */
+  --frame-clear-palette: 28px;  /* kit-palette; rider --space-5 */
+  --frame-clear-grand:   24px;  /* panel · headliner · dialog; rider --space-4 */
+  --frame-clear-strip:   20px;  /* daily-log card strip; rider --space-6 horizontal */
+  --frame-clear-tile:    16px;  /* kit-tile-stat (+ wave cards); rider --space-4 */
+  --frame-clear-tool:    12px;  /* rail tool cards; rider --space-4 */
+  --frame-clear-whimsy:  12px;  /* whimsy cards; rider --space-4 */
+  --frame-clear-hcard:    8px;  /* rail habit cards, all around */
+  --pane-pad-left:       36px;  /* the rail seam band's width (72px total left content inset) */
+  --seam-wash-mix:       90%;   /* the painted seam band's wash — --text-strong toward --window-background */
+
+  /* -- Dashboard structural sizes (10) — theme-invariant -------------- */
+  --masthead-art-w:  150px;
+  --masthead-art-h:  108px;
+  --bar-label-w:     120px;
+  --bar-value-w:     56px;
+  --chart-height:    220px;
+  --chart-axis-gutter: 56px;  /* kit-panel-trend y-axis label gutter */
+  --cover-w:         60px;
+  --cover-h:         84px;
+  --bar-row-h:       20px;
+  --tile-height:     128px;   /* kit-tile-stat — a FLOOR (min-height); subtitles wrap */
+
+  /* -- Cover-wall masonry dims (2) — theme-invariant ------------------ */
+  --wall-unit:   128px;  /* the invisible masonry unit u */
+  --wall-gap:     12px;  /* the mortar between wall tiles */
+
+  /* -- Cadence dashboard structural sizes (9) — theme-invariant -------
+     The ONE shared cadence-row grid, identical at every cadence scale. */
+  --cad-chevron-w:   28px;
+  --cad-habit-w:     300px;
+  --cad-total-w:     210px;
+  --cad-best-w:      200px;
+  --cad-done-w:      96px;
+  --cad-door-w:      40px;
+  --cad-cell-size:   22px;    /* day mini-cell HEIGHT; 1:1 at monthly grain, 2:1 at quarterly/yearly */
+  --verdict-cell-min-h: 46px; /* verdict-calendar day cell; pins 2:1 */
+  --cad-cell-weekly: 44px;    /* weekly strip cell HEIGHT (cell is 2× this wide → 88×44) */
+
+  /* -- Cadence verdict-heat cells (2) — theme-invariant --------------- */
+  --heat-cell-size:    30px;  /* the 1:1/2:1 compact floor; the ribbon cell = 2:1 at 2× this */
+  --heat-block-min-h:  300px; /* the yearly 53-week heatmap block's minimum height */
+
+  /* -- Library catalog structural sizes (5) — theme-invariant --------- */
+  --lib-grid-cols:    9;      /* fluid: cards widen 2180→2560, the count is fixed */
+  --lib-grid-rows:    2;
+  --lib-cover-ratio:  2 / 3;  /* portrait box-art */
+  --lib-pin-card-w:   188px;
+  --pager-btn-size:   34px;
+
+  /* -- Modal structural sizes (8) — theme-invariant ------------------- */
+  --modal-import-w:    1320px;
+  --modal-bulk-w:      1680px;
+  --modal-bulk-h:      1040px;
+  --import-grid-cols:  6;
+  --bulk-grid-cols:    7;
+  --bulk-rail-w:       380px;
+  --import-progress-h: 6px;
+  --modal-confirm-w:   620px;
+
+  /* -- Creation dashboard structural sizes (7) ------------------------ */
+  --hero-card-min-h:   268px;
+  --hero-cover-w:      240px;
+  --hero-spark-h:      48px;
+  --hero-banner-fade:  58%;   /* banner→surface dissolve (Settings-controlled at runtime; this is the default) */
+  --dist-donut-size:   200px;
+  --dist-donut-stroke: 38px;
+  --lollipop-dot:      13px;
+
+  /* -- Entry-dashboard structural sizes (7) --------------------------- */
+  --entry-rail-w:      420px;
+  --wave-band-h:       300px;
+  --wave-break-w:       70px;
+  --daylog-row-h:       40px;
+  --growth-curve-h:    320px;
+  --rail-banner-fade:   62%;
+  --wave-shade-mix:     92%;
+
+  /* -- Comparing Statistics structural size (1) ----------------------- */
+  --builder-w:       540px;   /* shared with Advanced Search's set-query workspace */
+
+  /* -- Timers structural sizes (4) ------------------------------------ */
+  --clock-face-size:   128px; /* the centered count-up hero readout */
+  --clock-ring-size:   360px; /* the countdown + pomodoro progress ring */
+  --clock-ring-stroke:  18px;
+  --modal-manage-w:    720px;
+
+  /* -- Settings structural size (1) ----------------------------------- */
+  --settings-pane-w:   300px;
+
+  /* -- Creator control dials (4) -------------------------------------- */
+  --check-size:        22px;
+  --input-inline-w:    96px;
+  --art-slot-h:        44px;
+  --focus-ring-danger: rgba(255,59,48,.34);  /* a Group-1 chrome colour, sibling of --focus-ring */
+
+  /* -- Rail chrome (5) · the split-register device --------------------
+     THE RAIL IS TOKENS, NEVER ART. A theme gives the rail its own
+     register here (colour, line weight) or sets it equal to the window/
+     panel values for a single-register read. The Default is SINGLE. */
+  --rail-background: var(--panel-background);
+  --rail-text:       var(--text-strong);
+  --rail-border:     var(--divider);
+  --shadow-direction:  0 1px;   /* neutral downward cast (x=0) */
+  --focus-ring-weight: 3px;
+
+  /* -- Theme-owned whimsy palette (10) — ART, not the semantic layer --
+     Whimsy card SHELLS are kit (--panel-background, --border, the type
+     ramp). Whimsy card INTERIORS are theme-authored art and read THESE
+     dials and no others. Habit colours never appear here. A theme with
+     no whimsy opinion inherits the Default's. These ride into the cover
+     wall when the cards fold at finalize — keepsake colours. */
+  --whimsy-day:        #cfe4f5;   /* daylight HORIZON haze */
+  --whimsy-zenith:     #7fb0dc;   /* daylight ZENITH — deeper overhead */
+  --whimsy-sun:        #f5a623;   /* the solar disc; warm gold, not --attention-dot */
+  --whimsy-dawn:       #e7a3a8;   /* morning horizon — cooler + pinker than dusk */
+  --whimsy-dusk:       #e2703e;   /* evening horizon */
+  --whimsy-night:      #26314f;   /* the deep field: moon ground, constellation field, tarot night */
+  --whimsy-moon:       #f4f1e6;   /* lit lunar bone */
+  --whimsy-star:       #e8c468;   /* gilt: stars, asterism, tarot emblem */
+  --whimsy-ink:        #1f2544;   /* tarot linework + the night ZENITH */
+  --whimsy-parchment:  #f8f3e6;   /* aged card stock — the tarot face */
+
+  /* THE SKY GRADIENT — the sun card's field is a vertical zenith→horizon
+     gradient whose two stops are picked by TIME OF DAY:
+
+       night  zenith --whimsy-ink     horizon --whimsy-night
+       dawn   zenith --whimsy-night   horizon --whimsy-dawn
+       day    zenith --whimsy-zenith  horizon --whimsy-day
+       dusk   zenith --whimsy-night   horizon --whimsy-dusk
+
+     Between adjacent moments the use-site mixes the two stops. THE MIX
+     AMOUNT IS DATA (solar altitude), not a design constant, so it needs
+     no dial. On a past day's cover wall the sun tile renders at SOLAR
+     NOON — a fact about the day, not about when it was finalized. */
+
+  /* -- Theme-owned whimsy TYPE (9) — the type-axis twin of the palette
+     Interiors read THESE, never the Group-2 ramp, so whimsy art does not
+     re-flow when a theme moves the UI ramp inside the type budget. Card
+     SHELLS stay kit and ride the ramp. Seeded at the Default ramp. ---- */
+  --whimsy-size-caption:     14px;
+  --whimsy-size-small:       15px;
+  --whimsy-size-body:        16px;
+  --whimsy-size-subheading:  18px;
+  --whimsy-size-heading:     24px;
+  --whimsy-size-display:     34px;  /* the word card's headword */
+  --whimsy-size-stat:        48px;  /* the big figures */
+  --whimsy-size-glyph:       42px;  /* the horoscope sign glyph */
+  --whimsy-size-glyph-grand: 66px;  /* the quote card's quotation mark */
+
+  /* -- Whimsy structural sizes (6) + Daily layout floors (2) ----------
+     The four art dims + --donut-size are CEILINGS, not fixed sizes: the
+     art fills the width it is given and reaches these as a max. */
+  --moon-disc:      132px;  /* CEILING · the moon card's phase disc */
+  --sun-arc-h:      168px;  /* CEILING · the sky fields' figure height */
+  --tarot-card-w:   104px;  /* CEILING · the tarot face width */
+  --tarot-card-h:   182px;  /* CEILING · 1 : 1.75, the standard tarot ratio */
+  --donut-size:      64px;  /* CEILING · the period-progress donut diameter */
+  --donut-stroke:     7px;
+  --shelf-height:   168px;  /* the mystical-shelf band's flex FLOOR */
+  --triptych-min:   860px;  /* Daily's triptych row MIN height — columns never scroll internally; the PANE scrolls */
+
+  /* -- Theme-owned ambience sizing (1) — NOT structural ---------------
+     A theme with no vignette inherits a dead dial and may ignore or
+     repurpose it. Here it sizes the Default's one piece of ambience. */
+  --clock-max: 340px;  /* the vignette clock's max diameter in the rail's flex band */
+}

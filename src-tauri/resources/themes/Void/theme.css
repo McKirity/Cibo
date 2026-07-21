@@ -1,0 +1,347 @@
+/* =====================================================================
+   Cibo — THEME  ·  Void
+   BUNDLED. The dark half of the bundled pair; the Default (neutral light)
+   remains the ultimate fallback.
+
+   Register-map line: dark · neutral (hard inversion, hot-magenta accent).
+   Chrome treatment: seamless titlebar + a bottom hairline seam (--border)
+   + attached flush rail, single-register (rail dials = window/panel).
+   Ambience: backdrop + timer backdrop SILENT (droppable — the folder is
+   built); the vignette INHERITS the Default's code-drawn tick-face clock
+   (the data-bearing carve-out — no files), drawn in Void's chrome ramp.
+   ---------------------------------------------------------------------
+   ORIGIN. These values were authored 2026-07-19 as the stage-5b anti-theme
+   "Void" — a disposable regression fixture torturing the COLOUR-DISTANCE
+   axis. It passed the full 37-snapshot corpus clean, and the user ruled
+   the same day that the look ships as-is (the hot magenta included). The
+   fixture at 3. UI Design/Stress/Void/ SURVIVES UNCHANGED as living
+   regression coverage; this file is its shipping fork. The two are free to
+   diverge from here — a change to one is not a change to the other.
+
+   233 dials, declaration-parity exact with the Default (234 → 233 at the
+   2026-07-19 --mini-verdict-cell retirement, tenantless; count corrected
+   2026-07-19 — was published as 220; 14 packed declarations were invisible
+   to a line-anchored count. Nothing changed).
+
+   KNOWN, DEFERRED — THE RAMP TRANSCRIPTIONS. --heatmap-ramp and --cat-ramp
+   are multi-stop dials. CSS cannot var() one stop of a multi-stop value, so
+   the mockup corpus TRANSCRIBES the stops inline under the named lint
+   carve-out — and every transcription is written to the DEFAULT's stops.
+   Void deliberately shifted both ramps (heatmap 10/38/66/100 → 16/44/70/100;
+   cat 22/48/74/100 → 28/54/78/100), so under Void those transcribed
+   intensities render stale: cosmetic only, nothing structural rides them.
+   Ruled 2026-07-19 to ride as-is and be fixed at Build (step 6a): React
+   components compute the stops FROM the ramp dial, so nothing is ever
+   transcribed and the carve-out dissolves for Void and every later theme.
+
+   THE DERIVATION LAW. Raw values are legal HERE and nowhere else. A
+   derivation at a use-site mixes only toward OTHER DIALS — never a literal
+   white/black, never a hardcoded percentage. Mixing toward `transparent` is
+   legal; the amount is still a dial. brightness() is forbidden. Note that
+   under Void --text-strong is LIGHT, so every law-obeying hover LIGHTENS —
+   that inversion is the law working, not a bug.
+   ===================================================================== */
+
+:root {
+
+  /* -- Group 1 · Chrome colours (18) — hard dark inversion ------------- */
+  --window-background:   #0b0b0e;              /* near-black, faint-cool */
+  --panel-background:    #17171c;              /* cards, tiles, the rail */
+  --raised-background:   rgba(28,28,34,.72);   /* modals/popovers — translucent for the blur; resolves #1c1c22 under reduce-effects */
+  --inset-background:    #202027;              /* inputs, wells — recessed reads LIGHTER than panel on a dark ground */
+  --text-strong:         #f2f2f5;              /* LIGHT — the inversion's fulcrum: every law-obeying hover lightens */
+  --text-secondary:      #b4b4bd;
+  --text-muted:          #7c7c86;
+  --text-on-filled:      #1a0510;              /* DARK — fills are bright here */
+  --border:              #3a3a44;
+  --divider:             #26262e;
+  --accent:              #ff2d78;              /* hot magenta */
+  --hover-wash:          rgba(255,255,255,.06);/* light ink over dark — the neutral wash inverts direction */
+  --hover-shift:         14%;
+  --selected-wash:       rgba(255,45,120,.16);
+  --today-wash:          rgba(255,255,255,.09);/* neutral light ink over the dark panel */
+  --focus-ring:          rgba(255,45,120,.6);
+  --danger:              #ff5f52;              /* lifted for the dark ground; clearly not the accent */
+  --accent-on-inverted:  #b3134f;              /* the "inverted" toast surface is LIGHT here, so this DARKENS the accent to read on it */
+
+  /* -- Group 2 · Typography (15) — the Default ramp, unmoved ----------- */
+  --font-ui:        -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-heading:   -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono:      "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --size-caption:        14px;
+  --size-small:          15px;
+  --size-body:           16px;
+  --size-subheading:     18px;
+  --size-heading:        24px;
+  --size-display:        34px;
+  --size-stat-value:     48px;
+  --weight-regular:      400;
+  --weight-medium:       500;
+  --weight-bold:         600;
+  --line-tight:          1.2;
+  --line-normal:         1.5;
+
+  /* -- Group 3 · Spacing (8) ------------------------------------------ */
+  --space-1:             2px;
+  --space-2:             4px;
+  --space-3:             6px;
+  --space-4:             8px;
+  --space-5:             12px;
+  --space-6:             16px;
+  --space-7:             24px;
+  --space-8:             32px;
+
+  /* -- Group 4 · Shape (8) -------------------------------------------- */
+  --radius-small:        6px;
+  --radius-cell:         2px;
+  --radius-medium:       10px;
+  --radius-large:        14px;
+  --radius-full:         999px;
+  --border-hairline:     1px;
+  --border-standard:     1.5px;
+  --border-heavy:        2px;
+
+  /* -- Group 5 · Effects (7) — deepened for the dark ground ------------ */
+  --shadow-low:   0 1px 2px rgba(0,0,0,.5), 0 1px 1px rgba(0,0,0,.35);
+  --shadow-high:  0 10px 34px rgba(0,0,0,.65), 0 2px 8px rgba(0,0,0,.45);
+  --backdrop-blur:  blur(20px) saturate(180%); /* raised surfaces ONLY */
+  --glow:           0 0 18px rgba(255,45,120,.35); /* a REAL value — the Default ships `none` */
+  --overlay-dim:    rgba(0,0,0,.55);
+  --shadow-inset:   inset 0 1px 2px rgba(0,0,0,.45);
+  --scrim:          rgba(0,0,0,.5);
+
+  /* -- Group 6 · Meaning colours — re-pitched for the dark canvas ------
+     Hue identities and the seasonal anchoring are KEPT: a habit keeps its
+     recognizable colour family, a month keeps its season. Only the pitch
+     moves, for legibility on near-black. */
+  --habit-1:  #9d95f5;   /* Writing */
+  --habit-2:  #e0993a;   /* Gaming */
+  --habit-3:  #35c996;   /* Reading */
+  --habit-4:  #5da8f0;   /* Media */
+  --habit-5:  #23c9c3;   /* Keyboard */
+  --habit-6:  #7a71e0;   /* Sleep */
+  --habit-7:  #f56e6d;   /* Walking */
+  --habit-8:  #d977b8;   /* Embroidery (archived) — kept clear of the magenta accent */
+  --habit-9:  #edaa5e;   /* Drawing (archived) */
+  --habit-10: #6fc4c1;   /* Coding (archived) */
+  --habit-11: #b97ed2;   /* Gamedev (archived) */
+  --habit-12: #4fbde8;   /* 12th pool slot — cyan */
+
+  /* Month slots (12) — the seasonal wheel, lifted for the dark canvas -- */
+  --month-jan: #7d9fc9;  --month-feb: #a3a5d6;  --month-mar: #6cc19d;
+  --month-apr: #8cd172;  --month-may: #d4a8cc;  --month-jun: #eec95e;
+  --month-jul: #f7a557;  --month-aug: #f58f60;  --month-sep: #e07f5b;
+  --month-oct: #c98b5f;  --month-nov: #b4736b;  --month-dec: #6979b3;
+
+  /* Heat (4) */
+  --heat-hot:      #ff6b70;
+  --heat-warm:     #f5ad55;
+  --heat-cooling:  #6cb8ea;
+  --heat-cold:     #9dadc2;
+
+  /* Day verdict (3) */
+  --verdict-done:    #46c78c;
+  --verdict-missed:  #e0736b;
+  --verdict-unknown: #8e8e96;
+
+  /* Finalize markings (3) — ink direction INVERTS with the world ------- */
+  --finalize-mark:    #c9c9ce;   /* the filled mark goes LIGHT */
+  --finalize-outline: #55555c;   /* the hollow outline goes DARK-muted */
+  --marker-size:      5px;
+
+  /* Attention dot (2) */
+  --attention-dot: #ffa733;      /* lifted amber — still not --danger */
+  --dot-size:      8px;
+
+  /* Categorical palette (8) + intensity ramp — lifted, hues kept ------ */
+  --cat-1: #6f9cd0;  --cat-2: #79c46e;  --cat-3: #f2ba58;  --cat-4: #d09cc2;
+  --cat-5: #93d6d1;  --cat-6: #ff8b76;  --cat-7: #bd937b;  --cat-8: #a2a2aa;
+  --cat-ramp: 28% 54% 78% 100%;  /* shifted from the Default's 22/48/74/100 — see the header's deferred-transcription note */
+
+  /* Derived-rule tunables — re-pitched for the dark ground ------------- */
+  --week-shade-mix:    30%;
+  --quarter-treatment: wash;
+  --quarter-wash-mix:  52%;
+  --tint-mix:          80%;   /* tints read slightly stronger on dark */
+  --heatmap-ramp:      16% 44% 70% 100%;  /* shifted from 10/38/66/100 — see the header */
+  --tint-hover:        64%;
+  --tint-border:       46%;
+  --fade:              56%;
+  --chart-area-mix:    80%;   /* area fills read stronger */
+  --absent-wash:       74%;
+
+  /* -- Group 7 · Motion (3 + 3) — the Default timings ------------------ */
+  --motion-fast:        120ms;
+  --motion-standard:    200ms;
+  --motion-deliberate:  320ms;
+  --ease-standard:      cubic-bezier(.4, 0, .2, 1);
+  --ease-entering:      cubic-bezier(0, 0, .2, 1);
+  --ease-exiting:       cubic-bezier(.4, 0, 1, 1);
+
+  /* -- Group 8 · Icons (4) -------------------------------------------- */
+  --icon-color:         currentColor;
+  --icon-size:          16px;
+  --icon-size-small:    14px;
+  --icon-stroke:        1.5px;
+
+  /* -- Structural frame dims (9) — theme-invariant --------------------- */
+  --titlebar-height: 40px;
+  --rail-width:      380px;
+  --cal-cell-min-h:  34px;
+  --week-col-width:  30px;
+  --swatch-size:     30px;
+  --strip-rest-h:    56px;
+  --popover-width:   288px;
+  --popover-pointer: 11px;
+  --step-btn-size:   26px;
+
+  /* -- Frame clearances (9) + the seam wash — px theme-invariant ------- */
+  --frame-clear-modal:   28px;
+  --frame-clear-palette: 28px;
+  --frame-clear-grand:   24px;
+  --frame-clear-strip:   20px;
+  --frame-clear-tile:    16px;
+  --frame-clear-tool:    12px;
+  --frame-clear-whimsy:  12px;
+  --frame-clear-hcard:    8px;
+  --pane-pad-left:       36px;
+  --seam-wash-mix:       86%;   /* --text-strong is LIGHT here, so the band reads as a faint light wash over the dark ground */
+
+  /* -- Dashboard structural sizes (10) — theme-invariant --------------- */
+  --masthead-art-w:  150px;
+  --masthead-art-h:  108px;
+  --bar-label-w:     120px;
+  --bar-value-w:     56px;
+  --chart-height:    220px;
+  --chart-axis-gutter: 56px;
+  --cover-w:         60px;
+  --cover-h:         84px;
+  --bar-row-h:       20px;
+  --tile-height:     128px;   /* a FLOOR (min-height); subtitles wrap */
+
+  /* -- Cover-wall masonry dims (2) ------------------------------------- */
+  --wall-unit:   128px;
+  --wall-gap:     12px;
+
+  /* -- Cadence dashboard structural sizes (9) -------------------------- */
+  --cad-chevron-w:   28px;
+  --cad-habit-w:     300px;
+  --cad-total-w:     210px;
+  --cad-best-w:      200px;
+  --cad-done-w:      96px;
+  --cad-door-w:      40px;
+  --cad-cell-size:   22px;
+  --verdict-cell-min-h: 46px;
+  --cad-cell-weekly: 44px;
+
+  /* -- Cadence verdict-heat cells (2) ---------------------------------- */
+  --heat-cell-size:    30px;
+  --heat-block-min-h:  300px;
+
+  /* -- Library catalog structural sizes (5) ---------------------------- */
+  --lib-grid-cols:    9;
+  --lib-grid-rows:    2;
+  --lib-cover-ratio:  2 / 3;
+  --lib-pin-card-w:   188px;
+  --pager-btn-size:   34px;
+
+  /* -- Modal structural sizes (8) -------------------------------------- */
+  --modal-import-w:    1320px;
+  --modal-bulk-w:      1680px;
+  --modal-bulk-h:      1040px;
+  --import-grid-cols:  6;
+  --bulk-grid-cols:    7;
+  --bulk-rail-w:       380px;
+  --import-progress-h: 6px;
+  --modal-confirm-w:   620px;
+
+  /* -- Creation dashboard structural sizes (7) ------------------------- */
+  --hero-card-min-h:   268px;
+  --hero-cover-w:      240px;
+  --hero-spark-h:      48px;
+  --hero-banner-fade:  50%;   /* the banner bleeds further into the dark surface */
+  --dist-donut-size:   200px;
+  --dist-donut-stroke: 38px;
+  --lollipop-dot:      13px;
+
+  /* -- Entry-dashboard structural sizes (7) ---------------------------- */
+  --entry-rail-w:      420px;
+  --wave-band-h:       300px;
+  --wave-break-w:       70px;
+  --daylog-row-h:       40px;
+  --growth-curve-h:    320px;
+  --rail-banner-fade:   54%;
+  --wave-shade-mix:     88%;
+
+  /* -- Comparing Statistics structural size (1) ------------------------ */
+  --builder-w:       540px;
+
+  /* -- Timers structural sizes (4) ------------------------------------- */
+  --clock-face-size:   128px;
+  --clock-ring-size:   360px;
+  --clock-ring-stroke:  18px;
+  --modal-manage-w:    720px;
+
+  /* -- Settings structural size (1) ------------------------------------ */
+  --settings-pane-w:   300px;
+
+  /* -- Creator control dials (4) --------------------------------------- */
+  --check-size:        22px;
+  --input-inline-w:    96px;
+  --art-slot-h:        44px;
+  --focus-ring-danger: rgba(255,95,82,.38);  /* follows the lifted --danger */
+
+  /* -- Rail chrome (5) · SINGLE-REGISTER ------------------------------- */
+  --rail-background: var(--panel-background);
+  --rail-text:       var(--text-strong);
+  --rail-border:     var(--divider);
+  --shadow-direction:  0 1px;
+  --focus-ring-weight: 3px;
+
+  /* -- Theme-owned whimsy palette (10) — Void's dark-world art ---------
+     A dim world under an eclipse: daylight is a low indigo haze, the sun
+     burns cold-gold, dawn carries the accent world's magenta cast, night
+     is nearly absolute. Ink stays DARK (it serves the night zenith); the
+     tarot stays a LIGHT artifact in a dark world — a card read by
+     moonlight — so parchment stays light-of-world. */
+  --whimsy-day:        #46527a;   /* dim daylight HORIZON haze */
+  --whimsy-zenith:     #2c3a66;   /* daylight ZENITH — deeper overhead */
+  --whimsy-sun:        #ffc94d;   /* cold-burning gold disc */
+  --whimsy-dawn:       #c76e8e;   /* magenta-cast morning horizon */
+  --whimsy-dusk:       #f07a4a;   /* ember evening horizon */
+  --whimsy-night:      #0d1122;   /* the deep field */
+  --whimsy-moon:       #edeefa;   /* cold lunar bone */
+  --whimsy-star:       #ffd98a;   /* gilt — stars, asterism, tarot emblem */
+  --whimsy-ink:        #070a1c;   /* near-absolute night ZENITH + tarot linework */
+  --whimsy-parchment:  #e6e4f0;   /* moonlit pale card stock */
+
+  /* The sky gradient's time-of-day stop pairs are unchanged from the
+     Default (night/dawn/day/dusk → zenith+horizon); only the colours
+     above move. The mix amount is DATA (solar altitude), never a dial. */
+
+  /* -- Theme-owned whimsy TYPE (9) — the authored art metrics ---------- */
+  --whimsy-size-caption:     14px;
+  --whimsy-size-small:       15px;
+  --whimsy-size-body:        16px;
+  --whimsy-size-subheading:  18px;
+  --whimsy-size-heading:     24px;
+  --whimsy-size-display:     34px;
+  --whimsy-size-stat:        48px;
+  --whimsy-size-glyph:       42px;
+  --whimsy-size-glyph-grand: 66px;
+
+  /* -- Whimsy structural sizes (6) + Daily floors (2) ------------------ */
+  --moon-disc:      132px;
+  --sun-arc-h:      168px;
+  --tarot-card-w:   104px;
+  --tarot-card-h:   182px;
+  --donut-size:      64px;
+  --donut-stroke:     7px;
+  --shelf-height:   168px;
+  --triptych-min:   860px;
+
+  /* -- Theme-owned ambience sizing (1) --------------------------------
+     Void inherits the Default's code-drawn vignette clock, so this dial
+     is live here too — the face draws in Void's chrome ramp. */
+  --clock-max: 340px;
+}

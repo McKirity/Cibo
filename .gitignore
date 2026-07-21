@@ -1,0 +1,40 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# local-only project material (public repo — never committed):
+# the planning vault, the living context doc, Claude Code settings, Obsidian config
+project-management/
+CLAUDE.md
+.claude/
+.obsidian/
+
+# build output (Rust target/ + gen/ are covered by src-tauri/.gitignore)
+src-tauri/target/
+
+# secrets & machine cruft (updater signing key + Tauri keygen dir — defensive)
+*.key
+.tauri/
+.env
+.env.*

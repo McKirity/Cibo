@@ -126,6 +126,11 @@ body {
   font-weight: var(--weight-bold);
 }
 
+/* Dev-grade view switch (real nav rail = step 6). */
+.dev-nav {
+  padding: var(--space-6) var(--space-8) 0;
+}
+
 /* TEMPORARY dev habit-activation panel (first-run setup replaces it). */
 .dev-panel summary {
   font-size: var(--size-caption);

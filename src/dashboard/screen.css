@@ -1,0 +1,50 @@
+/* Vertical-slice screen glue — the structural wrappers the frozen FINAL keeps
+   screen-local (.gs / .gs-body), plus the masthead lettermark. NOT kit rules;
+   dials only, per the derivation law. The rail/titlebar/theme shell is step 6;
+   this renders the dashboard pane bare, like step 3's log screen. */
+
+.gsdash {
+  padding: var(--space-8);
+}
+
+.gs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.gs-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* Panels stack with the flex gap alone — cancel the kit adjacency margin so
+   the spacing doesn't double up in this bare pane. */
+.gs-body > .panel + .panel {
+  margin-top: 0;
+}
+
+/* Masthead art = a lettermark fallback (icons are step 6 / Iconography). */
+.mast .art span {
+  font-family: var(--font-heading);
+  font-size: var(--size-display);
+  font-weight: var(--weight-bold);
+  color: var(--text-on-filled);
+}
+
+/* The month spark's bars are percentage-height; in this bare pane the .trend
+   grid row is auto-sized (only the line chart carries a fixed pixel height), so
+   give the spark plotting area the same definite height and the bars resolve. */
+.gsdash .spark .sparkbars {
+  height: var(--chart-height);
+  flex: 0 0 auto;
+}
+
+/* The dev perf readout above the dashboard. */
+.perf-line {
+  font-family: var(--font-mono);
+  font-size: var(--size-caption);
+  color: var(--text-muted);
+  margin-bottom: var(--space-6);
+}

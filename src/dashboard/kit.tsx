@@ -7,7 +7,7 @@
  * These are the consumption template's blocks; every later dashboard reuses
  * them. Nothing Gaming-specific lives here — the model carries the data.
  */
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import type {
   DistColumnSpec,
   LeaderColumnSpec,
@@ -97,8 +97,11 @@ export function StatGroup({ label, tiles, tall }: { label: string; tiles: TileSp
 // ── kit-bars-distribution ─────────────────────────────────────────────────────
 
 export function DistributionColumns({ columns }: { columns: DistColumnSpec[] }) {
+  // Charts flex to fill the panel (standing rule, 2026-07-21): the grid always
+  // has exactly as many equal tracks as columns — four across (Reading/Media
+  // All-types), three, two, or one — never a fixed grid that leaves empty space.
   return (
-    <div className="trio grouped">
+    <div className="trio grouped" style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}>
       {columns.map((c) => (
         <div className="dcol" key={c.title}>
           <div className="chead">
@@ -125,8 +128,10 @@ export function DistributionColumns({ columns }: { columns: DistColumnSpec[] }) 
 // ── kit-leaderboard ───────────────────────────────────────────────────────────
 
 export function LeaderboardColumns({ columns }: { columns: LeaderColumnSpec[] }) {
+  // Flex to fill (standing rule): as many tracks as columns, so a degraded
+  // 2-column board fills the panel width instead of leaving a dead third track.
   return (
-    <div className="trio grouped">
+    <div className="trio grouped" style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}>
       {columns.map((c) => (
         <div className="dcol" key={c.title}>
           <div className="chead">
@@ -310,26 +315,69 @@ export function TrendPanel({
 // ── kit-grid-heatmap ──────────────────────────────────────────────────────────
 
 const HEAT_WORDS = ["no play", "~45 min", "1 h 30", "3 h 10", "5 h+"];
+// By-Type cell fill: the dominant type's cat colour over the canvas at the
+// --cat-ramp complement (background share) per level (the FINAL's stops).
+const BYTYPE_BG: Record<number, number> = { 1: 78, 2: 52, 3: 26, 4: 0 };
+
+interface HeatCell {
+  day: string | null;
+  minutes: number;
+  level: number;
+  catVar?: string | null;
+}
 
 export function Heatmap({
   cells,
   months,
   trio,
+  hasTypes = false,
+  legend = [],
 }: {
-  cells: { day: string | null; minutes: number; level: number }[];
+  cells: HeatCell[];
   months: { col: number; label: string }[];
   trio: TileSpec[];
+  hasTypes?: boolean;
+  legend?: { label: string; colorVar: string }[];
 }) {
-  const ramp = (
-    <div className="pmeta ramp">
-      Intensity
+  const [mode, setMode] = useState<"intensity" | "bytype">("intensity");
+  const byType = hasTypes && mode === "bytype";
+
+  const intensityRamp = (
+    <span className="ramp">
+      {!hasTypes && "Intensity"}
       {[0, 1, 2, 3, 4].map((k) => (
         <span key={k} className={`sw sw${k}`} />
       ))}
-    </div>
+    </span>
   );
+  const catLegend = (
+    <span className="catleg" style={{ display: "flex" }}>
+      {legend.map((l) => (
+        <span className="lg" key={l.label}>
+          <span className="sw" style={{ background: `var(${l.colorVar})` }} />
+          {l.label}
+        </span>
+      ))}
+    </span>
+  );
+  const header = (
+    <span className="pmeta" style={{ display: "flex", alignItems: "center", gap: "var(--space-6)", flexWrap: "wrap" }}>
+      {hasTypes && (
+        <span className="toggle">
+          <button className={`t${mode === "intensity" ? " on" : ""}`} onClick={() => setMode("intensity")}>
+            Intensity
+          </button>
+          <button className={`t${mode === "bytype" ? " on" : ""}`} onClick={() => setMode("bytype")}>
+            By Type
+          </button>
+        </span>
+      )}
+      {byType ? catLegend : intensityRamp}
+    </span>
+  );
+
   return (
-    <Panel title="Activity heatmap" right={ramp}>
+    <Panel title="Activity heatmap" right={header}>
       <div className="heat">
         <div className="weekdays">
           <span className="wd" />
@@ -348,14 +396,30 @@ export function Heatmap({
             ))}
           </div>
           <div className="cells">
-            {cells.map((c, i) => (
-              <div
-                key={i}
-                className={`hcell${c.level >= 1 ? ` l${c.level}` : ""}`}
-                style={c.level < 0 ? { visibility: "hidden" } : undefined}
-                title={c.day ? `${c.day} · ${HEAT_WORDS[c.level]}` : undefined}
-              />
-            ))}
+            {cells.map((c, i) => {
+              // Intensity → the habit-ramp level classes. By-Type → an inline
+              // color-mix of the dominant type's cat slot (level 0 stays bare).
+              const bg =
+                byType && c.level >= 1 && c.catVar
+                  ? `color-mix(in oklch, var(${c.catVar}), var(--window-background) ${BYTYPE_BG[c.level]}%)`
+                  : undefined;
+              const style: CSSProperties =
+                c.level < 0
+                  ? { visibility: "hidden" }
+                  : bg
+                    ? { background: bg, boxShadow: "none" }
+                    : {};
+              const cls = byType ? "hcell" : `hcell${c.level >= 1 ? ` l${c.level}` : ""}`;
+              const typeSuffix = byType && c.catVar ? ` · ${legend.find((l) => l.colorVar === c.catVar)?.label ?? ""}` : "";
+              return (
+                <div
+                  key={i}
+                  className={cls}
+                  style={style}
+                  title={c.day ? `${c.day} · ${HEAT_WORDS[c.level]}${typeSuffix}` : undefined}
+                />
+              );
+            })}
           </div>
         </div>
       </div>

@@ -1,0 +1,352 @@
+/* Build step 6 — the app shell: custom titlebar + nav rail + content pane.
+   Rules HARVESTED from the frozen `Final/frame.html` (Layer 2 — the kit
+   stylesheet claim; dials only, per the derivation law). Two deliberate
+   adaptations from the mockup, both structural:
+     · the mockup's `.frame` is a fixed 2560×1440 box inside a `.page` desk;
+       here the frame IS the window, so it fills the viewport (100vh/vw).
+     · the content pane SCROLLS (real dashboards are tall) — the mockup pinned
+       an overflow:hidden placeholder.
+   The nav-calendar body, Tools destinations, Settings, and the live vignette
+   remain step-9 / step-6a work — placeheld here, not drawn. */
+
+.app-frame {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--window-background);
+  display: grid;
+  grid-template-rows: var(--titlebar-height) 1fr;
+  grid-template-columns: var(--rail-width) 1fr;
+  font-family: var(--font-ui);
+  color: var(--text-strong);
+  font-size: var(--size-body);
+  line-height: var(--line-normal);
+}
+.app-frame.rail-collapsed {
+  grid-template-columns: 0 1fr;
+}
+
+.ico {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  flex: 0 0 auto;
+  stroke: currentColor;
+  stroke-width: var(--icon-stroke);
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: block;
+}
+
+/* ── titlebar (spans both columns) — seamless with a hairline seam ── */
+.tb {
+  grid-column: 1 / -1;
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  background: var(--window-background);
+  user-select: none;
+  border-bottom: var(--border-hairline) solid var(--border);
+}
+.tb .cluster {
+  display: flex;
+  align-items: stretch;
+}
+.tb-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  height: var(--titlebar-height);
+  padding: 0 var(--space-5);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--size-small);
+  font-weight: var(--weight-medium);
+  transition: background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+.tb-btn:hover {
+  background: var(--hover-wash);
+  color: var(--text-strong);
+}
+.tb-btn.disabled {
+  color: var(--text-muted);
+  pointer-events: none;
+  opacity: 0.55;
+}
+.tb-btn.close:hover {
+  background: var(--danger);
+  color: var(--text-on-filled);
+}
+.tb .drag {
+  flex: 1;
+}
+.drag .title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font-size: var(--size-small);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+.tb .winbtns {
+  margin-left: auto;
+}
+.restore {
+  position: relative;
+}
+.restore .dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: var(--dot-size);
+  height: var(--dot-size);
+  border-radius: var(--radius-full);
+  background: var(--attention-dot);
+  box-shadow: 0 0 0 var(--border-heavy) var(--window-background);
+}
+
+/* ── the rail — attached flush, single-register ── */
+.rail {
+  grid-row: 2;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--rail-background);
+  border-right: var(--border-hairline) solid var(--rail-border);
+  overflow: hidden auto;
+  min-height: 0;
+}
+.app-frame.rail-collapsed .rail {
+  display: none;
+}
+.rail .sec {
+  padding: var(--space-4) var(--space-6);
+  flex: 0 0 auto;
+}
+.rail .sec + .sec {
+  border-top: var(--border-hairline) solid var(--divider);
+}
+.overline {
+  font-size: var(--size-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 var(--space-4);
+}
+
+/* nav calendar — header only; the month grid is step 9 (placeheld) */
+.calhead {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  margin-bottom: var(--space-4);
+}
+.calhead .chain {
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--size-small);
+}
+.doorlink {
+  color: var(--text-secondary);
+  text-decoration: underline dotted var(--border);
+  text-underline-offset: 3px;
+}
+.calhead .month {
+  grid-column: 1 / -1;
+  margin-top: calc(-1 * var(--space-5));
+  text-align: center;
+  font-family: var(--font-heading);
+  font-size: var(--size-heading);
+  font-weight: var(--weight-bold);
+  line-height: var(--line-tight);
+  color: var(--text-strong);
+}
+.cal-placeholder {
+  border: var(--border-standard) dashed
+    color-mix(in oklch, var(--border), var(--window-background) 35%);
+  border-radius: var(--radius-medium);
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--size-caption);
+  color: var(--text-muted);
+}
+
+/* Habits — two per row, grouped (Projects / Daily) */
+.subgroup {
+  font-size: var(--size-caption);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  margin: 0 0 var(--space-3);
+}
+.habitgrid + .subgroup {
+  margin-top: var(--space-5);
+}
+.habitgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  padding: calc(var(--frame-clear-hcard) + var(--space-4));
+  border: var(--border-hairline) solid var(--divider);
+  background: transparent;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-ui);
+  color: var(--rail-text);
+  min-width: 0;
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.entry:hover {
+  background: var(--hover-wash);
+}
+.entry.active {
+  background: var(--selected-wash);
+  box-shadow: inset var(--border-heavy) 0 0 var(--accent);
+}
+.entry .swatch {
+  width: var(--swatch-size);
+  height: var(--swatch-size);
+  border-radius: var(--radius-small);
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-on-filled);
+  font-family: var(--font-heading);
+  font-size: var(--size-small);
+  font-weight: var(--weight-bold);
+}
+.entry .name {
+  font-size: var(--size-body);
+  font-weight: var(--weight-medium);
+}
+
+/* Tools — 2×2 tile grid (destinations are step 7/8/9) */
+.tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+.tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: calc(var(--frame-clear-tool) + var(--space-4));
+  background: var(--window-background);
+  border: var(--border-hairline) solid var(--divider);
+  border-radius: var(--radius-medium);
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--size-small);
+  font-weight: var(--weight-medium);
+  transition: background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+.tool:hover {
+  background: var(--hover-wash);
+  color: var(--text-strong);
+}
+.tool .ico {
+  color: var(--text-secondary);
+}
+.tool:hover .ico {
+  color: var(--text-strong);
+}
+
+/* Ambience band — the flex absorber; hosts the Default's vignette clock */
+.ambience {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+}
+.ambience .clock {
+  width: auto;
+  height: 100%;
+  max-height: var(--clock-max);
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+  display: block;
+}
+
+/* Settings — anchored bottom */
+.rail .sec.settings {
+  flex: 0 0 auto;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  width: 100%;
+  padding: var(--space-4);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-ui);
+  color: var(--rail-text);
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.settings-row:hover {
+  background: var(--hover-wash);
+}
+.settings-row .name {
+  font-size: var(--size-body);
+  font-weight: var(--weight-medium);
+}
+.settings-row .ico {
+  color: var(--text-secondary);
+}
+
+/* ── content pane — SCROLLS; hosts the selected dashboard ── */
+.content {
+  grid-row: 2;
+  grid-column: 2;
+  position: relative;
+  overflow: auto;
+  padding: var(--space-7);
+  padding-left: calc(var(--pane-pad-left) + var(--space-7) + var(--space-5));
+}
+/* Rail seam band — the reserved 72px left gutter is DECORATION room for a
+   theme's 9-slice frame. The bundled themes are art-free, so it stays
+   TRANSPARENT and blends with the content ground (user-ruled 2026-07-21 — the
+   painted wash read as a grey box sticking out). The room is still reserved
+   (the left padding); a theme with decoration paints into it at step 6a. */
+
+/* the vignette clock — numberless analog face (sweep is the one motion) */
+.clock .sweep {
+  transform-box: view-box;
+  transform-origin: 60px 60px;
+  animation: clock-sweep 60s linear infinite;
+}
+@keyframes clock-sweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

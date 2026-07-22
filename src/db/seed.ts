@@ -32,7 +32,7 @@ const s100 = (v: string) => NonEmptyString100.orThrow(v);
 const s1000 = (v: string) => NonEmptyString1000.orThrow(v);
 const num = (v: number) => FiniteNumber.orThrow(v);
 
-export const SEED_VERSION = 1;
+export const SEED_VERSION = 2;
 
 type CiboEvolu = Evolu<typeof Schema>;
 
@@ -134,7 +134,7 @@ const BATCH_1: HabitSeed[] = [
         label: "Type",
         scope: "entry",
         data_type: "picklist",
-        vocab: ["Novel", "Manga", "Anthology", "Short Story", "Comic"],
+        vocab: ["Novel", "Manga", "Fanfiction", "Short Story", "Comic"],
       },
       // Calibre imports curated genres and auto-adds them here.
       { key: "reading_genre", label: "Genre", scope: "entry", data_type: "picklist-multi", vocab: [] },
@@ -311,7 +311,8 @@ export async function runSeed(evolu: CiboEvolu): Promise<SeedResult> {
   if (foundVersion >= SEED_VERSION) return { foundVersion, applied: false };
 
   if (foundVersion < 1) await seedBatch1(evolu);
-  // Future batches: if (foundVersion < 2) await seedBatch2(evolu); …
+  if (foundVersion < 2) await seedBatch2(evolu);
+  // Future batches: if (foundVersion < 3) await seedBatch3(evolu); …
 
   if (liveMeta) {
     evolu.update("app_meta", { id: liveMeta.id, value: s1000(String(SEED_VERSION)) });
@@ -399,4 +400,47 @@ async function seedBatch1(evolu: CiboEvolu): Promise<void> {
       sort_order: num(i + 1),
     });
   });
+}
+
+/**
+ * Batch 2 (2026-07-21) — rename the Reading `type` option Anthology →
+ * Fanfiction (user-ruled). The managed-vocab rename = an atomic value update
+ * (the design's rename pattern), so it self-heals already-seeded stores; a
+ * fresh store seeds Fanfiction directly at batch 1 and this finds nothing to
+ * rename (idempotent). Entries store the string, so any entry carrying the old
+ * value is updated too — none exist in the seeds, but the rule holds in general.
+ */
+async function seedBatch2(evolu: CiboEvolu): Promise<void> {
+  const defQuery = evolu.createQuery((db) =>
+    db
+      .selectFrom("subunit_definitions")
+      .select(["id"])
+      .where("key", "=", s100("reading_type"))
+      .where("isDeleted", "is not", 1),
+  );
+  const defId = (await evolu.loadQuery(defQuery))[0]?.id;
+  if (defId == null) return;
+
+  const optQuery = evolu.createQuery((db) =>
+    db
+      .selectFrom("vocab_options")
+      .select(["id"])
+      .where("definition_fk", "=", defId)
+      .where("value", "=", s100("Anthology"))
+      .where("isDeleted", "is not", 1),
+  );
+  for (const o of await evolu.loadQuery(optQuery)) {
+    evolu.update("vocab_options", { id: o.id, value: s100("Fanfiction") });
+  }
+
+  const entryQuery = evolu.createQuery((db) =>
+    db
+      .selectFrom("entries")
+      .select(["id"])
+      .where("type", "=", s100("Anthology"))
+      .where("isDeleted", "is not", 1),
+  );
+  for (const e of await evolu.loadQuery(entryQuery)) {
+    evolu.update("entries", { id: e.id, type: s100("Fanfiction") });
+  }
 }

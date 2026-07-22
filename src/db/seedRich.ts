@@ -179,6 +179,12 @@ const BOOKS: Consumable[] = [
   { title: "The Three-Body Problem", type: "Novel", genres: ["Sci-Fi"], rating: 4, status: "Finished", series: "Remembrance", seriesOrder: 1, words: 150000 },
   { title: "Circe", type: "Novel", genres: ["Fantasy", "Mythology"], rating: 5, status: "Finished", words: 130000 },
   { title: "Recursion", type: "Novel", genres: ["Sci-Fi", "Thriller"], rating: 4, status: "Finished", words: 110000 },
+  // Fanfiction (the reading type renamed from Anthology, user-ruled 2026-07-21) — gives the
+  // By-type distribution + heatmap a third Medium with its own status/rating spread.
+  { title: "All the Young Dudes", type: "Fanfiction", genres: ["Drama", "Romance"], rating: 5, status: "Finished", words: 526000 },
+  { title: "Manacled", type: "Fanfiction", genres: ["Dark Fantasy", "Romance"], rating: 4, status: "Finished", words: 370000 },
+  { title: "Wax and Wane", type: "Fanfiction", genres: ["Slice of Life"], rating: 4, status: "Current" },
+  { title: "The Nightmare Verses", type: "Fanfiction", genres: ["Horror"], rating: 3, status: "Dropped" },
 ];
 
 const MEDIA: Consumable[] = [
@@ -361,16 +367,62 @@ function seedConsumption(ctx: Ctx, hk: string, entries: EntryRef[], playProb: nu
   let runLeft = rint(6, 30);
   walkWindows(WINDOWS[hk], (day) => {
     if (runLeft <= 0) {
-      // ~22% revisit an earlier entry (replay) once we're a few in.
-      cur = chance(0.22) && cur > 2 ? Math.floor(rnd() * cur) : (cur + 1) % entries.length;
+      // The cursor CYCLES FORWARD through every entry (each one gets runs — the
+      // old backward-biased switch starved the tail of the array, e.g. YouTube).
+      cur = (cur + 1) % entries.length;
       runLeft = rint(6, 30);
     }
     if (chance(playProb)) {
+      // ~18% of bouts revisit an earlier entry (a replay wave) WITHOUT stalling
+      // the forward cursor, so late entries stay covered.
+      const target = chance(0.18) && cur > 2 ? Math.floor(rnd() * cur) : cur;
       const bouts = chance(0.2) ? 2 : 1;
-      for (let b = 0; b < bouts; b++) insertSession(ctx, habit, entries[cur].id, day, { kind: "time", value: rint(20, 180) }, source);
+      for (let b = 0; b < bouts; b++) insertSession(ctx, habit, entries[target].id, day, { kind: "time", value: rint(20, 180) }, source);
     }
     runLeft--;
   });
+}
+
+/**
+ * Media — TYPE-AWARE (the media-stats wireframe: YouTube is the dominant Medium,
+ * a "watch whenever" habit with no lifecycle). YouTube channels get frequent,
+ * short daily sessions across the whole span → the biggest share of hours + the
+ * most active days. Anime/Movie/TV are burst-watched over a forward cursor
+ * (each show for a stretch, then move on).
+ */
+function seedMedia(ctx: Ctx, entries: EntryRef[]) {
+  const habit = ctx.habitId.get("media")!;
+  if (entries.length === 0) return;
+  const isYt = (e: EntryRef) => (e.meta as Consumable).type === "Youtube";
+  const yt = entries.filter(isYt);
+  const shows = entries.filter((e) => !isYt(e));
+
+  // YouTube: watch-whenever — ~58% of days, 1–2 short bouts (8–45 min) per day.
+  if (yt.length > 0) {
+    walkWindows(WINDOWS.media, (day) => {
+      if (!chance(0.58)) return;
+      const bouts = chance(0.3) ? 2 : 1;
+      for (let b = 0; b < bouts; b++) insertSession(ctx, habit, pick(yt).id, day, { kind: "time", value: rint(8, 45) }, "import");
+    });
+  }
+
+  // Anime/Movie/TV: burst-watch a title for a stretch, forward-cycle through all.
+  if (shows.length > 0) {
+    let cur = 0;
+    let runLeft = rint(8, 24);
+    walkWindows(WINDOWS.media, (day) => {
+      if (runLeft <= 0) {
+        cur = (cur + 1) % shows.length;
+        runLeft = rint(8, 24);
+      }
+      if (chance(0.5)) {
+        const target = chance(0.15) && cur > 2 ? Math.floor(rnd() * cur) : cur;
+        const bouts = chance(0.2) ? 2 : 1;
+        for (let b = 0; b < bouts; b++) insertSession(ctx, habit, shows[target].id, day, { kind: "time", value: rint(20, 150) }, "import");
+      }
+      runLeft--;
+    });
+  }
 }
 
 /** Creation (time-only, e.g. Coding/Gamedev): project bursts + a session categorical. */
@@ -541,6 +593,32 @@ export async function clearRichSeed(evolu: CiboEvolu): Promise<{ removed: number
   return { removed };
 }
 
+/** Rename the Reading `type` vocab option Anthology → Fanfiction (idempotent). */
+async function normalizeReadingType(evolu: CiboEvolu): Promise<void> {
+  const defRows = await evolu.loadQuery(
+    evolu.createQuery((db) =>
+      db
+        .selectFrom("subunit_definitions")
+        .select(["id"])
+        .where("key", "=", s100("reading_type"))
+        .where("isDeleted", "is not", 1),
+    ),
+  );
+  const defId = defRows[0]?.id;
+  if (defId == null) return;
+  const optRows = await evolu.loadQuery(
+    evolu.createQuery((db) =>
+      db
+        .selectFrom("vocab_options")
+        .select(["id"])
+        .where("definition_fk", "=", defId)
+        .where("value", "=", s100("Anthology"))
+        .where("isDeleted", "is not", 1),
+    ),
+  );
+  for (const o of optRows) evolu.update("vocab_options", { id: o.id, value: s100("Fanfiction") });
+}
+
 // ── Orchestrator ──────────────────────────────────────────────────────────────
 
 export interface RichSeedResult {
@@ -562,6 +640,11 @@ export async function seedRich(evolu: CiboEvolu): Promise<RichSeedResult> {
     evolu.update("habits", { id, archived: STAYS_ACTIVE.has(key) ? 0 : 1 });
   }
 
+  // Belt-and-braces: ensure the Reading `type` vocab reads Fanfiction, not the
+  // old Anthology, even on dev stores where the version-gated batch-2 rename
+  // didn't apply (this is the path the user actually re-runs). Idempotent.
+  await normalizeReadingType(evolu);
+
   // ── Entries ──
   const games = makeConsumables(ctx, "gaming", GAMES, "steam", "gaming_genre");
   const books = makeConsumables(ctx, "reading", BOOKS, "calibre", "reading_genre", "reading_type");
@@ -573,7 +656,7 @@ export async function seedRich(evolu: CiboEvolu): Promise<RichSeedResult> {
   // ── Sessions ──
   seedConsumption(ctx, "gaming", games, 0.5, "import");
   seedConsumption(ctx, "reading", books, 0.42, "manual");
-  seedConsumption(ctx, "media", media, 0.5, "manual");
+  seedMedia(ctx, media);
   seedWriting(ctx, writing, 0.36);
   seedCreationTime(ctx, "coding", coding, "coding_language", CODING_LANGS, 0.44);
   seedCreationTime(ctx, "gamedev", gamedev, "gamedev_type", GAMEDEV_TYPES, 0.34);

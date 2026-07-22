@@ -36,6 +36,8 @@ export interface EntryRow {
   status: string | null;
   genre: string[]; // decoded from the JSON column upstream
   rating: number | null;
+  /** Entry-level Medium (`entries.type`) — null for habits with no type vocab (Gaming). */
+  type: string | null;
 }
 
 /** Inclusive day-bounds; null = open. */
@@ -327,16 +329,20 @@ export interface HeatmapCell {
   day: string | null; // null = a future cell (hidden)
   minutes: number;
   level: number; // 0–4, or −1 for future
+  /** The dominant-type categorical slot for the By-Type face (null when no type resolver). */
+  catVar?: string | null;
 }
 
 /**
  * A trailing `weeks`×7 grid ending at `today`, row-major (Mon row across all
- * weeks, then Tue…) to match the CSS grid's fill order.
+ * weeks, then Tue…) to match the CSS grid's fill order. `catOf` (optional) maps
+ * a day to its dominant-type categorical slot for the By-Type heatmap face.
  */
 export function heatmapCells(
   dayMin: Map<string, number>,
   today: string,
   weeks = 53,
+  catOf?: (day: string) => string | null,
 ): HeatmapCell[] {
   const startIdx = dayIndex(weekStart(today)) - (weeks - 1) * 7;
   const todayIdx = dayIndex(today);
@@ -350,7 +356,7 @@ export function heatmapCells(
       }
       const day = dayFromIndex(idx);
       const minutes = dayMin.get(day) ?? 0;
-      cells.push({ day, minutes, level: heatLevel(minutes) });
+      cells.push({ day, minutes, level: heatLevel(minutes), catVar: catOf ? catOf(day) : null });
     }
   }
   return cells;

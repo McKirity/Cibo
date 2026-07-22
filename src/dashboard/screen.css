@@ -41,6 +41,105 @@
   flex: 0 0 auto;
 }
 
+/* The Medium sub-scope (Reading/Media) — the conditional type slot beneath the
+   year tabs (kit-tabs-scope). Pill buttons + a "TYPE" overline, verbatim from
+   the frozen `reading-stats.html`. Absent for Gaming (no type vocab). */
+.subtabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  flex-wrap: wrap;
+}
+.subtabs .stlabel {
+  font-size: var(--size-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: var(--weight-bold);
+}
+.subtab {
+  font-family: var(--font-ui);
+  font-size: var(--size-small);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  background: var(--panel-background);
+  border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-5);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.subtab:hover {
+  background: var(--hover-wash);
+  color: var(--text-strong);
+}
+.subtab.on {
+  background: var(--selected-wash);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: var(--weight-bold);
+}
+
+/* Trend captions want breathing room above the chart (the FINAL insets each
+   .pmeta by --space-4). */
+.trend .pmeta {
+  margin-bottom: var(--space-4);
+}
+
+/* The Catalog panel (media-stats · YouTube degradation) — designed in Claude
+   Design 2026-07-21: STACKED sections (`.catsec`) — the By-genre bars, then a
+   "Channels" HALL of ranked cover-cards (rank badge + name → hours captioned
+   over the placeholder cover, reusing the kit .hall / .cover gallery). */
+.catsec + .catsec {
+  margin-top: var(--space-7);
+}
+.catsec .hall .cover {
+  width: var(--hall-h); /* square channel cards (override the portrait catalog ratio) */
+}
+.cover .chan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-7) var(--space-4) var(--space-4);
+  background: linear-gradient(transparent, color-mix(in oklch, var(--scrim), var(--text-strong) 65%));
+}
+.cover .chan .cn {
+  font-family: var(--font-heading);
+  font-weight: var(--weight-bold);
+  font-size: var(--size-small);
+  line-height: var(--line-tight);
+  color: var(--text-on-filled);
+  text-wrap: pretty;
+}
+.cover .chan .ch {
+  font-family: var(--font-mono);
+  font-size: var(--size-caption);
+  color: var(--text-on-filled);
+  opacity: 0.9;
+}
+.cover .rk {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--size-caption);
+  font-weight: var(--weight-bold);
+  color: var(--text-on-filled);
+  background: var(--scrim);
+  border-radius: var(--radius-full);
+}
+
 /* The dev perf readout above the dashboard. */
 .perf-line {
   font-family: var(--font-mono);

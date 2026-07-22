@@ -80,11 +80,21 @@ export interface DashboardModel {
     sinceLive: string;
     tabs: { key: string; label: string }[];
     activeKey: string;
+    /** The entry-level Medium sub-scope (Reading/Media) — empty for Gaming. */
+    typeTabs: { key: string | null; label: string }[];
+    activeType: string | null;
   };
   engagement: TileSpec[];
   volume: TileSpec[];
   catalog: TileSpec[];
   distributions: DistColumnSpec[];
+  /**
+   * The degradation-rule survivor merge (media-stats wireframe · Canvas C): when
+   * the catalog collapses to one tile AND the distributions to one panel, they
+   * relocate into a single "Catalog" zone. Non-null replaces the separate
+   * catalog group + Distributions panel.
+   */
+  mergedCatalog: { tile: TileSpec; dist: DistColumnSpec } | null;
   leaderboards: LeaderColumnSpec[];
   trend: {
     caption: string;
@@ -100,6 +110,10 @@ export interface DashboardModel {
     cells: HeatmapCell[];
     months: { col: number; label: string }[];
     trio: TileSpec[];
+    /** True when the habit declares a Medium vocab → the Intensity·By-Type toggle shows. */
+    hasTypes: boolean;
+    /** By-Type legend: the types in play (all, or the single pinned type), with their slots. */
+    legend: { label: string; colorVar: string }[];
   };
 }
 
@@ -114,7 +128,14 @@ export interface BuildInput {
   entries: EntryRow[];
   finalized: Set<string>;
   today: string;
+  /** The habit's declared entry-level Medium picklist (empty = no sub-scope, no by-type panel). */
+  typeVocab: string[];
+  /** Distinct days ANY habit was active app-wide — the All-types "Total days active" reading. */
+  appActiveDays: string[];
 }
+
+/** The categorical-palette slots, cycled for the by-type distribution + any open vocab. */
+const CAT_SLOTS = ["--cat-1", "--cat-2", "--cat-3", "--cat-4", "--cat-5", "--cat-6", "--cat-7", "--cat-8"];
 
 // status → categorical slot (matches the frozen Gaming FINAL's pills)
 const STATUS_VOCAB_DISPLAY = ["Current", "Finished", "Dropped", "Planned", "Hiatus"];
@@ -138,22 +159,47 @@ const bestWeekLabel = (weekStartDay: string): string => {
   return `wk ${week} · ${year}`;
 };
 
-export function buildConsumptionDashboard(input: BuildInput, sel: ScopeSel): DashboardModel {
-  const { sessions, entries, finalized, today } = input;
+export function buildConsumptionDashboard(
+  input: BuildInput,
+  sel: ScopeSel,
+  typeFilter: string | null = null,
+): DashboardModel {
+  const { finalized, today } = input;
   const colorVar = `--${input.colourSlot}`;
-  const allDays = sessions.map((s) => s.day).sort();
-  const firstDay = allDays[0] ?? null;
-  const empty = firstDay == null;
+
+  // Full (identity) sets — the masthead's tracking-since + year tabs + heat read
+  // these, so the Medium sub-scope never rewrites the habit's identity line.
+  const sessions = input.sessions;
+  const entries = input.entries;
+
+  // The Medium sub-scope (Reading/Media): every derived zone re-scopes to the
+  // selected type; a null filter is the "All types" face. Gaming's typeVocab is
+  // empty, so this is always a no-op there.
+  const typeOfEntry = new Map(entries.map((e) => [e.id, e.type]));
+  const fSessions = typeFilter
+    ? sessions.filter((s) => s.entry_fk != null && typeOfEntry.get(s.entry_fk) === typeFilter)
+    : sessions;
+  const fEntries = typeFilter ? entries.filter((e) => e.type === typeFilter) : entries;
+
+  // Type-specific nomenclature: a YouTube entry is a channel, not a title.
+  const noun = typeFilter === "Youtube" ? "channels" : "titles";
+  const Noun = typeFilter === "Youtube" ? "Channels" : "Titles";
+
+  const fullFirst = sessions.map((s) => s.day).sort()[0] ?? null;
+  const allDays = fSessions.map((s) => s.day).sort();
+  const firstDay = allDays[0] ?? fullFirst;
+  const empty = fullFirst == null;
 
   // Scope window bounds (clamped to the tracked span and to today).
   const isYear = sel.kind === "year";
-  const scopeFrom = empty ? today : isYear ? maxStr(`${sel.year}-01-01`, firstDay) : firstDay!;
+  const base = firstDay ?? today;
+  const scopeFrom = empty ? today : isYear ? maxStr(`${sel.year}-01-01`, base) : base;
   const scopeTo = isYear ? minStr(`${sel.year}-12-31`, today) : today;
 
-  const sessScoped = scoped(sessions, { from: scopeFrom, to: scopeTo });
+  const sessScoped = scoped(fSessions, { from: scopeFrom, to: scopeTo });
   // Entries in scope: all (All Time) or those touched in the scoped window (year).
   const touched = new Set(sessScoped.map((s) => s.entry_fk).filter(Boolean) as string[]);
-  const ent = isYear ? entries.filter((e) => touched.has(e.id)) : entries;
+  const ent = isYear ? fEntries.filter((e) => touched.has(e.id)) : fEntries;
 
   const spanDays = dayGap(scopeFrom, scopeTo) + 1;
   const weeks = spanDays / 7;
@@ -171,20 +217,39 @@ export function buildConsumptionDashboard(input: BuildInput, sel: ScopeSel): Das
   const bestWk = best(sessScoped, "week", "days");
   const bestMo = best(sessScoped, "month", "days");
 
+  // "Total days active" reads app-wide on the All-types face (days ANY habit was
+  // used — the app's activity), and narrows to this habit's days once a Medium
+  // is pinned (user-ruled 2026-07-21). Non-Medium habits keep the habit reading.
+  const isAllTypes = input.typeVocab.length > 0 && typeFilter == null;
+  let totalDaysValue = daysActive;
+  let totalDaysTracked = trackedDays;
+  if (isAllTypes) {
+    const appFirst = input.appActiveDays.length
+      ? input.appActiveDays.reduce((a, b) => (a < b ? a : b))
+      : today;
+    const appFrom = isYear ? maxStr(`${sel.year}-01-01`, appFirst) : appFirst;
+    totalDaysValue = input.appActiveDays.filter((d) => d >= appFrom && d <= scopeTo).length;
+    totalDaysTracked = dayGap(appFrom, scopeTo) + 1;
+  }
+
   const engagement: TileSpec[] = [
     streakTile(isYear ? "Last streak" : "Current streak", isYear ? lastRunOf(st) : st.currentRun, st, true),
     streakTile("Longest streak", longestRunOf(st), st, false),
-    { label: "Total days active", value: groupInt(daysActive), subtitle: `of ${groupInt(trackedDays)} tracked` },
+    {
+      label: "Total days active",
+      value: groupInt(totalDaysValue),
+      subtitle: `of ${groupInt(totalDaysTracked)} tracked`,
+    },
     {
       label: "Avg days / week",
       value: decimal1(weeks > 0 ? daysActive / weeks : 0),
-      delta: periodDelta(sessions, dFrom, dTo, "week", "days") ?? undefined,
+      delta: periodDelta(fSessions, dFrom, dTo, "week", "days") ?? undefined,
       subtitle: bestWk ? `best: ${bestWk.value} · ${bestWeekLabel(bestWk.key)}` : undefined,
     },
     {
       label: "Avg days / month",
       value: decimal1(months > 0 ? daysActive / months : 0),
-      delta: periodDelta(sessions, dFrom, dTo, "month", "days") ?? undefined,
+      delta: periodDelta(fSessions, dFrom, dTo, "month", "days") ?? undefined,
       subtitle: bestMo ? `best: ${bestMo.value} · ${fmtMonY(bestMo.key)}` : undefined,
     },
   ];
@@ -197,25 +262,25 @@ export function buildConsumptionDashboard(input: BuildInput, sel: ScopeSel): Das
   const bestMoMin = best(sessScoped, "month", "minutes");
 
   const volume: TileSpec[] = [
-    { label: "Total hours", value: hoursWhole(totMin).replace(/h$/, ""), unit: "h", subtitle: `across ${groupInt(titleCount)} titles` },
+    { label: "Total hours", value: hoursWhole(totMin).replace(/h$/, ""), unit: "h", subtitle: `across ${groupInt(titleCount)} ${noun}` },
     {
       label: "Avg hours / active day",
       value: hoursMinutes(daysActive > 0 ? totMin / daysActive : 0),
-      delta: activeDayDelta(sessions, dFrom, dTo),
+      delta: activeDayDelta(fSessions, dFrom, dTo),
       subtitle: bestDay ? `best: ${hoursMinutes(bestDay.value)} · ${fmtDMY(bestDay.key)}` : undefined,
     },
     {
       label: "Avg hours / week",
       value: hoursTrim1(weeks > 0 ? totMin / weeks : 0).replace(/h$/, ""),
       unit: "h",
-      delta: periodDelta(sessions, dFrom, dTo, "week", "minutes") ?? undefined,
+      delta: periodDelta(fSessions, dFrom, dTo, "week", "minutes") ?? undefined,
       subtitle: bestWkMin ? `best: ${hoursWhole(bestWkMin.value)} · ${bestWeekLabel(bestWkMin.key)}` : undefined,
     },
     {
       label: "Avg hours / month",
       value: hoursTrim1(months > 0 ? totMin / months : 0).replace(/h$/, ""),
       unit: "h",
-      delta: periodDelta(sessions, dFrom, dTo, "month", "minutes") ?? undefined,
+      delta: periodDelta(fSessions, dFrom, dTo, "month", "minutes") ?? undefined,
       subtitle: bestMoMin ? `best: ${hoursWhole(bestMoMin.value)} · ${fmtMonY(bestMoMin.key)}` : undefined,
     },
   ];
@@ -233,24 +298,72 @@ export function buildConsumptionDashboard(input: BuildInput, sel: ScopeSel): Das
   const rated = ent.filter((e) => e.rating != null);
   const avgRating = rated.length ? rated.reduce((a, e) => a + (e.rating ?? 0), 0) / rated.length : 0;
 
-  const catalog: TileSpec[] = [
-    { label: "Completion rate", value: withStatus ? `${Math.round((fin.length / withStatus) * 100)}` : "0", unit: "%", subtitle: `${fin.length} finished · ${drop} dropped · ${open} open` },
-    { label: "Avg hours / finished title", value: fin.length ? hoursWhole(finTotal(fin, finMinByEntry) / fin.length).replace(/h$/, "") : "0", unit: "h", subtitle: longestFinished ? `longest: ${longestFinished.title} · ${hoursWhole(longestFinished.min)}` : undefined },
-    { label: "Titles tracked", value: groupInt(ent.length) },
-    ...(rated.length ? [{ label: "Avg rating", value: avgRating.toFixed(1), unit: "★", subtitle: `n = ${rated.length} rated` }] : []),
-  ];
+  // The degradation rule at the TILE tier (media-stats wireframe · Canvas C):
+  // a tile hides when its metric is UNDEFINED in scope, not when it's zero. A
+  // lifecycle-less Medium (YouTube channels — never Finished/Dropped, rarely
+  // rated) has no completion, no avg-per-finished, no rating → those tiles drop
+  // rather than showing "0%". "Titles tracked" always survives.
+  const hasLifecycle = fin.length + drop > 0;
+  const catalog: TileSpec[] = [];
+  if (hasLifecycle) {
+    catalog.push({ label: "Completion rate", value: `${Math.round((fin.length / withStatus) * 100)}`, unit: "%", subtitle: `${fin.length} finished · ${drop} dropped · ${open} open` });
+  }
+  if (fin.length > 0) {
+    catalog.push({ label: "Avg hours / finished title", value: hoursWhole(finTotal(fin, finMinByEntry) / fin.length).replace(/h$/, ""), unit: "h", subtitle: longestFinished ? `longest: ${longestFinished.title} · ${hoursWhole(longestFinished.min)}` : undefined });
+  }
+  catalog.push({ label: `${Noun} tracked`, value: groupInt(ent.length) });
+  if (rated.length) {
+    catalog.push({ label: "Avg rating", value: avgRating.toFixed(1), unit: "★", subtitle: `n = ${rated.length} rated` });
+  }
 
   // ── Distributions ──
+  // By-type leads when the habit declares a Medium vocab AND no single type is
+  // pinned (the Reading FINAL: four across on All types, three when scoped to
+  // one type). Slot colours follow the declared vocab order.
+  const typeSlot = new Map(input.typeVocab.map((t, i) => [t, CAT_SLOTS[i % CAT_SLOTS.length]]));
   const statusRows = distribute(ent, (e) => e.status, { order: STATUS_VOCAB_DISPLAY });
   const genreRows = distribute(ent, (e) => e.genre, { top: 6 });
   const ratingRows = distribute(ent, (e) => (e.rating != null ? stars(e.rating) : null), {
     order: [5, 4, 3, 2, 1].map(stars),
   });
-  const distributions: DistColumnSpec[] = [
+  const distributions: DistColumnSpec[] = [];
+  if (input.typeVocab.length > 0 && typeFilter == null) {
+    const typeRows = distribute(ent, (e) => e.type, { order: input.typeVocab });
+    distributions.push({
+      title: "By type",
+      rows: typeRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: typeSlot.get(r.key) ?? "--cat-1", tip: `${r.key} · ${r.value} titles` })),
+    });
+  }
+  distributions.push(
     { title: "By status", rows: statusRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: STATUS_CAT[r.key] ?? "--cat-1", tip: `${r.key} · ${r.value} titles` })) },
     { title: "By genre", rows: genreRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: "--cat-1", tip: `${r.key} · ${r.value} titles` })) },
     { title: "By rating", rows: ratingRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: "--cat-3", tip: `${r.key} · ${r.value} titles` })) },
-  ];
+  );
+  // The degradation rule (Dashboard Composition · the empty-states sheet §03):
+  // a distribution over fewer than 2 distinct values doesn't render — the zone
+  // compresses, survivors relocate; never skeletons. This is what a sparse
+  // Medium (Media → YouTube: no ratings, one status) triggers.
+  const shownDistributions = distributions.filter((d) => d.rows.length >= 2);
+
+  // Survivor merge: a lone catalog tile + a lone distribution become one zone.
+  // The count tile carries an in-tile LIST of every entry (channel) ranked by
+  // total time, most first (the list-tile idiom — not a bar chart).
+  const mergedCatalog =
+    catalog.length === 1 && shownDistributions.length === 1
+      ? {
+          tile: {
+            ...catalog[0],
+            list: {
+              dateLine: "",
+              rows: leaderboard(sessScoped, ent, "minutes", ent.length).map((lr) => ({
+                k: lr.title,
+                v: `${groupInt(lr.value / 60)} h`,
+              })),
+            },
+          } as TileSpec,
+          dist: shownDistributions[0],
+        }
+      : null;
 
   // ── Leaderboards ──
   const longestRuns = leaderboard(sessScoped, ent, "minutes", 5);
@@ -261,9 +374,14 @@ export function buildConsumptionDashboard(input: BuildInput, sel: ScopeSel): Das
     { title: "Most days", rows: mostDays.map((r, i) => ({ rank: i + 1, title: r.title, value: `${groupInt(r.value)} d`, pct: r.pct })) },
     { title: "5-star hall", meta: `${hall.length} titles`, hall },
   ];
+  // Degradation: drop empty leaderboard columns (the 5-star hall hides when a
+  // scope has nothing rated 5 — the wireframe's YouTube case).
+  const shownLeaderboards = leaderboards.filter((c) =>
+    c.hall ? c.hall.length > 0 : (c.rows?.length ?? 0) > 0,
+  );
 
   // ── Trends ──
-  const dm = dayMinutes(sessions);
+  const dm = dayMinutes(fSessions);
   const line: number[] = [];
   for (let i = 29; i >= 0; i--) line.push((dm.get(dayFromIndex(dayIndex(today) - i)) ?? 0) / 60);
   const lineMax = Math.max(2, ...line);
@@ -286,11 +404,33 @@ export function buildConsumptionDashboard(input: BuildInput, sel: ScopeSel): Das
   const sparkDelta = monthOverMonth(spark, nowMonthIdx);
 
   // ── Heatmap (trailing 53 weeks to today, scope-independent) ──
-  const cells = heatmapCells(dm, today);
+  // By-Type heatmap: each cell's dominant type by minutes → its categorical
+  // slot (the FINAL's reference drawing). Built from the type-filtered sessions
+  // so a scoped face is single-type. Empty when the habit has no Medium vocab.
+  const dayDominantCat = new Map<string, string>();
+  if (input.typeVocab.length > 0) {
+    const perDay = new Map<string, Map<string, number>>();
+    for (const s of fSessions) {
+      if (s.measure_kind !== "time" || !s.entry_fk) continue;
+      const t = typeOfEntry.get(s.entry_fk);
+      if (t == null) continue;
+      const byType = perDay.get(s.day) ?? perDay.set(s.day, new Map()).get(s.day)!;
+      byType.set(t, (byType.get(t) ?? 0) + (s.value ?? 0));
+    }
+    for (const [day, byType] of perDay) {
+      let bestType: string | null = null;
+      let bestMin = -1;
+      for (const [t, min] of byType) if (min > bestMin) ((bestMin = min), (bestType = t));
+      if (bestType) dayDominantCat.set(day, typeSlot.get(bestType) ?? "--cat-1");
+    }
+  }
+  const cells = heatmapCells(dm, today, 53, (day) => dayDominantCat.get(day) ?? null);
   const monthsHdr = heatmapMonths(today);
-  const bDayAll = best(sessions, "day", "minutes");
-  const bWkAll = best(sessions, "week", "minutes");
-  const bMoAll = best(sessions, "month", "minutes");
+  const legendTypes = typeFilter ? [typeFilter] : input.typeVocab;
+  const heatLegend = legendTypes.map((t) => ({ label: t, colorVar: typeSlot.get(t) ?? "--cat-1" }));
+  const bDayAll = best(fSessions, "day", "minutes");
+  const bWkAll = best(fSessions, "week", "minutes");
+  const bMoAll = best(fSessions, "month", "minutes");
   const trio: TileSpec[] = [
     { label: "Best day", value: bDayAll ? hoursMinutes(bDayAll.value) : "—", subtitle: bDayAll ? fmtDMY(bDayAll.key) : undefined },
     { label: "Best week", value: bWkAll ? hoursWhole(bWkAll.value) : "—", subtitle: bWkAll ? `wk of ${fmtDMY(bWkAll.key)}` : undefined },
@@ -300,8 +440,12 @@ export function buildConsumptionDashboard(input: BuildInput, sel: ScopeSel): Das
   // ── Masthead + scope tabs ──
   const years: string[] = [];
   if (!empty)
-    for (let y = Number(yearKey(firstDay!)); y <= Number(yearKey(today)); y++) years.push(String(y));
+    for (let y = Number(yearKey(fullFirst!)); y <= Number(yearKey(today)); y++) years.push(String(y));
   const tabs = [{ key: "all", label: "All Time" }, ...years.reverse().map((y) => ({ key: y, label: y }))];
+  const typeTabs =
+    input.typeVocab.length > 0
+      ? [{ key: null as string | null, label: "All types" }, ...input.typeVocab.map((t) => ({ key: t as string | null, label: t }))]
+      : [];
 
   return {
     colorVar,
@@ -311,15 +455,18 @@ export function buildConsumptionDashboard(input: BuildInput, sel: ScopeSel): Das
       empty,
       sinceLive: empty
         ? "Tracking since — · no sessions logged yet"
-        : `Tracking since ${fmtDMY(firstDay!)} · ${hoursWhole(total(sessions).minutes)} all-time across ${groupInt(new Set(sessions.map((s) => s.entry_fk).filter(Boolean)).size)} titles`,
+        : `Tracking since ${fmtDMY(fullFirst!)} · ${hoursWhole(total(sessions).minutes)} all-time across ${groupInt(new Set(sessions.map((s) => s.entry_fk).filter(Boolean)).size)} titles`,
       tabs,
       activeKey: sel.kind === "all" ? "all" : sel.year,
+      typeTabs,
+      activeType: typeFilter,
     },
     engagement,
     volume,
-    catalog,
-    distributions,
-    leaderboards,
+    catalog: mergedCatalog ? [] : catalog,
+    distributions: mergedCatalog ? [] : shownDistributions,
+    mergedCatalog,
+    leaderboards: shownLeaderboards,
     trend: {
       caption: "Last 30 days · hours / day",
       line,
@@ -330,7 +477,16 @@ export function buildConsumptionDashboard(input: BuildInput, sel: ScopeSel): Das
       spark,
       sparkMax,
     },
-    heatmap: { cells, months: monthsHdr, trio },
+    heatmap: {
+      cells,
+      months: monthsHdr,
+      trio,
+      // The Intensity·By-Type toggle only exists on the All-types face — a
+      // single pinned type has no meaningful by-type breakdown (user-ruled
+      // 2026-07-21), so it collapses to Intensity only.
+      hasTypes: input.typeVocab.length > 0 && typeFilter == null,
+      legend: heatLegend,
+    },
   };
 }
 

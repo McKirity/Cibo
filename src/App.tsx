@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useEvoluError, useQuery } from "@evolu/react";
 import { evolu } from "./db/evolu";
-import { clearGamingSeed, seedGamingCrude } from "./db/seedGaming";
+import { clearRichSeed, seedRich } from "./db/seedRich";
 import { LogForm } from "./log/LogForm";
 import { GamingDashboard } from "./dashboard/GamingDashboard";
 import "./App.css";
@@ -59,17 +59,18 @@ function DevHabitPanel() {
 }
 
 /**
- * TEMPORARY (Build step 4a): plants a crude ~5-year Gaming dataset so the
- * vertical slice's <100 ms budget measures real volume. Throwaway — deleted
- * with `seedGaming.ts` when step 5's rich seeder lands.
+ * TEMPORARY (Build step 5): plants a faithful ~5-year dataset across all 11
+ * habits (lived-in lifecycles, waves, gaps, misses, categoricals) — what the
+ * remaining dashboards (step 6) are built against. Throwaway dev tooling;
+ * deterministic + idempotent (self-clears first).
  */
-function DevGamingSeedPanel() {
+function DevRichSeedPanel() {
   const [status, setStatus] = useState<string>("");
   const [busy, setBusy] = useState(false);
 
   const run = async (fn: () => Promise<string>) => {
     setBusy(true);
-    setStatus("working…");
+    setStatus("working… (this seeds thousands of rows)");
     try {
       setStatus(await fn());
     } catch (e) {
@@ -82,7 +83,7 @@ function DevGamingSeedPanel() {
 
   return (
     <details className="dev-panel">
-      <summary>Dev: crude Gaming seeder (step 4a) — throwaway, ~5-year volume</summary>
+      <summary>Dev: rich seeder (step 5) — faithful ~5-year dataset, all 11 habits</summary>
       <div className="row">
         <button
           type="button"
@@ -90,12 +91,12 @@ function DevGamingSeedPanel() {
           disabled={busy}
           onClick={() =>
             run(async () => {
-              const r = await seedGamingCrude(evolu);
-              return `Seeded ${r.entries} games · ${r.sessions} sessions · ${r.days} finalized days (cleared ${r.clearedFirst} first). Gaming activated.`;
+              const r = await seedRich(evolu);
+              return `Seeded ${r.entries} entries · ${r.sessions} sessions · ${r.subunits} categoricals · ${r.days} finalized days (cleared ${r.clearedFirst} first).`;
             })
           }
         >
-          Seed crude Gaming data
+          Seed rich data
         </button>
         <button
           type="button"
@@ -103,7 +104,7 @@ function DevGamingSeedPanel() {
           disabled={busy}
           onClick={() =>
             run(async () => {
-              const r = await clearGamingSeed(evolu);
+              const r = await clearRichSeed(evolu);
               return `Cleared ${r.removed} rows.`;
             })
           }
@@ -158,7 +159,7 @@ function App() {
       </div>
       <LogForm />
       <DevHabitPanel />
-      <DevGamingSeedPanel />
+      <DevRichSeedPanel />
     </main>
   );
 }

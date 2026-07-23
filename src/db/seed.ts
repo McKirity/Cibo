@@ -32,7 +32,7 @@ const s100 = (v: string) => NonEmptyString100.orThrow(v);
 const s1000 = (v: string) => NonEmptyString1000.orThrow(v);
 const num = (v: number) => FiniteNumber.orThrow(v);
 
-export const SEED_VERSION = 2;
+export const SEED_VERSION = 3;
 
 type CiboEvolu = Evolu<typeof Schema>;
 
@@ -238,13 +238,14 @@ const BATCH_1: HabitSeed[] = [
   {
     key: "coding",
     name: "Coding",
-    kind: "project",
-    // Seed delta (user, 2026-07-13): re-cut project · creation; entries = coding projects.
-    sub_type: "creation",
+    // Seed delta (user, 2026-07-22): DOWNGRADED to simple — the habit tracks a
+    // language-learning journey, not projects; it never had real entries (the
+    // keystone's project hard test = "has entries"). Supersedes the 2026-07-13
+    // project·creation re-cut. Existing stores migrate via seedBatch3.
+    kind: "simple",
     colour_slot: "habit-10",
     measures_time: true,
     measures_count: false,
-    entry_attributes: ["status"],
     definitions: [
       {
         key: "coding_language",
@@ -312,7 +313,8 @@ export async function runSeed(evolu: CiboEvolu): Promise<SeedResult> {
 
   if (foundVersion < 1) await seedBatch1(evolu);
   if (foundVersion < 2) await seedBatch2(evolu);
-  // Future batches: if (foundVersion < 3) await seedBatch3(evolu); …
+  if (foundVersion < 3) await seedBatch3(evolu);
+  // Future batches: if (foundVersion < 4) await seedBatch4(evolu); …
 
   if (liveMeta) {
     evolu.update("app_meta", { id: liveMeta.id, value: s1000(String(SEED_VERSION)) });
@@ -442,5 +444,33 @@ async function seedBatch2(evolu: CiboEvolu): Promise<void> {
   );
   for (const e of await evolu.loadQuery(entryQuery)) {
     evolu.update("entries", { id: e.id, type: s100("Fanfiction") });
+  }
+}
+
+/**
+ * Batch 3 (2026-07-22) — Coding DOWNGRADED project·creation → simple
+ * (user-ruled: it tracks a language-learning journey, not projects; the
+ * keystone's project hard test is "has entries" and it has none intended).
+ * A fresh store seeds simple directly at batch 1; this flips an existing
+ * store's habit row (idempotent — finds nothing to change on re-run). Any
+ * dev-seeded coding entries are left to the rich seeder's self-clear; real
+ * installs never had a way to create them.
+ */
+async function seedBatch3(evolu: CiboEvolu): Promise<void> {
+  const habitQuery = evolu.createQuery((db) =>
+    db
+      .selectFrom("habits")
+      .select(["id", "kind"])
+      .where("key", "=", s100("coding"))
+      .where("isDeleted", "is not", 1),
+  );
+  for (const h of await evolu.loadQuery(habitQuery)) {
+    if (h.kind === "simple") continue;
+    evolu.update("habits", {
+      id: h.id,
+      kind: "simple",
+      sub_type: null,
+      entry_attributes: null,
+    });
   }
 }

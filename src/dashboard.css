@@ -189,7 +189,11 @@
    in staging and the bars unstyled) ------- */
 .btrack{height:var(--space-6); background:var(--inset-background); border-radius:var(--radius-full); overflow:hidden;}
 .bfill{height:100%; border-radius:var(--radius-full); min-width:var(--space-3);}
-.lprog{position:absolute; left:0; top:0; bottom:0; z-index:0; border-radius:var(--radius-small); background:color-mix(in oklch, var(--habit-2), var(--panel-background) var(--tint-mix));}
+/* Tint follows the dashboard's habit hue (--heat-hue, set per dashboard) — the
+   corpus tinted this per screen (--habit-2 Gaming, --habit-3 reading) via
+   [data-screen] overrides that stay staged; the generalized component reads the
+   shared hue alias instead (the 2026-07-19 hue-plumbing conform). */
+.lprog{position:absolute; left:0; top:0; bottom:0; z-index:0; border-radius:var(--radius-small); background:color-mix(in oklch, var(--heat-hue), var(--panel-background) var(--tint-mix));}
 .ltitle{display:flex; align-items:baseline; gap:var(--space-4); font-size:var(--size-body); font-weight:var(--weight-medium); color:var(--text-strong); min-width:0;}
 .ltitle .nm{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .ltitle .rank{font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-muted); flex:0 0 auto;}
@@ -200,3 +204,136 @@
 .hall{--hall-h:calc(5 * 37px + 4 * var(--space-2)); display:flex; flex-wrap:nowrap; gap:var(--space-4); align-items:flex-start; overflow-x:auto; overflow-y:hidden; overscroll-behavior-x:contain; scrollbar-width:thin; scrollbar-color:var(--border) transparent;}
 .lrow{position:relative; display:grid; grid-template-columns:1fr var(--bar-value-w); gap:var(--space-4); align-items:center; width:100%; border:none; background:transparent; text-align:left; font-family:var(--font-ui); padding:var(--space-4) var(--space-4); border-radius:var(--radius-small); cursor:pointer; overflow:hidden; transition:background var(--motion-fast) var(--ease-standard);}
 .trio.grouped > .dcol{padding:0 var(--space-7); border-left:var(--border-hairline) solid var(--divider); min-width:0;}
+
+/* ------- creation template (Build step 6 · chunk 2) — claimed 2026-07-22 from
+   the staging BASE section + the writing-stats/gamedev-stats screen overrides
+   (which both LEFT kit-staging.css; the sheet only ever shrinks). Bodies
+   verbatim. The screen variants are folded in SCOPED to the template root
+   (.creationdash), not de-scoped: they refine shared heads (.brow, .btrack,
+   .mast, .tile …) whose base forms the consumption screens still read, so a
+   global fold would repaint Gaming/Reading/Media. Per-screen hue, masthead art
+   colour, and hstats/hsparks column counts are expressed by the component
+   (inline, computed from the habit's colour slot + declared measure set).
+   Kit blocks: kit-card-hero · kit-masthead (creation variant) ·
+   kit-bars-distribution (the per-metric shape family: vertical bars · donut ·
+   lollipop) · kit-panel-trend (series toggle + stacked faces) ·
+   kit-grid-heatmap (scope + measure tenants) · the archived-state chrome. */
+.hbars{display:flex; flex-direction:column; gap:var(--space-6); height:var(--chart-height);}
+.vbars{display:flex; align-items:flex-end; gap:var(--space-6); height:var(--chart-height); padding-top:var(--space-5);}
+.dchart{min-height:var(--chart-height);}
+.distrow{display:grid; grid-template-columns:1fr 1fr; gap:0;}
+.distrow > .dpanel{padding:0 var(--space-7); border-left:var(--border-hairline) solid var(--divider); min-width:0;}
+.dpanel{min-width:0;}
+.dleg{display:flex; flex-direction:column; gap:var(--space-3); min-width:0;}
+.dleg .lg{display:flex; align-items:center; gap:var(--space-4); font-size:var(--size-small); color:var(--text-secondary);}
+.dleg .lg i{width:var(--space-5); height:var(--space-5); border-radius:var(--radius-cell); flex:0 0 auto;}
+.donut{width:var(--dist-donut-size); height:var(--dist-donut-size); flex:0 0 auto; position:relative; border-radius:var(--radius-full);}
+.donutwrap{display:flex; gap:var(--space-7); align-items:center; min-height:var(--chart-height);}
+.donut .dhole{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:calc(var(--dist-donut-size) - 2 * var(--dist-donut-stroke)); height:calc(var(--dist-donut-size) - 2 * var(--dist-donut-stroke)); border-radius:var(--radius-full); background:var(--panel-background); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--font-mono); text-align:center;}
+.donut .dhole .dh-l{font-family:var(--font-ui); font-size:var(--size-caption); color:var(--text-muted);}
+.donut .dhole .dh-v{font-size:var(--size-subheading); font-weight:var(--weight-bold); color:var(--text-strong);}
+.lols{display:flex; flex-direction:column; gap:var(--space-6); padding-top:var(--space-3);}
+.lolaxis{display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted); margin-top:var(--space-4); padding-left:calc(var(--bar-label-w) + var(--space-4)); padding-right:calc(var(--bar-value-w) + var(--space-4));}
+.loldot{position:absolute; top:50%; width:var(--lollipop-dot); height:var(--lollipop-dot); border-radius:var(--radius-full); transform:translate(-50%,-50%); box-shadow:0 0 0 var(--border-standard) var(--panel-background);}
+.lolrow{display:grid; grid-template-columns:var(--bar-label-w) 1fr var(--bar-value-w); gap:var(--space-4); align-items:center;}
+.lolrow .llab{font-size:var(--size-small); color:var(--text-secondary); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.lolrow .lval{font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-strong); text-align:right;}
+.lolstem{position:absolute; left:0; top:50%; height:var(--border-standard); transform:translateY(-50%); border-radius:var(--radius-full);}
+.loltrack{position:relative; height:var(--lollipop-dot);}
+.loltrack::before{content:""; position:absolute; left:0; right:0; top:50%; height:var(--border-hairline); background:var(--divider); transform:translateY(-50%);}
+.vcol{flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:var(--space-3); height:100%;}
+.vcol .vfill{width:66%; border-radius:var(--radius-small) var(--radius-small) 0 0; min-height:4px;}
+.vcol .vv{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-secondary);}
+.vlabs{display:flex; gap:var(--space-6); padding:var(--space-3) var(--space-4) 0;}
+.vlabs span{flex:1; text-align:center; font-size:var(--size-caption); color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.chead{display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); flex-wrap:wrap; margin-bottom:var(--space-5); padding-bottom:var(--space-4); border-bottom:var(--border-hairline) solid var(--divider);}
+.chead .ct{font-size:var(--size-body); font-weight:var(--weight-bold); color:var(--text-strong);}
+.mtoggle{display:inline-flex; gap:var(--space-1); background:var(--inset-background); border-radius:var(--radius-small); padding:var(--space-1);}
+.mtoggle button{font-family:var(--font-ui); font-size:var(--size-caption); font-weight:var(--weight-medium); color:var(--text-secondary); background:transparent; border:none; cursor:pointer; padding:var(--space-2) var(--space-5); border-radius:calc(var(--radius-small) - var(--space-1)); transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+.mtoggle button:hover{color:var(--text-strong);}
+.mtoggle button[aria-pressed="true"]{background:var(--panel-background); color:var(--text-strong); font-weight:var(--weight-bold); box-shadow:var(--shadow-low);}
+.seg5{display:inline-flex; gap:var(--space-1); background:var(--inset-background); border-radius:var(--radius-small); padding:var(--space-1);}
+.seg5 button{font-family:var(--font-ui); font-size:var(--size-caption); font-weight:var(--weight-medium); color:var(--text-secondary); background:transparent; border:none; cursor:pointer; padding:var(--space-2) var(--space-5); border-radius:calc(var(--radius-small) - var(--space-1)); transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+.seg5 button:hover{color:var(--text-strong);}
+.seg5 button[aria-pressed="true"]{background:var(--panel-background); color:var(--text-strong); font-weight:var(--weight-bold); box-shadow:var(--shadow-low);}
+.segrow{display:flex; align-items:center; gap:var(--space-5); flex-wrap:wrap; margin-bottom:var(--space-6);}
+.segrow .seglbl{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-weight:var(--weight-bold);}
+.lgnd{display:inline-flex; align-items:center; gap:var(--space-4); flex-wrap:wrap; font-size:var(--size-caption); color:var(--text-muted);}
+.lgnd .k{display:inline-flex; align-items:center; gap:var(--space-2);}
+.lgnd .k i{width:var(--space-5); height:var(--space-4); border-radius:var(--radius-cell);}
+.heatfoot{display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-6); margin-top:var(--space-5); flex-wrap:wrap;}
+.archchip{display:none; align-items:center; font-size:var(--size-small); font-weight:var(--weight-bold); letter-spacing:.05em; color:var(--text-on-filled); background:var(--text-muted); border-radius:var(--radius-full); padding:var(--space-2) var(--space-5);}
+.herogrid{display:flex; flex-direction:column; gap:var(--space-6);}
+.hero{position:relative; overflow:hidden; background:var(--panel-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-medium); box-shadow:var(--shadow-low); padding:var(--space-7); min-height:var(--hero-card-min-h); display:flex; flex-direction:column; gap:var(--space-6);}
+.hero .btag{position:absolute; top:var(--space-5); right:var(--space-6); z-index:1; font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted); background:color-mix(in oklch, var(--panel-background), transparent 20%); border-radius:var(--radius-small); padding:var(--space-1) var(--space-3);}
+.hero .hbanner{position:absolute; inset:0; z-index:0; background:repeating-linear-gradient(135deg, var(--inset-background) 0 14px, var(--divider) 14px 28px); -webkit-mask-image:linear-gradient(100deg, black 0, black 26%, transparent var(--hero-banner-fade)); mask-image:linear-gradient(100deg, black 0, black 26%, transparent var(--hero-banner-fade));}
+.hero .hscrim{position:absolute; inset:0; z-index:0; background:linear-gradient(100deg, var(--panel-background) 40%, color-mix(in oklch, var(--panel-background), transparent 55%) 100%);}
+.hero .htitlerow:hover .htitle{color:var(--accent);}
+.hero > .hbody, .hero > .harc{position:relative; z-index:1;}
+.hero.door{border-style:dashed; border-color:var(--border); background:transparent; box-shadow:none; min-height:auto; align-items:center; justify-content:center; text-align:center; gap:var(--space-3); cursor:pointer; padding:var(--space-6) var(--space-7); transition:background var(--motion-fast) var(--ease-standard);}
+.hero.door .dplus{display:inline-flex; align-items:center; gap:var(--space-4); font-family:var(--font-heading); font-size:var(--size-subheading); font-weight:var(--weight-bold); color:var(--text-strong);}
+.hero.door .dsub{font-size:var(--size-small); color:var(--text-muted); max-width:72ch;}
+.hero.door:hover{background:var(--hover-wash);}
+.hero.door:hover .dplus{color:var(--accent);}
+.hfandom{font-size:var(--size-small); color:var(--text-secondary);}
+.hfandom b{color:var(--text-strong); font-weight:var(--weight-medium);}
+.hbody{display:flex; gap:var(--space-7);}
+.hmain{flex:1; min-width:0; display:flex; flex-direction:column; gap:var(--space-5);}
+.hcover{width:var(--hero-cover-w); aspect-ratio:var(--lib-cover-ratio); flex:0 0 auto; align-self:flex-start; border-radius:var(--radius-small); position:relative; overflow:hidden; cursor:pointer; background:repeating-linear-gradient(135deg, var(--inset-background), var(--inset-background) 8px, var(--divider) 8px, var(--divider) 16px); box-shadow:var(--shadow-low); transition:box-shadow var(--motion-fast) var(--ease-standard);}
+.hcover .cinit{position:absolute; left:var(--space-2); right:var(--space-2); bottom:var(--space-2); font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-on-filled); background:var(--scrim); border-radius:var(--radius-small); padding:1px var(--space-2); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.hcover:hover{box-shadow:inset 0 0 0 var(--border-heavy) var(--accent);}
+.hpill{display:inline-flex; align-items:center; font-size:var(--size-caption); font-weight:var(--weight-bold); letter-spacing:.02em; border-radius:var(--radius-full); padding:var(--space-1) var(--space-4); border:var(--border-hairline) solid transparent;}
+.hstats{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--space-4);}
+.hsparks{display:grid; grid-template-columns:1fr; gap:var(--space-5);}
+.hspark{background:color-mix(in oklch, var(--window-background), transparent 12%); border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-small); padding:var(--space-3) var(--space-4);}
+.hspark .shlabel{display:flex; align-items:center; justify-content:space-between; font-size:var(--size-caption); color:var(--text-muted); margin-bottom:var(--space-2);}
+.hspark svg{width:100%; height:var(--hero-spark-h); display:block;}
+.htile{background:color-mix(in oklch, var(--window-background), transparent 12%); border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-small); padding:var(--space-4) var(--space-5); display:flex; flex-direction:column; gap:var(--space-2);}
+.htile .hl{font-size:var(--size-caption); color:var(--text-muted);}
+.htile .hv{font-family:var(--font-mono); font-size:var(--size-subheading); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong);}
+.htile .hv .u{font-family:var(--font-ui); font-size:var(--size-caption); color:var(--text-muted); font-weight:var(--weight-regular); margin-left:2px;}
+.htitle{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); line-height:var(--line-tight); color:var(--text-strong); cursor:pointer;}
+.htitlerow{display:flex; align-items:center; gap:var(--space-5); flex-wrap:wrap;}
+.harc{display:flex; align-items:center; gap:var(--space-4); border-top:var(--border-hairline) solid var(--divider); padding-top:var(--space-5); font-size:var(--size-small); color:var(--text-secondary);}
+.harc .adot{width:var(--space-4); height:var(--space-4); border-radius:var(--radius-full); flex:0 0 auto;}
+.harc b{color:var(--text-strong); font-weight:var(--weight-medium);}
+.hbars .brow{flex:1; min-height:var(--bar-row-h);}
+
+/* creation-scoped screen variants (writing-stats + gamedev-stats, merged) */
+.creationdash .brow{display:grid; grid-template-columns:var(--bar-label-w) 1fr var(--bar-value-w); gap:var(--space-5); align-items:center; flex:1; min-height:var(--bar-row-h);}
+.creationdash .brow .blabel{font-size:var(--size-body); font-weight:var(--weight-medium); color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.creationdash .btrack{height:var(--space-7); background:var(--inset-background); border-radius:var(--radius-full); overflow:hidden;}
+.creationdash .bval{font-family:var(--font-mono); font-size:var(--size-subheading); color:var(--text-strong); text-align:right;}
+.creationdash .dchart{min-height:var(--chart-height); display:flex; flex-direction:column;}
+.creationdash .distrow > .dpanel{padding:0 var(--space-7); border-left:var(--border-hairline) solid var(--divider); min-width:0; display:flex; flex-direction:column;}
+/* Donut re-lay (user-ruled 2026-07-22, live iteration — the drawn flex legend
+   left the wheel and its rows shunted to one side with ragged numbers): the
+   legend now FILLS the panel's remaining width, and it is ONE grid so name /
+   hours / percent line up in columns across rows (each .lg goes
+   `display:contents` so its children become the grid's own items). Supersedes
+   the staged gamedev .dleg variant, claimed here. */
+.creationdash .donutwrap{display:flex; gap:var(--space-7); align-items:center; justify-content:center; flex:1; min-height:var(--chart-height);}
+.creationdash .dleg{display:grid; grid-template-columns:auto minmax(0,auto) auto auto; align-content:center; column-gap:var(--space-4); row-gap:var(--space-3); flex:0 1 auto; min-width:0;}
+.creationdash .dleg .lg{display:contents;}
+.creationdash .dleg .lg i{width:var(--space-6); height:var(--space-6); border-radius:var(--radius-cell); flex:0 0 auto;}
+.creationdash .dleg .lgn{font-size:var(--size-body); color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.creationdash .dleg .lgv{font-family:var(--font-mono); font-size:var(--size-body); color:var(--text-strong); text-align:right; white-space:nowrap;}
+.creationdash .dleg .lgp{font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-muted); text-align:right; white-space:nowrap;}
+.creationdash .hbars{display:flex; flex-direction:column; gap:var(--space-6); flex:1;}
+.creationdash .lols{display:flex; flex-direction:column; gap:var(--space-6); padding-top:var(--space-3); flex:1; justify-content:center;}
+.creationdash .mast{display:grid; grid-template-columns:auto 1fr; gap:var(--space-7); align-items:start; padding-left:calc(var(--frame-clear-grand) + var(--space-4) + var(--space-5));}
+.creationdash .mtoggle button{font-family:var(--font-ui); font-size:var(--size-caption); font-weight:var(--weight-medium); color:var(--text-secondary); background:transparent; border:none; cursor:pointer; padding:var(--space-2) var(--space-4); border-radius:calc(var(--radius-small) - var(--space-1)); transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+/* The scoped variant above ties with the base state rules on specificity and
+   sits later in the cascade, so the pressed/hover faces must be re-stated in
+   scope or the active metric never lights (claim-time cascade lesson). */
+.creationdash .mtoggle button:hover{color:var(--text-strong);}
+.creationdash .mtoggle button[aria-pressed="true"]{background:var(--panel-background); color:var(--text-strong); font-weight:var(--weight-bold); box-shadow:var(--shadow-low);}
+.creationdash .seg5{display:inline-flex; gap:var(--space-1); background:var(--inset-background); border-radius:var(--radius-small); padding:var(--space-1); flex-wrap:wrap;}
+.creationdash .vbars{display:flex; align-items:flex-end; gap:var(--space-6); flex:1; min-height:var(--chart-height); padding:0 var(--space-4); border-bottom:var(--border-hairline) solid var(--border);}
+.creationdash .hbody{display:flex; gap:var(--space-7); align-items:stretch;}
+.creationdash .hstats{margin-top:auto; display:grid; grid-template-columns:repeat(4,1fr); gap:var(--space-4);}
+/* Tile-floor law (height → min-height) kept; the gamedev variant's
+   align-content:end was DROPPED at live iteration (2026-07-22, user) — it
+   bottom-packed the tile labels where every other dashboard top-aligns them;
+   the base .tile's space-between cascades instead. */
+.creationdash .tile{height:auto; min-height:var(--tile-height);}

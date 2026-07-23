@@ -254,14 +254,6 @@ const WRITING_PROJECTS: Creation[] = [
   { title: "Letters to the Netsphere", fandom: "Blame!", status: "Current", startedAgo: 500 },
 ];
 
-const CODING_PROJECTS: Creation[] = [
-  { title: "cibo", status: "Current", startedAgo: 700 },
-  { title: "pixel-forge", status: "Finished", startedAgo: 1720, completedAgo: 1350 },
-  { title: "dotfiles", status: "Current", startedAgo: 1700 },
-  { title: "netsphere-sim", status: "Hiatus", startedAgo: 820 },
-  { title: "quicklog", status: "Dropped", startedAgo: 1600, completedAgo: 1400 },
-];
-
 const GAMEDEV_PROJECTS: Creation[] = [
   { title: "Depthcrawler", engine: "Godot", genres: ["Roguelike", "Dungeon Crawler"], status: "Hiatus", startedAgo: 1640 },
   { title: "Tiny Orchard", engine: "Unity", genres: ["Simulation", "Cozy"], status: "Dropped", startedAgo: 1200, completedAgo: 760 },
@@ -492,6 +484,27 @@ function seedWriting(ctx: Ctx, projects: EntryRef[], playProb: number) {
   });
 }
 
+/** Coding (SIMPLE since the 2026-07-22 downgrade — a language-learning journey,
+ *  not projects): entry-less time sessions, one language per multi-week run
+ *  (learning arcs), tagged with the `coding_language` session categorical. */
+function seedCodingSimple(ctx: Ctx, playProb: number) {
+  const hk = "coding";
+  const habit = ctx.habitId.get(hk)!;
+  let lang = pick(CODING_LANGS);
+  let runLeft = rint(20, 70);
+  walkWindows(WINDOWS[hk], (day) => {
+    if (runLeft <= 0) {
+      lang = pick(CODING_LANGS);
+      runLeft = rint(20, 70);
+    }
+    if (chance(playProb)) {
+      const r = insertSession(ctx, habit, null, day, { kind: "time", value: rint(25, 150) }, "manual");
+      addSubunit(ctx, (r as { value?: { id: unknown } }).value?.id, hk, "coding_language", lang);
+    }
+    runLeft--;
+  });
+}
+
 /** Simple duration (Embroidery/Drawing): attendance + time. */
 function seedSimpleTime(ctx: Ctx, hk: string, playProb: number, lo: number, hi: number) {
   const habit = ctx.habitId.get(hk)!;
@@ -679,7 +692,6 @@ export async function seedRich(
   const books = makeConsumables(ctx, "reading", BOOKS, "calibre", "reading_genre", "reading_type");
   const media = makeConsumables(ctx, "media", MEDIA, "tmdb", "media_genre", "media_type");
   const writing = makeCreations(ctx, "writing", WRITING_PROJECTS);
-  const coding = makeCreations(ctx, "coding", CODING_PROJECTS);
   const gamedev = makeCreations(ctx, "gamedev", GAMEDEV_PROJECTS);
 
   // ── Sessions ──
@@ -687,7 +699,7 @@ export async function seedRich(
   seedConsumption(ctx, "reading", books, 0.42, "manual");
   seedMedia(ctx, media);
   seedWriting(ctx, writing, 0.36);
-  seedCreationTime(ctx, "coding", coding, "coding_language", CODING_LANGS, 0.44);
+  seedCodingSimple(ctx, 0.44);
   seedCreationTime(ctx, "gamedev", gamedev, "gamedev_type", GAMEDEV_TYPES, 0.34);
   seedSimpleTime(ctx, "embroidery", 0.24, 20, 120);
   seedSimpleTime(ctx, "drawing", 0.3, 15, 150);

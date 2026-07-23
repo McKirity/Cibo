@@ -154,7 +154,7 @@ export function ConsumptionDashboard({ habitKey }: { habitKey: string }) {
                 <div className="catsec">
                   <div className="dcol">
                     <div className="chead">
-                      <span className="ct">Channels</span>
+                      <span className="ct">{m.mergedCatalog.hallTitle}</span>
                     </div>
                     <div className="hall">
                       {m.mergedCatalog.tile.list?.rows.map((r, i) => (
@@ -179,10 +179,13 @@ export function ConsumptionDashboard({ habitKey }: { habitKey: string }) {
               </Panel>
             )}
 
-            {/* ── Leaderboards ── */}
-            <Panel title="Leaderboards">
-              <LeaderboardColumns columns={m.leaderboards} />
-            </Panel>
+            {/* ── Leaderboards (degradation: the zone doesn't render when every
+                 column dropped — e.g. a pinned type + a year before it existed) ── */}
+            {m.leaderboards.length > 0 && (
+              <Panel title="Leaderboards">
+                <LeaderboardColumns columns={m.leaderboards} />
+              </Panel>
+            )}
 
             {/* ── Trends ── */}
             <TrendPanel

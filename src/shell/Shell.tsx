@@ -20,9 +20,13 @@ import { clearRichSeed, seedRich } from "../db/seedRich";
 import { runSpikeMeasurement } from "../db/spikeGrowth";
 import { LogForm } from "../log/LogForm";
 import { ConsumptionDashboard } from "../dashboard/ConsumptionDashboard";
+import { CreationDashboard } from "../dashboard/CreationDashboard";
 import "./shell.css";
 
 const CONSUMPTION_KEYS = new Set(["gaming", "reading", "media"]);
+// Coding left this set 2026-07-22 (user-ruled downgrade to simple — a
+// language-learning journey, not projects); it joins chunk 3's simple family.
+const CREATION_KEYS = new Set(["writing", "gamedev"]);
 
 const activeHabitsQuery = evolu.createQuery((db) =>
   db
@@ -155,6 +159,8 @@ export function Shell() {
           // key by habit → a fresh mount per habit, so scope + type + heatmap
           // mode reset to All Time / All types on every swap.
           <ConsumptionDashboard key={view.key} habitKey={view.key} />
+        ) : view.kind === "habit" && CREATION_KEYS.has(view.key) ? (
+          <CreationDashboard key={view.key} habitKey={view.key} />
         ) : view.kind === "habit" ? (
           <NotYetDashboard habitKey={view.key} />
         ) : (

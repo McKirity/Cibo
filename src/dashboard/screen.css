@@ -140,6 +140,18 @@
   border-radius: var(--radius-full);
 }
 
+/* The archived habit's honestly-empty 30-day trend face (gamedev-stats FINAL —
+   drawn there as JS-set inline styles; a class here). */
+.creationdash .trend-empty {
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--size-small);
+  border: var(--border-hairline) dashed var(--border);
+  border-radius: var(--radius-medium);
+  margin-top: var(--space-4);
+}
+
 /* The dev perf readout above the dashboard. */
 .perf-line {
   font-family: var(--font-mono);

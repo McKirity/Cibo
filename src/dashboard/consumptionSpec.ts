@@ -29,7 +29,7 @@ import {
   type Run,
   type SessionRow,
 } from "../metrics/shapes";
-import { dayFromIndex, dayGap, dayIndex, isoWeek, monthKey, yearKey } from "../metrics/dates";
+import { dayFromIndex, dayGap, dayIndex, isoWeek, monthKey, weekStart, yearKey } from "../metrics/dates";
 import {
   decimal1,
   deltaChip,
@@ -92,9 +92,11 @@ export interface DashboardModel {
    * The degradation-rule survivor merge (media-stats wireframe · Canvas C): when
    * the catalog collapses to one tile AND the distributions to one panel, they
    * relocate into a single "Catalog" zone. Non-null replaces the separate
-   * catalog group + Distributions panel.
+   * catalog group + Distributions panel. hallTitle carries the type-specific
+   * noun ("Channels" for YouTube, else "Titles") so the renderer never
+   * hardcodes it.
    */
-  mergedCatalog: { tile: TileSpec; dist: DistColumnSpec } | null;
+  mergedCatalog: { tile: TileSpec; dist: DistColumnSpec; hallTitle: string } | null;
   leaderboards: LeaderColumnSpec[];
   trend: {
     caption: string;
@@ -137,7 +139,12 @@ export interface BuildInput {
 /** The categorical-palette slots, cycled for the by-type distribution + any open vocab. */
 const CAT_SLOTS = ["--cat-1", "--cat-2", "--cat-3", "--cat-4", "--cat-5", "--cat-6", "--cat-7", "--cat-8"];
 
-// status → categorical slot (matches the frozen Gaming FINAL's pills)
+// status → categorical slot (matches the frozen Gaming FINAL's pills).
+// The five seeded statuses are IMMUTABLE ANCHORS (user-ruled 2026-07-22): they
+// can never be renamed or removed, so deriving semantics from the literal
+// strings ("Finished"/"Dropped" → completion) is safe by ruling. User-ADDED
+// statuses are legal (and removable); they render AFTER the anchors, coloured
+// from the slots the anchors don't use — never silently dropped.
 const STATUS_VOCAB_DISPLAY = ["Current", "Finished", "Dropped", "Planned", "Hiatus"];
 const STATUS_CAT: Record<string, string> = {
   Current: "--cat-2",
@@ -146,6 +153,7 @@ const STATUS_CAT: Record<string, string> = {
   Planned: "--cat-3",
   Hiatus: "--cat-8",
 };
+const EXTRA_STATUS_SLOTS = CAT_SLOTS.filter((s) => !Object.values(STATUS_CAT).includes(s));
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const initialism = (title: string): string => {
@@ -243,13 +251,13 @@ export function buildConsumptionDashboard(
     {
       label: "Avg days / week",
       value: decimal1(weeks > 0 ? daysActive / weeks : 0),
-      delta: periodDelta(fSessions, dFrom, dTo, "week", "days") ?? undefined,
+      delta: vsYear(periodDelta(fSessions, dFrom, dTo, "week", "days"), isYear, isYear ? sel.year : ""),
       subtitle: bestWk ? `best: ${bestWk.value} · ${bestWeekLabel(bestWk.key)}` : undefined,
     },
     {
       label: "Avg days / month",
       value: decimal1(months > 0 ? daysActive / months : 0),
-      delta: periodDelta(fSessions, dFrom, dTo, "month", "days") ?? undefined,
+      delta: vsYear(periodDelta(fSessions, dFrom, dTo, "month", "days"), isYear, isYear ? sel.year : ""),
       subtitle: bestMo ? `best: ${bestMo.value} · ${fmtMonY(bestMo.key)}` : undefined,
     },
   ];
@@ -266,21 +274,21 @@ export function buildConsumptionDashboard(
     {
       label: "Avg hours / active day",
       value: hoursMinutes(daysActive > 0 ? totMin / daysActive : 0),
-      delta: activeDayDelta(fSessions, dFrom, dTo),
+      delta: vsYear(activeDayDelta(fSessions, dFrom, dTo), isYear, isYear ? sel.year : ""),
       subtitle: bestDay ? `best: ${hoursMinutes(bestDay.value)} · ${fmtDMY(bestDay.key)}` : undefined,
     },
     {
       label: "Avg hours / week",
       value: hoursTrim1(weeks > 0 ? totMin / weeks : 0).replace(/h$/, ""),
       unit: "h",
-      delta: periodDelta(fSessions, dFrom, dTo, "week", "minutes") ?? undefined,
+      delta: vsYear(periodDelta(fSessions, dFrom, dTo, "week", "minutes"), isYear, isYear ? sel.year : ""),
       subtitle: bestWkMin ? `best: ${hoursWhole(bestWkMin.value)} · ${bestWeekLabel(bestWkMin.key)}` : undefined,
     },
     {
       label: "Avg hours / month",
       value: hoursTrim1(months > 0 ? totMin / months : 0).replace(/h$/, ""),
       unit: "h",
-      delta: periodDelta(fSessions, dFrom, dTo, "month", "minutes") ?? undefined,
+      delta: vsYear(periodDelta(fSessions, dFrom, dTo, "month", "minutes"), isYear, isYear ? sel.year : ""),
       subtitle: bestMoMin ? `best: ${hoursWhole(bestMoMin.value)} · ${fmtMonY(bestMoMin.key)}` : undefined,
     },
   ];
@@ -321,7 +329,22 @@ export function buildConsumptionDashboard(
   // pinned (the Reading FINAL: four across on All types, three when scoped to
   // one type). Slot colours follow the declared vocab order.
   const typeSlot = new Map(input.typeVocab.map((t, i) => [t, CAT_SLOTS[i % CAT_SLOTS.length]]));
-  const statusRows = distribute(ent, (e) => e.status, { order: STATUS_VOCAB_DISPLAY });
+  // User-added statuses: anchors first in canonical order, extras after
+  // (alphabetical until the vocab wiring carries a real sort_order).
+  const extraStatuses = [
+    ...new Set(
+      ent
+        .map((e) => e.status)
+        .filter((s): s is string => s != null && STATUS_CAT[s] === undefined),
+    ),
+  ].sort();
+  const statusSlot = new Map<string, string>(Object.entries(STATUS_CAT));
+  extraStatuses.forEach((s, i) =>
+    statusSlot.set(s, EXTRA_STATUS_SLOTS[i % EXTRA_STATUS_SLOTS.length]),
+  );
+  const statusRows = distribute(ent, (e) => e.status, {
+    order: [...STATUS_VOCAB_DISPLAY, ...extraStatuses],
+  });
   const genreRows = distribute(ent, (e) => e.genre, { top: 6 });
   const ratingRows = distribute(ent, (e) => (e.rating != null ? stars(e.rating) : null), {
     order: [5, 4, 3, 2, 1].map(stars),
@@ -335,7 +358,7 @@ export function buildConsumptionDashboard(
     });
   }
   distributions.push(
-    { title: "By status", rows: statusRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: STATUS_CAT[r.key] ?? "--cat-1", tip: `${r.key} · ${r.value} titles` })) },
+    { title: "By status", rows: statusRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: statusSlot.get(r.key) ?? "--cat-1", tip: `${r.key} · ${r.value} titles` })) },
     { title: "By genre", rows: genreRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: "--cat-1", tip: `${r.key} · ${r.value} titles` })) },
     { title: "By rating", rows: ratingRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: "--cat-3", tip: `${r.key} · ${r.value} titles` })) },
   );
@@ -362,6 +385,7 @@ export function buildConsumptionDashboard(
             },
           } as TileSpec,
           dist: shownDistributions[0],
+          hallTitle: Noun,
         }
       : null;
 
@@ -381,15 +405,52 @@ export function buildConsumptionDashboard(
   );
 
   // ── Trends ──
+  // SCOPE-FOLLOWING (user-ruled 2026-07-22, live iteration — "the original
+  // scope is completely wrong"; overrides the FINALs' always-trailing window,
+  // both templates): a pinned year windows the 30-day line to that year's tail
+  // and the heatmap to that calendar year; All Time keeps today's trailing
+  // windows. The records trio stays all-time (the explicitly-ruled exception).
   const dm = dayMinutes(fSessions);
-  const line: number[] = [];
-  for (let i = 29; i >= 0; i--) line.push((dm.get(dayFromIndex(dayIndex(today) - i)) ?? 0) / 60);
+  const trendEnd = scopeTo; // today, or min(31 Dec of the pinned year, today)
+  // Window buckets — All Time: the trailing 30 days at DAY grain; a pinned
+  // year: the whole year at WEEK grain (user-ruled 2026-07-22 — weekly sits
+  // between the month spark and the day heatmap). Straddle weeks clamp to the
+  // year's own days; x-ticks become month labels.
+  const windowLabel = isYear ? sel.year : "Last 30 days";
+  const grainNoun = isYear ? "week" : "day";
+  let buckets: string[][];
+  let xticks: { i: number; label: string }[];
+  if (isYear) {
+    buckets = [];
+    for (let ws = dayIndex(weekStart(`${sel.year}-01-01`)); ws <= dayIndex(trendEnd); ws += 7) {
+      const days: string[] = [];
+      for (let k = 0; k < 7; k++) {
+        const d = dayFromIndex(ws + k);
+        if (d.startsWith(sel.year) && d <= trendEnd) days.push(d);
+      }
+      buckets.push(days);
+    }
+    // Week-number ticks (user-ruled 2026-07-22), every 4th week — ISO weeks,
+    // matching the "wk N" idiom app-wide; straddle buckets whose ISO week
+    // belongs to the neighbouring year are skipped rather than mislabeled.
+    xticks = [];
+    for (let i = 0; i < buckets.length; i += 4) {
+      const d0 = buckets[i][0];
+      if (!d0) continue;
+      const iw = isoWeek(d0);
+      if (String(iw.year) !== sel.year) continue;
+      xticks.push({ i, label: `W${iw.week}` });
+    }
+  } else {
+    buckets = Array.from({ length: 30 }, (_, i) => [dayFromIndex(dayIndex(trendEnd) - 29 + i)]);
+    xticks = [0, 10, 20, 29].map((i) => {
+      const d = dayFromIndex(dayIndex(trendEnd) - (29 - i));
+      return { i, label: `${Number(d.slice(8))} ${MON[Number(d.slice(5, 7)) - 1]}` };
+    });
+  }
+  const line = buckets.map((b) => b.reduce((a, d) => a + (dm.get(d) ?? 0), 0) / 60);
   const lineMax = Math.max(2, ...line);
   const vmax = Math.ceil(lineMax / 2) * 2;
-  const xticks = [0, 10, 20, 29].map((i) => {
-    const d = dayFromIndex(dayIndex(today) - (29 - i));
-    return { i, label: `${Number(d.slice(8))} ${MON[Number(d.slice(5, 7)) - 1]}` };
-  });
 
   const sparkYear = isYear ? sel.year : yearKey(today);
   const spark = MON.map((mo, i) => {
@@ -401,9 +462,14 @@ export function buildConsumptionDashboard(
   const sparkMax = Math.max(1, ...spark.map((s) => s.hours));
   // spark delta: current vs previous month (percentage), within the spark year.
   const nowMonthIdx = isYear ? lastMonthWithData(spark) : Number(today.slice(5, 7)) - 1;
-  const sparkDelta = monthOverMonth(spark, nowMonthIdx);
+  // Year scope → year-over-year (the 2026-07-22 ruling); All Time keeps the
+  // month-over-month reading of the current year's spark.
+  const sparkDelta = isYear
+    ? yearOverYearDelta(dm, sel.year, trendEnd)
+    : monthOverMonth(spark, nowMonthIdx);
 
-  // ── Heatmap (trailing 53 weeks to today, scope-independent) ──
+  // ── Heatmap (53 weeks ending at the scope's edge — scope-following per the
+  //    2026-07-22 ruling; cells outside a pinned year are hidden) ──
   // By-Type heatmap: each cell's dominant type by minutes → its categorical
   // slot (the FINAL's reference drawing). Built from the type-filtered sessions
   // so a scoped face is single-type. Empty when the habit has no Medium vocab.
@@ -424,8 +490,15 @@ export function buildConsumptionDashboard(
       if (bestType) dayDominantCat.set(day, typeSlot.get(bestType) ?? "--cat-1");
     }
   }
-  const cells = heatmapCells(dm, today, 53, (day) => dayDominantCat.get(day) ?? null);
-  const monthsHdr = heatmapMonths(today);
+  const rawCells = heatmapCells(dm, trendEnd, 53, (day) => dayDominantCat.get(day) ?? null);
+  const yearFloor = isYear ? `${sel.year}-01-01` : null;
+  const cells =
+    yearFloor == null
+      ? rawCells
+      : rawCells.map((c) =>
+          c.day != null && c.day < yearFloor ? { day: null, minutes: 0, level: -1 } : c,
+        );
+  const monthsHdr = heatmapMonths(trendEnd);
   const legendTypes = typeFilter ? [typeFilter] : input.typeVocab;
   const heatLegend = legendTypes.map((t) => ({ label: t, colorVar: typeSlot.get(t) ?? "--cat-1" }));
   const bDayAll = best(fSessions, "day", "minutes");
@@ -468,7 +541,7 @@ export function buildConsumptionDashboard(
     mergedCatalog,
     leaderboards: shownLeaderboards,
     trend: {
-      caption: "Last 30 days · hours / day",
+      caption: `${windowLabel} · hours / ${grainNoun}`,
       line,
       vmax,
       xticks,
@@ -502,6 +575,40 @@ const longestRunOf = (st: { runs: Run[] }): Run | null =>
   st.runs.reduce<Run | null>((b, r) => (!b || r.days > b.days ? r : b), null);
 
 const lastRunOf = (st: { runs: Run[] }): Run | null => st.runs[st.runs.length - 1] ?? null;
+
+/**
+ * Under a year scope every delta compares THIS YEAR TO LAST (user-ruled
+ * 2026-07-22), so each chip says which year it measures against — the windows
+ * were already year-vs-year; this makes that legible.
+ */
+const vsYear = (
+  chip: DeltaChip | null | undefined,
+  isYear: boolean,
+  year: string,
+): DeltaChip | undefined =>
+  chip == null ? undefined : isYear ? { ...chip, text: `${chip.text} vs ${Number(year) - 1}` } : chip;
+
+/** The spark chip under a year scope: the pinned year vs the SAME span of the
+ *  prior year (a part-way year never compares against a whole one). */
+function yearOverYearDelta(
+  src: Map<string, number>,
+  year: string,
+  endDay: string,
+): DeltaChip | null {
+  const from = `${year}-01-01`;
+  const prevFrom = `${Number(year) - 1}-01-01`;
+  const prevTo = dayFromIndex(dayIndex(prevFrom) + dayGap(from, endDay));
+  const sum = (f: string, t: string) =>
+    [...src.entries()].filter(([d]) => d >= f && d <= t).reduce((a, [, v]) => a + v, 0);
+  const cur = sum(from, endDay);
+  const prev = sum(prevFrom, prevTo);
+  if (prev <= 0) return null;
+  const pct = ((cur - prev) / prev) * 100;
+  return {
+    text: `${pct < 0 ? "▼" : "▲"} ${Math.abs(Math.round(pct))}% vs ${Number(year) - 1}`,
+    down: pct < 0,
+  };
+}
 
 /** A streak stat tile with a date line + a three-row prior/next streak table. */
 function streakTile(label: string, run: Run | null, st: { runs: Run[]; currentRun: Run | null }, isCurrent: boolean): TileSpec {

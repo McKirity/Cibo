@@ -17,6 +17,7 @@ import { useQuery } from "@evolu/react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { evolu } from "../db/evolu";
 import { clearRichSeed, seedRich } from "../db/seedRich";
+import { runSpikeMeasurement } from "../db/spikeGrowth";
 import { LogForm } from "../log/LogForm";
 import { ConsumptionDashboard } from "../dashboard/ConsumptionDashboard";
 import "./shell.css";
@@ -125,7 +126,7 @@ export function Shell() {
               Statistics
             </button>
             <button className="tool" disabled title="Later">
-              <Ico d={["M11 11a8 8 0 1 0 0-16 8 8 0 0 0 0 16z", "m21 21-4.3-4.3"]} />
+              <Ico d={["M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16z", "m21 21-4.3-4.3"]} />
               Search
             </button>
             <button className="tool" disabled title="Later">
@@ -312,7 +313,74 @@ function LogView() {
       <LogForm />
       <DevHabitPanel />
       <DevRichSeedPanel />
+      <DevGrowthSpikePanel />
     </div>
+  );
+}
+
+/**
+ * THROWAWAY — the Evolu store-growth spike (Longevity & Future-Proofing, Tier 1).
+ * Seeds a ~15-year dataset and measures store size + tombstone accumulation +
+ * dashboard latency. Re-seed repeatedly and watch whether the numbers plateau
+ * (Evolu compacts) or climb forever (it doesn't). Remove with `spikeGrowth.ts`.
+ */
+function DevGrowthSpikePanel() {
+  const [status, setStatus] = useState<string>("");
+  const [report, setReport] = useState<string>("");
+  const [busy, setBusy] = useState(false);
+
+  const run = async (label: string, fn: () => Promise<string>) => {
+    setBusy(true);
+    setStatus(`${label}…`);
+    try {
+      const out = await fn();
+      setStatus(`${label} — done`);
+      setReport(out);
+    } catch (e) {
+      setStatus(`error: ${String(e)}`);
+      console.error(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <details className="dev-panel">
+      <summary>Dev: growth SPIKE (throwaway) — 15-year seed + store/latency measurement</summary>
+      <div className="row">
+        <button
+          type="button"
+          className="btn-accent btn-sm"
+          disabled={busy}
+          onClick={() =>
+            run("Seeding 15 years (slow — tens of thousands of rows)", async () => {
+              const t = performance.now();
+              const r = await seedRich(evolu, 15);
+              const secs = Math.round((performance.now() - t) / 100) / 10;
+              return (
+                `SEED   span=${r.spanYears}y (${r.spanDays} days) in ${secs}s\n` +
+                `       ${r.entries} entries · ${r.sessions} sessions · ${r.subunits} categoricals · ` +
+                `${r.days} days (cleared ${r.clearedFirst} first)`
+              );
+            })
+          }
+        >
+          Seed 15yr
+        </button>
+        <button
+          type="button"
+          className="btn-plain btn-sm"
+          disabled={busy}
+          onClick={() => run("Measuring", () => runSpikeMeasurement())}
+        >
+          Measure
+        </button>
+        {status && <span className="fieldnote">{status}</span>}
+      </div>
+      {report && (
+        <pre style={{ fontSize: 12, whiteSpace: "pre-wrap", overflowX: "auto" }}>{report}</pre>
+      )}
+    </details>
   );
 }
 

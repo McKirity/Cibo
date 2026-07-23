@@ -69,10 +69,19 @@ const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.ge
 const hm = (h: number, m: number) => `${pad(h)}:${pad(m)}`;
 
 const TODAY = new Date();
-const START = new Date(TODAY.getFullYear() - 5, TODAY.getMonth(), TODAY.getDate());
-const TOTAL = Math.round((TODAY.getTime() - START.getTime()) / 86_400_000); // ~1826
 
-/** Day string at an offset (days) from the 5-years-ago start. */
+/** The dataset span in years. 5 = the step-5 dataset (unchanged default). The
+ *  Longevity growth spike re-configures it to ~15 to stress store size + query
+ *  latency; see `spikeGrowth.ts`. */
+export const DEFAULT_SPAN_YEARS = 5;
+
+// Span state is mutable so one seeder can serve both the 5y dataset and the
+// spike's 15y run; `configureSpan` is called at the top of `seedRich`, so it can
+// never be read stale. (`dayAt`/`ago` read these at call time.)
+let START = new Date(TODAY.getFullYear() - DEFAULT_SPAN_YEARS, TODAY.getMonth(), TODAY.getDate());
+let TOTAL = Math.round((TODAY.getTime() - START.getTime()) / 86_400_000); // ~1826 at 5y
+
+/** Day string at an offset (days) from the span start. */
 const dayAt = (off: number): string =>
   ymd(new Date(START.getFullYear(), START.getMonth(), START.getDate() + off));
 
@@ -80,26 +89,39 @@ const dayAt = (off: number): string =>
 const ago = (days: number) => Math.max(0, TOTAL - days);
 
 type Window = [from: number, to: number];
-const FULL: Window[] = [[0, TOTAL]];
 
 // ── Lifecycle windows (offsets from START) ────────────────────────────────────
 
-const WINDOWS: Record<string, Window[]> = {
-  writing: FULL,
-  gaming: FULL,
-  reading: FULL,
-  media: FULL,
-  sleep: FULL,
-  embroidery: [[ago(1400), TOTAL]], // created ~3.8y ago
-  walking: [[ago(1170), TOTAL]], // created ~3.2y ago
-  drawing: [[ago(890), TOTAL]], // created ~2.4y ago
-  keyboard: [[ago(560), TOTAL]], // created ~1.5y ago
-  gamedev: [[ago(1650), ago(730)]], // started ~4.5y, archived ~2y ago
-  coding: [
-    [ago(1750), ago(1300)], // ~2021-10 → 2022-12
-    [ago(900), TOTAL], // ~2024-01 → today  (2023 is the missing year)
-  ],
-};
+let WINDOWS: Record<string, Window[]> = {};
+
+/**
+ * Recompute the span and every lifecycle window. The "created N days ago" habits
+ * stay anchored to *today* whatever the span; only the FULL-span constants
+ * (writing · gaming · reading · media · sleep) stretch with it — which is what
+ * makes a 15-year run ≈3× the dominant session volume.
+ */
+function configureSpan(years: number): void {
+  START = new Date(TODAY.getFullYear() - years, TODAY.getMonth(), TODAY.getDate());
+  TOTAL = Math.round((TODAY.getTime() - START.getTime()) / 86_400_000);
+  const FULL: Window[] = [[0, TOTAL]];
+  WINDOWS = {
+    writing: FULL,
+    gaming: FULL,
+    reading: FULL,
+    media: FULL,
+    sleep: FULL,
+    embroidery: [[ago(1400), TOTAL]], // created ~3.8y ago
+    walking: [[ago(1170), TOTAL]], // created ~3.2y ago
+    drawing: [[ago(890), TOTAL]], // created ~2.4y ago
+    keyboard: [[ago(560), TOTAL]], // created ~1.5y ago
+    gamedev: [[ago(1650), ago(730)]], // started ~4.5y, archived ~2y ago
+    coding: [
+      [ago(1750), ago(1300)], // ~2021-10 → 2022-12
+      [ago(900), TOTAL], // ~2024-01 → today  (2023 is the missing year)
+    ],
+  };
+}
+configureSpan(DEFAULT_SPAN_YEARS);
 /** Which habits end active (all except the started-then-archived Gamedev). */
 const STAYS_ACTIVE = new Set([
   "writing", "gaming", "reading", "media", "sleep",
@@ -627,9 +649,16 @@ export interface RichSeedResult {
   days: number;
   subunits: number;
   clearedFirst: number;
+  /** The span this run generated (years), and its day count. */
+  spanYears: number;
+  spanDays: number;
 }
 
-export async function seedRich(evolu: CiboEvolu): Promise<RichSeedResult> {
+export async function seedRich(
+  evolu: CiboEvolu,
+  spanYears: number = DEFAULT_SPAN_YEARS,
+): Promise<RichSeedResult> {
+  configureSpan(spanYears); // must precede every dayAt/ago/WINDOWS read below
   RAND = mulberry32(0x51ced); // reset → identical dataset every run
   const { removed: clearedFirst } = await clearRichSeed(evolu);
   const ctx = await loadCtx(evolu);
@@ -673,5 +702,5 @@ export async function seedRich(evolu: CiboEvolu): Promise<RichSeedResult> {
     if (r.ok) ctx.counts.days++;
   }
 
-  return { ...ctx.counts, clearedFirst };
+  return { ...ctx.counts, clearedFirst, spanYears, spanDays: TOTAL };
 }

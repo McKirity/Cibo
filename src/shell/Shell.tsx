@@ -21,12 +21,13 @@ import { runSpikeMeasurement } from "../db/spikeGrowth";
 import { LogForm } from "../log/LogForm";
 import { ConsumptionDashboard } from "../dashboard/ConsumptionDashboard";
 import { CreationDashboard } from "../dashboard/CreationDashboard";
+import { SimpleDashboard } from "../dashboard/SimpleDashboard";
+import { RangeDashboard } from "../dashboard/RangeDashboard";
 import "./shell.css";
-
-const CONSUMPTION_KEYS = new Set(["gaming", "reading", "media"]);
-// Coding left this set 2026-07-22 (user-ruled downgrade to simple — a
-// language-learning journey, not projects); it joins chunk 3's simple family.
-const CREATION_KEYS = new Set(["writing", "gamedev"]);
+// Routing reads the habit row's kind/sub_type (chunk 3) — the key sets are
+// gone, so a habit can never be routed by name: consumption/creation off
+// sub_type, simple/range off kind, exactly the derived-template rule. Coding's
+// 2026-07-22 downgrade lands it on the simple template beside Keyboard.
 
 const activeHabitsQuery = evolu.createQuery((db) =>
   db
@@ -155,14 +156,19 @@ export function Shell() {
       </nav>
 
       <div className="content">
-        {view.kind === "habit" && CONSUMPTION_KEYS.has(view.key) ? (
-          // key by habit → a fresh mount per habit, so scope + type + heatmap
-          // mode reset to All Time / All types on every swap.
-          <ConsumptionDashboard key={view.key} habitKey={view.key} />
-        ) : view.kind === "habit" && CREATION_KEYS.has(view.key) ? (
-          <CreationDashboard key={view.key} habitKey={view.key} />
-        ) : view.kind === "habit" ? (
-          <NotYetDashboard habitKey={view.key} />
+        {view.kind === "habit" ? (
+          (() => {
+            const h = active.find((x) => x.key === view.key);
+            // key by habit → a fresh mount per habit, so scope + type + heatmap
+            // mode reset to All Time / All types on every swap.
+            if (h?.sub_type === "consumption")
+              return <ConsumptionDashboard key={view.key} habitKey={view.key} />;
+            if (h?.sub_type === "creation")
+              return <CreationDashboard key={view.key} habitKey={view.key} />;
+            if (h?.kind === "simple") return <SimpleDashboard key={view.key} habitKey={view.key} />;
+            if (h?.kind === "range") return <RangeDashboard key={view.key} habitKey={view.key} />;
+            return <NotYetDashboard habitKey={view.key} />;
+          })()
         ) : (
           <LogView />
         )}

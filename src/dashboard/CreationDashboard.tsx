@@ -161,7 +161,7 @@ export function CreationDashboard({ habitKey }: { habitKey: string }) {
 
 // ── Distribution panel + the per-metric shape family ──────────────────────────
 
-function DistPanel({ panel }: { panel: DistPanelSpec }) {
+export function DistPanel({ panel }: { panel: DistPanelSpec }) {
   const [metric, setMetric] = useState<DistMetricKey>(panel.initial);
   const chart = panel.charts[metric] ?? panel.charts[panel.initial];
   return (
@@ -303,7 +303,7 @@ function niceCeil(v: number, unit: string): number {
 const fmtTick = (v: number, unit: string): string =>
   `${v >= 1000 ? `${Math.round(v / 1000)}k` : Math.round(v)}${unit}`;
 
-function CreationTrend({ trend, color }: { trend: CreationModel["trend"]; color: string }) {
+export function CreationTrend({ trend, color }: { trend: CreationModel["trend"]; color: string }) {
   const [key, setKey] = useState(trend.series[0]?.key ?? "time");
   const s: TrendSeries = trend.series.find((x) => x.key === key) ?? trend.series[0];
   const { ref, w, h } = useBox<SVGSVGElement>();
@@ -367,26 +367,30 @@ function CreationTrend({ trend, color }: { trend: CreationModel["trend"]; color:
 
   return (
     <Panel title="Trends">
-      <div className="segrow">
-        <span className="seglbl">Series</span>
-        <div className="seg5">
-          {trend.series.map((x) => (
-            <button key={x.key} aria-pressed={x.key === key} onClick={() => setKey(x.key)}>
-              {x.label}
-            </button>
-          ))}
-        </div>
-        {stacked && (
-          <span className="lgnd">
-            {s.bands!.map((b) => (
-              <span className="k" key={b.name}>
-                <i style={{ background: `var(${b.colorVar})` }} />
-                {b.name}
-              </span>
+      {/* A lone series draws no toggle (the measured-simple face) — the row
+          only exists once there is a choice to make. */}
+      {trend.series.length > 1 && (
+        <div className="segrow">
+          <span className="seglbl">Series</span>
+          <div className="seg5">
+            {trend.series.map((x) => (
+              <button key={x.key} aria-pressed={x.key === key} onClick={() => setKey(x.key)}>
+                {x.label}
+              </button>
             ))}
-          </span>
-        )}
-      </div>
+          </div>
+          {stacked && (
+            <span className="lgnd">
+              {s.bands!.map((b) => (
+                <span className="k" key={b.name}>
+                  <i style={{ background: `var(${b.colorVar})` }} />
+                  {b.name}
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
       <div className="trend">
         <div>
           <div className="pmeta">{trend.archivedEmpty ? "Last 30 days" : s.caption}</div>

@@ -337,3 +337,52 @@
    bottom-packed the tile labels where every other dashboard top-aligns them;
    the base .tile's space-between cascades instead. */
 .creationdash .tile{height:auto; min-height:var(--tile-height);}
+
+/* ── Build step 6 chunk 3 (simple + range) — claimed from kit-staging.css
+   2026-07-23. Base heads, unscoped as staged: these families are single-tenant
+   (the simple/range screens); nothing here repaints the earlier templates. ── */
+
+/* the measureless attendance legend (walking) — swF's staged --habit-7 stays
+   the base; the renderer inlines the live habit slot over it */
+.attend-legend{display:inline-flex; align-items:center; gap:var(--space-3);}
+.attend-legend .sw{width:var(--space-6); height:var(--space-6); border-radius:var(--radius-cell);}
+.attend-legend .swE{background:var(--panel-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); margin-right:calc(-1 * var(--space-1));}
+.attend-legend .swF{background:var(--habit-7); margin:0 calc(-1 * var(--space-1)) 0 var(--space-4);}
+
+/* the days-per-period spark (walking) */
+.dayspark{display:flex; align-items:flex-end; gap:var(--space-6); height:var(--chart-height); padding-top:var(--space-5);}
+.dayspark .bar{width:100%; max-width:140px; border-radius:var(--radius-small) var(--radius-small) 0 0; background:var(--habit-7); min-height:4px; transition:height var(--motion-standard) var(--ease-standard);}
+.dayspark .col{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:var(--space-4);}
+.dayspark .col .lab{font-size:var(--size-small); color:var(--text-muted);}
+.dayspark .col .n{font-family:var(--font-mono); font-size:var(--size-body); font-weight:var(--weight-bold); color:var(--text-strong);}
+
+/* the categorical split panel + heatmap value filter (keyboard) */
+.board-split{display:grid; grid-template-columns:1fr 1fr; gap:var(--space-7); align-items:start;}
+.board-split > .dcol{min-width:0;}
+.board-select{font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); text-transform:none; letter-spacing:0; color:var(--text-strong); background:var(--panel-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); padding:var(--space-2) var(--space-5); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard);}
+.board-select:hover{background:var(--hover-wash);}
+.hsel{display:inline-flex; align-items:center; gap:var(--space-3); font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-weight:var(--weight-bold);}
+
+/* the range chart pair (sleep — screen-specific composition, not kit blocks) */
+.range-split{display:grid; grid-template-columns:1fr 1fr; gap:var(--space-8); align-items:start;}
+.range-split > .rchart + .rchart{padding-left:var(--space-8); border-left:var(--border-hairline) solid var(--divider);}
+.rangechart{width:100%; height:var(--chart-height); display:block;}
+.rchart{min-width:0;}
+.rchart-head{display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-4); margin-bottom:var(--space-5); padding-bottom:var(--space-4); border-bottom:var(--border-hairline) solid var(--divider);}
+.rchart-head .cm{font-size:var(--size-caption); color:var(--text-muted); text-align:right;}
+.rchart-head .ct{font-size:var(--size-body); font-weight:var(--weight-bold); color:var(--text-strong);}
+.rlegend{display:flex; flex-wrap:wrap; gap:var(--space-6); margin-top:var(--space-5); font-size:var(--size-caption); color:var(--text-secondary);}
+.rlegend .k{display:inline-flex; align-items:center; gap:var(--space-3);}
+.rlegend .ksw{width:18px; height:6px; border-radius:var(--radius-cell); flex:0 0 auto;}
+
+/* the flag donut panels (sleep — kit-panel-flag) */
+.flags{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--space-7);}
+.flagpanel{display:flex; flex-direction:column; align-items:center; gap:var(--space-5); padding:var(--space-7) var(--space-6); border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-medium); background:var(--window-background);}
+.flagpanel .fmeta{font-size:var(--size-caption); color:var(--text-muted); text-align:center;}
+.flagpanel .fname{font-size:var(--size-subheading); font-weight:var(--weight-bold); color:var(--text-strong);}
+.flagpanel .fpct{font-family:var(--font-mono); font-size:var(--size-heading); font-weight:var(--weight-bold); color:var(--text-strong);}
+.flagpanel .fpct span{font-family:var(--font-ui); font-size:var(--size-caption); font-weight:var(--weight-regular); color:var(--text-muted);}
+.donut .dcenter{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--space-1);}
+.donut .dsub{font-size:var(--size-caption); color:var(--text-muted);}
+.donut .dval{font-family:var(--font-mono); font-size:var(--size-display); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong);}
+.donut svg{width:100%; height:100%; transform:rotate(-90deg); display:block;}

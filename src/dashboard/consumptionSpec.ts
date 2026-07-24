@@ -56,6 +56,8 @@ export interface TileSpec {
   list?: { dateLine: string; rows: { k: string; v: string }[] };
   /** Best-record door tiles carry a date value line (kit-tile-stat `.tv.date`). */
   dateValue?: boolean;
+  /** Name-valued tiles (the categorical family's Current-value) read at --size-heading. */
+  big?: boolean;
 }
 
 export interface DistColumnSpec {

@@ -43,7 +43,7 @@ export function StatTile({ t }: { t: TileSpec }) {
     return (
       <div className="tile tlist">
         <span className="tl">{t.label}</span>
-        <span className="tv">
+        <span className="tv" style={t.big ? { fontSize: "var(--size-heading)" } : undefined}>
           <span className="tdt">{t.list.dateLine}</span>
           {t.value}
           {t.unit && <span className="u">{t.unit}</span>}

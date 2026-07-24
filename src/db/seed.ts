@@ -32,7 +32,7 @@ const s100 = (v: string) => NonEmptyString100.orThrow(v);
 const s1000 = (v: string) => NonEmptyString1000.orThrow(v);
 const num = (v: number) => FiniteNumber.orThrow(v);
 
-export const SEED_VERSION = 3;
+export const SEED_VERSION = 4;
 
 type CiboEvolu = Evolu<typeof Schema>;
 
@@ -313,17 +313,22 @@ export async function runSeed(evolu: CiboEvolu): Promise<SeedResult> {
 
   if (foundVersion < 1) await seedBatch1(evolu);
   if (foundVersion < 2) await seedBatch2(evolu);
-  if (foundVersion < 3) await seedBatch3(evolu);
-  // Future batches: if (foundVersion < 4) await seedBatch4(evolu); …
+  // There is no batch-3 step: the coding downgrade shipped as batch 3 but its
+  // habits write was dropped silently while the gate still recorded version 3,
+  // stranding the store (diagnosed 2026-07-23 from evolu_history). Batch 4
+  // re-runs the same idempotent flip, verified this time.
+  if (foundVersion < 4) await seedBatch4(evolu);
+  // Future batches: if (foundVersion < 5) await seedBatch5(evolu); …
 
-  if (liveMeta) {
-    evolu.update("app_meta", { id: liveMeta.id, value: s1000(String(SEED_VERSION)) });
-  } else {
-    evolu.insert("app_meta", {
-      key: s100("seed_version"),
-      value: s1000(String(SEED_VERSION)),
-    });
-  }
+  // A batch that throws above skips this on purpose: the gate must never
+  // record a version whose batch didn't verifiably land.
+  const recorded = liveMeta
+    ? evolu.update("app_meta", { id: liveMeta.id, value: s1000(String(SEED_VERSION)) })
+    : evolu.insert("app_meta", {
+        key: s100("seed_version"),
+        value: s1000(String(SEED_VERSION)),
+      });
+  if (!recorded.ok) console.error("Seed: recording seed_version failed", recorded.error);
   return { foundVersion, applied: true };
 }
 
@@ -432,7 +437,8 @@ async function seedBatch2(evolu: CiboEvolu): Promise<void> {
       .where("isDeleted", "is not", 1),
   );
   for (const o of await evolu.loadQuery(optQuery)) {
-    evolu.update("vocab_options", { id: o.id, value: s100("Fanfiction") });
+    const r = evolu.update("vocab_options", { id: o.id, value: s100("Fanfiction") });
+    if (!r.ok) console.error("Seed batch 2: vocab rename failed", r.error);
   }
 
   const entryQuery = evolu.createQuery((db) =>
@@ -443,20 +449,29 @@ async function seedBatch2(evolu: CiboEvolu): Promise<void> {
       .where("isDeleted", "is not", 1),
   );
   for (const e of await evolu.loadQuery(entryQuery)) {
-    evolu.update("entries", { id: e.id, type: s100("Fanfiction") });
+    const r = evolu.update("entries", { id: e.id, type: s100("Fanfiction") });
+    if (!r.ok) console.error("Seed batch 2: entry type rename failed", r.error);
   }
 }
 
 /**
- * Batch 3 (2026-07-22) — Coding DOWNGRADED project·creation → simple
- * (user-ruled: it tracks a language-learning journey, not projects; the
- * keystone's project hard test is "has entries" and it has none intended).
+ * Batch 4 (2026-07-23) — Coding DOWNGRADED project·creation → simple
+ * (user-ruled 2026-07-22: it tracks a language-learning journey, not projects;
+ * the keystone's project hard test is "has entries" and it has none intended).
  * A fresh store seeds simple directly at batch 1; this flips an existing
  * store's habit row (idempotent — finds nothing to change on re-run). Any
  * dev-seeded coding entries are left to the rich seeder's self-clear; real
  * installs never had a way to create them.
+ *
+ * This is batch 3 re-armed: the original run's habits write was silently
+ * dropped (Evolu discards a whole mutation batch on validation error and
+ * reports worker failures only to the unread error store) while the version
+ * gate latched at 3, making every later fix unreachable. Hence the paranoia
+ * here: the update Result is checked, the write is awaited via onComplete
+ * (fires only after the worker commits), and the row is re-read — a throw
+ * keeps runSeed from recording the version, so the batch retries next launch.
  */
-async function seedBatch3(evolu: CiboEvolu): Promise<void> {
+async function seedBatch4(evolu: CiboEvolu): Promise<void> {
   const habitQuery = evolu.createQuery((db) =>
     db
       .selectFrom("habits")
@@ -466,11 +481,21 @@ async function seedBatch3(evolu: CiboEvolu): Promise<void> {
   );
   for (const h of await evolu.loadQuery(habitQuery)) {
     if (h.kind === "simple") continue;
-    evolu.update("habits", {
-      id: h.id,
-      kind: "simple",
-      sub_type: null,
-      entry_attributes: null,
+    await new Promise<void>((resolve, reject) => {
+      const r = evolu.update(
+        "habits",
+        { id: h.id, kind: "simple", sub_type: null, entry_attributes: null },
+        { onComplete: () => resolve() },
+      );
+      if (!r.ok) {
+        console.error("Seed batch 4: coding downgrade rejected", r.error);
+        reject(new Error("Seed batch 4: coding downgrade failed validation"));
+      }
     });
+  }
+  for (const h of await evolu.loadQuery(habitQuery)) {
+    if (h.kind !== "simple") {
+      throw new Error(`Seed batch 4: coding kind still reads "${h.kind}" after flip`);
+    }
   }
 }

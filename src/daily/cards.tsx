@@ -15,13 +15,15 @@
  * Three cards are network-fed (horoscope · tarot · weather) and render a
  * waiting state until the fetch layer lands.
  */
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   atLocation,
   moonDiscPaths,
   moonInfo,
   seasonBand,
   seasonInfo,
+  SUN_ARC,
+  sunArcPath,
   sunArcPoint,
   sunInfo,
   tonightsSky,
@@ -31,12 +33,13 @@ import {
 import {
   countdowns,
   dayOfYear,
+  type Anniversary,
   factFor,
   holidayFor,
-  lifetime,
   onThisDay,
   quoteFor,
   rediscover,
+  sunSign,
   timeProgress,
   wordFor,
 } from "./almanac";
@@ -51,11 +54,6 @@ export function Card({ title, children, className = "" }: { title: string; child
       <div className="wbody">{children}</div>
     </section>
   );
-}
-
-/** The waiting state for the three ephemeral cards, until the fetch lands. */
-function Pending({ what }: { what: string }) {
-  return <p className="wpending">{what} arrives with the network tier.</p>;
 }
 
 // -- sky column: translated from Final/daily-state-1.html ---------------------
@@ -104,9 +102,21 @@ export function SunCard({ sun, lon, now }: { sun: SunInfo; lon: number; now: Dat
         </span>
       </div>
       <div className="field sun-field">
-        <svg className="arc" viewBox="0 0 400 168" preserveAspectRatio="none" aria-hidden="true">
-          <line x1="0" y1="150" x2="400" y2="150" stroke="color-mix(in oklch, var(--whimsy-dusk), var(--whimsy-day) 46%)" strokeWidth="1.5" />
-          <path d="M6 150 Q200 -90 394 150" fill="none" stroke="var(--whimsy-sun)" strokeWidth="2" strokeDasharray="3 7" strokeLinecap="round" />
+        <svg
+          className="arc"
+          viewBox={`0 0 ${SUN_ARC.w} ${SUN_ARC.h}`}
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <line
+            x1="0"
+            y1={SUN_ARC.horizon}
+            x2={SUN_ARC.w}
+            y2={SUN_ARC.horizon}
+            stroke="color-mix(in oklch, var(--whimsy-dusk), var(--whimsy-day) 46%)"
+            strokeWidth="1.5"
+          />
+          <path d={sunArcPath()} fill="none" stroke="var(--whimsy-sun)" strokeWidth="2" strokeDasharray="3 7" strokeLinecap="round" />
         </svg>
         {p.visible && <div className="sun-disc" style={{ left: p.xPct + "%", top: p.yPct + "%" }} />}
         {sun.state === "normal" ? (
@@ -303,11 +313,21 @@ export function QuoteCard({ dayKey }: { dayKey: string }) {
     <div className="card whimsy quote-card" style={ALMANAC_FLEX}>
       <Ovl label="Quote" d={I_QUOTE} />
       <div className="art" style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        <span className="qmark" aria-hidden="true">
-          {"\u201C"}
-        </span>
-        <p className="quote">{q.text}</p>
-        <p className="by">{"\u2014 " + q.who}</p>
+        {/* `.qbody` is a Build-side wrapper with no counterpart in the FINAL.
+            `.qmark` is absolutely positioned against its nearest positioned
+            ancestor, which in the frozen file is `.art` \u2014 fine there, because
+            that art box hugs its text. Our almanac cards GROW to match the sky
+            column while `.art` centres its content, so the mark would stay
+            pinned to the top of a much taller box and drift away from the line
+            it belongs to. Wrapping the text block gives the mark something that
+            hugs the text at any card height. */}
+        <div className="qbody">
+          <span className="qmark" aria-hidden="true">
+            {"\u201C"}
+          </span>
+          <p className="quote">{q.text}</p>
+          <p className="by">{"\u2014 " + q.who}</p>
+        </div>
       </div>
     </div>
   );
@@ -322,15 +342,20 @@ export function WordCard({ dayKey }: { dayKey: string }) {
         <div className="w">{w.word}</div>
         <div className="rule" aria-hidden="true" />
         <div className="pr">
-          <span className="pos">{w.kind}</span>
+          {w.ipa} · <span className="pos">{w.kind}</span>
         </div>
         <div className="def">{w.meaning}</div>
+        <div className="ety">
+          <span className="lbl">Etymology</span>
+          {w.etymology}
+        </div>
       </div>
     </div>
   );
 }
 
 export function FactCard({ dayKey }: { dayKey: string }) {
+  const f = factFor(dayKey);
   return (
     <div className="card whimsy" style={ALMANAC_FLEX}>
       <Ovl label="Fun fact" d={I_FACT} />
@@ -338,8 +363,11 @@ export function FactCard({ dayKey }: { dayKey: string }) {
         className="art"
         style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "flex-start", gap: "var(--space-4)" }}
       >
+        <span className="chip-cat" style={{ ["--c" as string]: `var(--cat-${f.cat})` }}>
+          {f.category}
+        </span>
         <p className="fact" style={{ margin: 0 }}>
-          {factFor(dayKey)}
+          {f.text}
         </p>
       </div>
     </div>
@@ -347,11 +375,22 @@ export function FactCard({ dayKey }: { dayKey: string }) {
 }
 
 const MON_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MON_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-export function OnThisDayCard({ dayKey }: { dayKey: string }) {
-  const h = onThisDay(dayKey);
+export function OnThisDayCard({
+  dayKey,
+  anniversaries = [],
+  trackingYears = null,
+}: {
+  dayKey: string;
+  anniversaries?: Anniversary[];
+  trackingYears?: number | null;
+}) {
+  const events = onThisDay(dayKey);
   const dd = Number(dayKey.slice(8, 10));
-  const mon = MON_SHORT[Number(dayKey.slice(5, 7)) - 1];
+  const monLong = MON_LONG[Number(dayKey.slice(5, 7)) - 1];
+  const thisYear = dayKey.slice(0, 4);
+  const hasPersonal = anniversaries.length > 0 || trackingYears != null;
   return (
     <div className="card whimsy otd" style={ALMANAC_FLEX}>
       <div className="ovl">
@@ -364,21 +403,44 @@ export function OnThisDayCard({ dayKey }: { dayKey: string }) {
           </svg>
           On this day
         </span>
-        <span className="meta">{dd + " " + mon}</span>
+        <span className="meta">{dd + " " + monLong}</span>
       </div>
       <div className="art" style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        {/* The empty state is NOT a timeline row: as an <li> it inherited the
+            rail and its marker dot, and the text was forced into the narrow
+            column that exists to sit beside a year — one word per line. */}
+        {events.length === 0 && !hasPersonal ? (
+          <p className="tl-empty">Nothing recorded for this date.</p>
+        ) : (
         <ol className="tl">
-          {h ? (
-            <li className="tl-ev">
-              <span className="tl-yr kv">{h.year}</span>
-              <span className="tl-tx">{h.what}</span>
+          {events.map((e) => (
+            <li className="tl-ev" key={e.year}>
+              <span className="tl-yr kv">{e.year}</span>
+              <span className="tl-tx">{e.what}</span>
             </li>
-          ) : (
-            <li className="tl-ev">
-              <span className="tl-tx">Nothing recorded for this date.</span>
+          ))}
+          {/* The row about YOU — derived from the store, never stored. */}
+          {hasPersonal && (
+            <li className="tl-ev now">
+              <span className="tl-yr kv">{thisYear}</span>
+              <span className="tl-tx">
+                {anniversaries.map((a, i) => (
+                  <span key={a.habitName}>
+                    {i > 0 ? " \u00b7 " : ""}
+                    {a.years} {a.years === 1 ? "year" : "years"} since your first{" "}
+                    <a className="door">{a.habitName}</a> session
+                  </span>
+                ))}
+                {trackingYears != null &&
+                  (anniversaries.length > 0 ? " \u00b7 " : "") +
+                    trackingYears +
+                    (trackingYears === 1 ? " year" : " years") +
+                    " of tracking with Cibo."}
+              </span>
             </li>
           )}
         </ol>
+        )}
       </div>
     </div>
   );
@@ -446,6 +508,7 @@ function Ring({ pct, stroke, label }: { pct: number; stroke: string; label: stri
   );
 }
 
+const WEEKDAY_FMT = new Intl.DateTimeFormat(undefined, { weekday: "long" });
 const MON_VAR = ["--month-jan", "--month-feb", "--month-mar", "--month-apr", "--month-may", "--month-jun", "--month-jul", "--month-aug", "--month-sep", "--month-oct", "--month-nov", "--month-dec"];
 
 export function TimeProgressCard({ dayKey, now }: { dayKey: string; now: Date }) {
@@ -488,90 +551,255 @@ export function TimeProgressCard({ dayKey, now }: { dayKey: string; now: Date })
           <Ring pct={t.yearPct} stroke="var(--accent)" label="Year" />
         </div>
         <div className="tp-note">
-          {"Day " + doy + " of " + daysInYear + " \u00b7 week " + week + " \u00b7 Q" + (Math.floor(mi / 3) + 1)}
+          {"Day " + doy + " of " + daysInYear + " \u00b7 week " + week + " \u00b7 Q" + (Math.floor(mi / 3) + 1) + " \u00b7 " + WEEKDAY_FMT.format(d) + " " + String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0")}
         </div>
       </div>
     </div>
   );
 }
 
-// ── the mystical shelf ────────────────────────────────────────────────────────
+// -- the mystical shelf: translated from Final/daily-state-1.html -------------
 
-export function HoroscopeCard() {
+const I_HORO = ["M20.341 6.484A10 10 0 0 1 10.266 21.85", "M3.659 17.516A10 10 0 0 1 13.74 2.152", "circle:3"];
+const I_TAROT = ["M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z", "M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12", "M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"];
+const I_REDISC = ["M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", "M3 3v5h5", "M12 7v5l4 2"];
+const I_CD = ["M10 2h4", "M12 14l3-3", "circle:8"];
+const I_LIFE = ["M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"];
+
+export function HoroscopeCard({ config }: { config: WhimsyConfig }) {
+  const sign = sunSign(config.birthdate);
   return (
-    <Card title="Horoscope" className="w-horoscope">
-      <Pending what="The daily horoscope" />
-    </Card>
+    <div className="card whimsy horo">
+      <Ovl label="Horoscope" d={I_HORO} />
+      <div className="body art">
+        {sign && (
+          <div className="sign">
+            <div className="disc2">
+              <span className="gl">{sign.glyph}</span>
+            </div>
+            <div className="nm">{sign.name}</div>
+          </div>
+        )}
+        {/* The sign is a pure function of the birthdate, so it renders now; the
+            reading itself is ephemeral (snapshot-at-fetch) and waits. */}
+        <p className="wpending">
+          {sign
+            ? "Today's reading for " + sign.name + " arrives with the network tier."
+            : "Set a birthdate to see your sign."}
+        </p>
+      </div>
+    </div>
   );
 }
 
+/**
+ * The card face is drawn to the FINAL's geometry, but DELIBERATELY blank of a
+ * named card: the daily draw is ephemeral, and inventing "The Star" would be
+ * fabricating a reading the app has not made. The frame, gilt border and star
+ * field stand; the numeral, name and keywords arrive with the fetch.
+ */
 export function TarotCard() {
   return (
-    <Card title="Tarot" className="w-tarot">
-      <Pending what="The daily draw" />
-    </Card>
+    <div className="card whimsy tarot">
+      <Ovl label="Tarot" d={I_TAROT} />
+      <div className="body art">
+        <svg className="tarot-card" viewBox="0 0 104 182" aria-hidden="true">
+          <rect x="2" y="2" width="100" height="178" rx="7" fill="var(--whimsy-parchment)" stroke="var(--whimsy-ink)" strokeWidth="1.5" />
+          <rect x="8" y="8" width="88" height="166" rx="4" fill="none" stroke="var(--whimsy-star)" strokeWidth="1" />
+          <g fill="var(--whimsy-star)">
+            <circle cx="24" cy="34" r="1.6" />
+            <circle cx="80" cy="30" r="1.4" />
+            <circle cx="52" cy="31" r="1.5" />
+            <circle cx="30" cy="58" r="1.2" />
+            <circle cx="74" cy="60" r="1.3" />
+            <circle cx="20" cy="88" r="1.2" />
+            <circle cx="84" cy="90" r="1.4" />
+          </g>
+          <g fill="none" stroke="var(--whimsy-ink)" strokeWidth="1.3" strokeLinecap="round" opacity="0.35">
+            <path d="M14 132 q11 -6 22 0 t22 0 t22 0" />
+            <path d="M14 144 q11 -6 22 0 t22 0 t22 0" opacity="0.6" />
+          </g>
+        </svg>
+        <div>
+          <p className="wpending">The daily draw arrives with the network tier.</p>
+        </div>
+      </div>
+    </div>
   );
 }
 
-export function RediscoverCard({ dayKey, pastDays }: { dayKey: string; pastDays: string[] }) {
+const WEEKDAY_LONG = new Intl.DateTimeFormat(undefined, { weekday: "long", day: "numeric", month: "long" });
+
+export function RediscoverCard({
+  dayKey,
+  pastDays,
+  onOpenDay,
+}: {
+  dayKey: string;
+  pastDays: string[];
+  onOpenDay?: (day: string) => void;
+}) {
   const day = rediscover(pastDays, dayKey);
+  if (!day) {
+    return (
+      <div className="card whimsy redisc">
+        <Ovl label="Rediscover" d={I_REDISC} />
+        <div className="portal">
+          <p className="wpending">Nothing logged yet to revisit.</p>
+        </div>
+      </div>
+    );
+  }
+  // The mini wall is tinted by the rediscovered day's own month, as drawn: a few
+  // tiles carry the month at different mixes, the rest stay neutral.
+  const mv = MON_VAR[Number(day.slice(5, 7)) - 1];
+  const tint = (mix: number) => ({
+    background: "color-mix(in oklch, var(" + mv + "), var(--panel-background) " + mix + "%)",
+  });
+  const lit: Record<number, number> = { 1: 50, 6: 66, 8: 78 };
   return (
-    <Card title="Rediscover" className="w-rediscover">
-      {day ? (
-        <>
-          <p className="wbig sm">{day}</p>
-          {/* A door to that day's cover wall — inert until the wall exists. */}
-          <p className="wnote">Revisit this day</p>
-        </>
-      ) : (
-        <p className="wnote">Nothing logged yet to revisit.</p>
-      )}
-    </Card>
+    <div className="card whimsy redisc">
+      <Ovl label="Rediscover" d={I_REDISC} />
+      <div className="portal">
+        <div className="mini">
+          {Array.from({ length: 12 }, (_, i) => (
+            <i key={i} style={lit[i] ? tint(lit[i]) : undefined} />
+          ))}
+        </div>
+        <div className="plate">
+          <div className="dt2">{WEEKDAY_LONG.format(new Date(day + "T12:00:00"))}</div>
+          {/* Door to that day's cover wall — inert until state 2 exists. */}
+          <a className="go door" onClick={onOpenDay ? () => onOpenDay(day) : undefined}>
+            step back into that day
+            <svg className="ico sm" viewBox="0 0 24 24">
+              <path d="M7 7h10v10" />
+              <path d="M7 17 17 7" />
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
+
+const CD_DATE = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" });
+
+/** Rows per page (user-ruled 2026-07-26: three). */
+const CD_PER_PAGE = 3;
 
 export function CountdownsCard({ config, dayKey }: { config: WhimsyConfig; dayKey: string }) {
-  const list = countdowns(config.events, dayKey).slice(0, 4);
+  const all = countdowns(config.events, dayKey);
+  const pages = Math.max(1, Math.ceil(all.length / CD_PER_PAGE));
+  const [wanted, setPage] = useState(0);
+  // Clamped rather than reset in an effect: the event list can shrink under us
+  // (the dev panel, or a one-shot dropping off once it is past), and a stale
+  // index would otherwise render an empty page.
+  const page = Math.min(wanted, pages - 1);
+  const list = all.slice(page * CD_PER_PAGE, page * CD_PER_PAGE + CD_PER_PAGE);
+  // The FINAL draws two roomy rows. Past that the big numeral stops fitting
+  // beside its label, so the card steps down to a denser row.
+  const dense = list.length > 2;
   return (
-    <Card title="Countdowns" className="w-countdown">
-      {list.length === 0 && <p className="wnote">No dates set.</p>}
-      {list.map((c) => (
-        <div className="wrow" key={`${c.label}-${c.date}`}>
-          <span>{c.label}</span>
-          <strong>
-            {c.days === 0 ? "today" : c.days > 0 ? `${c.days}d` : `${Math.abs(c.days)}d ago`}
-            {/* Both directions, user-ruled: the countdown AND how long since the
-                last time round. Suppressed when they would say the same thing —
-                on the day itself, and for a one-shot that has already passed. */}
-            {c.sinceDays != null && c.days > 0 && (
-              <span className="wsince"> · {c.sinceDays}d since</span>
-            )}
-          </strong>
+    <div className={dense ? "card whimsy cd dense" : "card whimsy cd"}>
+      <Ovl label="Countdowns" d={I_CD} />
+      <div className="art" style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        {list.length === 0 && <p className="wpending">No dates set.</p>}
+        {list.map((c) => {
+          // A recurring event shows its NEXT occurrence, not the year it began.
+          const when = c.recurring
+            ? new Date(dayKey + "T12:00:00").getTime() + c.days * 86_400_000
+            : new Date(c.date + "T12:00:00").getTime();
+          return (
+            <div className="cdrow" key={c.id}>
+              {/* "today" reads as one word, not as a dash beside a unit. */}
+              {c.days === 0 ? (
+                <span className="cdtoday">today</span>
+              ) : (
+                <>
+                  <span className="cdnum">{c.days}</span>
+                  <span className="cdu">{c.days === 1 ? "day" : "days"}</span>
+                </>
+              )}
+              <span className="cdmeta">
+                <span className="nm" title={c.label}>
+                  {c.label}
+                </span>
+                <span className="when">{CD_DATE.format(new Date(when))}</span>
+                {/* Both directions, user-ruled 2026-07-25 — on its own line, not
+                    appended to the date, which pushed the row past the card. */}
+                {c.sinceDays != null && c.days > 0 && (
+                  <span className="cdsince">{c.sinceDays}d since the last</span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {pages > 1 && (
+        <div className="cdpager">
+          <button
+            className="cdpg"
+            onClick={() => setPage(Math.max(0, page - 1))}
+            disabled={page === 0}
+            aria-label="Previous countdowns"
+          >
+            <svg className="ico sm" viewBox="0 0 24 24">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+          <span className="cdpgn">
+            {page + 1} / {pages}
+          </span>
+          <button
+            className="cdpg"
+            onClick={() => setPage(Math.min(pages - 1, page + 1))}
+            disabled={page === pages - 1}
+            aria-label="More countdowns"
+          >
+            <svg className="ico sm" viewBox="0 0 24 24">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
         </div>
-      ))}
-    </Card>
+      )}
+    </div>
   );
 }
 
-export function LifetimeCard({ config, dayKey }: { config: WhimsyConfig; dayKey: string }) {
-  const lt = lifetime(config.birthdate, dayKey);
+/**
+ * LIFETIME IS THE TRACKING'S LIFETIME, NOT THE USER'S.
+ *
+ * The FINAL draws "days tracked / sessions / entries" — totals across the whole
+ * store. An earlier pass here read the label as a lifespan and rendered days
+ * alive from the birthdate, which is a different card entirely. The lifespan
+ * figures live on the almanac's own progress tier, not here.
+ */
+export function LifetimeCard({
+  daysTracked,
+  sessions,
+  entries,
+}: {
+  daysTracked: number;
+  sessions: number;
+  entries: number;
+}) {
+  const rows: Array<[number, string, boolean]> = [
+    [daysTracked, "days tracked", true],
+    [sessions, "sessions", false],
+    [entries, "entries", false],
+  ];
   return (
-    <Card title="Lifetime" className="w-lifetime">
-      {lt ? (
-        <>
-          <p className="wbig">{lt.days.toLocaleString()}</p>
-          <p className="wnote">days · {lt.years} years</p>
-          <div className="wmeter">
-            <span style={{ width: `${Math.round(lt.yearProgress * 100)}%` }} />
+    <div className="card whimsy life">
+      <Ovl label="Lifetime" d={I_LIFE} />
+      <div className="art" style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        {rows.map(([n, label, lead]) => (
+          <div className={lead ? "r lead" : "r"} key={label}>
+            <span className="n">{n.toLocaleString()}</span>
+            <span className="l">{label}</span>
           </div>
-          <p className="wnote">
-            {lt.nextBirthdayDays === 0 ? "Today!" : `${lt.nextBirthdayDays} days to the next`}
-          </p>
-        </>
-      ) : (
-        <p className="wnote">No birthdate set.</p>
-      )}
-    </Card>
+        ))}
+      </div>
+    </div>
   );
 }
 

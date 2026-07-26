@@ -53,14 +53,24 @@ export function DevWhimsyPanel({
   const setEvent = (id: string, patch: Partial<DatedEvent>) =>
     onChange({ ...config, events: config.events.map((e) => (e.id === id ? { ...e, ...patch } : e)) });
 
-  const addEvent = () =>
+  /**
+   * Each added event gets a distinct label and a staggered date. Adding several
+   * identical "New event / today" rows is degenerate test data — it produced
+   * seven rows that all counted down to today, which told us nothing about the
+   * layout, and their identical ids/labels are what surfaced the duplicate-key
+   * bug in the first place.
+   */
+  const addEvent = () => {
+    const n = config.events.length + 1;
+    const date = new Date(Date.now() + n * 11 * 86_400_000).toISOString().slice(0, 10);
     onChange({
       ...config,
       events: [
         ...config.events,
-        { id: `e${Date.now()}`, label: "New event", date: new Date().toISOString().slice(0, 10), recurring: false },
+        { id: `e${Date.now()}-${n}`, label: `Event ${n}`, date, recurring: false },
       ],
     });
+  };
 
   return (
     <div className="devwhimsy">

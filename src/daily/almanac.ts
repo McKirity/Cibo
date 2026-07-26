@@ -75,54 +75,66 @@ export interface WordOfDay {
   word: string;
   kind: string;
   meaning: string;
+  /** Rendered in `.pr` before the part of speech, as the FINAL draws it. */
+  ipa: string;
+  /** The `.ety` block. `em` marks the source words the FINAL italicises. */
+  etymology: string;
 }
 
 const WORDS: WordOfDay[] = [
-  { word: "petrichor", kind: "noun", meaning: "the smell of rain on dry earth" },
-  { word: "sonder", kind: "noun", meaning: "the realisation that every passer-by has a life as vivid as your own" },
-  { word: "apricity", kind: "noun", meaning: "the warmth of the sun in winter" },
-  { word: "eucatastrophe", kind: "noun", meaning: "a sudden turn to the good when all seemed lost" },
-  { word: "hiraeth", kind: "noun", meaning: "longing for a home you cannot return to" },
-  { word: "limerence", kind: "noun", meaning: "the involuntary, absorbing early state of infatuation" },
-  { word: "susurrus", kind: "noun", meaning: "a soft murmuring or rustling" },
-  { word: "vellichor", kind: "noun", meaning: "the strange wistfulness of second-hand bookshops" },
-  { word: "meraki", kind: "noun", meaning: "doing something with soul, creativity, and love" },
-  { word: "komorebi", kind: "noun", meaning: "sunlight filtering through leaves" },
-  { word: "saudade", kind: "noun", meaning: "a deep nostalgic longing for something absent" },
-  { word: "nemophilist", kind: "noun", meaning: "one who is fond of forests" },
-  { word: "eudaimonia", kind: "noun", meaning: "flourishing; the good life well lived" },
-  { word: "sprezzatura", kind: "noun", meaning: "studied carelessness; art that hides the effort" },
-  { word: "wabi-sabi", kind: "noun", meaning: "beauty in imperfection and impermanence" },
-  { word: "solivagant", kind: "adj.", meaning: "wandering alone" },
-  { word: "quiddity", kind: "noun", meaning: "the inherent nature of a thing; its whatness" },
-  { word: "halcyon", kind: "adj.", meaning: "calm, peaceful, golden in memory" },
-  { word: "ineffable", kind: "adj.", meaning: "too great to be expressed in words" },
-  { word: "liminal", kind: "adj.", meaning: "occupying a threshold; between two states" },
-  { word: "numinous", kind: "adj.", meaning: "suggesting the presence of something beyond comprehension" },
-  { word: "obdurate", kind: "adj.", meaning: "stubbornly refusing to change one's course" },
+  { word: "petrichor", kind: "noun", meaning: "the smell of rain on dry earth", ipa: "/\u02c8p\u025btr\u026ak\u0254\u02d0r/", etymology: "from Greek petra 'rock' + \u012bch\u014dr, the blood of the gods." },
+  { word: "sonder", kind: "noun", meaning: "the realisation that every passer-by has a life as vivid as your own", ipa: "/\u02c8s\u0252nd\u0259/", etymology: "coined 2012 in the Dictionary of Obscure Sorrows." },
+  { word: "apricity", kind: "noun", meaning: "the warmth of the sun in winter", ipa: "/\u0259\u02c8pr\u026as\u026ati/", etymology: "from Latin apricus 'exposed to the sun'." },
+  { word: "eucatastrophe", kind: "noun", meaning: "a sudden turn to the good when all seemed lost", ipa: "/ju\u02d0k\u0259\u02c8tastr\u0259fi/", etymology: "coined by J. R. R. Tolkien, from Greek eu- 'good' + catastrophe." },
+  { word: "hiraeth", kind: "noun", meaning: "longing for a home you cannot return to", ipa: "/\u02c8h\u026ar\u0251\u026a\u03b8/", etymology: "Welsh; no direct English equivalent." },
+  { word: "limerence", kind: "noun", meaning: "the involuntary, absorbing early state of infatuation", ipa: "/\u02c8l\u026am\u0259r\u0259ns/", etymology: "coined by psychologist Dorothy Tennov in the 1970s." },
+  { word: "susurrus", kind: "noun", meaning: "a soft murmuring or rustling", ipa: "/s\u028a\u02c8s\u028cr\u0259s/", etymology: "from Latin susurrus 'a humming, whispering'." },
+  { word: "vellichor", kind: "noun", meaning: "the strange wistfulness of second-hand bookshops", ipa: "/\u02c8v\u025bl\u026ak\u0254\u02d0r/", etymology: "coined on the model of petrichor, from vellum." },
+  { word: "meraki", kind: "noun", meaning: "doing something with soul, creativity, and love", ipa: "/me\u02c8raki/", etymology: "Modern Greek, from Turkish merak 'labour of love'." },
+  { word: "komorebi", kind: "noun", meaning: "sunlight filtering through leaves", ipa: "/ko\u02c8mo\u027ebe\u032f/", etymology: "Japanese \u6728\u6f0f\u308c\u65e5, literally 'tree-leak-sun'." },
+  { word: "saudade", kind: "noun", meaning: "a deep nostalgic longing for something absent", ipa: "/sa\u028a\u02c8d\u0251\u02d0d\u0259/", etymology: "Portuguese, from Latin solitas 'solitude'." },
+  { word: "nemophilist", kind: "noun", meaning: "one who is fond of forests", ipa: "/n\u026a\u02c8m\u0252f\u026al\u026ast/", etymology: "from Greek nemos 'grove' + philos 'loving'." },
+  { word: "eudaimonia", kind: "noun", meaning: "flourishing; the good life well lived", ipa: "/ju\u02d0d\u026a\u02c8mo\u028ani\u0259/", etymology: "Greek eu- 'good' + daim\u014dn 'spirit'; central to Aristotle." },
+  { word: "sprezzatura", kind: "noun", meaning: "studied carelessness; art that hides the effort", ipa: "/spr\u025bts\u0259\u02c8t\u028a\u0259r\u0259/", etymology: "Italian, coined by Castiglione in 1528." },
+  { word: "wabi-sabi", kind: "noun", meaning: "beauty in imperfection and impermanence", ipa: "/\u02c8w\u0251\u02d0bi \u02c8s\u0251\u02d0bi/", etymology: "Japanese \u4fab\u5bc2, from wabi 'austere beauty' + sabi 'patina'." },
+  { word: "solivagant", kind: "adj.", meaning: "wandering alone", ipa: "/s\u0259\u02c8l\u026av\u0259\u0261\u0259nt/", etymology: "from Latin solus 'alone' + vagari 'to wander'." },
+  { word: "quiddity", kind: "noun", meaning: "the inherent nature of a thing; its whatness", ipa: "/\u02c8kw\u026ad\u026ati/", etymology: "from Latin quidditas, from quid 'what'." },
+  { word: "halcyon", kind: "adj.", meaning: "calm, peaceful, golden in memory", ipa: "/\u02c8halsi\u0259n/", etymology: "from Greek halky\u014dn, a bird said to calm the winter sea." },
+  { word: "ineffable", kind: "adj.", meaning: "too great to be expressed in words", ipa: "/\u026a\u02c8n\u025bf\u0259b(\u0259)l/", etymology: "from Latin in- 'not' + effabilis 'utterable'." },
+  { word: "liminal", kind: "adj.", meaning: "occupying a threshold; between two states", ipa: "/\u02c8l\u026am\u026an(\u0259)l/", etymology: "from Latin limen 'threshold'." },
+  { word: "numinous", kind: "adj.", meaning: "suggesting the presence of something beyond comprehension", ipa: "/\u02c8nju\u02d0m\u026an\u0259s/", etymology: "from Latin numen 'divine will'." },
+  { word: "obdurate", kind: "adj.", meaning: "stubbornly refusing to change one's course", ipa: "/\u02c8\u0252bdj\u028ar\u0259t/", etymology: "from Latin obduratus 'hardened'." },
 ];
 
-const FACTS: string[] = [
-  "A day on Venus is longer than its year.",
-  "Honey found in Egyptian tombs was still edible after 3,000 years.",
-  "Octopuses have three hearts, and two stop beating when they swim.",
-  "There are more possible games of chess than atoms in the observable universe.",
-  "Bananas are berries; strawberries are not.",
-  "The Eiffel Tower can be up to 15 cm taller in summer as the iron expands.",
-  "Wombat droppings are cube-shaped.",
-  "Sharks existed before trees did.",
-  "A group of flamingos is called a flamboyance.",
-  "Cleopatra lived closer in time to the Moon landing than to the building of the Great Pyramid.",
-  "Sea otters hold hands while sleeping so they do not drift apart.",
-  "Oxford University is older than the Aztec Empire.",
-  "The shortest war in history lasted 38 minutes.",
-  "Water can boil and freeze at the same time — the triple point.",
-  "A bolt of lightning is roughly five times hotter than the surface of the sun.",
-  "Snails can sleep for up to three years.",
-  "The dot over a lowercase i is called a tittle.",
-  "Scotland's national animal is the unicorn.",
-  "Hot water freezes faster than cold under some conditions — the Mpemba effect.",
-  "Venus is the only planet that spins clockwise.",
+export interface FunFact {
+  text: string;
+  /** Drawn as `.chip-cat`, tinted from the categorical palette. */
+  category: string;
+  /** 1..8 — indexes --cat-N. */
+  cat: number;
+}
+
+const FACTS: FunFact[] = [
+  { text: "A day on Venus is longer than its year.", category: "Astronomy", cat: 1 },
+  { text: "Honey found in Egyptian tombs was still edible after 3,000 years.", category: "History", cat: 3 },
+  { text: "Octopuses have three hearts, and two stop beating when they swim.", category: "Biology", cat: 2 },
+  { text: "There are more possible games of chess than atoms in the observable universe.", category: "Mathematics", cat: 4 },
+  { text: "Bananas are berries; strawberries are not.", category: "Biology", cat: 2 },
+  { text: "The Eiffel Tower can be up to 15 cm taller in summer as the iron expands.", category: "Physics", cat: 5 },
+  { text: "Wombat droppings are cube-shaped.", category: "Biology", cat: 2 },
+  { text: "Sharks existed before trees did.", category: "Biology", cat: 2 },
+  { text: "A group of flamingos is called a flamboyance.", category: "Language", cat: 6 },
+  { text: "Cleopatra lived closer in time to the Moon landing than to the building of the Great Pyramid.", category: "History", cat: 3 },
+  { text: "Sea otters hold hands while sleeping so they do not drift apart.", category: "Biology", cat: 2 },
+  { text: "Oxford University is older than the Aztec Empire.", category: "History", cat: 3 },
+  { text: "The shortest war in history lasted 38 minutes.", category: "History", cat: 3 },
+  { text: "Water can boil and freeze at the same time — the triple point.", category: "Physics", cat: 5 },
+  { text: "A bolt of lightning is roughly five times hotter than the surface of the sun.", category: "Physics", cat: 5 },
+  { text: "Snails can sleep for up to three years.", category: "Biology", cat: 2 },
+  { text: "The dot over a lowercase i is called a tittle.", category: "Language", cat: 6 },
+  { text: "Scotland's national animal is the unicorn.", category: "Culture", cat: 7 },
+  { text: "Hot water freezes faster than cold under some conditions — the Mpemba effect.", category: "Physics", cat: 5 },
+  { text: "Venus is the only planet that spins clockwise.", category: "Astronomy", cat: 1 },
 ];
 
 /**
@@ -177,10 +189,44 @@ const ON_THIS_DAY: Array<{ md: string; year: number; what: string }> = [
   { md: "12-17", year: 1903, what: "The Wright brothers achieved powered flight." },
 ];
 
-export const onThisDay = (dayKey: string): { year: number; what: string } | null => {
-  const hit = ON_THIS_DAY.find((h) => h.md === dayKey.slice(5));
-  return hit ? { year: hit.year, what: hit.what } : null;
-};
+/** ALL entries for the date — the FINAL draws a timeline, not a single line. */
+export const onThisDay = (dayKey: string): Array<{ year: number; what: string }> =>
+  ON_THIS_DAY.filter((h) => h.md === dayKey.slice(5))
+    .map((h) => ({ year: h.year, what: h.what }))
+    .sort((a, b) => a.year - b.year);
+
+/**
+ * The timeline's own `.tl-ev.now` row — the entry about YOU rather than about
+ * history ("3 years since your first Reading session · 1 year of tracking with
+ * Cibo"). Derived from the store, never stored.
+ *
+ * An anniversary is a first-session date whose month/day matches today and
+ * whose year is at least one back — the day itself is not an anniversary.
+ */
+export interface Anniversary {
+  habitName: string;
+  years: number;
+}
+
+export function anniversariesFor(
+  firsts: Array<{ name: string; day: string }>,
+  dayKey: string,
+): Anniversary[] {
+  const md = dayKey.slice(5);
+  const year = Number(dayKey.slice(0, 4));
+  return firsts
+    .filter((f) => f.day.slice(5) === md && Number(f.day.slice(0, 4)) < year)
+    .map((f) => ({ habitName: f.name, years: year - Number(f.day.slice(0, 4)) }))
+    .sort((a, b) => b.years - a.years);
+}
+
+/** Whole years of tracking, when today is the anniversary of the first day. */
+export function trackingAnniversary(firstEverDay: string | null, dayKey: string): number | null {
+  if (!firstEverDay) return null;
+  if (firstEverDay.slice(5) !== dayKey.slice(5)) return null;
+  const years = Number(dayKey.slice(0, 4)) - Number(firstEverDay.slice(0, 4));
+  return years >= 1 ? years : null;
+}
 
 /**
  * Rediscover — a past day of the user's OWN data, surfaced to be revisited.
@@ -194,7 +240,7 @@ export const rediscover = (pastDays: string[], dayKey: string): string | null =>
 
 export const quoteFor = (dayKey: string): Quote => pickFor(QUOTES, dayKey, 1);
 export const wordFor = (dayKey: string): WordOfDay => pickFor(WORDS, dayKey, 2);
-export const factFor = (dayKey: string): string => pickFor(FACTS, dayKey, 3);
+export const factFor = (dayKey: string): FunFact => pickFor(FACTS, dayKey, 3);
 
 /** Null on the vast majority of days — the card is absent, not empty. */
 export const holidayFor = (dayKey: string): string | null =>
@@ -228,6 +274,12 @@ export function timeProgress(dayKey: string, now: Date): TimeProgress {
 }
 
 export interface Countdown {
+  /**
+   * The source event's id. Rows MUST key on this: label+date collide the moment
+   * two events share a name and a day, and duplicate React keys corrupt
+   * reconciliation (observed: seven rows rendering on a four-row page).
+   */
+  id: string;
   label: string;
   /** Negative = already past (only possible for non-recurring events). */
   days: number;
@@ -256,6 +308,7 @@ export function countdowns(events: DatedEvent[], dayKey: string): Countdown[] {
     if (!e.recurring) {
       const days = Math.round((src.getTime() - today.getTime()) / DAY_MS);
       return {
+        id: e.id,
         label: e.label,
         days,
         // A one-shot has only happened if its date is not in the future.
@@ -271,6 +324,7 @@ export function countdowns(events: DatedEvent[], dayKey: string): Countdown[] {
     let last = new Date(today.getFullYear(), src.getMonth(), src.getDate());
     if (last.getTime() > today.getTime()) last = new Date(today.getFullYear() - 1, src.getMonth(), src.getDate());
     return {
+      id: e.id,
       label: e.label,
       days: Math.round((next.getTime() - today.getTime()) / DAY_MS),
       sinceDays: Math.round((today.getTime() - last.getTime()) / DAY_MS),
@@ -325,6 +379,43 @@ export function lifetime(birthdate: string | null, dayKey: string): Lifetime | n
     yearProgress: span > 0 ? (today.getTime() - lastBd.getTime()) / span : 0,
     nextBirthdayDays: Math.round((nextBd.getTime() - today.getTime()) / DAY_MS),
   };
+}
+
+/**
+ * The zodiac sign, from the birthdate. The horoscope's PROSE is ephemeral and
+ * network-fed, but the sign is a pure function of the birthdate — so the card's
+ * identity block (`.sign > .disc2 > .gl` + `.nm`) renders without the network,
+ * and only the paragraph waits.
+ */
+export interface SunSign {
+  name: string;
+  glyph: string;
+}
+
+const ZODIAC: Array<{ from: string; name: string; glyph: string }> = [
+  { from: "01-20", name: "Aquarius", glyph: "♒" },
+  { from: "02-19", name: "Pisces", glyph: "♓" },
+  { from: "03-21", name: "Aries", glyph: "♈" },
+  { from: "04-20", name: "Taurus", glyph: "♉" },
+  { from: "05-21", name: "Gemini", glyph: "♊" },
+  { from: "06-21", name: "Cancer", glyph: "♋" },
+  { from: "07-23", name: "Leo", glyph: "♌" },
+  { from: "08-23", name: "Virgo", glyph: "♍" },
+  { from: "09-23", name: "Libra", glyph: "♎" },
+  { from: "10-23", name: "Scorpio", glyph: "♏" },
+  { from: "11-22", name: "Sagittarius", glyph: "♐" },
+  { from: "12-22", name: "Capricorn", glyph: "♑" },
+];
+
+export function sunSign(birthdate: string | null): SunSign | null {
+  if (!birthdate) return null;
+  const md = birthdate.slice(5);
+  // Walk backwards to the last cusp on or before the birthday; anything before
+  // 20 January belongs to the Capricorn span that wraps the year end.
+  for (let i = ZODIAC.length - 1; i >= 0; i--) {
+    if (md >= ZODIAC[i].from) return { name: ZODIAC[i].name, glyph: ZODIAC[i].glyph };
+  }
+  return { name: "Capricorn", glyph: "♑" };
 }
 
 /** The config a card needs, narrowed so cards don't take the whole object. */

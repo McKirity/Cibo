@@ -786,6 +786,127 @@
  * construction. Translating the almanac is what gives this screen its real
  * height — not further tuning here.
  */
+/* ===== Countdowns: made to survive more than two entries ====================
+ *
+ * The claimed sheet sets `.cdmeta { flex: 0 0 auto }` with `white-space:nowrap`
+ * on both its lines. That holds for the FINAL's drawn day — two rows, short
+ * labels — but the block then cannot shrink OR wrap, so a longer label or a
+ * fourth digit pushes it straight out of the card (observed: "Birthday" clipped
+ * to "Bir", the date running past the edge).
+ *
+ * Fixes, all Build-side implementation:
+ *   · the meta column may shrink (`min-width:0`) and its name ellipsises
+ *   · the "since" figure moved to its OWN line rather than being appended to
+ *     the date, which is what made the nowrap line overlong
+ *   · a `.dense` variant past two entries: the numeral steps down a size and the
+ *     rows tighten
+ *   · PAGINATION at three rows a page (user-ruled 2026-07-26), so nothing is
+ *     truncated and every dated event stays reachable
+ *
+ * The dense threshold stays at >2 rather than following the page size: the
+ * FINAL's evidence is that two roomy rows fit a shelf card, so a full
+ * three-row page still steps down. A last page of one or two gets the roomy
+ * form back, "since" line included.
+ */
+.daily .cd .cdmeta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.daily .cd .cdmeta .nm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.daily .cd .cdtoday {
+  font-family: var(--font-mono);
+  font-size: var(--whimsy-size-subheading);
+  font-weight: var(--weight-bold);
+  line-height: .9;
+}
+.daily .cd .cdsince {
+  font-size: var(--whimsy-size-caption);
+  color: var(--text-muted);
+}
+.daily .cd.dense .cdnum {
+  font-size: var(--whimsy-size-heading);
+}
+.daily .cd.dense .cdrow + .cdrow {
+  margin-top: var(--space-4);
+}
+.daily .cd.dense .cdsince {
+  display: none; /* the row cannot carry a third line at this density */
+}
+/* Pagination, replacing the "+N more" collapse (user-ruled 2026-07-26): four
+ * rows a page, paged rather than truncated, so no dated event is unreachable.
+ * It sits OUTSIDE `.art` so the rows stay vertically centred in the card and
+ * the control keeps a fixed seat at the bottom instead of drifting with the
+ * page's row count. */
+.daily .cd .cdpager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.daily .cd .cdpg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-small);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.daily .cd .cdpg:hover:not(:disabled) {
+  background: var(--hover-wash);
+  color: var(--text-strong);
+}
+/* Disabled reads through colour alone: the roster carries no disabled-opacity
+ * dial, and a hardcoded percentage would breach the derivation law. */
+.daily .cd .cdpg:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+.daily .cd .cdpgn {
+  font-family: var(--font-mono);
+  font-size: var(--whimsy-size-caption);
+  color: var(--text-muted);
+}
+
+/* The rise/set labels ride up with the horizon.
+ *
+ * `SUN_ARC.horizon` moved 150 -> 136 of 168 (user-ruled 2026-07-26, to leave the
+ * decoration layer room along the field's bottom edge). These labels are
+ * positioned from the same bottom edge, so without this they would stay put
+ * while the rule they belong to lifted away from them.
+ *
+ * The FINAL sat them 15% up, with the horizon 10.7% up — about 4.3% of clear
+ * air above the rule. Horizon is now 19% up, so the labels go to 23%, keeping
+ * that same gap and lifting the whole group clear of the frame band.
+ */
+.daily .sun-end {
+  bottom: 23%;
+}
+
+/* The quote mark's positioning context. `.qmark` is absolute against its
+ * nearest positioned ancestor, which in the FINAL is `.art` — correct there
+ * because that art box hugs its text. Our almanac cards grow to match the sky
+ * column while `.art` centres its content, so the mark would sit at the top of
+ * a much taller box, adrift from the line it belongs to. */
+.daily .quote-card .qbody {
+  position: relative;
+}
+
+/* The on-this-day empty state is a plain line, never a timeline row — as an
+ * <li> it inherited the rail, its marker dot, and the narrow text column that
+ * exists to sit beside a year. */
+.daily .tl-empty {
+  margin: 0;
+  font-size: var(--whimsy-size-small);
+  color: var(--text-muted);
+}
+
 .wsince {
   font-weight: var(--weight-regular);
   color: var(--text-muted);

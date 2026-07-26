@@ -45,6 +45,11 @@ export const DEFAULT_CONFIG: WhimsyConfig = {
   events: [
     { id: "e1", label: "Birthday", date: "1995-06-15", recurring: true },
     { id: "e2", label: "New Year", date: "2026-01-01", recurring: true },
+    { id: "e3", label: "Dentist", date: "2026-09-14", recurring: false },
+    { id: "e4", label: "Passport renewal", date: "2027-02-03", recurring: false },
+    { id: "e5", label: "Quarterly review with the whole department", date: "2026-10-01", recurring: true },
+    { id: "e6", label: "Trip to Kyoto", date: "2026-11-22", recurring: false },
+    { id: "e7", label: "Moved into the flat", date: "2019-04-08", recurring: false },
   ],
 };
 
@@ -127,13 +132,66 @@ export function randomWhimsyConfig(): WhimsyConfig {
   const p = (n: number) => String(n).padStart(2, "0");
   const birthdate = `${year}-${p(month)}-${p(day)}`;
 
-  const events: DatedEvent[] = [
-    { id: "r1", label: "Birthday", date: birthdate, recurring: true },
-    { id: "r2", label: pick(["Anniversary", "Moving day", "First session", "The big trip"]), date: pick(EDGE_DATES), recurring: Math.random() < 0.5 },
-    { id: "r3", label: pick(["Deadline", "Launch", "Concert", "Exam"]), date: pick(EDGE_DATES), recurring: false },
-  ];
+  return {
+    lat: place.lat,
+    lon: place.lon,
+    label: `${place.label} — ${place.why}`,
+    birthdate,
+    events: randomEvents(birthdate),
+  };
+}
 
-  return { lat: place.lat, lon: place.lon, label: `${place.label} — ${place.why}`, birthdate, events };
+/**
+ * Labels chosen to stress the layout, not to look tidy: the countdown card
+ * ellipsises long names and collapses past its visible cap, and neither
+ * behaviour shows up against three short words.
+ */
+const EVENT_LABELS = [
+  "Birthday",
+  "Anniversary",
+  "Moving day",
+  "Deadline",
+  "Launch",
+  "Concert",
+  "Exam",
+  "The big trip",
+  "Dentist",
+  "Passport renewal",
+  "Quarterly review with the whole department",
+  "Hades II — 1.0 release, finally, after all this time",
+  "Trip to Kyoto",
+  "Vet appointment",
+  "Insurance renewal",
+];
+
+/** A spread of near, far, past and edge-case dates. */
+const eventDate = (): string => {
+  const now = new Date();
+  const roll = Math.random();
+  if (roll < 0.2) return pick(EDGE_DATES);
+  // a past one-shot — these must DISAPPEAR from the chart, so generate them
+  if (roll < 0.35) {
+    const d = new Date(now.getTime() - (30 + Math.floor(Math.random() * 2000)) * 86_400_000);
+    return d.toISOString().slice(0, 10);
+  }
+  const d = new Date(now.getTime() + (1 + Math.floor(Math.random() * 400)) * 86_400_000);
+  return d.toISOString().slice(0, 10);
+};
+
+/**
+ * A deliberately variable pile: 3–9 events, so a randomise run lands on the
+ * roomy two-row form, the dense form and the "+N more" collapse across a few
+ * presses rather than always the same shape.
+ */
+function randomEvents(birthdate: string): DatedEvent[] {
+  const n = 3 + Math.floor(Math.random() * 7);
+  const pool = [...EVENT_LABELS];
+  const out: DatedEvent[] = [{ id: "r0", label: "Birthday", date: birthdate, recurring: true }];
+  for (let i = 1; i < n; i++) {
+    const label = pool.length > 0 ? pool.splice(Math.floor(Math.random() * pool.length), 1)[0] : `Event ${i}`;
+    out.push({ id: `r${i}`, label, date: eventDate(), recurring: Math.random() < 0.4 });
+  }
+  return out;
 }
 
 export const PLACE_PRESETS = PLACES;

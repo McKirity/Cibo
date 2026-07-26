@@ -39,6 +39,7 @@ import {
   WordCard,
   skyInputs,
 } from "./cards";
+import { anniversariesFor, trackingAnniversary } from "./almanac";
 import { loadWhimsyConfig, saveWhimsyConfig, type WhimsyConfig } from "./whimsyConfig";
 import "./daily.css";
 
@@ -59,6 +60,32 @@ const DAY_MONTH_YEAR = new Intl.DateTimeFormat(undefined, {
 /** Days that already carry bookkeeping — the pool Rediscover draws from. */
 const loggedDaysQuery = evolu.createQuery((db) =>
   db.selectFrom("days").select(["date"]).where("isDeleted", "is not", 1).orderBy("date", "desc"),
+);
+
+/**
+ * The first session per habit — the on-this-day timeline's personal row is built
+ * from these ("3 years since your first Reading session"). Grouped in SQL rather
+ * than pulled whole: the seeded store holds thousands of sessions and this only
+ * ever needs one row per habit.
+ */
+const firstSessionsQuery = evolu.createQuery((db) =>
+  db
+    .selectFrom("sessions")
+    .select((eb) => ["habit_fk", eb.fn.min("day").as("first_day")])
+    .where("isDeleted", "is not", 1)
+    .groupBy("habit_fk"),
+);
+
+const habitNamesQuery = evolu.createQuery((db) =>
+  db.selectFrom("habits").select(["id", "name"]).where("isDeleted", "is not", 1),
+);
+
+/** Store-wide totals for the Lifetime card — the lifetime of the TRACKING. */
+const sessionCountQuery = evolu.createQuery((db) =>
+  db.selectFrom("sessions").select((eb) => eb.fn.countAll<number>().as("n")).where("isDeleted", "is not", 1),
+);
+const entryCountQuery = evolu.createQuery((db) =>
+  db.selectFrom("entries").select((eb) => eb.fn.countAll<number>().as("n")).where("isDeleted", "is not", 1),
 );
 
 export function Daily({ dayKey = todayLocal() }: { dayKey?: string }) {
@@ -85,6 +112,28 @@ export function Daily({ dayKey = todayLocal() }: { dayKey?: string }) {
   // Recomputed when the config or the minute changes — every card in this tier
   // is a pure function of (dayKey, config, now).
   const { sun, moon } = useMemo(() => skyInputs(dayKey, config, now), [dayKey, config, now]);
+
+  // The on-this-day timeline's personal row, derived from the store.
+  const firstSessions = useQuery(firstSessionsQuery);
+  const habitRows = useQuery(habitNamesQuery);
+  const { anniversaries, trackingYears } = useMemo(() => {
+    const names = new Map(habitRows.map((h) => [String(h.id), String(h.name)]));
+    const firsts = firstSessions
+      .filter((r) => r.first_day != null)
+      .map((r) => ({ name: names.get(String(r.habit_fk)) ?? "", day: String(r.first_day) }))
+      .filter((f) => f.name !== "");
+    const earliest = firsts.reduce<string | null>(
+      (min, f) => (min === null || f.day < min ? f.day : min),
+      null,
+    );
+    return {
+      anniversaries: anniversariesFor(firsts, dayKey),
+      trackingYears: trackingAnniversary(earliest, dayKey),
+    };
+  }, [firstSessions, habitRows, dayKey]);
+
+  const sessionCount = Number(useQuery(sessionCountQuery)[0]?.n ?? 0);
+  const entryCount = Number(useQuery(entryCountQuery)[0]?.n ?? 0);
 
   const holiday = <HolidayCard dayKey={dayKey} />;
 
@@ -123,18 +172,18 @@ export function Daily({ dayKey = todayLocal() }: { dayKey?: string }) {
           <QuoteCard dayKey={dayKey} />
           <WordCard dayKey={dayKey} />
           <FactCard dayKey={dayKey} />
-          <OnThisDayCard dayKey={dayKey} />
+          <OnThisDayCard dayKey={dayKey} anniversaries={anniversaries} trackingYears={trackingYears} />
           {holiday}
           <TimeProgressCard dayKey={dayKey} now={now} />
         </div>
       </div>
 
       <div className="shelf">
-        <HoroscopeCard />
+        <HoroscopeCard config={config} />
         <TarotCard />
         <RediscoverCard dayKey={dayKey} pastDays={pastDays} />
         <CountdownsCard config={config} dayKey={dayKey} />
-        <LifetimeCard config={config} dayKey={dayKey} />
+        <LifetimeCard daysTracked={dayRows.length} sessions={sessionCount} entries={entryCount} />
       </div>
 
       {import.meta.env.DEV && <DevWhimsyPanel config={config} onChange={updateConfig} />}

@@ -129,6 +129,49 @@ export const atLocation = (d: Date, lon: number): string => {
  * morning and afternoon landed on the same spot. It looked static because it
  * very nearly was.)
  */
+/**
+ * THE SUN ARC, defined once.
+ *
+ * The drawn path and the disc's position are the same curve, so they are
+ * derived from one set of constants rather than written out twice — two copies
+ * would drift the moment either is tuned.
+ *
+ * SHRUNK AND RAISED from the FINAL's `M6 150 Q200 -90 394 150` (user-ruled
+ * 2026-07-26). The decoration layer reserves `--frame-clear-whimsy` inside every
+ * whimsy card for an ornamental frame, and the art field bleeds to the card's
+ * inner edges — so the frame band overlaps the field at the sides and, most
+ * of all, along the BOTTOM, which is exactly where the horizon rule and the
+ * rise/set labels sit.
+ *
+ * Two moves, in order:
+ *   1. shrink  — control point -90 -> -44 and feet drawn in 6/394 -> 30/370, so
+ *                the disc (32px + a 6px glow, ~22px of reach) clears the side
+ *                bands and does not ride into the top of the field.
+ *   2. raise   — the whole group lifted 14 units (150 -> 136), taking the
+ *                horizon, both feet and the apex with it, so the bottom band
+ *                has room to be painted under nothing.
+ *
+ * `.sun-end`'s bottom offset is raised in step (daily.css) — it is measured
+ * from the same edge and would otherwise stay behind while the rule moved.
+ */
+export const SUN_ARC = {
+  w: 400,
+  h: 168,
+  x0: 30,
+  y0: 136,
+  /** Control point. */
+  cx: 200,
+  cy: -44,
+  x1: 370,
+  y1: 136,
+  /** The horizon rule the feet sit on. */
+  horizon: 136,
+} as const;
+
+/** The `d` attribute for the drawn arc — same curve the disc is placed on. */
+export const sunArcPath = (): string =>
+  `M${SUN_ARC.x0} ${SUN_ARC.y0} Q${SUN_ARC.cx} ${SUN_ARC.cy} ${SUN_ARC.x1} ${SUN_ARC.y1}`;
+
 export interface SunArcPoint {
   /** Percentages within the field box. */
   xPct: number;
@@ -154,11 +197,12 @@ export function sunArcPoint(sun: SunInfo, now: Date): SunArcPoint {
     t = 0.5;
   }
 
-  // Quadratic Bézier P0(6,150) P1(200,-90) P2(394,150) in the 400x168 box.
+  // Evaluate the same quadratic Bézier the path is drawn from.
   const u = 1 - t;
-  const x = u * u * 6 + 2 * u * t * 200 + t * t * 394;
-  const y = u * u * 150 + 2 * u * t * -90 + t * t * 150;
-  return { xPct: (x / 400) * 100, yPct: (y / 168) * 100, visible: true };
+  const A = SUN_ARC;
+  const x = u * u * A.x0 + 2 * u * t * A.cx + t * t * A.x1;
+  const y = u * u * A.y0 + 2 * u * t * A.cy + t * t * A.y1;
+  return { xPct: (x / A.w) * 100, yPct: (y / A.h) * 100, visible: true };
 }
 
 export interface SkyStops {

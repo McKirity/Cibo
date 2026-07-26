@@ -137,14 +137,19 @@ export function useRangeData(habitKey: string): RangeData {
     }
   }, [habit?.derived_rules]);
 
-  return {
-    ready: habit != null,
-    name: habit?.name ?? habitKey,
-    colourSlot: habit?.colour_slot ?? "habit-1",
-    archived: habit?.archived === 1,
-    sessions,
-    flagDefs,
-    flagBySession,
-    derivedRules,
-  };
+  // Memoize the wrapper object so its identity is stable across renders —
+  // otherwise the consuming dashboard's build memo (keyed on it) never hits.
+  return useMemo<RangeData>(
+    () => ({
+      ready: habit != null,
+      name: habit?.name ?? habitKey,
+      colourSlot: habit?.colour_slot ?? "habit-1",
+      archived: habit?.archived === 1,
+      sessions,
+      flagDefs,
+      flagBySession,
+      derivedRules,
+    }),
+    [habit, habitKey, sessions, flagDefs, flagBySession, derivedRules],
+  );
 }

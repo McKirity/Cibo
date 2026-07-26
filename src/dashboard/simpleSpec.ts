@@ -34,7 +34,6 @@ import {
   dayFromIndex,
   dayGap,
   dayIndex,
-  isoWeek,
   monthKey,
   weekStart,
   yearKey,
@@ -44,7 +43,6 @@ import {
   deltaChip,
   fmtDMY,
   fmtMonY,
-  fmtRange,
   groupInt,
   hoursMinutes,
   hoursTrim1,
@@ -60,6 +58,24 @@ import type {
   ShapeChart,
   TrendSeries,
 } from "./creationSpec";
+import {
+  bestWeekLabel,
+  buildTrendWindow,
+  CAT_SLOTS,
+  dayCounts,
+  grainKey,
+  kFmt,
+  lastMonthWithData,
+  lastRunOf,
+  longestRunOf,
+  maxStr,
+  minStr,
+  MON,
+  monthOverMonth,
+  streakTile,
+  vsYear,
+  yearOverYearDelta,
+} from "./specShared";
 
 export type { ScopeSel } from "./creationSpec";
 
@@ -127,28 +143,16 @@ export interface SimpleModel {
   } | null;
 }
 
-// ── Shared literals (match the sibling specs) ─────────────────────────────────
+// ── Local literals (CAT_SLOTS/MON/maxStr/minStr/kFmt/bestWeekLabel/grainKey/
+//    dayCounts + the streak/delta helpers live in ./specShared) ───────────────
 
-const CAT_SLOTS = ["--cat-1", "--cat-2", "--cat-3", "--cat-4", "--cat-5", "--cat-6", "--cat-7", "--cat-8"];
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MON_1 = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-
-const maxStr = (a: string, b: string) => (a >= b ? a : b);
-const minStr = (a: string, b: string) => (a <= b ? a : b);
-const kFmt = (v: number): string => (v >= 1000 ? `${Math.round(v / 1000)}k` : groupInt(v));
 
 /** Big totals: ≥1M reads "1.20" + unit "M" (the drawn Keyboard/steps idiom). */
 const mSplit = (v: number): { v: string; u?: string } =>
   v >= 1e6 ? { v: (v / 1e6).toFixed(2), u: "M" } : { v: groupInt(v) };
 
-const bestWeekLabel = (weekStartDay: string): string => {
-  const { week, year } = isoWeek(weekStartDay);
-  return `wk ${week} · ${year}`;
-};
-
 type Grain = "day" | "week" | "month";
-const grainKey = (day: string, grain: Grain): string =>
-  grain === "day" ? day : grain === "week" ? weekStart(day) : monthKey(day);
 
 // ── Primary-measure plumbing ──────────────────────────────────────────────────
 // The primary measure = count when declared, else time (the locked rule). All
@@ -166,13 +170,6 @@ interface Measure {
   amountOf: (s: SessionRow) => number;
   fmt: (v: number) => string;
   fmtLong: (v: number) => string;
-}
-
-function dayCounts(sessions: SessionRow[]): Map<string, number> {
-  const m = new Map<string, number>();
-  for (const s of sessions)
-    if (s.measure_kind === "count") m.set(s.day, (m.get(s.day) ?? 0) + (s.value ?? 0));
-  return m;
 }
 
 function makeMeasure(kind: MeasureKindKey, countUnit: string | null): Measure {
@@ -238,7 +235,7 @@ function amountPeriodDelta(
   const prevFrom = dayFromIndex(dayIndex(from) - 1 - len);
   if (scoped(sessions, { from: prevFrom, to: prevTo }).length === 0) return undefined;
   const d = rate(from, to) - rate(prevFrom, prevTo);
-  if (unit === "h") return deltaChip((d / 60) * 60, "m"); // minutes read better at these scales
+  if (unit === "h") return deltaChip(d, "m"); // d is already minutes; show as minutes at these scales
   return { text: `${d < 0 ? "▼" : "▲"} ${groupInt(Math.abs(d))}`, down: d < 0 };
 }
 
@@ -259,13 +256,6 @@ function statDelta(
   return { text: `${d < 0 ? "▼" : "▲"} ${fmt(d)}`, down: d < 0 };
 }
 
-const vsYear = (
-  chip: DeltaChip | null | undefined,
-  isYear: boolean,
-  year: string,
-): DeltaChip | undefined =>
-  chip == null ? undefined : isYear ? { ...chip, text: `${chip.text} vs ${Number(year) - 1}` } : chip;
-
 /** Days-based heat chip for habits whose sessions carry no minutes. */
 function daysHeatChip(sessions: SessionRow[], today: string): HeatChip {
   const from = dayFromIndex(dayIndex(today) - 13);
@@ -273,80 +263,8 @@ function daysHeatChip(sessions: SessionRow[], today: string): HeatChip {
   return d14 >= 9 ? "HOT" : d14 >= 4 ? "WARM" : d14 >= 1 ? "COOLING" : "COLD";
 }
 
-// ── Streak tiles (with the categorical value prefix when one is declared) ─────
-
-function streakTile(
-  label: string,
-  run: Run | null,
-  st: { runs: Run[]; currentRun: Run | null },
-  isCurrent: boolean,
-  valueOfRun: ((run: Run) => string | null) | null,
-): TileSpec {
-  const value = run ? `${run.days}` : "0";
-  const prefix = (r: Run): string => {
-    const v = valueOfRun?.(r);
-    return v ? `${v} · ` : "";
-  };
-  const dateLine = run
-    ? isCurrent && run === st.currentRun
-      ? `${prefix(run)}since ${fmtDMY(run.start)}`
-      : `${prefix(run)}${fmtRange(run.start, run.end)}`
-    : "—";
-  const others = st.runs.filter((r) => r !== run);
-  const picked = isCurrent
-    ? [...others].sort((a, b) => b.end.localeCompare(a.end)).slice(0, 3)
-    : [...others].sort((a, b) => b.days - a.days).slice(0, 3);
-  return {
-    label,
-    value,
-    unit: "d",
-    list: {
-      dateLine,
-      rows: picked.map((r) => ({ k: `${prefix(r)}${fmtRange(r.start, r.end)}`, v: `${r.days}d` })),
-    },
-  };
-}
-
-const longestRunOf = (st: { runs: Run[] }): Run | null =>
-  st.runs.reduce<Run | null>((b, r) => (!b || r.days > b.days ? r : b), null);
-const lastRunOf = (st: { runs: Run[] }): Run | null => st.runs[st.runs.length - 1] ?? null;
-
-// ── Year-over-year helpers (copied conventions from the creation spec) ────────
-
-function yearOverYearDelta(
-  src: Map<string, number>,
-  year: string,
-  endDay: string,
-  div: number,
-): DeltaChip | null {
-  const from = `${year}-01-01`;
-  const prevFrom = `${Number(year) - 1}-01-01`;
-  const prevTo = dayFromIndex(dayIndex(prevFrom) + dayGap(from, endDay));
-  const sum = (f: string, t: string) =>
-    [...src.entries()].filter(([d]) => d >= f && d <= t).reduce((a, [, v]) => a + v, 0) / div;
-  const cur = sum(from, endDay);
-  const prev = sum(prevFrom, prevTo);
-  if (prev <= 0) return null;
-  const pct = ((cur - prev) / prev) * 100;
-  return {
-    text: `${pct < 0 ? "▼" : "▲"} ${Math.abs(Math.round(pct))}% vs ${Number(year) - 1}`,
-    down: pct < 0,
-  };
-}
-
-function monthOverMonth(spark: { value: number }[], idx: number): DeltaChip | null {
-  if (idx <= 0) return null;
-  const cur = spark[idx].value;
-  const prev = spark[idx - 1].value;
-  if (prev <= 0) return null;
-  const pct = ((cur - prev) / prev) * 100;
-  return { text: `${pct < 0 ? "▼" : "▲"} ${Math.abs(Math.round(pct))}% vs last month`, down: pct < 0 };
-}
-
-const lastMonthWithData = (spark: { value: number }[]): number => {
-  for (let i = spark.length - 1; i >= 0; i--) if (spark[i].value > 0) return i;
-  return 0;
-};
+// streakTile · longestRunOf · lastRunOf · vsYear · yearOverYearDelta ·
+// monthOverMonth · lastMonthWithData all live in ./specShared.
 
 // ── The builder ───────────────────────────────────────────────────────────────
 
@@ -449,7 +367,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
   const years: string[] = [];
   if (!empty)
     for (let y = Number(yearKey(firstDay!)); y <= Number(yearKey(today)); y++) years.push(String(y));
-  const tabs = [{ key: "all", label: "All Time" }, ...years.reverse().map((y) => ({ key: y, label: y }))];
+  const tabs = [{ key: "all", label: "All Time" }, ...[...years].reverse().map((y) => ({ key: y, label: y }))];
   const totPrimaryAll = sessions.reduce((a, s) => a + primary.amountOf(s), 0);
   const allDaysCount = distinctDays(sessions);
   const totalWord =
@@ -538,7 +456,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
     let delta: DeltaChip | null = null;
     let deltaNote = "";
     if (!isYear) {
-      const yearsAsc = [...years].reverse();
+      const yearsAsc = [...years]; // `years` is built ascending and no longer mutated for the tabs
       bars = yearsAsc.map((y) => {
         const v = distinctDays(scoped(sessions, { from: `${y}-01-01`, to: `${y}-12-31` }));
         return { label: y, value: v, tip: `${y} · ${groupInt(v)} days` };
@@ -559,7 +477,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
         const v = distinctDays(sessScoped.filter((s) => monthKey(s.day) === mk));
         return { label: MON_1[i], value: v, tip: `${mo} ${sel.year} · ${v > 0 ? `${v} days` : "—"}` };
       });
-      const idx = lastMonthWithData(bars);
+      const idx = lastMonthWithData(bars.map((b) => b.value));
       if (idx > 0 && bars[idx - 1].value > 0) {
         const d = bars[idx].value - bars[idx - 1].value;
         delta = { text: `${d < 0 ? "▼" : "▲"} ${groupInt(Math.abs(d))} days`, down: d < 0 };
@@ -909,35 +827,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
   // ── Trend (scope-following window · week grain under a pinned year) ──
   const dayAmtAll = primary.dayAmounts(sessions);
   const trendEnd = scopeTo;
-  const grainNoun = isYear ? "week" : "day";
-  const windowLabel = isYear ? sel.year : "Last 30 days";
-  let buckets: string[][];
-  let xticks: { i: number; label: string }[];
-  if (isYear) {
-    buckets = [];
-    for (let ws = dayIndex(weekStart(`${sel.year}-01-01`)); ws <= dayIndex(trendEnd); ws += 7) {
-      const days: string[] = [];
-      for (let k = 0; k < 7; k++) {
-        const d = dayFromIndex(ws + k);
-        if (d.startsWith(sel.year) && d <= trendEnd) days.push(d);
-      }
-      buckets.push(days);
-    }
-    xticks = [];
-    for (let i = 0; i < buckets.length; i += 4) {
-      const d0 = buckets[i][0];
-      if (!d0) continue;
-      const iw = isoWeek(d0);
-      if (String(iw.year) !== sel.year) continue;
-      xticks.push({ i, label: `W${iw.week}` });
-    }
-  } else {
-    buckets = Array.from({ length: 30 }, (_, i) => [dayFromIndex(dayIndex(trendEnd) - 29 + i)]);
-    xticks = [0, 10, 20, 29].map((i) => {
-      const d = dayFromIndex(dayIndex(trendEnd) - (29 - i));
-      return { i, label: `${Number(d.slice(8))} ${MON[Number(d.slice(5, 7)) - 1]}` };
-    });
-  }
+  const { buckets, xticks, windowLabel, grainNoun } = buildTrendWindow(isYear ? sel.year : "", isYear, trendEnd);
   const sumOf = (m: Map<string, number>, days: string[]) => days.reduce((a, d) => a + (m.get(d) ?? 0), 0);
   const div = isCount ? 1 : 60;
   const series: TrendSeries[] = [
@@ -990,7 +880,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
     };
   });
   const sparkMax = Math.max(1, ...spark.map((s) => s.value));
-  const nowMonthIdx = isYear ? lastMonthWithData(spark) : Number(today.slice(5, 7)) - 1;
+  const nowMonthIdx = isYear ? lastMonthWithData(spark.map((s) => s.value)) : Number(today.slice(5, 7)) - 1;
   const windowEmpty = buckets.every((b) => sumOf(dayAmtAll, b) === 0);
   const archivedEmpty =
     input.archived && windowEmpty
@@ -1004,7 +894,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
       ? null
       : isYear
         ? yearOverYearDelta(dayAmtAll, sel.year, trendEnd, div)
-        : monthOverMonth(spark, nowMonthIdx),
+        : monthOverMonth(spark.map((s) => s.value), nowMonthIdx),
     spark,
     sparkMax,
     archivedEmpty,

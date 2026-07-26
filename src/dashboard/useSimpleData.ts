@@ -161,17 +161,22 @@ export function useSimpleData(habitKey: string): SimpleData {
     return m;
   }, [valueRows]);
 
-  return {
-    ready: habit != null,
-    name: habit?.name ?? habitKey,
-    colourSlot: habit?.colour_slot ?? "habit-1",
-    archived: habit?.archived === 1,
-    measuresTime: habit?.measures_time === 1,
-    measuresCount: habit?.measures_count === 1,
-    countUnit: (habit?.count_unit as string | null) ?? null,
-    sessions,
-    finalized,
-    defs,
-    valueBySession,
-  };
+  // Memoize the wrapper object so its identity is stable across renders —
+  // otherwise the consuming dashboard's build memo (keyed on it) never hits.
+  return useMemo<SimpleData>(
+    () => ({
+      ready: habit != null,
+      name: habit?.name ?? habitKey,
+      colourSlot: habit?.colour_slot ?? "habit-1",
+      archived: habit?.archived === 1,
+      measuresTime: habit?.measures_time === 1,
+      measuresCount: habit?.measures_count === 1,
+      countUnit: (habit?.count_unit as string | null) ?? null,
+      sessions,
+      finalized,
+      defs,
+      valueBySession,
+    }),
+    [habit, habitKey, sessions, finalized, defs, valueBySession],
+  );
 }

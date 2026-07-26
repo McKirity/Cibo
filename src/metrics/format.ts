@@ -65,7 +65,6 @@ export interface DeltaChip {
 /** Build a delta chip from a signed magnitude and a unit suffix ("", "h", "m"). */
 export const deltaChip = (delta: number, unit = ""): DeltaChip => {
   const down = delta < 0;
-  const mag = Math.abs(delta);
-  const num = unit === "" ? decimal1(mag) : `${decimal1(mag)}`;
+  const num = decimal1(Math.abs(delta));
   return { text: `${down ? "▼" : "▲"} ${num}${unit}`, down };
 };

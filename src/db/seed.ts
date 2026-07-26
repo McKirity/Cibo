@@ -344,6 +344,11 @@ async function seedBatch1(evolu: CiboEvolu): Promise<void> {
     existing.map((r) => r.key).filter((k): k is NonNullable<typeof k> => k != null),
   );
 
+  // Track write outcomes: if ANY insert is rejected we throw at the end so
+  // runSeed never records the version on a partial batch (the batch-3 latch
+  // lesson — an unchecked drop must not be mistaken for a completed seed).
+  let ok = true;
+
   BATCH_1.forEach((habit, i) => {
     if (existingKeys.has(habit.key)) return;
 
@@ -373,6 +378,7 @@ async function seedBatch1(evolu: CiboEvolu): Promise<void> {
     });
     if (!inserted.ok) {
       console.error(`Seed: habit "${habit.key}" failed`, inserted.error);
+      ok = false;
       return;
     }
     const habitId = inserted.value.id;
@@ -387,26 +393,39 @@ async function seedBatch1(evolu: CiboEvolu): Promise<void> {
       });
       if (!defInserted.ok) {
         console.error(`Seed: definition "${def.key}" failed`, defInserted.error);
+        ok = false;
         continue;
       }
       def.vocab.forEach((value, vi) => {
-        evolu.insert("vocab_options", {
+        const vr = evolu.insert("vocab_options", {
           definition_fk: defInserted.value.id,
           value: s100(value),
           sort_order: num(vi + 1),
         });
+        if (!vr.ok) {
+          console.error(`Seed: vocab "${def.key}/${value}" failed`, vr.error);
+          ok = false;
+        }
       });
     }
   });
 
   // The ONE global status list — definition_fk empty.
   GLOBAL_STATUS_VOCAB.forEach((value, i) => {
-    evolu.insert("vocab_options", {
+    const vr = evolu.insert("vocab_options", {
       definition_fk: null,
       value: s100(value),
       sort_order: num(i + 1),
     });
+    if (!vr.ok) {
+      console.error(`Seed: status vocab "${value}" failed`, vr.error);
+      ok = false;
+    }
   });
+
+  // Hold the gate: a rejected write means the batch is incomplete, so throw and
+  // let runSeed skip recording the version — the batch retries next launch.
+  if (!ok) throw new Error("Seed batch 1: one or more writes were rejected");
 }
 
 /**
@@ -436,9 +455,13 @@ async function seedBatch2(evolu: CiboEvolu): Promise<void> {
       .where("value", "=", s100("Anthology"))
       .where("isDeleted", "is not", 1),
   );
+  let ok = true;
   for (const o of await evolu.loadQuery(optQuery)) {
     const r = evolu.update("vocab_options", { id: o.id, value: s100("Fanfiction") });
-    if (!r.ok) console.error("Seed batch 2: vocab rename failed", r.error);
+    if (!r.ok) {
+      console.error("Seed batch 2: vocab rename failed", r.error);
+      ok = false;
+    }
   }
 
   const entryQuery = evolu.createQuery((db) =>
@@ -450,8 +473,14 @@ async function seedBatch2(evolu: CiboEvolu): Promise<void> {
   );
   for (const e of await evolu.loadQuery(entryQuery)) {
     const r = evolu.update("entries", { id: e.id, type: s100("Fanfiction") });
-    if (!r.ok) console.error("Seed batch 2: entry type rename failed", r.error);
+    if (!r.ok) {
+      console.error("Seed batch 2: entry type rename failed", r.error);
+      ok = false;
+    }
   }
+
+  // Hold the gate on a rejected rename (same principle as batch 1/4).
+  if (!ok) throw new Error("Seed batch 2: one or more renames were rejected");
 }
 
 /**

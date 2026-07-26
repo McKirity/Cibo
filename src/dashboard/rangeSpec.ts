@@ -165,7 +165,7 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
   const years: string[] = [];
   if (!empty)
     for (let y = Number(yearKey(firstDay!)); y <= Number(yearKey(today)); y++) years.push(String(y));
-  const tabs = [{ key: "all", label: "All Time" }, ...years.reverse().map((y) => ({ key: y, label: y }))];
+  const tabs = [{ key: "all", label: "All Time" }, ...[...years].reverse().map((y) => ({ key: y, label: y }))];
   // Nights-based heat: a nightly habit is judged by recent logging density.
   const last14 = scoped(sessions, { from: dayFromIndex(dayIndex(today) - 13), to: today }).length;
   const heat: HeatChip | null = empty

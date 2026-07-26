@@ -152,16 +152,21 @@ export function useConsumptionData(habitKey: string): ConsumptionData {
     [appDayRows],
   );
 
-  return {
-    ready: habit != null,
-    name: habit?.name ?? habitKey,
-    colourSlot: habit?.colour_slot ?? "habit-2",
-    sessions,
-    entries,
-    finalized,
-    typeVocab,
-    appActiveDays,
-  };
+  // Memoize the wrapper object: a fresh literal each render would defeat the
+  // consuming dashboard's build memo (which keys on this object's identity).
+  return useMemo<ConsumptionData>(
+    () => ({
+      ready: habit != null,
+      name: habit?.name ?? habitKey,
+      colourSlot: habit?.colour_slot ?? "habit-2",
+      sessions,
+      entries,
+      finalized,
+      typeVocab,
+      appActiveDays,
+    }),
+    [habit, habitKey, sessions, entries, finalized, typeVocab, appActiveDays],
+  );
 }
 
 function decodeGenre(raw: unknown): string[] {

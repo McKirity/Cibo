@@ -18,6 +18,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { evolu } from "../db/evolu";
 import { clearRichSeed, seedRich } from "../db/seedRich";
 import { LogForm } from "../log/LogForm";
+import { Daily } from "../daily/Daily";
 import { ConsumptionDashboard } from "../dashboard/ConsumptionDashboard";
 import { CreationDashboard } from "../dashboard/CreationDashboard";
 import { SimpleDashboard } from "../dashboard/SimpleDashboard";
@@ -41,6 +42,9 @@ const activeHabitsQuery = evolu.createQuery((db) =>
 );
 
 type View =
+  /** The front door. "Launch opens to Daily — there is NO homepage." */
+  | { kind: "daily" }
+  /** The dev logging view — hosts the seed/activation panels until step 15. */
   | { kind: "log" }
   | { kind: "habit"; key: string }
   | { kind: "cadence"; scale: CadenceScale; anchor: string }
@@ -65,7 +69,7 @@ export function Shell() {
     forward,
     canBack,
     canForward,
-  } = useHistory<View>({ kind: "log" });
+  } = useHistory<View>({ kind: "daily" });
 
   const projects = active.filter((h) => h.kind === "project");
   const daily = active.filter((h) => h.kind !== "project");
@@ -82,7 +86,7 @@ export function Shell() {
   useEffect(() => {
     const key = view.kind === "habit" ? view.key : view.kind === "entry" ? view.habitKey : null;
     if (key != null && !active.some((h) => h.key === key)) {
-      replaceView({ kind: "log" });
+      replaceView({ kind: "daily" });
     }
   }, [view, active, replaceView]);
 
@@ -165,8 +169,11 @@ export function Shell() {
           <button className="cal-placeholder" onClick={() => setView({ kind: "cadence", scale: "week", anchor: today })}>
             month grid · step 9 — click for this week
           </button>
+          <button className="cal-placeholder" onClick={() => setView({ kind: "daily" })}>
+            Today
+          </button>
           <button className="cal-placeholder" onClick={() => setView({ kind: "log" })}>
-            Today (log)
+            dev log view
           </button>
         </div>
 
@@ -279,6 +286,8 @@ export function Shell() {
             onNavigate={(nav) => setView({ kind: "cadence", scale: nav.scale, anchor: nav.anchor })}
             onOpenHabit={(key) => setView({ kind: "habit", key })}
           />
+        ) : view.kind === "daily" ? (
+          <Daily />
         ) : (
           <LogView />
         )}

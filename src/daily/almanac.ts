@@ -1,0 +1,331 @@
+/**
+ * The almanac tier — the cards that are neither sky math nor network.
+ *
+ * Two kinds live here:
+ *
+ * - **Bundled datasets** (quote · word · fun fact · holidays). Classed "stable
+ *   external / bundled" by [[Calendar & Whimsy]]: deterministic per day, no
+ *   network, effectively re-derivable — so, like the pure-function tier, they
+ *   need no snapshot-at-fetch. The pools are small on purpose and grow by
+ *   editing an array; selection is by day-of-year so a given date always yields
+ *   the same entry, on any device, forever.
+ *
+ * - **Pure functions over the user's own config or data** (countdowns ·
+ *   lifetime · on-this-day · year progress).
+ *
+ * HOLIDAYS are a neutral international set by default — national holidays are
+ * locale-specific and the user has not picked one, so swapping this array is the
+ * whole change.
+ */
+import type { DatedEvent, WhimsyConfig } from "./whimsyConfig";
+import { dayStart } from "./sky";
+
+const DAY_MS = 86_400_000;
+
+/** Day of year, 1…366. The selector for every bundled dataset. */
+export const dayOfYear = (dayKey: string): number => {
+  const d = dayStart(dayKey);
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  return Math.floor((d.getTime() - jan1.getTime()) / DAY_MS) + 1;
+};
+
+/**
+ * Deterministic pick. Mixing the year in would break "the same date always
+ * gives the same entry", which is the property that lets a past day's card be
+ * recomputed years later instead of snapshotted — so it deliberately does not.
+ */
+const pickFor = <T,>(pool: T[], dayKey: string, salt: number): T =>
+  pool[(dayOfYear(dayKey) * 7 + salt * 13) % pool.length];
+
+// ── bundled pools ─────────────────────────────────────────────────────────────
+
+export interface Quote {
+  text: string;
+  who: string;
+}
+
+const QUOTES: Quote[] = [
+  { text: "The mountain is the mountain, and the way is the way.", who: "Dogen" },
+  { text: "What we do now echoes in eternity.", who: "Marcus Aurelius" },
+  { text: "It is not that we have a short time to live, but that we waste much of it.", who: "Seneca" },
+  { text: "A year from now you may wish you had started today.", who: "Karen Lamb" },
+  { text: "Little by little, one travels far.", who: "J. R. R. Tolkien" },
+  { text: "The obstacle is the way.", who: "Marcus Aurelius" },
+  { text: "Nothing is less productive than to make more efficient what should not be done at all.", who: "Peter Drucker" },
+  { text: "We are what we repeatedly do.", who: "Will Durant" },
+  { text: "Slowness is a form of attention.", who: "Anon." },
+  { text: "The best time to plant a tree was twenty years ago. The second best time is now.", who: "Proverb" },
+  { text: "Perfection is achieved when there is nothing left to take away.", who: "Antoine de Saint-Exupéry" },
+  { text: "You do not rise to the level of your goals; you fall to the level of your systems.", who: "James Clear" },
+  { text: "Patience is not passive; it is concentrated strength.", who: "Edward G. Bulwer-Lytton" },
+  { text: "Amateurs sit and wait for inspiration; the rest of us just get up and go to work.", who: "Stephen King" },
+  { text: "The days are long but the decades are short.", who: "Sam Altman" },
+  { text: "How we spend our days is, of course, how we spend our lives.", who: "Annie Dillard" },
+  { text: "Begin, be bold, and venture to be wise.", who: "Horace" },
+  { text: "Simplicity is the ultimate sophistication.", who: "Leonardo da Vinci" },
+  { text: "A ship in harbour is safe, but that is not what ships are built for.", who: "John A. Shedd" },
+  { text: "Order and simplification are the first steps toward mastery.", who: "Thomas Mann" },
+  { text: "Well begun is half done.", who: "Aristotle" },
+  { text: "The journey of a thousand miles begins beneath one's feet.", who: "Laozi" },
+  { text: "Energy and persistence conquer all things.", who: "Benjamin Franklin" },
+  { text: "You can't use up creativity. The more you use, the more you have.", who: "Maya Angelou" },
+];
+
+export interface WordOfDay {
+  word: string;
+  kind: string;
+  meaning: string;
+}
+
+const WORDS: WordOfDay[] = [
+  { word: "petrichor", kind: "noun", meaning: "the smell of rain on dry earth" },
+  { word: "sonder", kind: "noun", meaning: "the realisation that every passer-by has a life as vivid as your own" },
+  { word: "apricity", kind: "noun", meaning: "the warmth of the sun in winter" },
+  { word: "eucatastrophe", kind: "noun", meaning: "a sudden turn to the good when all seemed lost" },
+  { word: "hiraeth", kind: "noun", meaning: "longing for a home you cannot return to" },
+  { word: "limerence", kind: "noun", meaning: "the involuntary, absorbing early state of infatuation" },
+  { word: "susurrus", kind: "noun", meaning: "a soft murmuring or rustling" },
+  { word: "vellichor", kind: "noun", meaning: "the strange wistfulness of second-hand bookshops" },
+  { word: "meraki", kind: "noun", meaning: "doing something with soul, creativity, and love" },
+  { word: "komorebi", kind: "noun", meaning: "sunlight filtering through leaves" },
+  { word: "saudade", kind: "noun", meaning: "a deep nostalgic longing for something absent" },
+  { word: "nemophilist", kind: "noun", meaning: "one who is fond of forests" },
+  { word: "eudaimonia", kind: "noun", meaning: "flourishing; the good life well lived" },
+  { word: "sprezzatura", kind: "noun", meaning: "studied carelessness; art that hides the effort" },
+  { word: "wabi-sabi", kind: "noun", meaning: "beauty in imperfection and impermanence" },
+  { word: "solivagant", kind: "adj.", meaning: "wandering alone" },
+  { word: "quiddity", kind: "noun", meaning: "the inherent nature of a thing; its whatness" },
+  { word: "halcyon", kind: "adj.", meaning: "calm, peaceful, golden in memory" },
+  { word: "ineffable", kind: "adj.", meaning: "too great to be expressed in words" },
+  { word: "liminal", kind: "adj.", meaning: "occupying a threshold; between two states" },
+  { word: "numinous", kind: "adj.", meaning: "suggesting the presence of something beyond comprehension" },
+  { word: "obdurate", kind: "adj.", meaning: "stubbornly refusing to change one's course" },
+];
+
+const FACTS: string[] = [
+  "A day on Venus is longer than its year.",
+  "Honey found in Egyptian tombs was still edible after 3,000 years.",
+  "Octopuses have three hearts, and two stop beating when they swim.",
+  "There are more possible games of chess than atoms in the observable universe.",
+  "Bananas are berries; strawberries are not.",
+  "The Eiffel Tower can be up to 15 cm taller in summer as the iron expands.",
+  "Wombat droppings are cube-shaped.",
+  "Sharks existed before trees did.",
+  "A group of flamingos is called a flamboyance.",
+  "Cleopatra lived closer in time to the Moon landing than to the building of the Great Pyramid.",
+  "Sea otters hold hands while sleeping so they do not drift apart.",
+  "Oxford University is older than the Aztec Empire.",
+  "The shortest war in history lasted 38 minutes.",
+  "Water can boil and freeze at the same time — the triple point.",
+  "A bolt of lightning is roughly five times hotter than the surface of the sun.",
+  "Snails can sleep for up to three years.",
+  "The dot over a lowercase i is called a tittle.",
+  "Scotland's national animal is the unicorn.",
+  "Hot water freezes faster than cold under some conditions — the Mpemba effect.",
+  "Venus is the only planet that spins clockwise.",
+];
+
+/**
+ * A neutral international set — nothing national, since no locale is picked.
+ * `md` is `MM-DD`; every entry here is fixed-date (moveable feasts like Easter
+ * need a computus and are deliberately out of scope for a whimsy card).
+ */
+const HOLIDAYS: Array<{ md: string; name: string }> = [
+  { md: "01-01", name: "New Year's Day" },
+  { md: "02-02", name: "World Wetlands Day" },
+  { md: "02-14", name: "Valentine's Day" },
+  { md: "03-08", name: "International Women's Day" },
+  { md: "03-14", name: "Pi Day" },
+  { md: "03-20", name: "International Day of Happiness" },
+  { md: "04-01", name: "April Fools' Day" },
+  { md: "04-22", name: "Earth Day" },
+  { md: "04-23", name: "World Book Day" },
+  { md: "05-01", name: "May Day" },
+  { md: "05-04", name: "Star Wars Day" },
+  { md: "06-05", name: "World Environment Day" },
+  { md: "06-21", name: "World Music Day" },
+  { md: "07-20", name: "Moon Landing Day" },
+  { md: "08-12", name: "World Elephant Day" },
+  { md: "09-08", name: "International Literacy Day" },
+  { md: "09-21", name: "International Day of Peace" },
+  { md: "10-01", name: "International Coffee Day" },
+  { md: "10-31", name: "Halloween" },
+  { md: "11-13", name: "World Kindness Day" },
+  { md: "12-21", name: "Winter Solstice" },
+  { md: "12-25", name: "Christmas Day" },
+  { md: "12-31", name: "New Year's Eve" },
+];
+
+/**
+ * On-this-day. Classed pure-function because it is *re-fetchable per date* —
+ * the same date yields the same history forever, so nothing needs locking. A
+ * bundled set stands in for a future feed without changing the card's contract.
+ */
+const ON_THIS_DAY: Array<{ md: string; year: number; what: string }> = [
+  { md: "01-03", year: 1888, what: "The drinking straw was patented." },
+  { md: "02-12", year: 1809, what: "Charles Darwin and Abraham Lincoln were both born." },
+  { md: "03-10", year: 1876, what: "The first intelligible telephone call was made." },
+  { md: "04-12", year: 1961, what: "Yuri Gagarin became the first human in space." },
+  { md: "05-29", year: 1953, what: "Hillary and Tenzing reached the summit of Everest." },
+  { md: "06-18", year: 1178, what: "Monks at Canterbury recorded an explosion on the Moon." },
+  { md: "07-20", year: 1969, what: "Apollo 11 landed on the Moon." },
+  { md: "07-25", year: 1978, what: "Louise Brown, the first IVF baby, was born." },
+  { md: "08-27", year: 1883, what: "Krakatoa erupted; the sound was heard 3,000 miles away." },
+  { md: "09-09", year: 1947, what: "The first literal computer bug — a moth — was logged." },
+  { md: "10-04", year: 1957, what: "Sputnik 1 became the first artificial satellite." },
+  { md: "11-09", year: 1989, what: "The Berlin Wall opened." },
+  { md: "12-17", year: 1903, what: "The Wright brothers achieved powered flight." },
+];
+
+export const onThisDay = (dayKey: string): { year: number; what: string } | null => {
+  const hit = ON_THIS_DAY.find((h) => h.md === dayKey.slice(5));
+  return hit ? { year: hit.year, what: hit.what } : null;
+};
+
+/**
+ * Rediscover — a past day of the user's OWN data, surfaced to be revisited.
+ * Deterministic per day so it doesn't reshuffle on every repaint, and it is a
+ * door to that day's cover wall (inert until the wall exists).
+ */
+export const rediscover = (pastDays: string[], dayKey: string): string | null => {
+  if (pastDays.length === 0) return null;
+  return pastDays[(dayOfYear(dayKey) * 17) % pastDays.length];
+};
+
+export const quoteFor = (dayKey: string): Quote => pickFor(QUOTES, dayKey, 1);
+export const wordFor = (dayKey: string): WordOfDay => pickFor(WORDS, dayKey, 2);
+export const factFor = (dayKey: string): string => pickFor(FACTS, dayKey, 3);
+
+/** Null on the vast majority of days — the card is absent, not empty. */
+export const holidayFor = (dayKey: string): string | null =>
+  HOLIDAYS.find((h) => h.md === dayKey.slice(5))?.name ?? null;
+
+// ── config- and data-driven ───────────────────────────────────────────────────
+
+export interface TimeProgress {
+  dayPct: number;
+  weekPct: number;
+  monthPct: number;
+  yearPct: number;
+}
+
+/** Progress through the containing periods. `now` only affects the day figure. */
+export function timeProgress(dayKey: string, now: Date): TimeProgress {
+  const d = dayStart(dayKey);
+  const year = d.getFullYear();
+  const daysInYear = (new Date(year + 1, 0, 1).getTime() - new Date(year, 0, 1).getTime()) / DAY_MS;
+  const daysInMonth = new Date(year, d.getMonth() + 1, 0).getDate();
+  // Weeks run Mon–Sun (the configured default; Settings owns this later).
+  const dow = (d.getDay() + 6) % 7;
+  const sameDay = now.getFullYear() === d.getFullYear() && now.getMonth() === d.getMonth() && now.getDate() === d.getDate();
+  const msIntoDay = sameDay ? now.getTime() - d.getTime() : DAY_MS;
+  return {
+    dayPct: Math.min(1, Math.max(0, msIntoDay / DAY_MS)),
+    weekPct: (dow + msIntoDay / DAY_MS) / 7,
+    monthPct: (d.getDate() - 1 + msIntoDay / DAY_MS) / daysInMonth,
+    yearPct: (dayOfYear(dayKey) - 1 + msIntoDay / DAY_MS) / daysInYear,
+  };
+}
+
+export interface Countdown {
+  label: string;
+  /** Negative = already past (only possible for non-recurring events). */
+  days: number;
+  /**
+   * Days since the most recent PAST occurrence — null when the event has never
+   * happened yet (a one-shot still in the future). A recurring event always has
+   * one, because there is always a last time round.
+   *
+   * User-ruled 2026-07-25: the card shows both directions, not just the
+   * countdown — "it also shows how many days has since passed".
+   */
+  sinceDays: number | null;
+  date: string;
+  recurring: boolean;
+}
+
+/**
+ * Countdowns to the user's dated events. A recurring event always resolves to
+ * its NEXT occurrence (today counts as 0, not as 365); a one-shot that has
+ * passed is reported with a negative count so the card can phrase it as "ago".
+ */
+export function countdowns(events: DatedEvent[], dayKey: string): Countdown[] {
+  const today = dayStart(dayKey);
+  const out: Countdown[] = events.map((e) => {
+    const src = dayStart(e.date);
+    if (!e.recurring) {
+      const days = Math.round((src.getTime() - today.getTime()) / DAY_MS);
+      return {
+        label: e.label,
+        days,
+        // A one-shot has only happened if its date is not in the future.
+        sinceDays: days <= 0 ? -days : null,
+        date: e.date,
+        recurring: false,
+      };
+    }
+    // Next anniversary: this year's, or next year's if it has already gone by.
+    let next = new Date(today.getFullYear(), src.getMonth(), src.getDate());
+    if (next.getTime() < today.getTime()) next = new Date(today.getFullYear() + 1, src.getMonth(), src.getDate());
+    // Last anniversary: this year's if it has already been, else last year's.
+    let last = new Date(today.getFullYear(), src.getMonth(), src.getDate());
+    if (last.getTime() > today.getTime()) last = new Date(today.getFullYear() - 1, src.getMonth(), src.getDate());
+    return {
+      label: e.label,
+      days: Math.round((next.getTime() - today.getTime()) / DAY_MS),
+      sinceDays: Math.round((today.getTime() - last.getTime()) / DAY_MS),
+      date: e.date,
+      recurring: true,
+    };
+  });
+  return (
+    out
+      /**
+       * A one-shot that has been and gone leaves the chart entirely (user-ruled
+       * 2026-07-25). Only recurring events survive their own date, because they
+       * roll to the next occurrence — so nothing here is ever negative, and the
+       * card never becomes a list of things that already happened.
+       *
+       * `days === 0` stays: that is today, not the past.
+       */
+      .filter((c) => c.recurring || c.days >= 0)
+      // Soonest first. With past one-shots gone there is no past tier to sort.
+      .sort((a, b) => a.days - b.days)
+  );
+}
+
+export interface Lifetime {
+  days: number;
+  years: number;
+  /** Progress through the current year of life, 0…1. */
+  yearProgress: number;
+  nextBirthdayDays: number;
+}
+
+/** Null when no birthdate is configured — the card is absent, not zeroed. */
+export function lifetime(birthdate: string | null, dayKey: string): Lifetime | null {
+  if (!birthdate) return null;
+  const born = dayStart(birthdate);
+  const today = dayStart(dayKey);
+  if (born.getTime() > today.getTime()) return null;
+  const days = Math.floor((today.getTime() - born.getTime()) / DAY_MS);
+
+  let years = today.getFullYear() - born.getFullYear();
+  const hadBirthday =
+    today.getMonth() > born.getMonth() ||
+    (today.getMonth() === born.getMonth() && today.getDate() >= born.getDate());
+  if (!hadBirthday) years -= 1;
+
+  const lastBd = new Date(today.getFullYear() - (hadBirthday ? 0 : 1), born.getMonth(), born.getDate());
+  const nextBd = new Date(today.getFullYear() + (hadBirthday ? 1 : 0), born.getMonth(), born.getDate());
+  const span = nextBd.getTime() - lastBd.getTime();
+  return {
+    days,
+    years,
+    yearProgress: span > 0 ? (today.getTime() - lastBd.getTime()) / span : 0,
+    nextBirthdayDays: Math.round((nextBd.getTime() - today.getTime()) / DAY_MS),
+  };
+}
+
+/** The config a card needs, narrowed so cards don't take the whole object. */
+export type AlmanacConfig = Pick<WhimsyConfig, "birthdate" | "events">;

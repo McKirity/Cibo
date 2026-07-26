@@ -30,24 +30,20 @@ import {
   total,
   heatLevel,
   type HeatChip,
-  type Run,
   type SessionRow,
 } from "../metrics/shapes";
 import {
   dayFromIndex,
   dayGap,
   dayIndex,
-  isoWeek,
   monthKey,
   weekStart,
   yearKey,
 } from "../metrics/dates";
 import {
   decimal1,
-  deltaChip,
   fmtDMY,
   fmtMonY,
-  fmtRange,
   groupInt,
   hoursMinutes,
   hoursTrim1,
@@ -55,6 +51,27 @@ import {
   type DeltaChip,
 } from "../metrics/format";
 import type { TileSpec } from "./consumptionSpec";
+import {
+  activeDayDelta,
+  bestWeekLabel,
+  buildTrendWindow,
+  CAT_SLOTS,
+  dayCounts,
+  grainKey,
+  initialism,
+  kFmt,
+  lastMonthWithData,
+  lastRunOf,
+  longestRunOf,
+  maxStr,
+  minStr,
+  MON,
+  monthOverMonth,
+  STATUS_CAT,
+  streakTile,
+  vsYear,
+  yearOverYearDelta,
+} from "./specShared";
 
 // ── Input row shapes ──────────────────────────────────────────────────────────
 
@@ -148,6 +165,8 @@ export interface HeroTile {
 }
 
 export interface HeroSpec {
+  /** The entry-dashboard door (chunk 5). */
+  entryId: string;
   title: string;
   initial: string;
   pill: { label: string; colorVar: string } | null;
@@ -210,17 +229,7 @@ export interface CreationModel {
   heroes: { title: string; cards: HeroSpec[] };
 }
 
-// ── Shared literals (match the consumption spec's) ────────────────────────────
-
-const CAT_SLOTS = ["--cat-1", "--cat-2", "--cat-3", "--cat-4", "--cat-5", "--cat-6", "--cat-7", "--cat-8"];
-const STATUS_CAT: Record<string, string> = {
-  Current: "--cat-2",
-  Finished: "--cat-4",
-  Dropped: "--cat-6",
-  Planned: "--cat-3",
-  Hiatus: "--cat-8",
-};
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// ── Local literals (CAT_SLOTS/STATUS_CAT/MON live in ./specShared) ────────────
 
 /** The panel-title noun for the hero library (presentation vocab; the FINALs
  *  draw "Stories" for Writing, "Projects" for Gamedev). */
@@ -232,37 +241,12 @@ const heroNoun = (key: string) => HERO_NOUN[key] ?? { panel: "Projects", noun: "
 /** The efficiency family's qualifying floor (drawn 30 m/day; ratified at Build). */
 const EFF_FLOOR_MIN = 30;
 
-const maxStr = (a: string, b: string) => (a >= b ? a : b);
-const minStr = (a: string, b: string) => (a <= b ? a : b);
-const kFmt = (v: number): string => (v >= 1000 ? `${Math.round(v / 1000)}k` : groupInt(v));
-
-const initialism = (title: string): string => {
-  const words = title.split(/[^A-Za-z0-9]+/).filter(Boolean);
-  const s = words.length > 1 ? words.map((w) => w[0]).join("") : title.replace(/[^A-Za-z0-9]/g, "");
-  return s.slice(0, 4).toUpperCase();
-};
-
-const bestWeekLabel = (weekStartDay: string): string => {
-  const { week, year } = isoWeek(weekStartDay);
-  return `wk ${week} · ${year}`;
-};
-
 /** A day's count-measure intensity bucket 0–4 (presentation cutoffs, the count
  *  sibling of `heatLevel`). */
 const countLevel = (v: number): number =>
   v <= 0 ? 0 : v < 500 ? 1 : v < 1500 ? 2 : v < 3500 ? 3 : 4;
 
-/** Count-session values summed per day (the count sibling of `dayMinutes`). */
-function dayCounts(sessions: SessionRow[]): Map<string, number> {
-  const m = new Map<string, number>();
-  for (const s of sessions)
-    if (s.measure_kind === "count") m.set(s.day, (m.get(s.day) ?? 0) + (s.value ?? 0));
-  return m;
-}
-
 type Grain = "day" | "week" | "month";
-const grainKey = (day: string, grain: Grain): string =>
-  grain === "day" ? day : grain === "week" ? weekStart(day) : monthKey(day);
 
 /** The richest bucket by summed count values (the count sibling of `best`). */
 function bestCount(sessions: SessionRow[], grain: Grain): { key: string; value: number } | null {
@@ -300,102 +284,8 @@ function countPeriodDelta(
   return { text: `${d < 0 ? "▼" : "▲"} ${groupInt(Math.abs(d))}`, down: d < 0 };
 }
 
-/** A streak stat tile with a date line + a three-row prior/next streak table. */
-function streakTile(
-  label: string,
-  run: Run | null,
-  st: { runs: Run[]; currentRun: Run | null },
-  isCurrent: boolean,
-): TileSpec {
-  const value = run ? `${run.days}` : "0";
-  const dateLine = run
-    ? isCurrent && run === st.currentRun
-      ? `since ${fmtDMY(run.start)}`
-      : fmtRange(run.start, run.end)
-    : "—";
-  const others = st.runs.filter((r) => r !== run);
-  const picked = isCurrent
-    ? [...others].sort((a, b) => b.end.localeCompare(a.end)).slice(0, 3)
-    : [...others].sort((a, b) => b.days - a.days).slice(0, 3);
-  return {
-    label,
-    value,
-    unit: "d",
-    list: { dateLine, rows: picked.map((r) => ({ k: fmtRange(r.start, r.end), v: `${r.days}d` })) },
-  };
-}
-
-const longestRunOf = (st: { runs: Run[] }): Run | null =>
-  st.runs.reduce<Run | null>((b, r) => (!b || r.days > b.days ? r : b), null);
-const lastRunOf = (st: { runs: Run[] }): Run | null => st.runs[st.runs.length - 1] ?? null;
-
-const lastMonthWithData = (spark: { value: number }[]): number => {
-  for (let i = spark.length - 1; i >= 0; i--) if (spark[i].value > 0) return i;
-  return 0;
-};
-
-/**
- * Under a year scope every delta compares THIS YEAR TO LAST (user-ruled
- * 2026-07-22 — "deltas in previous years should be comparing between years"),
- * so each chip says which year it is measured against. The underlying windows
- * were already year-vs-year (the scoped window vs the equal span before it);
- * this makes the comparison legible instead of reading like a week/month delta.
- */
-const vsYear = (
-  chip: DeltaChip | null | undefined,
-  isYear: boolean,
-  year: string,
-): DeltaChip | undefined =>
-  chip == null ? undefined : isYear ? { ...chip, text: `${chip.text} vs ${Number(year) - 1}` } : chip;
-
-/**
- * The month spark's chip under a year scope: the pinned year's total vs the
- * SAME span of the prior year — a part-way current year compares against the
- * prior year's matching span, never a partial year against a whole one.
- */
-function yearOverYearDelta(
-  src: Map<string, number>,
-  year: string,
-  endDay: string,
-  div: number,
-): DeltaChip | null {
-  const from = `${year}-01-01`;
-  const prevFrom = `${Number(year) - 1}-01-01`;
-  const prevTo = dayFromIndex(dayIndex(prevFrom) + dayGap(from, endDay));
-  const sum = (f: string, t: string) =>
-    [...src.entries()].filter(([d]) => d >= f && d <= t).reduce((a, [, v]) => a + v, 0) / div;
-  const cur = sum(from, endDay);
-  const prev = sum(prevFrom, prevTo);
-  if (prev <= 0) return null;
-  const pct = ((cur - prev) / prev) * 100;
-  return {
-    text: `${pct < 0 ? "▼" : "▲"} ${Math.abs(Math.round(pct))}% vs ${Number(year) - 1}`,
-    down: pct < 0,
-  };
-}
-
-/** Avg-active-day delta in minutes (chip unit "m"), window vs the prior one. */
-function activeDayDelta(sessions: SessionRow[], from: string, to: string): DeltaChip | undefined {
-  const avg = (f: string, t: string) => {
-    const rows = scoped(sessions, { from: f, to: t });
-    const d = distinctDays(rows);
-    return d > 0 ? total(rows).minutes / d : 0;
-  };
-  const len = dayGap(from, to);
-  const prevTo = dayFromIndex(dayIndex(from) - 1);
-  const prevFrom = dayFromIndex(dayIndex(from) - 1 - len);
-  if (scoped(sessions, { from: prevFrom, to: prevTo }).length === 0) return undefined;
-  return deltaChip(avg(from, to) - avg(prevFrom, prevTo), "m");
-}
-
-function monthOverMonth(spark: { value: number }[], idx: number): DeltaChip | null {
-  if (idx <= 0) return null;
-  const cur = spark[idx].value;
-  const prev = spark[idx - 1].value;
-  if (prev <= 0) return null;
-  const pct = ((cur - prev) / prev) * 100;
-  return { text: `${pct < 0 ? "▼" : "▲"} ${Math.abs(Math.round(pct))}% vs last month`, down: pct < 0 };
-}
+// streakTile · longestRunOf · lastRunOf · vsYear · yearOverYearDelta ·
+// activeDayDelta · lastMonthWithData · monthOverMonth all live in ./specShared.
 
 // ── The builder ───────────────────────────────────────────────────────────────
 
@@ -599,43 +489,9 @@ export function buildCreationDashboard(input: CreationBuildInput, sel: ScopeSel)
   const dayMinAll = dayMinutes(sessions);
   const dayCntAll = dayCounts(sessions);
   const trendEnd = scopeTo; // today, or min(31 Dec of the pinned year, today)
-  // Window buckets — All Time: the trailing 30 days, one DAY per point; a
-  // pinned year: the whole year at WEEK grain (user-ruled 2026-07-22 — the
-  // 30-day slice of a finished year showed only December; weekly sits between
-  // the month spark and the day heatmap and shows the year's continuous
-  // shape). Straddle weeks are clamped to the year's own days.
-  const grainNoun = isYear ? "week" : "day";
-  const windowLabel = isYear ? sel.year : "Last 30 days";
-  let buckets: string[][];
-  let xticks: { i: number; label: string }[];
-  if (isYear) {
-    buckets = [];
-    for (let ws = dayIndex(weekStart(`${sel.year}-01-01`)); ws <= dayIndex(trendEnd); ws += 7) {
-      const days: string[] = [];
-      for (let k = 0; k < 7; k++) {
-        const d = dayFromIndex(ws + k);
-        if (d.startsWith(sel.year) && d <= trendEnd) days.push(d);
-      }
-      buckets.push(days);
-    }
-    // Week-number ticks (user-ruled 2026-07-22), every 4th week — ISO weeks,
-    // matching the "wk N" idiom app-wide; straddle buckets whose ISO week
-    // belongs to the neighbouring year are skipped rather than mislabeled.
-    xticks = [];
-    for (let i = 0; i < buckets.length; i += 4) {
-      const d0 = buckets[i][0];
-      if (!d0) continue;
-      const iw = isoWeek(d0);
-      if (String(iw.year) !== sel.year) continue;
-      xticks.push({ i, label: `W${iw.week}` });
-    }
-  } else {
-    buckets = Array.from({ length: 30 }, (_, i) => [dayFromIndex(dayIndex(trendEnd) - 29 + i)]);
-    xticks = [0, 10, 20, 29].map((i) => {
-      const d = dayFromIndex(dayIndex(trendEnd) - (29 - i));
-      return { i, label: `${Number(d.slice(8))} ${MON[Number(d.slice(5, 7)) - 1]}` };
-    });
-  }
+  // Window buckets — All Time: trailing 30 days at DAY grain; a pinned year: the
+  // whole year at WEEK grain with every-4th-week ISO ticks (the shared builder).
+  const { buckets, xticks, windowLabel, grainNoun } = buildTrendWindow(isYear ? sel.year : "", isYear, trendEnd);
   const sumOf = (m: Map<string, number>, days: string[]) =>
     days.reduce((a, d) => a + (m.get(d) ?? 0), 0);
   const lineOf = (m: Map<string, number>, div = 1) => buckets.map((b) => sumOf(m, b) / div);
@@ -723,7 +579,7 @@ export function buildCreationDashboard(input: CreationBuildInput, sel: ScopeSel)
     };
   });
   const sparkMax = Math.max(1, ...spark.map((s) => s.value));
-  const nowMonthIdx = isYear ? lastMonthWithData(spark) : Number(today.slice(5, 7)) - 1;
+  const nowMonthIdx = isYear ? lastMonthWithData(spark.map((s) => s.value)) : Number(today.slice(5, 7)) - 1;
   const windowEmpty = buckets.every(
     (b) => sumOf(dayMinAll, b) === 0 && sumOf(dayCntAll, b) === 0,
   );
@@ -760,7 +616,7 @@ export function buildCreationDashboard(input: CreationBuildInput, sel: ScopeSel)
   const years: string[] = [];
   if (!empty)
     for (let y = Number(yearKey(firstDay!)); y <= Number(yearKey(today)); y++) years.push(String(y));
-  const tabs = [{ key: "all", label: "All Time" }, ...years.reverse().map((y) => ({ key: y, label: y }))];
+  const tabs = [{ key: "all", label: "All Time" }, ...[...years].reverse().map((y) => ({ key: y, label: y }))];
   const totalAll = twoMeasure
     ? `${groupInt(sessions.reduce((a, s) => a + (s.measure_kind === "count" ? s.value ?? 0 : 0), 0))} ${unitWord}`
     : hoursWhole(total(sessions).minutes);
@@ -792,7 +648,7 @@ export function buildCreationDashboard(input: CreationBuildInput, sel: ScopeSel)
         ? null
         : isYear
           ? yearOverYearDelta(sparkSrc, sel.year, trendEnd, sparkDiv)
-          : monthOverMonth(spark, nowMonthIdx),
+          : monthOverMonth(spark.map((s) => s.value), nowMonthIdx),
       spark,
       sparkMax,
       archivedEmpty,
@@ -804,7 +660,9 @@ export function buildCreationDashboard(input: CreationBuildInput, sel: ScopeSel)
 
 // ── Zone builders ─────────────────────────────────────────────────────────────
 
-function buildDistributions(
+/** Exported for the entry dashboard (chunk 5) — the same per-metric shape
+ *  family renders the entry-scoped Stage⇄Wiki pair / Discipline mini-split. */
+export function buildDistributions(
   defs: SessionDef[],
   sessScoped: SessionRow[],
   valOf: (sessionId: string, defKey: string) => string | null,
@@ -950,6 +808,8 @@ function buildDistributions(
   };
 }
 
+export { buildHeatmap as buildCreationHeatmap };
+
 /** Round up to a clean lollipop axis max (1/2/5 × 10^k). */
 function niceAxisMax(v: number): number {
   if (v <= 0) return 100;
@@ -958,7 +818,10 @@ function niceAxisMax(v: number): number {
   return 10 * pow;
 }
 
-function buildHeatmap(
+/** Exported (as buildCreationHeatmap) for the entry dashboard (chunk 5) — the
+ *  entry face passes defs=[] (no scope faces) + its own sessions, keeping the
+ *  Words⇄Time measure toggle on two-measure habits. */
+export function buildHeatmap(
   defs: SessionDef[],
   sessions: SessionRow[],
   valOf: (sessionId: string, defKey: string) => string | null,
@@ -1123,6 +986,7 @@ function buildHeroes(
     }
 
     return {
+      entryId: e.id,
       title: e.title,
       initial: initialism(e.title),
       pill: e.status ? { label: e.status, colorVar: STATUS_CAT[e.status] ?? "--cat-1" } : null,

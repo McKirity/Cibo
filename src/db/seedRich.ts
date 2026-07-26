@@ -71,8 +71,8 @@ const hm = (h: number, m: number) => `${pad(h)}:${pad(m)}`;
 const TODAY = new Date();
 
 /** The dataset span in years. 5 = the step-5 dataset (unchanged default). The
- *  Longevity growth spike re-configures it to ~15 to stress store size + query
- *  latency; see `spikeGrowth.ts`. */
+ *  span is configurable (the Longevity growth spike ran at ~15 to stress store
+ *  size + query latency; that throwaway spike tooling has since been removed). */
 export const DEFAULT_SPAN_YEARS = 5;
 
 // Span state is mutable so one seeder can serve both the 5y dataset and the
@@ -275,6 +275,11 @@ interface Ctx {
   defId: Map<string, Map<string, SubunitDefinitionId>>;
   /** (definitionId → set of existing option values), to add-if-missing. */
   vocab: Map<string, Set<string>>;
+  /**
+   * (day → Writing word total), populated by seedWriting so seedKeyboard can
+   * MIRROR it (user-ruled 2026-07-23 — Keyboard words derive from Writing).
+   */
+  writingWordsByDay: Map<string, number>;
   counts: { entries: number; sessions: number; days: number; subunits: number };
 }
 
@@ -310,7 +315,7 @@ async function loadCtx(evolu: CiboEvolu): Promise<Ctx> {
     vocab.get(k)!.add(o.value);
   }
 
-  return { evolu, habitId, defId, vocab, counts: { entries: 0, sessions: 0, days: 0, subunits: 0 } };
+  return { evolu, habitId, defId, vocab, writingWordsByDay: new Map(), counts: { entries: 0, sessions: 0, days: 0, subunits: 0 } };
 }
 
 // ── Insert helpers ────────────────────────────────────────────────────────────
@@ -331,7 +336,7 @@ const insertSession = (
   entry: EntryId | null,
   day: string,
   measure: { kind: "time" | "count"; value: number } | { kind: "range"; start: string; end: string } | { kind: "none" },
-  source: "manual" | "timer" | "import",
+  source: "manual" | "timer" | "import" | "derived",
 ): EntryId extends never ? never : ReturnType<CiboEvolu["insert"]> => {
   const base = {
     habit_fk: habit,
@@ -477,8 +482,11 @@ function seedWriting(ctx: Ctx, projects: EntryRef[], playProb: number) {
       const catVal = useWiki ? pick(WRITING_WIKI) : pick(WRITING_STAGES);
       const t = insertSession(ctx, habit, projects[cur].id, day, { kind: "time", value: rint(25, 160) }, "manual");
       addSubunit(ctx, (t as { value?: { id: unknown } }).value?.id, hk, catKey, catVal);
-      const w = insertSession(ctx, habit, projects[cur].id, day, { kind: "count", value: rint(150, 2200) }, "manual");
+      const words = rint(150, 2200);
+      const w = insertSession(ctx, habit, projects[cur].id, day, { kind: "count", value: words }, "manual");
       addSubunit(ctx, (w as { value?: { id: unknown } }).value?.id, hk, catKey, catVal);
+      // Record the day's Writing words so seedKeyboard can mirror them.
+      ctx.writingWordsByDay.set(day, (ctx.writingWordsByDay.get(day) ?? 0) + words);
     }
     runLeft--;
   });
@@ -513,20 +521,35 @@ function seedSimpleTime(ctx: Ctx, hk: string, playProb: number, lo: number, hi: 
   });
 }
 
-/** Keyboard: count (words) + board categorical. */
-function seedKeyboard(ctx: Ctx, playProb: number) {
+/**
+ * Keyboard: word count DERIVED from Writing + board categorical (user-ruled
+ * 2026-07-23). The typing IS the writing, so a Keyboard word session exists on
+ * a day only when Writing produced words that day (within Keyboard's lifecycle
+ * window), and its value MIRRORS that day's Writing words on the board in use —
+ * one board a day, stamped `derived`. A deterministic minority are stamped
+ * `manual` (a hand-corrected override, e.g. non-writing typing folded in) so
+ * the dashboard shows the real mixed-provenance state. `playProb` is ignored:
+ * activity tracks Writing, not an independent coin.
+ */
+function seedKeyboard(ctx: Ctx, _playProb: number) {
   const hk = "keyboard";
   const habit = ctx.habitId.get(hk)!;
   let board = pick(KEYBOARD_BOARDS);
   let runLeft = rint(20, 60);
+  let seededDays = 0;
   walkWindows(WINDOWS[hk], (day) => {
     if (runLeft <= 0) {
       board = pick(KEYBOARD_BOARDS);
       runLeft = rint(20, 60);
     }
-    if (chance(playProb)) {
-      const r = insertSession(ctx, habit, null, day, { kind: "count", value: rint(400, 5000) }, "manual");
+    const words = ctx.writingWordsByDay.get(day) ?? 0;
+    if (words > 0) {
+      // ~1 in 22 days is a hand override (detached from Writing).
+      const override = seededDays % 22 === 21;
+      const value = override ? words + rint(200, 900) : words;
+      const r = insertSession(ctx, habit, null, day, { kind: "count", value }, override ? "manual" : "derived");
       addSubunit(ctx, (r as { value?: { id: unknown } }).value?.id, hk, "keyboard_board", board);
+      seededDays++;
     }
     runLeft--;
   });

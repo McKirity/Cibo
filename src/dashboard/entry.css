@@ -1,0 +1,249 @@
+/* ============================================================================
+   ENTRY DASHBOARD (Build step 6 · chunk 5) — Layer-2 rules CLAIMED from
+   kit-staging.css (the session-10 entry families; log in the sheet header).
+   Sources: the frozen entry-dashboard-gaming.html / entry-dashboard-writing.html
+   screen blocks. Shared families (.panel · .tile/.trow/.tlist · .hbars/.vbars/
+   .donut/.lols · .heat/.hcell/.ramp · .segrow/.seg5 · buttons) were claimed by
+   earlier chunks and are NOT repeated here. Dials only — no raw values outside
+   the documented ramp/exemption transcriptions.
+   ========================================================================== */
+
+/* ===== the two-column chassis ===== */
+.edash { display: grid; grid-template-columns: var(--entry-rail-w) 1fr; gap: var(--space-7); align-items: stretch; }
+.emain { display: flex; flex-direction: column; gap: var(--space-7); min-width: 0; }
+.railslot { min-width: 0; }
+
+/* ===== identity rail — sticky; THE edit mode ===== */
+.erail { position: sticky; top: 0; display: flex; flex-direction: column; gap: var(--space-5);
+         background: var(--panel-background); border: var(--border-hairline) solid var(--border);
+         border-radius: var(--radius-medium); box-shadow: var(--shadow-low);
+         padding: calc(var(--frame-clear-grand) + var(--space-4)); overflow: hidden; }
+.edash[data-railmode="edit"] .erail.view { display: none; }
+.edash[data-railmode="edit"] .erail.edit { box-shadow: inset 0 0 0 var(--border-standard) var(--accent), var(--shadow-low); }
+/* height:auto is load-bearing: dashboard.css's catalog-hall .cover pins
+   height:var(--cover-h), and any explicit height defeats aspect-ratio. */
+.erail .cover { width: 100%; height: auto; aspect-ratio: var(--lib-cover-ratio); align-self: center; flex: 0 0 auto;
+                border-radius: var(--radius-small); position: relative; overflow: hidden; box-shadow: var(--shadow-low);
+                background: repeating-linear-gradient(135deg, var(--inset-background), var(--inset-background) 9px, var(--divider) 9px, var(--divider) 18px);
+                transition: box-shadow var(--motion-fast) var(--ease-standard); cursor: pointer; }
+.erail .cover:hover { box-shadow: inset 0 0 0 var(--border-heavy) var(--accent); }
+.erail .cover .cinit { position: absolute; left: var(--space-3); right: var(--space-3); bottom: var(--space-3);
+                font-family: var(--font-mono); font-size: var(--size-caption); color: var(--text-on-filled);
+                background: var(--scrim); border-radius: var(--radius-small); padding: 2px var(--space-3); text-align: center;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.erail .eyebrow { font-size: var(--size-caption); text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
+.erail .eyebrow .door { color: var(--text-secondary); text-decoration: underline dotted var(--border); text-underline-offset: 3px; cursor: pointer;
+                background: none; border: none; padding: 0; font: inherit; text-transform: inherit; letter-spacing: inherit;
+                transition: color var(--motion-fast) var(--ease-standard); }
+.erail .eyebrow .door:hover { color: var(--accent); }
+.erail .etitle { font-family: var(--font-heading); font-size: var(--size-display); font-weight: var(--weight-bold);
+                line-height: var(--line-tight); letter-spacing: -.01em; color: var(--text-strong); }
+.erail .byline { font-size: var(--size-small); color: var(--text-secondary); margin-top: calc(-1 * var(--space-3)); }
+.edash .chips { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.edash .chip { display: inline-flex; align-items: center; font-size: var(--size-caption); color: var(--text-secondary);
+        background: var(--window-background); border: var(--border-hairline) solid var(--divider);
+        border-radius: var(--radius-full); padding: var(--space-2) var(--space-5); }
+.edash .statusrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
+.edash .pill { display: inline-flex; align-items: center; font-size: var(--size-caption); font-weight: var(--weight-bold);
+        letter-spacing: .02em; border-radius: var(--radius-full); padding: var(--space-2) var(--space-5);
+        border: var(--border-hairline) solid transparent; }
+.edash .rating { font-family: var(--font-mono); font-size: var(--size-body); color: var(--text-strong); display: inline-flex; align-items: center; gap: var(--space-3); }
+.edash .rating .stars { color: var(--cat-3); letter-spacing: 1px; }
+.ratingctx { font-size: var(--size-caption); color: var(--text-muted); margin-top: calc(-1 * var(--space-2)); }
+.facts { display: flex; flex-direction: column; gap: var(--space-4); border-top: var(--border-hairline) solid var(--divider); padding-top: var(--space-5); }
+.facts .f { display: grid; grid-template-columns: 104px 1fr; gap: var(--space-4); align-items: baseline; }
+.facts .f b { color: var(--text-muted); font-weight: var(--weight-bold); text-transform: uppercase; font-size: var(--size-caption); letter-spacing: .05em; }
+.facts .f span { color: var(--text-secondary); font-size: var(--size-small); }
+.facts .f span strong { color: var(--text-strong); font-weight: var(--weight-medium); }
+.erail .desc { font-size: var(--size-small); color: var(--text-secondary); border-top: var(--border-hairline) solid var(--divider); padding-top: var(--space-5); line-height: var(--line-normal); }
+.prov { font-size: var(--size-caption); color: var(--text-muted); border-top: var(--border-hairline) solid var(--divider); padding-top: var(--space-4); font-family: var(--font-mono); }
+.railactions { display: flex; gap: var(--space-4); }
+.raildanger { border-top: var(--border-hairline) solid var(--divider); padding-top: var(--space-5); }
+/* the rail-foot danger face — scoped so kit.css's base .btn-danger keeps its
+   other tenants (the entry screens' variant, claimed from the screen sections) */
+.raildanger .btn-danger { width: 100%; font-size: var(--size-small);
+              color: var(--danger); background: transparent; display: flex; align-items: center; justify-content: center;
+              border: var(--border-hairline) solid color-mix(in oklch, var(--danger), var(--panel-background) var(--tint-border));
+              padding: var(--space-4); }
+.raildanger .btn-danger:hover { background: color-mix(in oklch, var(--danger), var(--panel-background) var(--tint-mix)); }
+.raildanger .btn-danger:disabled { opacity: .55; cursor: default; }
+.raildanger .btn-danger:disabled:hover { background: transparent; }
+.railactions .btn-plain, .railactions .btn-accent { flex: 1; justify-content: center; font-size: var(--size-small); }
+.dangernote { font-size: var(--size-caption); color: var(--text-muted); margin-top: var(--space-3); text-align: center; }
+
+/* edit-mode fields (kit-input) */
+.finput { display: flex; flex-direction: column; gap: var(--space-2); }
+.finput .flabel { font-size: var(--size-caption); text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.finput .fbox { background: var(--inset-background); border: var(--border-hairline) solid var(--border); border-radius: var(--radius-small);
+                padding: var(--space-3) var(--space-4); font-size: var(--size-small); color: var(--text-strong);
+                font-family: var(--font-ui); width: 100%; min-height: 38px; }
+.finput .fbox:focus { outline: none; box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring); border-color: var(--accent); background: var(--panel-background); }
+.finput .fbox.area { min-height: 78px; line-height: var(--line-normal); resize: vertical; }
+.finput .fbox.checkrow { display: flex; align-items: center; gap: var(--space-3); }
+.chipedit { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.chipedit .chip .x { color: var(--text-muted); margin-left: var(--space-3); cursor: pointer; }
+.chipedit .addchip { color: var(--accent); border-style: dashed; border-color: color-mix(in oklch, var(--accent), var(--panel-background) var(--tint-border));
+                background: transparent; cursor: text; font: inherit; font-size: var(--size-caption); max-width: 90px; }
+.chipedit .addchip:focus { outline: none; border-color: var(--accent); }
+.frow2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.frow2.tight { gap: var(--space-3); grid-template-columns: 2fr 1fr; }
+
+/* creation rail banner — parametrized on --rail-hue (the FINAL transcribed
+   --habit-1; Build sets the habit's own hue inline). The 24%/6% stripe mixes
+   are the ruled-exempt placeholder-stripe amounts (a stand-in for real banner
+   art — an <img> once the images subsystem lands). */
+.railbanner { position: relative; margin: calc(-1 * var(--space-7)) calc(-1 * var(--space-7)) 0; height: var(--masthead-art-h);
+              background: repeating-linear-gradient(135deg, color-mix(in oklch, var(--rail-hue), var(--window-background) 24%) 0 18px, color-mix(in oklch, var(--rail-hue), var(--window-background) 6%) 18px 36px);
+              -webkit-mask-image: linear-gradient(to bottom, black 0, black 34%, transparent var(--rail-banner-fade));
+                      mask-image: linear-gradient(to bottom, black 0, black 34%, transparent var(--rail-banner-fade)); }
+.erail .cover.overbanner { margin-top: calc(-1 * var(--space-8)); position: relative; z-index: 1; }
+
+/* ===== wave timeline — the signature zone ===== */
+.waveheadrow { display: flex; align-items: baseline; gap: var(--space-5); margin-bottom: var(--space-6); }
+.wavecount { font-family: var(--font-heading); font-size: var(--size-subheading); font-weight: var(--weight-bold); color: var(--text-strong); }
+.wavecount .wsub { font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-regular); color: var(--text-muted); margin-left: var(--space-3); }
+.waveband { position: relative; height: var(--wave-band-h); }
+.waveband svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+.waveoverlay { position: absolute; inset: 0; pointer-events: none; }
+/* date-row labels position by top (the lane band's stacked geometry); the
+   quarter ticks are muted, year boundaries read stronger */
+.waveoverlay .wxlab { position: absolute; font-family: var(--font-mono); font-size: var(--size-caption); color: var(--text-muted); }
+.waveoverlay .wxlab.end { transform: translateX(-100%); }
+.waveoverlay .wxlab.tick { transform: translateX(-50%); }
+.waveoverlay .wxlab.yrlab { color: var(--text-secondary); font-weight: var(--weight-bold); }
+.waveoverlay .wbreaklab { position: absolute; top: 50%; transform: translate(-50%, -50%) rotate(-90deg); white-space: nowrap;
+                font-family: var(--font-mono); font-size: var(--size-caption); color: var(--text-muted); }
+.waveoverlay .wmarklab { position: absolute; white-space: nowrap; font-size: var(--size-caption);
+                font-weight: var(--weight-bold); padding: 0 4px; }
+.waveoverlay .wmarklab.end { transform: translateX(-100%); }
+/* ── the scrolling lane band (the 2026-07-24 band-geometry ruling) ──
+   The band is the scroll port; the inner .wavescroll carries the computed
+   content width. The scrollbar is CHROME and always visible: declaring the
+   WebKit pseudo-elements opts out of overlay scrollbars; scrollbar-width must
+   NOT also be set (it silently overrides the pseudos — the ruling's trap a);
+   the thumb takes a text-weight dial, never --border (trap b). */
+.waveband.lane { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain;
+                 scrollbar-color: var(--text-muted) var(--inset-background); }
+.waveband.lane .wavescroll { position: relative; height: 100%; }
+.waveband.lane::-webkit-scrollbar { height: var(--wave-scrollbar-h); }
+.waveband.lane::-webkit-scrollbar-track { background: var(--inset-background); border-radius: var(--radius-full); }
+.waveband.lane::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: var(--radius-full); border: 2px solid var(--inset-background); }
+.waveband.lane::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+/* the wave lane — a capsule per wave; 10px numeral face + the 18px fits-inside
+   threshold are lane mechanics, sized to --wave-lane-h (step-6a lint note) */
+.waveoverlay .wlanetrack { position: absolute; height: var(--wave-lane-h); border-radius: var(--radius-full);
+                background: color-mix(in oklch, var(--text-muted), transparent var(--wave-shade-mix)); }
+.waveoverlay .wcap { position: absolute; height: var(--wave-lane-h); border-radius: var(--radius-full); background: var(--heat-hue);
+                pointer-events: auto; cursor: pointer; display: flex; align-items: center; justify-content: center;
+                font-family: var(--font-mono); font-size: 10px; line-height: 1; font-weight: var(--weight-bold);
+                color: var(--text-on-filled); overflow: hidden; transition: background var(--motion-fast) var(--ease-standard); }
+.waveoverlay .wcap:hover { background: color-mix(in oklch, var(--heat-hue), var(--text-strong) var(--hover-shift)); }
+.waveoverlay .wcap.sel { outline: var(--border-standard) solid var(--text-strong); outline-offset: 2px; }
+.waveoverlay .wcapnum { position: absolute; transform: translateX(-50%); font-family: var(--font-mono); font-size: 10px; line-height: 1;
+                color: var(--text-muted); transition: color var(--motion-fast) var(--ease-standard); }
+.waveoverlay .wcapnum.on { color: var(--heat-hue); font-weight: var(--weight-bold); }
+.waveoverlay .wcapnum.sel { color: var(--text-strong); font-weight: var(--weight-bold); }
+/* the chapter track (hit area hover folded to --wave-shade-mix — the drawn 88%
+   mix's nearest dial) */
+.waveoverlay .werahit { position: absolute; height: 18px; pointer-events: auto; cursor: pointer; border-radius: var(--radius-full);
+                transition: background var(--motion-fast) var(--ease-standard); }
+.waveoverlay .werahit:hover { background: color-mix(in oklch, var(--heat-hue), transparent var(--wave-shade-mix)); }
+/* era captions list PLAINLY — "Era N" only (user-ruled 2026-07-24) */
+.waveoverlay .weralab { position: absolute; font-size: var(--size-caption); color: var(--text-strong);
+                font-weight: var(--weight-bold); white-space: nowrap;
+                pointer-events: auto; cursor: pointer; }
+
+/* ── the wave TABLE (the 2026-07-24 ruling — replaces the card row; 760px
+   min-width + 130px composition floor are behavioral mechanics) ── */
+.wtwrap { margin-top: var(--space-6); border: var(--border-hairline) solid var(--divider); border-radius: var(--radius-medium); overflow: auto; max-height: var(--wave-table-h); }
+.wtable { width: 100%; min-width: 760px; border-collapse: collapse; font-size: var(--size-small); color: var(--text-secondary); }
+.wtable td.span { white-space: nowrap; }
+.wtable th { position: sticky; top: 0; z-index: 1; background: var(--panel-background); text-align: left; white-space: nowrap;
+             font-size: var(--size-caption); text-transform: uppercase; letter-spacing: .06em; font-weight: var(--weight-bold);
+             color: var(--text-muted); padding: var(--space-4) var(--space-5); border-bottom: var(--border-hairline) solid var(--border); }
+.wtable th.n, .wtable td.n { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wtable td { padding: var(--space-4) var(--space-5); border-bottom: var(--border-hairline) solid var(--divider); }
+.wtable td.n { color: var(--text-strong); }
+.wtable tbody tr:hover > td { background: var(--hover-wash); }
+.wtable tr.hl > td { background: var(--selected-wash); }
+.wtable tbody tr.sel > td, .wtable tbody tr.sel:hover > td { background: var(--selected-wash); }
+.wtable tbody tr.sel > td:first-child { box-shadow: inset 3px 0 0 var(--heat-hue); }
+.wtable tr.grow > td { background: color-mix(in oklch, var(--text-strong), transparent var(--seam-wash-mix)); color: var(--text-strong);
+             font-weight: var(--weight-bold); border-bottom: var(--border-hairline) solid var(--border); }
+.wtable .wlabel { display: flex; align-items: center; gap: var(--space-4); white-space: nowrap; color: var(--text-strong); font-family: var(--font-mono); }
+.wtable .wdot { width: var(--space-4); height: var(--space-4); border-radius: var(--radius-full); background: var(--heat-hue); flex: 0 0 auto; }
+.wtable tr.sub .wlabel { padding-left: var(--space-6); }
+.wtable .chev { display: inline-block; width: 10px; color: var(--text-muted); transition: transform var(--motion-fast) var(--ease-standard); }
+.wtable tr.open .chev { transform: rotate(90deg); }
+.wtable .chip { font-family: var(--font-ui); font-size: var(--size-caption); font-weight: var(--weight-bold); color: var(--verdict-done);
+             background: color-mix(in oklch, var(--verdict-done), transparent var(--tint-mix)); border-radius: var(--radius-full); padding: 0 var(--space-4); }
+.wtable .ccell { display: flex; align-items: center; gap: var(--space-4); min-width: 130px; }
+.wtable .ccell .cbar { display: flex; flex: 1; height: 8px; border-radius: var(--radius-full); overflow: hidden; background: var(--inset-background); }
+.wtable .ccell .clbl { font-size: var(--size-caption); color: var(--text-muted); white-space: nowrap; }
+.wtable tfoot td { position: sticky; bottom: 0; background: var(--panel-background); border-top: var(--border-standard) solid var(--border);
+             border-bottom: none; color: var(--text-strong); font-weight: var(--weight-bold); }
+
+/* ===== day log — Year › Month tree ===== */
+.log { font-size: var(--size-small); }
+.lyear + .lyear, .lmonth + .lmonth { border-top: var(--border-hairline) solid var(--divider); }
+.log .yr, .log .mo { display: flex; align-items: center; gap: var(--space-4); cursor: pointer; user-select: none;
+           transition: color var(--motion-fast) var(--ease-standard); }
+.log .yr { padding: var(--space-4) 0; font-weight: var(--weight-bold); color: var(--text-strong); }
+.log .mo { padding: var(--space-3) 0 var(--space-3) var(--space-6); color: var(--text-secondary); }
+.log .yr:hover, .log .mo:hover { color: var(--accent); }
+.log .yr .chev, .log .mo .chev { width: var(--icon-size-small); height: var(--icon-size-small); color: var(--text-muted); flex: 0 0 auto;
+           transition: transform var(--motion-fast) var(--ease-standard); }
+.lyear[data-open="0"] .yr .chev, .lmonth[data-open="0"] .mo .chev { transform: rotate(-90deg); }
+.lyear[data-open="0"] .lmonths { display: none; }
+.lmonth[data-open="0"] .ldays { display: none; }
+.log .yr .ysum, .log .mo .msum { margin-left: auto; font-family: var(--font-mono); color: var(--text-muted); font-weight: var(--weight-regular); }
+.log .day { display: flex; align-items: center; gap: var(--space-5); height: var(--daylog-row-h); padding: 0 var(--space-4) 0 var(--space-8);
+       cursor: pointer; border-radius: var(--radius-small); border-top: var(--border-hairline) solid var(--divider);
+       transition: background var(--motion-fast) var(--ease-standard); }
+.log .day:hover { background: var(--hover-wash); }
+.log .day .dt { font-family: var(--font-mono); color: var(--text-muted); width: 132px; flex: 0 0 auto; }
+.log .day .dval { font-family: var(--font-mono); color: var(--text-strong); }
+.log .day .dchip { font-size: var(--size-caption); color: var(--text-secondary); background: var(--panel-background);
+              border: var(--border-hairline) solid var(--divider); border-radius: var(--radius-full); padding: 1px var(--space-4); }
+.log .day .best { margin-left: auto; font-size: var(--size-caption); font-weight: var(--weight-bold);
+             color: color-mix(in oklch, var(--cat-3), var(--text-strong) 30%);
+             background: color-mix(in oklch, var(--cat-3), var(--panel-background) var(--tint-mix));
+             border: var(--border-hairline) solid color-mix(in oklch, var(--cat-3), var(--panel-background) var(--tint-border));
+             border-radius: var(--radius-full); padding: 1px var(--space-4); }
+
+/* ===== series strip (conditional — renders only where `series` is set).
+   The FINAL's .cond face was the dashed conditional EXHIBIT; the live strip
+   wears the same box with a solid hairline (mechanics, noted in the doc log). */
+.series { display: flex; align-items: center; gap: var(--space-6); }
+.series.live { border: var(--border-hairline) solid var(--border);
+               border-radius: var(--radius-medium); padding: var(--space-6); background: var(--window-background); }
+.series .scover { width: var(--cover-w); height: var(--cover-h); flex: 0 0 auto; border-radius: var(--radius-small); position: relative; overflow: hidden; cursor: pointer;
+               border: none; padding: 0;
+               background: repeating-linear-gradient(135deg, var(--inset-background), var(--inset-background) 7px, var(--divider) 7px, var(--divider) 14px);
+               transition: box-shadow var(--motion-fast) var(--ease-standard); }
+.series .scover:hover { box-shadow: inset 0 0 0 var(--border-heavy) var(--accent); }
+.series .scover .cinit { position: absolute; left: 2px; right: 2px; bottom: 2px; font-family: var(--font-mono); font-size: var(--size-caption); text-align: center;
+               color: var(--text-on-filled); background: var(--scrim); border-radius: var(--radius-cell); padding: 1px; }
+.series .sctx { min-width: 0; flex: 1; }
+.series .sctx .stitle { font-size: var(--size-small); font-weight: var(--weight-bold); color: var(--text-strong); }
+.series .sctx .snote { font-size: var(--size-caption); color: var(--text-muted); margin-top: var(--space-2); }
+
+/* ===== creation-only zones ===== */
+/* story-vs-wiki pie — vertical re-lay (user-ruled 2026-07-18): pie above a
+   centered legend. The dial is --dist-donut-size (200); the re-frozen face
+   drew the pie at 300px inline → 1.5 × the dial, transcribed here. */
+.splitwrap { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: var(--space-6); }
+.splitwrap .pie { width: calc(1.5 * var(--dist-donut-size)); height: calc(1.5 * var(--dist-donut-size)); border-radius: var(--radius-full); flex: 0 0 auto; box-shadow: var(--shadow-low); }
+.splitlabel { text-align: center; }
+.splitleg { font-size: var(--size-subheading); gap: var(--space-2); }
+.splitleg .lg .lgn { flex: none; }
+
+/* the four-shape distribution pair (two side-by-side panels) */
+.distrow4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-7) var(--space-8); }
+
+/* word-growth curve */
+.growth { position: relative; height: var(--growth-curve-h); }
+.growth svg { width: 100%; height: 100%; display: block; }
+
+/* the edit face's inline error note */
+.fieldnote.err { color: var(--danger); }

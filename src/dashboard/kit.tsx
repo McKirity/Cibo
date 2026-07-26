@@ -7,7 +7,8 @@
  * These are the consumption template's blocks; every later dashboard reuses
  * them. Nothing Gaming-specific lives here — the model carries the data.
  */
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
+import { useBox } from "./useBox";
 import type {
   DistColumnSpec,
   LeaderColumnSpec,
@@ -127,7 +128,14 @@ export function DistributionColumns({ columns }: { columns: DistColumnSpec[] }) 
 
 // ── kit-leaderboard ───────────────────────────────────────────────────────────
 
-export function LeaderboardColumns({ columns }: { columns: LeaderColumnSpec[] }) {
+export function LeaderboardColumns({
+  columns,
+  onOpenEntry,
+}: {
+  columns: LeaderColumnSpec[];
+  /** Entry doors (chunk 5) — rows + hall covers open the entry dashboard. */
+  onOpenEntry?: (entryId: string) => void;
+}) {
   // Flex to fill (standing rule): as many tracks as columns, so a degraded
   // 2-column board fills the panel width instead of leaving a dead third track.
   return (
@@ -141,7 +149,12 @@ export function LeaderboardColumns({ columns }: { columns: LeaderColumnSpec[] })
           {c.rows && (
             <div>
               {c.rows.map((r) => (
-                <button className="lrow" key={r.rank} title={r.title}>
+                <button
+                  className="lrow"
+                  key={r.rank}
+                  title={r.title}
+                  onClick={r.entryId && onOpenEntry ? () => onOpenEntry(r.entryId!) : undefined}
+                >
                   <span className="ltrack">
                     <span className="lprog" style={{ width: `${r.pct}%` }} />
                   </span>
@@ -157,7 +170,13 @@ export function LeaderboardColumns({ columns }: { columns: LeaderColumnSpec[] })
           {c.hall && (
             <div className="hall">
               {c.hall.map((h, i) => (
-                <div className="cover" key={i} title={`${h.title} · ★★★★★`}>
+                <div
+                  className="cover"
+                  key={i}
+                  title={`${h.title} · ★★★★★`}
+                  role={h.entryId && onOpenEntry ? "button" : undefined}
+                  onClick={h.entryId && onOpenEntry ? () => onOpenEntry(h.entryId!) : undefined}
+                >
                   <span className="cinit">{h.initial}</span>
                 </div>
               ))}
@@ -190,29 +209,9 @@ function TrendChart({
   xticks: { i: number; label: string }[];
   color: string;
 }) {
-  const ref = useRef<SVGSVGElement | null>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
-
-  // Synchronous measure before paint (clientWidth forces layout) so the chart
-  // draws on the first frame; a ResizeObserver + window resize keep it in sync.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
-    measure();
-    let ro: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(measure);
-      ro.observe(el);
-    }
-    window.addEventListener("resize", measure);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, []);
-
-  const { w, h } = box;
+  // Box-sized viewBox: the SVG's viewBox equals its measured pixel box (shared
+  // useBox hook — a ResizeObserver keeps it in sync, redrawing on resize).
+  const { ref, w, h } = useBox<SVGSVGElement>();
   const pad = 8;
   const n = line.length;
   const X = (i: number) => pad + ((w - 2 * pad) * i) / (n - 1);

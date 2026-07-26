@@ -9,7 +9,7 @@
    Ambience: backdrop + timer backdrop SILENT; the vignette is the
    code-drawn tick-face clock (the data-bearing carve-out — no files).
    ---------------------------------------------------------------------
-   233 dials (234 → 233 at the 2026-07-19 --mini-verdict-cell retirement,
+   241 dials (233 → 241 at the 2026-07-24 wave-zone mint; 234 → 233 at the 2026-07-19 --mini-verdict-cell retirement,
    tenantless; count corrected 2026-07-19 — was published as 220; 14 packed
    declarations were invisible to a line-anchored count. Nothing changed).
    Values are the frozen master
@@ -268,6 +268,19 @@
   --growth-curve-h:    320px;
   --rail-banner-fade:   62%;
   --wave-shade-mix:     92%;
+  /* Wave-zone additions (8) — minted 2026-07-24 (Build chunk 5, the wave-timeline
+     rethink session): the lane strip height · the capsule width floor · axis→lane
+     clearance · the numeral row · chapter-track headroom · the axis's incompressible
+     bucket (the band scrolls rather than squeezing below it) · the band scrollbar's
+     chrome height · the wave table's body ceiling. Roster 233 → 241. */
+  --wave-lane-h:        14px;
+  --wave-cap-min:        5px;
+  --wave-lane-gap:      12px;   /* 8 → 12 at the 2026-07-24 spacing pass (user: the lane crowded the axis) */
+  --wave-num-h:         14px;
+  --wave-era-h:         34px;
+  --wave-bucket-min:    26px;
+  --wave-scrollbar-h:   10px;
+  --wave-table-h:      460px;
 
   /* -- Comparing Statistics structural size (1) ----------------------- */
   --builder-w:       540px;   /* shared with Advanced Search's set-query workspace */

@@ -14,8 +14,9 @@
  * the hero-card sparklines keep the FINAL's fixed 100×40 painterly viewBox
  * (preserveAspectRatio="none" — a fill texture, not a measured chart).
  */
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { useCreationData } from "./useCreationData";
+import { useBox } from "./useBox";
 import {
   buildCreationDashboard,
   type CreationHeatCell,
@@ -39,7 +40,14 @@ const todayLocal = (): string => {
 
 const HEAT_CLASS: Record<string, string> = { HOT: "hot", WARM: "warm", COOLING: "warm", COLD: "cold" };
 
-export function CreationDashboard({ habitKey }: { habitKey: string }) {
+export function CreationDashboard({
+  habitKey,
+  onOpenEntry,
+}: {
+  habitKey: string;
+  /** Entry doors (chunk 5) — hero cards open the entry dashboard. */
+  onOpenEntry?: (entryId: string) => void;
+}) {
   const data = useCreationData(habitKey);
   const [today] = useState(todayLocal);
   const [scope, setScope] = useState<ScopeSel>({ kind: "all" });
@@ -145,7 +153,7 @@ export function CreationDashboard({ habitKey }: { habitKey: string }) {
             <Panel title={m.heroes.title}>
               <div className="herogrid">
                 {m.heroes.cards.map((h) => (
-                  <HeroCard key={h.title} h={h} />
+                  <HeroCard key={h.title} h={h} onOpen={onOpenEntry} />
                 ))}
                 <div className="hero door" role="button" title="Entry creation modal (later step)">
                   <span className="dplus">＋ New entry</span>
@@ -269,27 +277,6 @@ function Shape({ chart }: { chart: ShapeChart }) {
 // ── Trend panel (line · dots · stacked, box-sized viewBox) ────────────────────
 
 /** Measure an element's pixel box before paint; re-measure on resize. */
-function useBox<T extends Element>() {
-  const ref = useRef<T | null>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
-    measure();
-    let ro: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(measure);
-      ro.observe(el);
-    }
-    window.addEventListener("resize", measure);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, []);
-  return { ref, ...box };
-}
 
 /** Round up to a clean chart ceiling (1/2/5 × 10^k, min 2 for hour scales). */
 function niceCeil(v: number, unit: string): number {
@@ -609,7 +596,7 @@ function HeroSpark({ s }: { s: HeroSpec["sparks"][number] }) {
   );
 }
 
-function HeroCard({ h }: { h: HeroSpec }) {
+function HeroCard({ h, onOpen }: { h: HeroSpec; onOpen?: (entryId: string) => void }) {
   const pillStyle: CSSProperties | undefined = h.pill
     ? {
         background: `color-mix(in oklch, var(${h.pill.colorVar}), var(--panel-background) var(--tint-mix))`,
@@ -618,7 +605,13 @@ function HeroCard({ h }: { h: HeroSpec }) {
       }
     : undefined;
   return (
-    <div className="hero">
+    <div
+      className="hero"
+      role={onOpen ? "button" : undefined}
+      style={onOpen ? { cursor: "pointer" } : undefined}
+      title={onOpen ? `${h.title} — open entry` : undefined}
+      onClick={onOpen ? () => onOpen(h.entryId) : undefined}
+    >
       <div className="hbanner" />
       <div className="hscrim" />
       <div className="hbody">

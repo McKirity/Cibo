@@ -76,7 +76,17 @@ export type HabitSubType = typeof HabitSubType.Type;
 export const MeasureKind = union("time", "count", "range", "none");
 export type MeasureKind = typeof MeasureKind.Type;
 
-export const SessionSource = union("manual", "timer", "import");
+/**
+ * How a session was created. `manual`/`timer`/`import` are the three human/tool
+ * provenances. `derived` (added 2026-07-23, user-ruled) marks a session whose
+ * measure is COPIED from another habit rather than logged: the sole tenant is
+ * Keyboard's word count, which mirrors that day's Writing words (one board a
+ * day, so the whole day's words land on it). `derived` doubles as the sync
+ * state — a derived Keyboard session follows Writing automatically; the moment
+ * it is hand-edited it flips to `manual` (detached), and the refresh control
+ * flips it back to `derived`. See src/db/derivedKeyboard.ts.
+ */
+export const SessionSource = union("manual", "timer", "import", "derived");
 export type SessionSource = typeof SessionSource.Type;
 
 export const DefinitionScope = union("entry", "session");

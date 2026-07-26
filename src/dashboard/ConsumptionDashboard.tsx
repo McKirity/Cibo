@@ -32,7 +32,14 @@ const todayLocal = (): string => {
 
 const HEAT_CLASS: Record<string, string> = { HOT: "hot", WARM: "warm", COOLING: "warm", COLD: "cold" };
 
-export function ConsumptionDashboard({ habitKey }: { habitKey: string }) {
+export function ConsumptionDashboard({
+  habitKey,
+  onOpenEntry,
+}: {
+  habitKey: string;
+  /** Entry doors (chunk 5) — leaderboard rows, hall covers, catalog cards. */
+  onOpenEntry?: (entryId: string) => void;
+}) {
   const data = useConsumptionData(habitKey);
   const [today] = useState(todayLocal);
   const [scope, setScope] = useState<ScopeSel>({ kind: "all" });
@@ -158,7 +165,13 @@ export function ConsumptionDashboard({ habitKey }: { habitKey: string }) {
                     </div>
                     <div className="hall">
                       {m.mergedCatalog.tile.list?.rows.map((r, i) => (
-                        <div className="cover" key={i} title={`${r.k} · ${r.v}`}>
+                        <div
+                          className="cover"
+                          key={i}
+                          title={`${r.k} · ${r.v}`}
+                          role={r.entryId && onOpenEntry ? "button" : undefined}
+                          onClick={r.entryId && onOpenEntry ? () => onOpenEntry(r.entryId!) : undefined}
+                        >
                           <span className="rk">{i + 1}</span>
                           <div className="chan">
                             <span className="cn">{r.k}</span>
@@ -183,7 +196,7 @@ export function ConsumptionDashboard({ habitKey }: { habitKey: string }) {
                  column dropped — e.g. a pinned type + a year before it existed) ── */}
             {m.leaderboards.length > 0 && (
               <Panel title="Leaderboards">
-                <LeaderboardColumns columns={m.leaderboards} />
+                <LeaderboardColumns columns={m.leaderboards} onOpenEntry={onOpenEntry} />
               </Panel>
             )}
 

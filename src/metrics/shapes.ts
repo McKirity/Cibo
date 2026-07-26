@@ -286,7 +286,7 @@ export function leaderboard(
 // ── Shape 8 · Period delta ────────────────────────────────────────────────────
 
 /** total (hours if minutes, else distinct days) ÷ calendar buckets in [from,to]. */
-export function windowRate(
+function windowRate(
   sessions: SessionRow[],
   from: string,
   to: string,
@@ -387,6 +387,108 @@ export interface Wave {
   end: string;
   days: number;
   minutes: number;
+}
+
+/**
+ * ── Eras (ruled 2026-07-24, the wave-timeline rethink) ───────────────────────
+ * A DENSITY construct over the wave list — a second gap threshold provably
+ * fails (any gap loose enough to hold a push together also chains the
+ * scattered pokes), so eras grow-from-seed instead. Derived at read time,
+ * never stored; parameters are metric params, siblings of `wave_gap_days`
+ * (per-habit override permitted, none wired yet). Numbered, never named.
+ * A wave belonging to no era is an INTERLUDE (not an era, never numbered).
+ */
+export interface Era {
+  /** Wave-list index range (inclusive) this era claims. */
+  from: number;
+  to: number;
+  start: string;
+  end: string;
+  /** Chronological 1-based number. */
+  n: number;
+  days: number;
+  amount: number;
+}
+
+export interface EraParams {
+  seedDays: number;
+  seedShare: number;
+  densityFloor: number;
+  diluteRatio: number;
+  joinMult: number;
+}
+
+export const ERA_DEFAULTS: EraParams = {
+  seedDays: 5,
+  seedShare: 0.05,
+  densityFloor: 0.12,
+  diluteRatio: 0.8,
+  joinMult: 2,
+};
+
+/**
+ * Grow-from-seed: a wave seeds when days ≥ seedDays AND its share of the
+ * entry's total amount ≥ seedShare; it absorbs neighbours under two gates —
+ * the REST CEILING (the silence to the candidate ≤ joinMult × gapDays; a
+ * longer silence ends the era outright) and the DENSITY GATE (merged
+ * density = Σ logged days ÷ merged calendar span must clear densityFloor
+ * AND diluteRatio × the current density). Claimed waves never re-seed.
+ */
+export function erasForWaves(
+  waves: Wave[],
+  amountOf: (w: Wave) => number,
+  gapDays: number,
+  p: EraParams = ERA_DEFAULTS,
+): Era[] {
+  const amounts = waves.map(amountOf);
+  const totalAmount = amounts.reduce((a, v) => a + v, 0) || 1;
+  const used = new Set<number>();
+  const out: Era[] = [];
+  const dens = (lo: number, hi: number, dsum: number) =>
+    dsum / (dayGap(waves[lo].start, waves[hi].end) + 1);
+
+  waves.forEach((w, i) => {
+    if (used.has(i)) return;
+    if (w.days < p.seedDays || amounts[i] / totalAmount < p.seedShare) return;
+    let lo = i;
+    let hi = i;
+    let dsum = w.days;
+    let cur = dens(lo, hi, dsum);
+    let moved = true;
+    while (moved) {
+      moved = false;
+      for (const side of ["lo", "hi"] as const) {
+        const j = side === "lo" ? lo - 1 : hi + 1;
+        if (j < 0 || j >= waves.length || used.has(j)) continue;
+        const silence =
+          side === "lo" ? dayGap(waves[j].end, waves[lo].start) : dayGap(waves[hi].end, waves[j].start);
+        if (silence > gapDays * p.joinMult) continue; // an era's rests are bounded
+        const nl = side === "lo" ? j : lo;
+        const nh = side === "hi" ? j : hi;
+        const nd = dsum + waves[j].days;
+        const d2 = dens(nl, nh, nd);
+        if (d2 >= p.densityFloor && d2 >= cur * p.diluteRatio) {
+          lo = nl;
+          hi = nh;
+          dsum = nd;
+          cur = d2;
+          moved = true;
+        }
+      }
+    }
+    for (let k = lo; k <= hi; k++) used.add(k);
+    out.push({ from: lo, to: hi, start: waves[lo].start, end: waves[hi].end, n: 0, days: 0, amount: 0 });
+  });
+
+  out.sort((a, b) => (a.start < b.start ? -1 : 1));
+  out.forEach((e, i) => {
+    e.n = i + 1;
+    for (let k = e.from; k <= e.to; k++) {
+      e.days += waves[k].days;
+      e.amount += amounts[k];
+    }
+  });
+  return out;
 }
 
 /** An entry's sessions clustered by the gap threshold; later clusters = replays. */

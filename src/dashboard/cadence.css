@@ -1,0 +1,264 @@
+/* == CADENCE CHASSIS (Build step 6 chunk 4) ==================================
+   Claimed from Layer 2 (`kit-staging.css`) + the four frozen cadence FINALs
+   (monthly = the chassis; weekly/quarterly/yearly deltas). Scoped under
+   `.cadash` — the shared heads (.panel/.tile) are already claimed by earlier
+   dashboards; cadence variants stay scoped so nothing repaints them.
+   The verdict heat transcribes --heatmap-ramp over the LOCAL --heat-ink alias
+   (stops 90/62/34/0 — the ramp-transcription carve-out; citation:
+   --heatmap-ramp). --heat-ink is set inline per scale (month slot · quarter
+   compact · the year's ratified --accent). */
+
+.cadash{display:flex; flex-direction:column; gap:var(--space-4); max-width:2180px;}
+/* panel clearance = --frame-clear-grand (panel · headliner · dialog — there is
+   NO --frame-clear-panel dial; an undefined var() in calc() voids the whole
+   padding, which is exactly how the first GUI pass rendered zero padding). */
+.cadash .cpanel{background:var(--panel-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-large); box-shadow:var(--shadow-low); padding:calc(var(--frame-clear-grand) + var(--space-5));}
+.cadash .cpanel.tighthead{padding-top:calc(var(--frame-clear-grand) + var(--space-2)); padding-bottom:calc(var(--frame-clear-grand) + var(--space-2));}
+.cadash .phead{display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-5); margin-bottom:var(--space-5); padding-bottom:var(--space-3); border-bottom:var(--border-hairline) solid var(--divider);}
+.cadash .ptitle{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold);}
+.cadash .ico{width:var(--icon-size); height:var(--icon-size); fill:none; stroke:currentColor; stroke-width:var(--icon-stroke); stroke-linecap:round; stroke-linejoin:round;}
+
+/* --- 1 · kit-header-period ------------------------------------------------ */
+.cadash .perhead{display:flex; align-items:center; gap:var(--space-6);}
+.cadash .perhead .arrow{display:flex; align-items:center; justify-content:center; width:44px; height:44px; border:var(--border-hairline) solid var(--border); background:var(--panel-background); border-radius:var(--radius-small); color:var(--text-secondary); cursor:pointer; flex:0 0 auto; transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+.cadash .perhead .arrow:hover{background:var(--hover-wash); color:var(--text-strong);}
+.cadash .perhead .arrow.dead{opacity:.35; cursor:default;}
+.cadash .perhead .arrow.dead:hover{background:var(--panel-background); color:var(--text-secondary);}
+.cadash .perhead .idblock{display:flex; flex-direction:column; gap:var(--space-2);}
+.cadash .perhead .pid{font-family:var(--font-heading); font-size:var(--size-display); font-weight:var(--weight-bold); line-height:var(--line-tight); letter-spacing:-.01em;}
+.cadash .perhead .ctx{font-size:var(--size-small); color:var(--text-secondary);}
+.cadash .perhead .ctx b{color:var(--text-strong); font-weight:var(--weight-medium);}
+.cadash .perhead .doors{display:flex; align-items:center; gap:var(--space-4); margin-left:var(--space-6);}
+.cadash .updoor{display:inline-flex; align-items:center; gap:var(--space-3); font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-secondary); background:var(--window-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); padding:var(--space-3) var(--space-5); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+.cadash .updoor:hover{background:var(--hover-wash); color:var(--accent);}
+.cadash .updoor .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
+.cadash .perhead .fin{margin-left:auto; display:flex; align-items:center; gap:var(--space-4); font-size:var(--size-small); color:var(--text-secondary);}
+.cadash .perhead .fin .finmark{display:inline-flex; align-items:center; gap:var(--space-3); font-family:var(--font-mono); color:var(--text-strong); font-weight:var(--weight-medium);}
+.cadash .perhead .fin .dotm{width:var(--marker-size); height:var(--marker-size); border-radius:var(--radius-full); background:var(--finalize-mark);}
+
+/* --- 2 · kit-chart-verdict — CALENDAR (monthly) --------------------------- */
+.cadash .headliner{display:grid; grid-template-columns:1.4fr 1fr; gap:var(--space-7); align-items:stretch;}
+.cadash .calside{display:flex; flex-direction:column; min-width:0;}
+.cadash .vhdr{display:grid; grid-template-columns:repeat(7,1fr); gap:var(--space-2); margin-bottom:var(--space-3);}
+.cadash .vhdr span{text-align:center; font-size:var(--size-caption); font-weight:var(--weight-bold); letter-spacing:.06em; color:var(--text-muted);}
+.cadash .vcal{display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:minmax(var(--verdict-cell-min-h),1fr); gap:var(--space-2); flex:1;}
+.cadash .vc{position:relative; min-height:var(--verdict-cell-min-h); border-radius:var(--radius-small); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); background:var(--panel-background); padding:var(--space-3) var(--space-4); overflow:hidden; transition:box-shadow var(--motion-fast) var(--ease-standard);}
+.cadash .vc .dn{font-size:var(--size-small); font-weight:var(--weight-bold); color:var(--text-strong); position:relative; z-index:1;}
+.cadash .vc .hc{position:absolute; left:var(--space-4); right:var(--space-4); bottom:var(--space-3); z-index:1; font-size:var(--size-caption); color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+/* the five-stage heat — --heatmap-ramp transcribed over --heat-ink (90/62/34/0) */
+.cadash .vc.g1{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 90%); box-shadow:none;}
+.cadash .vc.g2{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 62%); box-shadow:none;}
+.cadash .vc.g3{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 34%); box-shadow:none;}
+.cadash .vc.g3 .dn, .cadash .vc.g3 .hc{color:var(--text-on-filled);}
+.cadash .vc.g4{background:var(--heat-ink, var(--finalize-mark)); box-shadow:none;}
+.cadash .vc.g4 .dn, .cadash .vc.g4 .hc{color:var(--text-on-filled);}
+.cadash .vc.gap .hc{color:var(--text-muted);}
+.cadash .vc.unf{background:var(--panel-background); box-shadow:none; border:var(--border-standard) dashed var(--finalize-outline);}
+.cadash .vc.unf .dn, .cadash .vc.unf .hc{color:var(--text-muted);}
+.cadash .vc.best{box-shadow:inset 0 0 0 var(--focus-ring-weight) var(--accent);}
+.cadash .vc.blank{background:none; box-shadow:none;}
+.cadash .vc.blank .dn{color:var(--text-muted);}
+.cadash .calnote{margin-top:var(--space-3); font-size:var(--size-caption); color:var(--text-muted); line-height:var(--line-normal);}
+.cadash .calnote b{color:var(--text-secondary); font-weight:var(--weight-medium);}
+
+/* --- 2 · kit-chart-verdict — STRIP (weekly) ------------------------------- */
+.cadash .wstrip{display:grid; grid-template-columns:repeat(7,1fr); gap:var(--space-5);}
+.cadash .wcol{position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-3); min-height:calc(var(--verdict-cell-min-h) * 3); border-radius:var(--radius-small); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); background:var(--panel-background); padding:var(--space-5);}
+.cadash .wcol .wdow{font-size:var(--size-caption); font-weight:var(--weight-bold); letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted);}
+.cadash .wcol .wdate{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong);}
+.cadash .wcol .wcount{margin-top:auto; font-family:var(--font-mono); font-size:var(--size-display); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong);}
+.cadash .wcol .wfin{font-size:var(--size-caption); color:var(--text-muted);}
+.cadash .wcol.g1{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 90%); box-shadow:none;}
+.cadash .wcol.g2{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 62%); box-shadow:none;}
+.cadash .wcol.g3{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 34%); box-shadow:none;}
+.cadash .wcol.g3 .wdate, .cadash .wcol.g3 .wcount, .cadash .wcol.g3 .wdow, .cadash .wcol.g3 .wfin{color:var(--text-on-filled);}
+.cadash .wcol.g4{background:var(--heat-ink, var(--finalize-mark)); box-shadow:none;}
+.cadash .wcol.g4 .wdate, .cadash .wcol.g4 .wcount, .cadash .wcol.g4 .wdow, .cadash .wcol.g4 .wfin{color:var(--text-on-filled);}
+.cadash .wcol.unf{background:var(--panel-background); box-shadow:none; border:var(--border-standard) dashed var(--finalize-outline);}
+.cadash .wcol.unf .wdate, .cadash .wcol.unf .wcount{color:var(--text-muted);}
+.cadash .wcol.best{box-shadow:inset 0 0 0 var(--focus-ring-weight) var(--accent);}
+.cadash .wcol.blank{background:none; box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); opacity:.5;}
+
+/* --- 2 · kit-chart-verdict — RIBBON (quarterly) + 53-WEEK (yearly) -------- */
+.cadash .ribbonsplit{display:grid; grid-template-columns:auto 1fr; gap:var(--space-7); align-items:stretch;}
+.cadash .ribbonmain{min-width:0; display:flex; flex-direction:column; justify-content:center;}
+.cadash .ribbon{display:flex; gap:var(--space-2); align-items:flex-start;}
+.cadash .rcol{display:flex; flex-direction:column; gap:var(--space-2); align-items:stretch; flex:0 0 auto; min-width:0;}
+.cadash .rcol .wklab{font-size:var(--size-caption); color:var(--text-muted); font-weight:var(--weight-bold); margin-bottom:var(--space-2); text-align:center;}
+.cadash .rcol .ncell{width:calc(var(--heat-cell-size) * 2); height:var(--heat-cell-size); flex:0 0 auto;}
+.cadash .rcol.tick{border-right:var(--border-standard) dashed var(--border); padding-right:var(--space-2); margin-right:var(--space-1);}
+.cadash .ribbonaside{display:flex; flex-direction:column; justify-content:center;}
+.cadash .heatsplit{display:block;}
+.cadash .heatmain{min-width:0;}
+.cadash .heatmap{display:flex; gap:var(--space-1); justify-content:center; align-items:stretch; min-height:var(--heat-block-min-h);}
+.cadash .hcol{display:flex; flex-direction:column; gap:var(--space-1); align-items:stretch; flex:1 1 0; min-width:0;}
+.cadash .hcol .ncell{aspect-ratio:1 / 1; flex:0 0 auto; height:auto; min-width:var(--heat-cell-size);}
+.cadash .hcol.qtick{border-right:var(--border-standard) dashed var(--border); padding-right:var(--space-1); margin-right:var(--space-1);}
+/* RULED at the chunk-4 GUI pass: month labels ALIGN to their week columns
+   (the FINAL's even flex spread drifts off the real sections). Same column
+   grid as the heatmap; each label placed at its month's first owned week. */
+.cadash .monthlabels{display:grid; gap:var(--space-1); margin-top:var(--space-4); font-size:var(--size-caption); color:var(--text-muted); font-weight:var(--weight-bold); letter-spacing:.04em;}
+.cadash .monthlabels span{text-align:left; overflow:hidden; white-space:nowrap;}
+.cadash .heataside{margin-top:var(--space-6);}
+.cadash .ncell{border-radius:var(--radius-cell); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); background:var(--panel-background);}
+.cadash .ncell.i0{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 90%); box-shadow:none;}
+.cadash .ncell.i1{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 62%); box-shadow:none;}
+.cadash .ncell.i2{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 34%); box-shadow:none;}
+.cadash .ncell.i3{background:var(--heat-ink, var(--finalize-mark)); box-shadow:none;}
+.cadash .ncell.unf{background:var(--panel-background); box-shadow:none; border:var(--border-standard) dashed var(--finalize-outline);}
+.cadash .ncell.ghost{background:var(--window-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); opacity:.4;}
+.cadash .ncell.blank{background:transparent; box-shadow:none;}
+
+/* --- 2 · the six stat tiles (kit-tile-stat, the cadence face) ------------- */
+.cadash .statgrid{display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:1fr; gap:var(--space-5);}
+.cadash .statgrid.c3{grid-template-columns:repeat(3,1fr);}
+.cadash .statgrid.c6{grid-template-columns:repeat(6,1fr); margin-top:var(--space-6);}
+/* The drawn tile anatomy (the monthly FINAL, not the reference sheet's
+   .cadence flex variant): a 2-col grid — label top-left · value bottom-left ·
+   sub bottom-RIGHT. The doortile face alone is a left-stacked flex column. */
+.cadash .tile{background:var(--window-background); border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-medium); padding:calc(var(--frame-clear-tile) + var(--space-4)); display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-rows:auto auto; align-content:space-between; column-gap:var(--space-4); row-gap:var(--space-3);}
+.cadash .tile > .tl{grid-column:1; grid-row:1; align-self:baseline;}
+.cadash .tile > .ts{grid-column:2; grid-row:2; align-self:end; text-align:right; white-space:nowrap;}
+.cadash .tile > .tv{grid-column:1; grid-row:2; align-self:end;}
+.cadash .tile .tl{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted);}
+.cadash .tile .tv{font-family:var(--font-mono); font-size:var(--size-stat-value); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong); white-space:nowrap;}
+.cadash .tile .tv .u{font-family:var(--font-ui); font-size:var(--size-body); color:var(--text-muted); font-weight:var(--weight-regular); margin-left:2px;}
+.cadash .tile .tv.date{font-size:var(--size-heading);}
+.cadash .tile .ts{font-size:var(--size-small); color:var(--text-secondary); min-height:0;}
+.cadash .tile .ts b{color:var(--text-strong); font-weight:var(--weight-medium);}
+/* RULED at the chunk-4 GUI pass (user, 2026-07-23): the Best-day doortile
+   wears the SAME grid anatomy as every other tile — label top-left · value
+   bottom-left · sub bottom-right (overrides the FINAL's centered flex-stack
+   doortile face; only the .date value size and the door affordance remain). */
+.cadash .tile.doortile{cursor:default; transition:background var(--motion-fast) var(--ease-standard);}
+
+/* --- 3 · kit-chart-composition -------------------------------------------- */
+/* RULED at the chunk-4 GUI pass (user, 2026-07-23): the composition bars lay
+   out in RESPONSIVE COLUMNS — 1 on a small window, up to 3 on the full canvas
+   — so every habit shows without scrolling (overrides the FINAL's full-width
+   single column). Width-derived, no breakpoint dial. */
+.cadash .bars{display:grid; grid-template-columns:repeat(auto-fit, minmax(560px, 1fr)); column-gap:var(--space-8); row-gap:var(--space-6); align-items:center;}
+.cadash .brow{display:grid; grid-template-columns:var(--bar-label-w) 1fr var(--bar-value-w); gap:var(--space-5); align-items:center; min-height:var(--space-8);}
+.cadash .brow .blabel{display:flex; align-items:center; gap:var(--space-4); font-size:var(--size-body); color:var(--text-strong); white-space:nowrap;}
+.cadash .brow .blabel .cdot{width:12px; height:12px; border-radius:var(--radius-cell); flex:0 0 auto;}
+.cadash .btrack{height:var(--space-8); background:var(--inset-background); border-radius:var(--radius-small); overflow:hidden;}
+.cadash .bfill{height:100%; border-radius:var(--radius-small); min-width:var(--space-3);}
+.cadash .bval{font-family:var(--font-mono); font-size:var(--size-body); color:var(--text-strong); text-align:right;}
+.cadash .comphead{display:flex; align-items:center; gap:var(--space-6); margin-bottom:var(--space-6);}
+.cadash .ctoggle{display:inline-flex; border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); overflow:hidden;}
+.cadash .ctoggle button{font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-secondary); background:var(--panel-background); border:none; padding:var(--space-3) var(--space-5); cursor:pointer;}
+.cadash .ctoggle button + button{border-left:var(--border-hairline) solid var(--border);}
+.cadash .ctoggle button[aria-pressed="true"]{background:var(--accent); color:var(--text-on-filled);}
+.cadash .stackrow{display:grid; gap:var(--space-4); align-items:end; height:280px;}
+.cadash .stackrow.weekly{gap:var(--space-1);}
+.cadash .stackcol{display:flex; flex-direction:column-reverse; border-radius:var(--radius-small) var(--radius-small) 0 0; overflow:hidden; min-height:2px;}
+.cadash .stackcol .sseg{width:100%;}
+.cadash .stacklabels{display:grid; grid-template-columns:repeat(12,1fr); gap:var(--space-4); margin-top:var(--space-3);}
+.cadash .stacklabels span{text-align:center; font-size:var(--size-caption); color:var(--text-muted); font-weight:var(--weight-bold);}
+.cadash .complegend{display:flex; gap:var(--space-6); justify-content:center; flex-wrap:wrap; margin-top:var(--space-6); font-size:var(--size-small); color:var(--text-secondary);}
+.cadash .complegend .lg{display:inline-flex; align-items:center; gap:var(--space-3);}
+.cadash .complegend .lg .sw{width:14px; height:14px; border-radius:var(--radius-cell);}
+.cadash .complegend .lg b{font-family:var(--font-mono); color:var(--text-strong); font-weight:var(--weight-bold);}
+
+/* --- 4 · kit-review-period + the weekly milestone band -------------------- */
+.cadash .review{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--space-7);}
+.cadash .rcol-r{min-width:0;}
+.cadash .rlabel{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); font-weight:var(--weight-bold); margin:0 0 var(--space-5);}
+.cadash .rlist{display:flex; flex-direction:column; gap:var(--space-5);}
+.cadash .rline{display:flex; gap:var(--space-4); font-size:var(--size-subheading); color:var(--text-secondary); line-height:var(--line-normal);}
+.cadash .rline .rmark{color:var(--text-muted); flex:0 0 auto;}
+.cadash .rline b{color:var(--text-strong); font-weight:var(--weight-medium);}
+.cadash .rline .rquiet{color:var(--text-muted); font-style:italic;}
+.cadash .mband{display:flex; gap:var(--space-5); flex-wrap:wrap;}
+.cadash .mcard{flex:1 1 320px; display:flex; align-items:flex-start; gap:var(--space-5); padding:var(--space-5) var(--space-6); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-medium); background:var(--window-background);}
+.cadash .mcard .mmark{width:40px; height:40px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-small); background:var(--panel-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); color:var(--text-secondary);}
+.cadash .mcard .mbody{display:flex; flex-direction:column; gap:var(--space-2); min-width:0;}
+.cadash .mcard .mtitle{font-size:var(--size-body); color:var(--text-strong); line-height:var(--line-normal);}
+.cadash .mcard .mtitle b{font-weight:var(--weight-bold);}
+.cadash .mcard .mwhen{font-size:var(--size-caption); color:var(--text-muted); font-family:var(--font-mono);}
+
+/* --- 5 · kit-row-habit — the ONE shared cadence-row grid ------------------ */
+.cadash{--row-cols:var(--cad-chevron-w) var(--cad-habit-w) var(--cad-total-w) var(--cad-best-w) 1fr var(--cad-done-w) var(--cad-door-w);}
+.cadash .pright{display:flex; align-items:center; gap:var(--space-5);}
+.cadash .expandall{display:inline-flex; align-items:center; gap:var(--space-3); font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-strong); background:var(--panel-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); padding:var(--space-3) var(--space-5); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard);}
+.cadash .expandall:hover{background:var(--hover-wash);}
+.cadash .expandall .ico{width:var(--icon-size-small); height:var(--icon-size-small); color:var(--text-secondary);}
+.cadash .hgrid{display:flex; flex-direction:column;}
+.cadash .hrow{display:grid; grid-template-columns:var(--row-cols); gap:var(--space-5); align-items:center; padding:var(--space-2) var(--space-5); border-radius:var(--radius-small);}
+.cadash .hrow.hdr{padding:var(--space-2) var(--space-5) var(--space-4); font-size:var(--size-caption); font-weight:var(--weight-bold); letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted);}
+.cadash .hrow.body{border:var(--border-hairline) solid var(--divider); background:var(--panel-background); transition:background var(--motion-fast) var(--ease-standard);}
+.cadash .hrow.body:hover{background:var(--hover-wash);}
+.cadash .hrow.body:hover .hdoor{color:var(--accent);}
+.cadash .hrow.body:hover .hlab .hname{color:var(--accent);}
+.cadash .hgroup + .hgroup{margin-top:var(--space-2);}
+.cadash .chev{display:flex; align-items:center; justify-content:center; color:var(--text-muted); width:var(--cad-chevron-w);}
+.cadash .chev .ico{width:18px; height:18px; transition:transform var(--motion-standard) var(--ease-standard);} /* 18px = the flagged Build-snap residue (Monthly note § raw px) */
+.cadash .hgroup.open .chev .ico{transform:rotate(90deg);}
+.cadash .chev.none{visibility:hidden;}
+.cadash .hlab{display:flex; align-items:center; gap:var(--space-5); min-width:0;}
+.cadash .hlab .cdot{width:16px; height:16px; border-radius:var(--radius-cell); flex:0 0 auto;}
+.cadash .hlab .hname{font-size:var(--size-subheading); font-weight:var(--weight-bold); color:var(--text-strong);}
+.cadash .htotal{font-family:var(--font-mono); font-size:var(--size-subheading); color:var(--text-strong);}
+.cadash .htotal .sub{font-family:var(--font-ui); font-size:var(--size-small); color:var(--text-muted); font-weight:var(--weight-regular);}
+.cadash .hbest{font-size:var(--size-body); color:var(--text-secondary);}
+.cadash .hbest b{color:var(--text-strong); font-weight:var(--weight-medium);}
+.cadash .hdone{font-family:var(--font-mono); font-size:var(--size-subheading); font-weight:var(--weight-bold); color:var(--text-strong); text-align:right;}
+.cadash .hdoor{display:flex; align-items:center; justify-content:flex-end; color:var(--text-muted); cursor:pointer;}
+.cadash .hdoor .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
+
+/* day/week/month mini-cells — a fluid sub-grid in the cells column (col 5) */
+.cadash .cells{display:grid; gap:var(--space-2); align-items:end;}
+.cadash .cells.hnums{align-items:center;}
+.cadash .hnum{text-align:center; font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted); font-weight:var(--weight-bold);}
+.cadash .cell{height:var(--cad-cell-size); border-radius:var(--radius-cell); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); background:var(--panel-background); width:var(--cad-cell-size); justify-self:center;}
+.cadash[data-scale="quarter"] .cell, .cadash[data-scale="year"] .cell, .cadash[data-scale="week"] .cell{width:calc(var(--cad-cell-size) * 2);}
+.cadash .cell.d{background:var(--cell-ink, var(--verdict-done)); box-shadow:none;}
+.cadash .cell.m{background:transparent; box-shadow:inset 0 0 0 var(--border-standard) var(--verdict-missed);}
+.cadash .cell.u{background:transparent; box-shadow:none; border:var(--border-hairline) dotted var(--verdict-unknown);}
+.cadash .cell.e{background:var(--window-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider);}
+.cadash .cell.fut{background:none; box-shadow:none;}
+/* week/month-grain intensity — habit-hue ramp over --cell-ink (90/62/34/0) */
+.cadash .cell.iv0{background:var(--window-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider);}
+.cadash .cell.iv1{background:color-mix(in oklch, var(--cell-ink, var(--text-muted)), var(--panel-background) 62%); box-shadow:none;}
+.cadash .cell.iv2{background:color-mix(in oklch, var(--cell-ink, var(--text-muted)), var(--panel-background) 34%); box-shadow:none;}
+.cadash .cell.iv3{background:var(--cell-ink, var(--text-muted)); box-shadow:none;}
+
+/* the expansion */
+.cadash .exp{border:var(--border-hairline) solid var(--divider); border-top:none; background:var(--window-background); border-radius:0 0 var(--radius-small) var(--radius-small); padding:var(--space-5) var(--space-5) var(--space-6); margin-top:-1px;}
+.cadash .hgroup.open .hrow.body{border-radius:var(--radius-small) var(--radius-small) 0 0; background:var(--hover-wash);}
+.cadash .estrip{display:grid; grid-template-columns:var(--row-cols); gap:var(--space-5); align-items:center; padding:var(--space-4) var(--space-5); border-radius:var(--radius-small);}
+.cadash .estrip .et{grid-column:2; display:flex; align-items:center; gap:var(--space-4); min-width:0; font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-strong); padding-left:var(--space-6);}
+.cadash .estrip .et .tick{width:var(--space-4); height:var(--space-4); border-radius:var(--radius-cell); background:var(--cell-ink, var(--text-muted)); flex:0 0 auto;}
+.cadash .estrip .etot{grid-column:3; font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-strong);}
+.cadash .estrip .ebest{grid-column:4; font-size:var(--size-small); color:var(--text-secondary);}
+.cadash .estrip .cells{grid-column:5;}
+.cadash .estrip .edoor{grid-column:7; display:flex; justify-content:flex-end; color:var(--text-muted);}
+.cadash .estrip .edoor .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
+.cadash .estrip.door{cursor:pointer; transition:background var(--motion-fast) var(--ease-standard);}
+.cadash .estrip.door:hover{background:var(--hover-wash);}
+.cadash .estrip.door:hover .et, .cadash .estrip.door:hover .edoor{color:var(--accent);}
+.cadash .estrip.more{border:var(--border-hairline) dashed var(--border); cursor:pointer;}
+.cadash .estrip.more .et{font-weight:var(--weight-regular); color:var(--text-muted);}
+.cadash .estrip.more:hover{background:var(--hover-wash);}
+.cadash .estrip.more:hover .et{color:var(--accent);}
+/* Writing's card-within-card */
+.cadash .scard{border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-small); background:var(--panel-background); padding:var(--space-4); margin-bottom:var(--space-4);}
+.cadash .shead{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-weight:var(--weight-bold); padding:var(--space-4) var(--space-5) var(--space-2) var(--space-6);}
+.cadash .estrip.inner .et{padding-left:calc(var(--space-6) * 2); font-weight:var(--weight-regular);}
+/* the measure micro-bars — REAL per-bucket amounts */
+.cadash .mstrip{display:grid; grid-template-columns:var(--row-cols); gap:var(--space-5); align-items:end; margin-top:var(--space-4);}
+.cadash .mstrip .mlbl{grid-column:2 / 5; padding-right:var(--space-4); text-align:right; font-size:var(--size-caption); color:var(--text-muted); align-self:center;}
+.cadash .mstrip .mlbl b{color:var(--text-secondary); font-weight:var(--weight-medium);}
+.cadash .mbars{grid-column:5; display:grid; gap:var(--space-2); align-items:end; height:34px;} /* 34px = inherited chassis internal (flagged Build-snap residue) */
+.cadash .mbars .mb{border-radius:var(--radius-cell) var(--radius-cell) 0 0; background:var(--cell-ink, var(--text-muted)); min-height:2px; align-self:end;}
+.cadash .mbars .mb.z{background:var(--divider); height:2px;}
+/* the sleep ranges line (screen-specific composition — kit-row-habit internal) */
+.cadash .sleepline{position:relative; height:84px; margin:var(--space-5) var(--space-6) var(--space-6);}
+.cadash .sl-track{position:absolute; top:42px; left:0; right:0; height:var(--space-3); background:var(--inset-background); border-radius:var(--radius-full);}
+.cadash .sl-band{position:absolute; top:34px; height:22px; border-radius:var(--radius-small); background:color-mix(in oklch, var(--habit-6), var(--panel-background) 62%);}
+.cadash .sl-band .blab{position:absolute; top:-26px; left:0; font-size:var(--size-caption); color:var(--text-secondary); white-space:nowrap; font-weight:var(--weight-medium);}
+.cadash .sl-avg{position:absolute; top:28px; width:var(--border-heavy); height:34px; background:var(--habit-6); border-radius:var(--radius-full);}
+.cadash .sl-tick{position:absolute; top:58px; font-size:var(--size-caption); color:var(--text-muted); transform:translateX(-50%);}
+.cadash .rowlegend{display:flex; align-items:center; gap:var(--space-6); flex-wrap:wrap; margin-top:var(--space-4);}
+.cadash .rowlegend .lg{display:inline-flex; align-items:center; gap:var(--space-3); font-size:var(--size-caption); color:var(--text-secondary);}
+.cadash .rowlegend .lg .cell{width:16px; height:16px;}

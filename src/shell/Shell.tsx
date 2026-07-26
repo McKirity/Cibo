@@ -12,17 +12,19 @@
  * The dev seed/activation panels ride the Log view — the working loop that
  * turns seeds into rail habits: seed rich → activate → click → dashboard.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@evolu/react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { evolu } from "../db/evolu";
 import { clearRichSeed, seedRich } from "../db/seedRich";
-import { runSpikeMeasurement } from "../db/spikeGrowth";
 import { LogForm } from "../log/LogForm";
 import { ConsumptionDashboard } from "../dashboard/ConsumptionDashboard";
 import { CreationDashboard } from "../dashboard/CreationDashboard";
 import { SimpleDashboard } from "../dashboard/SimpleDashboard";
 import { RangeDashboard } from "../dashboard/RangeDashboard";
+import { CadenceDashboard } from "../dashboard/CadenceDashboard";
+import { EntryDashboard } from "../dashboard/EntryDashboard";
+import type { CadenceScale } from "../metrics/cadence";
 import "./shell.css";
 // Routing reads the habit row's kind/sub_type (chunk 3) — the key sets are
 // gone, so a habit can never be routed by name: consumption/creation off
@@ -37,7 +39,17 @@ const activeHabitsQuery = evolu.createQuery((db) =>
     .orderBy("sort_order"),
 );
 
-type View = { kind: "log" } | { kind: "habit"; key: string };
+type View =
+  | { kind: "log" }
+  | { kind: "habit"; key: string }
+  | { kind: "cadence"; scale: CadenceScale; anchor: string }
+  | { kind: "entry"; id: string; habitKey: string };
+
+const todayStr = (): string => {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
 
 export function Shell() {
   const habits = useQuery(activeHabitsQuery);
@@ -47,32 +59,57 @@ export function Shell() {
   const projects = active.filter((h) => h.kind === "project");
   const daily = active.filter((h) => h.kind !== "project");
 
+  // Every navigation opens at the top of the content pane (user-ruled 2026-07-24).
+  const contentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [view]);
+
   // If the selected habit gets archived out from under us, fall back to Log.
   useEffect(() => {
-    if (view.kind === "habit" && !active.some((h) => h.key === view.key)) {
+    const key = view.kind === "habit" ? view.key : view.kind === "entry" ? view.habitKey : null;
+    if (key != null && !active.some((h) => h.key === key)) {
       setView({ kind: "log" });
     }
   }, [view, active]);
 
+  const today = todayStr();
   const title =
-    view.kind === "habit" ? active.find((h) => h.key === view.key)?.name ?? "Cibo" : "Today";
+    view.kind === "habit"
+      ? active.find((h) => h.key === view.key)?.name ?? "Cibo"
+      : view.kind === "entry"
+        ? active.find((h) => h.key === view.habitKey)?.name ?? "Cibo"
+        : view.kind === "cadence"
+          ? { week: "Weekly", month: "Monthly", quarter: "Quarterly", year: "Yearly" }[view.scale]
+          : "Today";
+  const monthName = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(today.slice(5, 7)) - 1];
 
   return (
     <div className="app-frame">
       <Titlebar title={title} />
 
       <nav className="rail">
-        {/* 1 · nav calendar (header only — the grid is step 9) */}
+        {/* 1 · nav calendar (header only — the grid is step 9; the chain +
+            month label are LIVE cadence doors since chunk 4) */}
         <div className="sec">
           <div className="calhead">
             <div className="chain">
-              <span className="doorlink">2026</span>
-              <span className="doorlink">Q3</span>
+              <button className="doorlink" onClick={() => setView({ kind: "cadence", scale: "year", anchor: today })}>
+                {today.slice(0, 4)}
+              </button>
+              <button className="doorlink" onClick={() => setView({ kind: "cadence", scale: "quarter", anchor: today })}>
+                Q{Math.floor((Number(today.slice(5, 7)) - 1) / 3) + 1}
+              </button>
             </div>
-            <div className="month">July</div>
+            <button className="month doorlink" onClick={() => setView({ kind: "cadence", scale: "month", anchor: today })}>
+              {monthName}
+            </button>
           </div>
+          <button className="cal-placeholder" onClick={() => setView({ kind: "cadence", scale: "week", anchor: today })}>
+            month grid · step 9 — click for this week
+          </button>
           <button className="cal-placeholder" onClick={() => setView({ kind: "log" })}>
-            month grid · step 9 — click for Today
+            Today (log)
           </button>
         </div>
 
@@ -88,7 +125,7 @@ export function Shell() {
                     key={h.id}
                     name={h.name ?? "—"}
                     colour={h.colour_slot ?? "habit-1"}
-                    active={view.kind === "habit" && view.key === h.key}
+                    active={(view.kind === "habit" && view.key === h.key) || (view.kind === "entry" && view.habitKey === h.key)}
                     onClick={() => h.key && setView({ kind: "habit", key: h.key })}
                   />
                 ))}
@@ -104,7 +141,7 @@ export function Shell() {
                     key={h.id}
                     name={h.name ?? "—"}
                     colour={h.colour_slot ?? "habit-1"}
-                    active={view.kind === "habit" && view.key === h.key}
+                    active={(view.kind === "habit" && view.key === h.key) || (view.kind === "entry" && view.habitKey === h.key)}
                     onClick={() => h.key && setView({ kind: "habit", key: h.key })}
                   />
                 ))}
@@ -155,20 +192,36 @@ export function Shell() {
         </div>
       </nav>
 
-      <div className="content">
+      <div className="content" ref={contentRef}>
         {view.kind === "habit" ? (
           (() => {
             const h = active.find((x) => x.key === view.key);
             // key by habit → a fresh mount per habit, so scope + type + heatmap
             // mode reset to All Time / All types on every swap.
+            const openEntry = (id: string) => setView({ kind: "entry", id, habitKey: view.key });
             if (h?.sub_type === "consumption")
-              return <ConsumptionDashboard key={view.key} habitKey={view.key} />;
+              return <ConsumptionDashboard key={view.key} habitKey={view.key} onOpenEntry={openEntry} />;
             if (h?.sub_type === "creation")
-              return <CreationDashboard key={view.key} habitKey={view.key} />;
+              return <CreationDashboard key={view.key} habitKey={view.key} onOpenEntry={openEntry} />;
             if (h?.kind === "simple") return <SimpleDashboard key={view.key} habitKey={view.key} />;
             if (h?.kind === "range") return <RangeDashboard key={view.key} habitKey={view.key} />;
             return <NotYetDashboard habitKey={view.key} />;
           })()
+        ) : view.kind === "entry" ? (
+          <EntryDashboard
+            key={view.id}
+            entryId={view.id}
+            onOpenHabit={(key) => setView({ kind: "habit", key })}
+            onOpenEntry={(id) => setView({ kind: "entry", id, habitKey: view.habitKey })}
+          />
+        ) : view.kind === "cadence" ? (
+          <CadenceDashboard
+            key={`${view.scale}-${view.anchor}`}
+            scale={view.scale}
+            anchor={view.anchor}
+            onNavigate={(nav) => setView({ kind: "cadence", scale: nav.scale, anchor: nav.anchor })}
+            onOpenHabit={(key) => setView({ kind: "habit", key })}
+          />
         ) : (
           <LogView />
         )}
@@ -323,76 +376,15 @@ function LogView() {
     <div style={{ maxWidth: 900 }}>
       <div className="perf-line">{ownerId ? `Evolu ready — owner ${ownerId}` : "Evolu starting…"}</div>
       <LogForm />
-      <DevHabitPanel />
-      <DevRichSeedPanel />
-      <DevGrowthSpikePanel />
-    </div>
-  );
-}
-
-/**
- * THROWAWAY — the Evolu store-growth spike (Longevity & Future-Proofing, Tier 1).
- * Seeds a ~15-year dataset and measures store size + tombstone accumulation +
- * dashboard latency. Re-seed repeatedly and watch whether the numbers plateau
- * (Evolu compacts) or climb forever (it doesn't). Remove with `spikeGrowth.ts`.
- */
-function DevGrowthSpikePanel() {
-  const [status, setStatus] = useState<string>("");
-  const [report, setReport] = useState<string>("");
-  const [busy, setBusy] = useState(false);
-
-  const run = async (label: string, fn: () => Promise<string>) => {
-    setBusy(true);
-    setStatus(`${label}…`);
-    try {
-      const out = await fn();
-      setStatus(`${label} — done`);
-      setReport(out);
-    } catch (e) {
-      setStatus(`error: ${String(e)}`);
-      console.error(e);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <details className="dev-panel">
-      <summary>Dev: growth SPIKE (throwaway) — 15-year seed + store/latency measurement</summary>
-      <div className="row">
-        <button
-          type="button"
-          className="btn-accent btn-sm"
-          disabled={busy}
-          onClick={() =>
-            run("Seeding 15 years (slow — tens of thousands of rows)", async () => {
-              const t = performance.now();
-              const r = await seedRich(evolu, 15);
-              const secs = Math.round((performance.now() - t) / 100) / 10;
-              return (
-                `SEED   span=${r.spanYears}y (${r.spanDays} days) in ${secs}s\n` +
-                `       ${r.entries} entries · ${r.sessions} sessions · ${r.subunits} categoricals · ` +
-                `${r.days} days (cleared ${r.clearedFirst} first)`
-              );
-            })
-          }
-        >
-          Seed 15yr
-        </button>
-        <button
-          type="button"
-          className="btn-plain btn-sm"
-          disabled={busy}
-          onClick={() => run("Measuring", () => runSpikeMeasurement())}
-        >
-          Measure
-        </button>
-        {status && <span className="fieldnote">{status}</span>}
-      </div>
-      {report && (
-        <pre style={{ fontSize: 12, whiteSpace: "pre-wrap", overflowX: "auto" }}>{report}</pre>
+      {/* Dev-only tooling — `import.meta.env.DEV` is statically false in a
+          production build, so these panels (and seedRich) are tree-shaken out. */}
+      {import.meta.env.DEV && (
+        <>
+          <DevHabitPanel />
+          <DevRichSeedPanel />
+        </>
       )}
-    </details>
+    </div>
   );
 }
 
@@ -415,9 +407,10 @@ function DevHabitPanel() {
                 <button
                   type="button"
                   className="btn-plain btn-sm"
-                  onClick={() =>
-                    evolu.update("habits", { id: h.id, archived: h.archived ? 0 : 1 })
-                  }
+                  onClick={() => {
+                    const r = evolu.update("habits", { id: h.id, archived: h.archived ? 0 : 1 });
+                    if (!r.ok) console.error("Dev: habit toggle rejected", r.error);
+                  }}
                 >
                   {h.archived ? "Activate" : "Archive"}
                 </button>

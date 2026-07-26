@@ -32,6 +32,7 @@ import {
   validateSessionAgainstHabit,
   validateSessionMeasure,
 } from "../db/validate";
+import { syncDerivedKeyboardForDay, WRITING_KEY } from "../db/derivedKeyboard";
 
 /** Local calendar today. Logical today = calendar today until the cutoff Setting exists. */
 const todayLocal = (): string => {
@@ -224,6 +225,13 @@ export function LogForm() {
     } catch (e) {
       setError(String(e));
       return;
+    }
+
+    // Auto-follow: logging Writing's words re-syncs that day's derived Keyboard
+    // words (derivedKeyboard.ts). Fire-and-forget — the live query repaints when
+    // the write lands. Only a Writing word (count) change moves the total.
+    if (habit.key === WRITING_KEY && measureKind === "count") {
+      void syncDerivedKeyboardForDay(evolu, owningDay);
     }
 
     setError(null);

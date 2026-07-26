@@ -25,6 +25,7 @@ import { RangeDashboard } from "../dashboard/RangeDashboard";
 import { CadenceDashboard } from "../dashboard/CadenceDashboard";
 import { EntryDashboard } from "../dashboard/EntryDashboard";
 import type { CadenceScale } from "../metrics/cadence";
+import { useHistory } from "./useHistory";
 import "./shell.css";
 // Routing reads the habit row's kind/sub_type (chunk 3) — the key sets are
 // gone, so a habit can never be routed by name: consumption/creation off
@@ -54,7 +55,17 @@ const todayStr = (): string => {
 export function Shell() {
   const habits = useQuery(activeHabitsQuery);
   const active = habits.filter((h) => !h.archived);
-  const [view, setView] = useState<View>({ kind: "log" });
+  // Browser-style session history (Shell Mechanics § 1). `setView` keeps its
+  // name and signature so every door below is unchanged — it just pushes now.
+  const {
+    current: view,
+    navigate: setView,
+    replace: replaceView,
+    back,
+    forward,
+    canBack,
+    canForward,
+  } = useHistory<View>({ kind: "log" });
 
   const projects = active.filter((h) => h.kind === "project");
   const daily = active.filter((h) => h.kind !== "project");
@@ -66,12 +77,52 @@ export function Shell() {
   }, [view]);
 
   // If the selected habit gets archived out from under us, fall back to Log.
+  // REPLACE, not navigate: the user did not ask to go here, so it must not
+  // become a history entry you can press "back" into (and bail out of again).
   useEffect(() => {
     const key = view.kind === "habit" ? view.key : view.kind === "entry" ? view.habitKey : null;
     if (key != null && !active.some((h) => h.key === key)) {
-      setView({ kind: "log" });
+      replaceView({ kind: "log" });
     }
-  }, [view, active]);
+  }, [view, active, replaceView]);
+
+  // Back/forward bindings: Alt+←/→ and mouse buttons 4/5 (the ruled set, minus
+  // the chrome arrows below). Ctrl+K and Ctrl+Home wait for their targets —
+  // the palette and Daily are both step 6's catch-up.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        back();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        forward();
+      }
+    };
+    // WebView2 runs its own page-history navigation on the side buttons unless
+    // the mousedown is cancelled; auxclick then carries the intent to us.
+    const onDown = (e: MouseEvent) => {
+      if (e.button === 3 || e.button === 4) e.preventDefault();
+    };
+    const onAux = (e: MouseEvent) => {
+      if (e.button === 3) {
+        e.preventDefault();
+        back();
+      } else if (e.button === 4) {
+        e.preventDefault();
+        forward();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("auxclick", onAux);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("auxclick", onAux);
+    };
+  }, [back, forward]);
 
   const today = todayStr();
   const title =
@@ -86,7 +137,13 @@ export function Shell() {
 
   return (
     <div className="app-frame">
-      <Titlebar title={title} />
+      <Titlebar
+        title={title}
+        canBack={canBack}
+        canForward={canForward}
+        onBack={back}
+        onForward={forward}
+      />
 
       <nav className="rail">
         {/* 1 · nav calendar (header only — the grid is step 9; the chain +
@@ -253,7 +310,8 @@ function HabitButton({
 
 // Custom titlebar (native decorations are off in tauri.conf.json). The drag
 // region moves the window; the right cluster drives the OS window via the Tauri
-// window API. Back/forward are app history (step 9) — inert for now.
+// window API. Back/forward drive the app's own session history (useHistory) —
+// pulled ahead from step 9 on 2026-07-25; they are NOT the webview's history.
 const winAction = (fn: (w: ReturnType<typeof getCurrentWindow>) => Promise<unknown>) => () => {
   try {
     void fn(getCurrentWindow()).catch(() => {});
@@ -262,14 +320,36 @@ const winAction = (fn: (w: ReturnType<typeof getCurrentWindow>) => Promise<unkno
   }
 };
 
-function Titlebar({ title }: { title: string }) {
+function Titlebar({
+  title,
+  canBack,
+  canForward,
+  onBack,
+  onForward,
+}: {
+  title: string;
+  canBack: boolean;
+  canForward: boolean;
+  onBack: () => void;
+  onForward: () => void;
+}) {
   return (
     <div className="tb">
       <div className="cluster">
-        <button className="tb-btn disabled" title="Back">
+        <button
+          className={`tb-btn${canBack ? "" : " disabled"}`}
+          title="Back (Alt+←)"
+          disabled={!canBack}
+          onClick={onBack}
+        >
           <Ico d={["m12 19-7-7 7-7", "M19 12H5"]} />
         </button>
-        <button className="tb-btn disabled" title="Forward">
+        <button
+          className={`tb-btn${canForward ? "" : " disabled"}`}
+          title="Forward (Alt+→)"
+          disabled={!canForward}
+          onClick={onForward}
+        >
           <Ico d={["M5 12h14", "m12 5 7 7-7 7"]} />
         </button>
       </div>

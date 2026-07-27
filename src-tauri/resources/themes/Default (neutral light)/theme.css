@@ -9,7 +9,7 @@
    Ambience: backdrop + timer backdrop SILENT; the vignette is the
    code-drawn tick-face clock (the data-bearing carve-out — no files).
    ---------------------------------------------------------------------
-   241 dials (233 → 241 at the 2026-07-24 wave-zone mint; 234 → 233 at the 2026-07-19 --mini-verdict-cell retirement,
+   244 dials (233 → 241 at the 2026-07-24 wave-zone mint; 234 → 233 at the 2026-07-19 --mini-verdict-cell retirement,
    tenantless; count corrected 2026-07-19 — was published as 220; 14 packed
    declarations were invisible to a line-anchored count. Nothing changed).
    Values are the frozen master
@@ -326,6 +326,15 @@
   --whimsy-star:       #e8c468;   /* gilt: stars, asterism, tarot emblem */
   --whimsy-ink:        #1f2544;   /* tarot linework + the night ZENITH */
   --whimsy-parchment:  #f8f3e6;   /* aged card stock — the tarot face */
+
+  /* -- Whimsy MIX AMOUNTS (3) — minted 2026-07-26 at the milestone family-card
+        session (roster 241 → 244). The whimsy palette had colours but no
+        amounts, so every whimsy interior invented its own percentage at the
+        use-site. Each is an argued sibling of an existing chrome-tier amount. */
+  --whimsy-line-mix:   48%;  /* sibling of --tint-border (55%): how far a whimsy LINE (border, cap rule, seal ring) recedes toward its ground */
+  --whimsy-wash-mix:   74%;  /* sibling of --tint-mix (85%): a whimsy WASH — a fill derived from a whimsy colour over the card's ground (the seal disc) */
+  --whimsy-fade:       34%;  /* sibling of --fade (50%): the whimsy palette's missing SECOND TEXT STEP. Converges four existing corpus tenants at 34/40/40/42% */
+
 
   /* THE SKY GRADIENT — the sun card's field is a vertical zenith→horizon
      gradient whose two stops are picked by TIME OF DAY:

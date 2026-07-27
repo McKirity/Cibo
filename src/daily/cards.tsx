@@ -381,16 +381,21 @@ export function OnThisDayCard({
   dayKey,
   anniversaries = [],
   trackingYears = null,
+  appYears = null,
 }: {
   dayKey: string;
   anniversaries?: Anniversary[];
   trackingYears?: number | null;
+  /** Whole years since the app itself was first used — a DIFFERENT fact from
+   *  `trackingYears`, which reads the earliest session (appStart.ts). */
+  appYears?: number | null;
 }) {
   const events = onThisDay(dayKey);
   const dd = Number(dayKey.slice(8, 10));
   const monLong = MON_LONG[Number(dayKey.slice(5, 7)) - 1];
   const thisYear = dayKey.slice(0, 4);
-  const hasPersonal = anniversaries.length > 0 || trackingYears != null;
+  const hasPersonal =
+    anniversaries.length > 0 || trackingYears != null || appYears != null;
   return (
     <div className="card whimsy otd" style={ALMANAC_FLEX}>
       <div className="ovl">
@@ -436,6 +441,11 @@ export function OnThisDayCard({
                     trackingYears +
                     (trackingYears === 1 ? " year" : " years") +
                     " of tracking with Cibo."}
+                {appYears != null &&
+                  (anniversaries.length > 0 || trackingYears != null ? " \u00b7 " : "") +
+                    appYears +
+                    (appYears === 1 ? " year" : " years") +
+                    " since you started using Cibo."}
               </span>
             </li>
           )}

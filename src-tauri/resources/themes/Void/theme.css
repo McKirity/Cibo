@@ -18,7 +18,7 @@
    regression coverage; this file is its shipping fork. The two are free to
    diverge from here — a change to one is not a change to the other.
 
-   241 dials, declaration-parity exact with the Default (233 → 241 at the 2026-07-24 wave-zone mint; 234 → 233 at the
+   244 dials, declaration-parity exact with the Default (233 → 241 at the 2026-07-24 wave-zone mint; 234 → 233 at the
    2026-07-19 --mini-verdict-cell retirement, tenantless; count corrected
    2026-07-19 — was published as 220; 14 packed declarations were invisible
    to a line-anchored count. Nothing changed).
@@ -327,6 +327,15 @@
   --whimsy-star:       #ffd98a;   /* gilt — stars, asterism, tarot emblem */
   --whimsy-ink:        #070a1c;   /* near-absolute night ZENITH + tarot linework */
   --whimsy-parchment:  #e6e4f0;   /* moonlit pale card stock */
+
+  /* -- Whimsy MIX AMOUNTS (3) — minted 2026-07-26 at the milestone family-card
+        session (roster 241 → 244). The whimsy palette had colours but no
+        amounts, so every whimsy interior invented its own percentage at the
+        use-site. Each is an argued sibling of an existing chrome-tier amount. */
+  --whimsy-line-mix:   48%;  /* sibling of --tint-border (55%): how far a whimsy LINE (border, cap rule, seal ring) recedes toward its ground */
+  --whimsy-wash-mix:   74%;  /* sibling of --tint-mix (85%): a whimsy WASH — a fill derived from a whimsy colour over the card's ground (the seal disc) */
+  --whimsy-fade:       34%;  /* sibling of --fade (50%): the whimsy palette's missing SECOND TEXT STEP. Converges four existing corpus tenants at 34/40/40/42% */
+
 
   /* The sky gradient's time-of-day stop pairs are unchanged from the
      Default (night/dawn/day/dusk → zenith+horizon); only the colours

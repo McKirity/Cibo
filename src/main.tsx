@@ -9,6 +9,7 @@ import "./kit.css";
 import App from "./App";
 import { evolu } from "./db/evolu";
 import { runSeed } from "./db/seed";
+import { ensureAppStartDate } from "./db/appStart";
 
 // Surface Evolu's error store — validation drops and worker-side rollbacks are
 // otherwise silent (the 2026-07-23 coding-migration lesson). Failure & Error UX
@@ -18,11 +19,16 @@ evolu.subscribeError(() => {
 });
 
 // The version-gated seed append — runs at every launch, applies only newer batches.
+// The app's start date is established AFTER it, so a fresh install's backfill can
+// see batch 1's rows (appStart.ts). First-run setup (step 15) owns the write once
+// it exists; until then this is where it lands.
 runSeed(evolu).then(
-  (r) =>
+  (r) => {
     console.info(
       `Seed: found version ${r.foundVersion}, ${r.applied ? "applied batch(es)" : "nothing to apply"}`,
-    ),
+    );
+    void ensureAppStartDate(evolu);
+  },
   (e) => console.error("Seed failed:", e),
 );
 

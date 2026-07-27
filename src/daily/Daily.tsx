@@ -40,6 +40,7 @@ import {
   skyInputs,
 } from "./cards";
 import { anniversariesFor, trackingAnniversary } from "./almanac";
+import { appAnniversary, ensureAppStartDate } from "../db/appStart";
 import { loadWhimsyConfig, saveWhimsyConfig, type WhimsyConfig } from "./whimsyConfig";
 import "./daily.css";
 
@@ -135,6 +136,14 @@ export function Daily({ dayKey = todayLocal() }: { dayKey?: string }) {
   const sessionCount = Number(useQuery(sessionCountQuery)[0]?.n ?? 0);
   const entryCount = Number(useQuery(entryCountQuery)[0]?.n ?? 0);
 
+  // The app's own start date — a plain `app_meta` read, not a live query: it is
+  // written once at launch and never changes while the app runs.
+  const [appStart, setAppStart] = useState<string | null>(null);
+  useEffect(() => {
+    void ensureAppStartDate(evolu).then(setAppStart);
+  }, []);
+  const appYears = useMemo(() => appAnniversary(appStart, dayKey), [appStart, dayKey]);
+
   const holiday = <HolidayCard dayKey={dayKey} />;
 
   return (
@@ -172,7 +181,12 @@ export function Daily({ dayKey = todayLocal() }: { dayKey?: string }) {
           <QuoteCard dayKey={dayKey} />
           <WordCard dayKey={dayKey} />
           <FactCard dayKey={dayKey} />
-          <OnThisDayCard dayKey={dayKey} anniversaries={anniversaries} trackingYears={trackingYears} />
+          <OnThisDayCard
+            dayKey={dayKey}
+            anniversaries={anniversaries}
+            trackingYears={trackingYears}
+            appYears={appYears}
+          />
           {holiday}
           <TimeProgressCard dayKey={dayKey} now={now} />
         </div>

@@ -279,7 +279,7 @@ export function Spine({ dayKey }: { dayKey: string }) {
               waiting, so the form says how many are waiting and offers the
               flush — quiet register, never a demand. */}
           {import.meta.env.DEV && (
-            /* STAND-IN for Settings → Data → Auto-save (step 10), the same
+            /* STAND-IN for Settings → Tracking → Logging (step 10), the same
                pattern the whimsy panel uses for first-run setup: the panel
                replaces where the value comes FROM, never the value's shape. */
             <p className="fieldnote" style={{ marginTop: "var(--space-5)", textAlign: "right" }}>

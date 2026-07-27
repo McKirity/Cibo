@@ -16,7 +16,34 @@
    - .fieldnote · .kicker
    - the segmented control (.segctl)
    Screen-scoped [data-screen="…"] variants of these selectors stay in
-   staging until their screens are built. */
+   staging until their screens are built.
+
+   Claimed at Build step 6's catch-up (Daily's form spine), 2026-07-26:
+   - kit-toast (.toast + .errdot/.tmsg/.undo) — the app's one slide-in slot,
+     both variants. Its first built tenant is the spine's session-remove undo
+     (screen note § Amended 2026-07-26 (2nd), ruling 4).
+   - kit-dialog-confirm-danger (.confirm + -body/-actions/.ch/.escnote) — the
+     count-carrying confirm, the HEAVY half of Delete Safety & Undo. First
+     tenant: the daily form's Clear all. Its anatomy is byte-identical across
+     all three drawn tenants (the 2026-07-14 drift survey), so it is claimed
+     unscoped. */
+
+/* ------- The box model -------
+   `*{box-sizing:border-box}` — claimed 2026-07-26, and it should have been the
+   FIRST rule ever claimed. ALL 37 FINALs carry it; the staging sheet carried it
+   at line 290; the app carried it nowhere, so every rule claimed since step 3
+   has been running under the browser default `content-box` while its author
+   assumed `border-box`.
+
+   What that costs, exactly: any rule that sets BOTH a size and a padding grows
+   by the padding. The daily form's strip is the clean case — `min-height:96px`
+   (56 + 2 × 20) plus `padding:20px` rendered at 136px, ~40% over the drawn box,
+   which is what "the habit cards are huge" was.
+
+   This is a translation gap, not a design question: the corpus never drew a
+   content-box screen. Expect every already-verified screen to shift toward its
+   drawn size when this lands. */
+*{box-sizing:border-box;}
 
 /* ------- Buttons ------- */
 .btn-accent, .btn-plain, .btn-ghost, .btn-danger{display:inline-flex; align-items:center; gap:var(--space-3); font-family:var(--font-ui); font-size:var(--size-body); font-weight:var(--weight-medium); border-radius:var(--radius-small); padding:var(--space-4) var(--space-6); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard); white-space:nowrap;}
@@ -72,3 +99,37 @@
 .segctl{display:inline-flex; background:var(--inset-background); border-radius:var(--radius-small); padding:var(--space-1); gap:var(--space-1);}
 .segctl button{font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-secondary); background:transparent; border:none; cursor:pointer; padding:var(--space-3) var(--space-6); border-radius:calc(var(--radius-small) - var(--space-1)); transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
 .segctl button[aria-pressed="true"]{background:var(--panel-background); color:var(--text-strong); box-shadow:var(--shadow-low);}
+
+/* ------- kit-toast — the one slide-in slot, two variants -------
+   Verbatim from staging. The slot's POSITION is Build's: the corpus draws the
+   toast as a bounded framed region standing in for the window, never a real
+   fixed overlay, so no file carries its placement. `.toastslot` is positioning
+   only, never paint — the `.pk-live` dropdown's precedent (position:absolute is
+   positioning, not paint) and the z-tier ladder's `z-raised` (raised chrome
+   that dims nothing). */
+.toast{display:flex; align-items:center; gap:var(--space-5); background:var(--text-strong); color:var(--text-on-filled); border-radius:var(--radius-medium); padding:var(--space-5) var(--space-6); box-shadow:var(--shadow-high);}
+.toast .errdot{width:8px; height:8px; border-radius:var(--radius-full); background:var(--danger); flex:0 0 auto;}
+.toast .tmsg{font-size:var(--size-body);}
+.toast .undo{margin-left:auto; font-family:var(--font-ui); font-size:var(--size-body); font-weight:var(--weight-medium); color:var(--accent-on-inverted); background:transparent; border:none; cursor:pointer;}
+.toastslot{position:fixed; left:50%; bottom:var(--space-8); transform:translateX(-50%); z-index:12; max-width:34rem;}
+@media (prefers-reduced-motion: no-preference){
+  .toastslot{animation:toast-in var(--motion-standard) var(--ease-entering);}
+}
+@keyframes toast-in{from{opacity:0; transform:translate(-50%, var(--space-6));} to{opacity:1; transform:translate(-50%, 0);}}
+
+/* ------- kit-dialog-confirm-danger — the count-carrying confirm -------
+   Verbatim from staging. The DIM is Build's: the corpus draws it
+   `position:absolute` inside a bounded stage standing in for the window (a
+   mockup can't own the viewport), so the fixed positioning and the z-tier are
+   supplied here. The ladder's `z-dim` = the overlay dim and the modal it
+   carries; `z-confirm` (60) is reserved for the one sanctioned
+   overlay-atop-a-modal, which this is not. */
+.confirm{width:var(--modal-confirm-w); max-width:100%; background:var(--raised-background); -webkit-backdrop-filter:var(--backdrop-blur); backdrop-filter:var(--backdrop-blur); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-large); box-shadow:var(--shadow-high); padding:calc(var(--frame-clear-grand) + var(--space-4)); overflow:hidden;}
+.confirm-body{padding:var(--space-8); display:flex; flex-direction:column; gap:var(--space-5);}
+.confirm .ch{display:flex; align-items:center; gap:var(--space-4); font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); color:var(--text-strong);}
+.confirm .ch .ico{color:var(--danger); width:var(--size-heading); height:var(--size-heading);}
+.confirm p{font-size:var(--size-body); color:var(--text-secondary); line-height:var(--line-normal); margin:0;}
+.confirm p b{color:var(--text-strong); font-weight:var(--weight-medium);}
+.confirm-actions{display:flex; align-items:center; gap:var(--space-4); margin-top:var(--space-2);}
+.confirm-actions .escnote{margin-left:auto; font-size:var(--size-caption); color:var(--text-muted);}
+.dimlayer{position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; padding:var(--space-8); background:var(--overlay-dim);}

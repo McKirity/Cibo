@@ -373,7 +373,7 @@
   --donut-size:      64px;  /* CEILING · the period-progress donut diameter */
   --donut-stroke:     7px;
   --shelf-height:   168px;  /* the mystical-shelf band's flex FLOOR */
-  --triptych-min:   860px;  /* Daily's triptych row MIN height — columns never scroll internally; the PANE scrolls */
+  --triptych-min:   1060px;  /* Daily's triptych row MIN height — columns never scroll internally; the PANE scrolls */
 
   /* -- Theme-owned ambience sizing (1) — NOT structural ---------------
      A theme with no vignette inherits a dead dial and may ignore or

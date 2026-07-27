@@ -360,7 +360,7 @@
   --donut-size:      64px;
   --donut-stroke:     7px;
   --shelf-height:   168px;
-  --triptych-min:   860px;
+  --triptych-min:   1060px;
 
   /* -- Theme-owned ambience sizing (1) --------------------------------
      Void inherits the Default's code-drawn vignette clock, so this dial

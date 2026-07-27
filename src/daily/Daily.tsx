@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
-import { LogForm } from "../log/LogForm";
+import { Spine } from "./Spine";
 import { DevWhimsyPanel } from "./DevWhimsyPanel";
 import {
   CountdownsCard,
@@ -49,14 +49,6 @@ const todayLocal = (): string => {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
-
-/** The FINAL splits the date: a muted weekday, then the date proper. */
-const WEEKDAY = new Intl.DateTimeFormat(undefined, { weekday: "long" });
-const DAY_MONTH_YEAR = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
 
 /** Days that already carry bookkeeping — the pool Rediscover draws from. */
 const loggedDaysQuery = evolu.createQuery((db) =>
@@ -162,19 +154,7 @@ export function Daily({ dayKey = todayLocal() }: { dayKey?: string }) {
         </div>
 
         <div className="col spine">
-          {/* The day header belongs to the spine in the frozen layout, not to a
-              page-level bar above the triptych. */}
-          <div className="dayhdr">
-            <div className="date">
-              <span className="dow">{WEEKDAY.format(new Date(`${dayKey}T12:00:00`))} —</span>{" "}
-              {DAY_MONTH_YEAR.format(new Date(`${dayKey}T12:00:00`))}
-            </div>
-            <span className="badge">
-              <span className="ring" />
-              Unfinalized
-            </span>
-          </div>
-          <LogForm />
+          <Spine dayKey={dayKey} />
         </div>
 
         <div className="col almanac">

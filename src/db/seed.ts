@@ -23,8 +23,10 @@ import {
   Schema,
   derivedRulesToJson,
   entryAttributesToJson,
+  milestoneLaddersToJson,
   type DerivedRule,
   type EntryAttribute,
+  type MilestoneLadders,
 } from "./schema";
 
 // Brand constructors — seed values are compile-time constants, so orThrow is safe.
@@ -32,7 +34,7 @@ const s100 = (v: string) => NonEmptyString100.orThrow(v);
 const s1000 = (v: string) => NonEmptyString1000.orThrow(v);
 const num = (v: number) => FiniteNumber.orThrow(v);
 
-export const SEED_VERSION = 4;
+export const SEED_VERSION = 5;
 
 type CiboEvolu = Evolu<typeof Schema>;
 
@@ -318,7 +320,8 @@ export async function runSeed(evolu: CiboEvolu): Promise<SeedResult> {
   // stranding the store (diagnosed 2026-07-23 from evolu_history). Batch 4
   // re-runs the same idempotent flip, verified this time.
   if (foundVersion < 4) await seedBatch4(evolu);
-  // Future batches: if (foundVersion < 5) await seedBatch5(evolu); …
+  if (foundVersion < 5) await seedBatch5(evolu);
+  // Future batches: if (foundVersion < 6) await seedBatch6(evolu); …
 
   // A batch that throws above skips this on purpose: the gate must never
   // record a version whose batch didn't verifiably land.
@@ -373,6 +376,9 @@ async function seedBatch1(evolu: CiboEvolu): Promise<void> {
         ? derivedRulesToJson(habit.derived_rules)
         : null,
       wave_gap_days: null,
+      milestone_ladders: ENTRY_HOUR_LADDERS[habit.key]
+        ? milestoneLaddersToJson(ENTRY_HOUR_LADDERS[habit.key] as unknown as MilestoneLadders)
+        : null,
       archived: 1, // ALL built-ins arrive archived.
       sort_order: num(i + 1), // Registry order.
     });
@@ -525,6 +531,71 @@ async function seedBatch4(evolu: CiboEvolu): Promise<void> {
   for (const h of await evolu.loadQuery(habitQuery)) {
     if (h.kind !== "simple") {
       throw new Error(`Seed batch 4: coding kind still reads "${h.kind}" after flip`);
+    }
+  }
+}
+
+/**
+ * The per-habit ENTRY-HOUR ladders (user-ruled 2026-07-26, exact figures) —
+ * "an hour means a different thing in a game, a book and a video", which is
+ * precisely why these are DATA rather than a code-side habit-keyed table. Every
+ * other subject uses the global default; a habit absent from this map inherits
+ * it wholesale, which is the right default for a habit the user creates later.
+ *
+ * Owning record: `Final/Daily state 1 (working day).md` § the threshold ladders.
+ * Editable from Settings → Tracking → Metrics when that screen is built at
+ * step 10 — the dashboard list cap's precedent exactly.
+ */
+const ENTRY_HOUR_LADDERS: Record<string, { entryHours: { steps?: number[]; bands: Array<{ every: number; until?: number }> } }> = {
+  // 2 · 5 · 10 · then every 10 to 100 · every 25 after
+  gaming: { entryHours: { steps: [2, 5, 10], bands: [{ every: 10, until: 100 }, { every: 25 }] } },
+  // 2 · 5 · 10 · 15 · then every 5 after
+  reading: { entryHours: { steps: [2, 5, 10, 15], bands: [{ every: 5 }] } },
+  // 5 · 10 · 20 · 50 · then every 25 after
+  media: { entryHours: { steps: [5, 10, 20, 50], bands: [{ every: 25 }] } },
+  // every 100 — "these are very long running projects"
+  writing: { entryHours: { bands: [{ every: 100 }] } },
+  gamedev: { entryHours: { bands: [{ every: 100 }] } },
+};
+
+/**
+ * Batch 5 (2026-07-26) — plant the ruled entry-hour ladders on the five project
+ * habits. A fresh store gets them at batch 1 (the column is written there too);
+ * this fills an already-seeded store. Idempotent: a habit that already carries a
+ * ladder is skipped.
+ *
+ * Follows the batch-4 pattern exactly — check the Result, await `onComplete`
+ * (which fires only after the worker commits), re-read the row, and throw so
+ * runSeed never records a version whose writes did not verifiably land.
+ */
+async function seedBatch5(evolu: CiboEvolu): Promise<void> {
+  const habitQuery = evolu.createQuery((db) =>
+    db
+      .selectFrom("habits")
+      .select(["id", "key", "milestone_ladders"])
+      .where("isDeleted", "is not", 1),
+  );
+  const rows = await evolu.loadQuery(habitQuery);
+  for (const h of rows) {
+    const key = h.key;
+    if (key == null) continue;
+    const ladders = ENTRY_HOUR_LADDERS[key];
+    if (ladders == null || h.milestone_ladders != null) continue;
+    await new Promise<void>((resolve, reject) => {
+      const r = evolu.update(
+        "habits",
+        { id: h.id, milestone_ladders: milestoneLaddersToJson(ladders as unknown as MilestoneLadders) },
+        { onComplete: () => resolve() },
+      );
+      if (!r.ok) {
+        console.error(`Seed batch 5: ladder for "${key}" rejected`, r.error);
+        reject(new Error(`Seed batch 5: ladder for "${key}" failed validation`));
+      }
+    });
+  }
+  for (const h of await evolu.loadQuery(habitQuery)) {
+    if (h.key != null && ENTRY_HOUR_LADDERS[h.key] != null && h.milestone_ladders == null) {
+      throw new Error(`Seed batch 5: "${h.key}" still carries no ladder after the write`);
     }
   }
 }

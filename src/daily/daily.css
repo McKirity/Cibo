@@ -229,7 +229,7 @@
             padding:var(--space-6); display:flex; flex-direction:column; min-height:0; }
   /* pass 5 — every whimsy card clips its own art: nothing paints past its shell */
     /* iteration 2 · slot 7 — 12px frame clearance reserved inside the card (squished twice: own frame + the spine's growth) */
-    .card.whimsy { overflow:hidden; min-height:auto; /* sizes to its interior — never clips or spills (re-ruled 2026-07-19) */ padding:calc(var(--frame-clear-whimsy) + var(--space-4)); }
+    .card.whimsy { overflow:hidden; min-height:fit-content; /* sizes to its interior — never clips or spills (re-ruled 2026-07-19). `auto` resolves to ZERO under overflow:hidden, so the ruled floor silently did not exist; `fit-content` is the floor this file's own note below prescribes. */ padding:calc(var(--frame-clear-whimsy) + var(--space-4)); }
   .ovl { font-size:var(--whimsy-size-caption); font-weight:var(--weight-bold); letter-spacing:.09em;
            text-transform:uppercase; color:var(--text-muted); margin:0 0 var(--space-4);
            display:flex; align-items:center; justify-content:space-between; }
@@ -647,9 +647,29 @@
     .milestone { display:flex; align-items:center; gap:var(--space-6);
                  background:var(--panel-background); border:var(--border-hairline) solid var(--border);
                  border-radius:var(--radius-medium); box-shadow:var(--shadow-low); padding:var(--space-6) var(--space-7); }
-  .milestone .emblem { width:64px; height:64px; flex:0 0 auto; border-radius:var(--radius-full);
-                         background:var(--selected-wash); border:var(--border-standard) solid var(--accent);
-                         display:flex; align-items:center; justify-content:center; color:var(--accent); }
+  /* THE SEAL, re-pointed 2026-07-26 (Claude Design session 24, direction D — the
+     sealed certificate; owning record kit-card-milestone § the family-card
+     variant). Was --selected-wash on an --accent ring: an accent medal. It is
+     now the ink-and-gilt seal the cover wall's family cards wear —
+     "no card on the wall carries Daily's medal any more, so the link is
+     material or it is nothing."
+
+     The two repairs the exhibit made to its own seal ride along, because they
+     are what makes the device legible at all: the glyph is a RATIO of the disc
+     (60%, the masthead/lettermark precedent — no dial minted, since --icon-size
+     is the size of a UI icon and this is art inside a keepsake seal), and
+     `vector-effect:non-scaling-stroke` makes --icon-stroke mean 1.5px RENDERED
+     rather than 1.5 viewBox units scaled down to a hairline.
+
+     The 64px is the FINAL's own literal, already flagged as a live dial
+     candidate now that a second surface exists; it is bound to `--seal` here so
+     the glyph derives from it instead of repeating it. */
+    .milestone .emblem { --seal:64px; width:var(--seal); height:var(--seal); flex:0 0 auto;
+                         border-radius:var(--radius-full);
+                         background:var(--whimsy-ink); border:var(--border-hairline) solid var(--whimsy-star);
+                         display:flex; align-items:center; justify-content:center; color:var(--whimsy-star); }
+  .milestone .emblem .ico { width:calc(var(--seal) * .6); height:calc(var(--seal) * .6);
+                              vector-effect:non-scaling-stroke; }
   .milestone .mh { font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); line-height:var(--line-tight); }
   .milestone .ms { font-size:var(--size-small); color:var(--text-secondary); margin-top:var(--space-2); }
   /* empty form state (kit-state-empty) */
@@ -703,6 +723,86 @@
   .pk-live:focus-within .face-open { display:contents; }
   .pk-live .pkdrop { display:none; position:absolute; top:100%; left:0; right:0; z-index:1; }
   .pk-live:focus-within .pkdrop { display:block; }
+
+  /* ===== CLAIMED 2026-07-26 — kit-picker-datetime's CLICK-FALLBACKS =========
+     35 rules out of `kit-staging.css`, verbatim, for the frozen
+     `Final/daily-form-pickers.html`. Ruled 2026-07-26: TRANSLATE AS FROZEN,
+     with a RE-DESIGN OWED — the user recalls disliking how the calendar and
+     time picker look and ruled "we can revisit that later once it actually
+     gets built". Reproduced faithfully so there is something real to judge.
+
+     `.calpop` is NOT the nav calendar: the frozen file draws it as a component
+     wholly separate from `.cal` (week numbers, finalize markers, catch-up
+     outlines), so step 9 neither helps this nor is helped by it. */
+    .calpop, .timepop { border:var(--border-hairline) solid var(--border); border-radius:var(--radius-medium); background:var(--raised-background); -webkit-backdrop-filter:var(--backdrop-blur); backdrop-filter:var(--backdrop-blur); box-shadow:var(--shadow-high); overflow:hidden; }
+  .reduce-effects .calpop, .reduce-effects .timepop { -webkit-backdrop-filter:none; backdrop-filter:none; background:var(--panel-background); }
+  .calpop { width:280px; padding:var(--space-5); }
+  .calpop .calnote { margin-top:var(--space-4); padding-top:var(--space-4); border-top:var(--border-hairline) solid var(--divider); font-size:var(--size-caption); color:var(--text-muted); }
+  .calpop .caltop { display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-4); }
+  .calpop .caltop .m { font-size:var(--size-body); font-weight:var(--weight-medium); color:var(--text-strong); }
+  .calpop .caltop .nav { display:flex; gap:var(--space-2); }
+  .calpop .caltop .nav .b { width:var(--step-btn-size); height:var(--step-btn-size); display:flex; align-items:center; justify-content:center; border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); background:var(--panel-background); color:var(--text-secondary); cursor:pointer; }
+  .calpop .caltop .nav .b:hover { background:var(--hover-wash); color:var(--text-strong); }
+  .calpop .cgrid { display:grid; grid-template-columns:repeat(7,1fr); gap:var(--space-2); }
+  .calpop .cdow { font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); text-align:center; padding-bottom:var(--space-2); }
+  .calpop .cd { aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:var(--size-small); color:var(--text-strong); border-radius:var(--radius-small); cursor:pointer; }
+  .calpop .cd:hover { background:var(--hover-wash); }
+  .calpop .cd.dead { color:color-mix(in oklch, var(--text-muted), var(--panel-background) var(--fade)); cursor:not-allowed; }
+  .calpop .cd.dead:hover { background:transparent; }
+  .calpop .cd.out { color:color-mix(in oklch, var(--text-muted), var(--panel-background) var(--fade)); cursor:default; }
+  .calpop .cd.out:hover { background:transparent; }
+  .calpop .cd.sel { background:var(--accent); color:var(--text-on-filled); }
+  .calpop .cd.today { box-shadow:inset 0 0 0 var(--border-hairline) var(--accent); }
+  .timepop { padding:var(--space-4) var(--space-4) var(--space-5); width:340px; }
+  .timepop .thead { font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin-bottom:var(--space-3); }
+  .timepop .tstrip { display:flex; gap:var(--space-2); overflow:hidden; }
+  .timepop .tcell { flex:0 0 auto; padding:var(--space-3) var(--space-4); border-radius:var(--radius-small); font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-secondary); cursor:pointer; white-space:nowrap; }
+  .timepop .tcell:hover { background:var(--hover-wash); color:var(--text-strong); }
+  .timepop .tcell.sel { background:var(--accent); color:var(--text-on-filled); }
+  .timepop .tnote { margin-top:var(--space-4); font-size:var(--size-caption); color:var(--text-muted); }
+  .timepop .tscrub { margin-top:var(--space-5); height:var(--space-3); border-radius:var(--radius-full); background:var(--inset-background); position:relative; }
+  .timepop .tscrub > i { position:absolute; top:50%; width:14px; height:14px; border-radius:var(--radius-full); background:var(--panel-background); border:var(--border-standard) solid var(--accent); transform:translate(-50%,-50%); box-shadow:var(--shadow-low); }
+  .dt-live { overflow:visible; }
+  .dt-live .dpart { position:relative; cursor:pointer; }
+  .dt-live .dpart .cue { margin-left:var(--space-3); color:var(--text-muted); }
+  .dt-live .dpart > .calpop, .dt-live .dpart > .timepop { display:none; position:absolute; top:calc(100% + var(--space-2)); left:0; z-index:6; text-align:left; }
+  .dt-live .dpart.time > .timepop { left:auto; right:0; }
+  .dt-live .dpart:focus-within { box-shadow:inset 0 0 0 var(--focus-ring-weight) var(--focus-ring); outline:none; }
+  .dt-live .dpart:focus-within > .calpop, .dt-live .dpart:focus-within > .timepop { display:block; }
+  /* A strip clips its own children (`overflow:hidden`), which would swallow any
+     anchored popover. The frozen picker file already opts the datetime strip
+     out; the entry picker's dropdown needs the same, and for the same reason. */
+    details.strip:has(.dt-live), details.strip:has(.pk-live) { overflow:visible; }
+
+  /* ===== BUILD-SIDE, marked as IMPLEMENTATION =============================
+     A frozen mockup has no live inputs anywhere: every field in the corpus is
+     a static <span>. Three selectors zero a real control back to the drawn
+     face so the app can be typed into — the `.qbody` delta's class of thing,
+     recorded at the use site rather than smuggled in.
+
+     `.bare` is a <select> inside the drawn `.inp.sel` chip; `.pkin` is the
+     entry picker's type-ahead field inside `.picker`; `.timein` is the
+     datetime's typeable 24h field, which the frozen `.tnote` itself calls the
+     PRIMARY path ("this strip is the fallback"). None of them paints: they
+     inherit the chip they sit in. */
+    .inp.sel .bare, .picker .pkin, .dt .dpart .timein {
+      font-family:inherit; font-size:inherit; font-weight:inherit; color:inherit;
+      background:transparent; border:none; outline:none; padding:0; margin:0;
+      min-width:0; appearance:none; }
+  .inp.sel .bare { flex:1 1 auto; cursor:pointer; }
+  .picker .pkin { flex:1 1 auto; width:100%; }
+  .dt .dpart .timein { width:5ch; text-align:center; }
+  .inp.sel .bare option { color:var(--text-strong); background:var(--panel-background); }
+  .inp:focus-within, .picker:focus-within { box-shadow:inset 0 0 0 var(--focus-ring-weight) var(--focus-ring); }
+  /* CLOSED WHILE STILL FOCUSED. `:focus-within` alone can only be closed by
+     taking the focus away, and the app was doing exactly that — blurring to
+     `<body>` after a pick, which dumps the tab position and makes Shift+Tab
+     jump to the end of the document. A field keeps its focus (and so its ring,
+     and its place in the tab order); `.shut` just hides the panel until the
+     field is used again. */
+    .pk-live.shut .pkdrop,
+  .dt-live .dpart.shut > .calpop,
+  .dt-live .dpart.shut > .timepop { display:none; }
 }
 
 /* ===== THE TWO COLUMNS SIZE DIFFERENTLY — user-ruled 2026-07-25 =============

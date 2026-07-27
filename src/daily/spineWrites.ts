@@ -1,0 +1,474 @@
+/**
+ * The form spine's WRITE layer.
+ *
+ * Ruling 1 (screen note § Amended 2026-07-26 (2nd)): "Finalize is the official
+ * save that locks it and turns the form into the coverwall. All other saves are
+ * unofficial saves that remembers any changes to the form but doesn't turn it
+ * into the cover wall." So every function here commits IMMEDIATELY — a field
+ * commits as you leave it — and Finalize writes nothing but the day's state.
+ *
+ * EVOLU MUTATIONS FAIL SILENTLY. An unchecked `Result` can drop the entire
+ * microtask transaction with no log (the coding-migration bug of 2026-07-23), so
+ * every mutation below is checked and every caller is told whether it landed.
+ *
+ * Rules are `validate.ts` calls — the form never re-invents a check.
+ */
+import { FiniteNumber, NonEmptyString100, NonEmptyString1000 } from "@evolu/common";
+import { evolu } from "../db/evolu";
+import {
+  DateOnly,
+  DateTimeLocal,
+  entryAttributesFromJson,
+  type EntryId,
+  type HabitId,
+  type MeasureKind,
+  type SessionId,
+  type SubunitDefinitionId,
+  type SubunitValueId,
+} from "../db/schema";
+import {
+  validateRangeSpan,
+  validateSessionAgainstHabit,
+  validateSessionMeasure,
+} from "../db/validate";
+import { syncDerivedKeyboardForDay, writingWordsForDay, WRITING_KEY } from "../db/derivedKeyboard";
+import type { Bout, SpineHabit, StripSpec } from "./spineSpec";
+
+export type WriteResult = { ok: true } | { ok: false; reason: string };
+const good: WriteResult = { ok: true };
+const bad = (reason: string): WriteResult => ({ ok: false, reason });
+
+/** Checked mutation: logs the Evolu error and reports the failure upward. */
+const checked = (
+  res: { ok: true; value?: unknown } | { ok: false; error: unknown },
+  what: string,
+): boolean => {
+  if (!res.ok) {
+    console.error(`spine: ${what} failed`, (res as { error: unknown }).error);
+    return false;
+  }
+  return true;
+};
+
+// ── Sessions ─────────────────────────────────────────────────────────────────
+
+export interface NewSession {
+  habit: SpineHabit;
+  day: string;
+  entryId: string | null;
+  measure: MeasureKind;
+  value: number | null;
+  start: string | null;
+  end: string | null;
+  source?: "manual" | "timer" | "import" | "derived";
+}
+
+/** Validate + insert one session row, returning its id (or the failure reason). */
+export const insertSession = (
+  s: NewSession,
+): { ok: true; id: SessionId } | { ok: false; reason: string } => {
+  const checks = [
+    validateSessionAgainstHabit(
+      {
+        kind: s.habit.kind,
+        measures_time: s.habit.measures_time,
+        measures_count: s.habit.measures_count,
+      },
+      { entry_fk: s.entryId, measure_kind: s.measure },
+    ),
+    validateSessionMeasure({
+      measure_kind: s.measure,
+      value: s.value,
+      start: s.start,
+      end: s.end,
+    }),
+    ...(s.measure === "range" && s.start != null && s.end != null
+      ? [validateRangeSpan(s.start, s.end, s.habit.range_max_midnights ?? 0)]
+      : []),
+  ];
+  const failed = checks.find((c) => !c.ok);
+  if (failed && !failed.ok) return { ok: false, reason: failed.reason };
+
+  try {
+    const res = evolu.insert("sessions", {
+      habit_fk: s.habit.id as HabitId,
+      entry_fk: (s.entryId as EntryId | null) ?? null,
+      day: DateOnly.orThrow(s.day),
+      measure_kind: s.measure,
+      value: s.value != null ? FiniteNumber.orThrow(s.value) : null,
+      start: s.start != null ? DateTimeLocal.orThrow(s.start) : null,
+      end: s.end != null ? DateTimeLocal.orThrow(s.end) : null,
+      source: s.source ?? "manual",
+    });
+    if (!res.ok) {
+      console.error("spine: session insert failed", res.error);
+      return { ok: false, reason: "Write failed — see console." };
+    }
+    return { ok: true, id: res.value.id };
+  } catch (e) {
+    return { ok: false, reason: String(e) };
+  }
+};
+
+/**
+ * Commit a whole BOUT (ruling 2). A habit declaring both measures writes TWO
+ * rows from one block, and every row carries the SAME categorical answers —
+ * `seedRich.seedWriting`'s existing convention, which every dashboard reads.
+ *
+ * All-or-nothing at the session layer: a measure that fails validation aborts
+ * before anything is written, so a half-written bout is impossible.
+ */
+export const createBout = (args: {
+  habit: SpineHabit;
+  day: string;
+  entryId: string | null;
+  measures: Array<{ kind: "time" | "count"; value: number }>;
+  range: { start: string; end: string } | null;
+  measureless: boolean;
+  cats: Array<{ definitionId: string; value: string }>;
+}): { ok: true; ids: SessionId[] } | { ok: false; reason: string } => {
+  const plan: NewSession[] = [];
+  for (const m of args.measures)
+    plan.push({
+      habit: args.habit,
+      day: args.day,
+      entryId: args.entryId,
+      measure: m.kind,
+      value: m.value,
+      start: null,
+      end: null,
+    });
+  if (args.range != null)
+    plan.push({
+      habit: args.habit,
+      day: args.day,
+      entryId: args.entryId,
+      measure: "range",
+      value: null,
+      start: args.range.start,
+      end: args.range.end,
+    });
+  if (args.measureless)
+    plan.push({
+      habit: args.habit,
+      day: args.day,
+      entryId: args.entryId,
+      measure: "none",
+      value: null,
+      start: null,
+      end: null,
+    });
+  if (plan.length === 0) return { ok: false, reason: "Nothing to log yet." };
+
+  // Validate every row BEFORE writing any of them.
+  for (const p of plan) {
+    const dry = validateSessionMeasure({
+      measure_kind: p.measure,
+      value: p.value,
+      start: p.start,
+      end: p.end,
+    });
+    if (!dry.ok) return { ok: false, reason: dry.reason };
+  }
+
+  const ids: SessionId[] = [];
+  for (const p of plan) {
+    const res = insertSession(p);
+    if (!res.ok) return { ok: false, reason: res.reason };
+    ids.push(res.id);
+  }
+  for (const id of ids)
+    for (const c of args.cats) {
+      if (c.value === "") continue;
+      const res = evolu.insert("subunit_values", {
+        session_fk: id,
+        definition_fk: c.definitionId as SubunitDefinitionId,
+        value: NonEmptyString1000.orThrow(c.value),
+      });
+      if (!checked(res, "subunit insert")) return { ok: false, reason: "Write failed — see console." };
+    }
+  // Auto-follow: a new Writing word count re-derives that day's Keyboard words.
+  if (args.habit.key === WRITING_KEY && args.measures.some((m) => m.kind === "count"))
+    void syncDerivedKeyboardForDay(evolu, args.day);
+  return { ok: true, ids };
+};
+
+/** A measure edit on an existing row. Also re-syncs derived Keyboard words. */
+export const updateMeasureValue = (
+  id: string,
+  value: number,
+  ctx: { habitKey: string | null; measure: MeasureKind; day: string },
+): WriteResult => {
+  if (!Number.isFinite(value) || value < 0) return bad("A measure value cannot be negative.");
+  const res = evolu.update("sessions", {
+    id: id as SessionId,
+    value: FiniteNumber.orThrow(value),
+  });
+  if (!checked(res, "measure update")) return bad("Write failed — see console.");
+  if (ctx.habitKey === WRITING_KEY && ctx.measure === "count")
+    void syncDerivedKeyboardForDay(evolu, ctx.day);
+  return good;
+};
+
+/** A range edit — validated against the habit's own midnight rule. */
+export const updateRange = (
+  id: string,
+  start: string,
+  end: string,
+  maxMidnights: number,
+): WriteResult => {
+  const span = validateRangeSpan(start, end, maxMidnights);
+  if (!span.ok) return bad(span.reason);
+  const res = evolu.update("sessions", {
+    id: id as SessionId,
+    start: DateTimeLocal.orThrow(start),
+    end: DateTimeLocal.orThrow(end),
+  });
+  return checked(res, "range update") ? good : bad("Write failed — see console.");
+};
+
+/** The entry a bout points at — every row of the bout moves together. */
+export const setBoutEntry = (bout: Bout, entryId: string): WriteResult => {
+  for (const row of bout.rows) {
+    const res = evolu.update("sessions", { id: row.id as SessionId, entry_fk: entryId as EntryId });
+    if (!checked(res, "entry update")) return bad("Write failed — see console.");
+  }
+  return good;
+};
+
+// ── Categoricals & flags (the definition tail) ───────────────────────────────
+
+/**
+ * Set one answer on every row of a bout — a bout is one bout of activity, so a
+ * habit declaring two measures writes two rows SHARING one categorical value.
+ */
+export const setBoutSubunit = (
+  bout: Bout,
+  definitionId: string,
+  definitionKey: string,
+  value: string,
+  catRowIds: ReadonlyMap<string, string>,
+): WriteResult => {
+  for (const row of bout.rows) {
+    const existing = catRowIds.get(`${row.id}|${definitionKey}`);
+    const res = existing
+      ? evolu.update("subunit_values", {
+          id: existing as SubunitValueId,
+          value: NonEmptyString1000.orThrow(value),
+        })
+      : evolu.insert("subunit_values", {
+          session_fk: row.id as SessionId,
+          definition_fk: definitionId as SubunitDefinitionId,
+          value: NonEmptyString1000.orThrow(value),
+        });
+    if (!checked(res, "subunit write")) return bad("Write failed — see console.");
+  }
+  return good;
+};
+
+// ── Removal + the undo toast (Delete Safety & Undo, tier 2) ──────────────────
+
+export interface RemovedBout {
+  sessionIds: string[];
+  valueIds: string[];
+  label: string;
+}
+
+/**
+ * A LIGHT delete — one bout — so it takes the ~10 s undo toast, not the
+ * count-carrying confirm. Ruling 4: the daily form is the toast's natural first
+ * tenant, and a form you cannot correct is worse than a dashboard you cannot
+ * delete from.
+ */
+export const removeBout = (
+  bout: Bout,
+  label: string,
+  catRowIds: ReadonlyMap<string, string>,
+): { ok: true; removed: RemovedBout } | { ok: false; reason: string } => {
+  const valueIds: string[] = [];
+  for (const [key, id] of catRowIds) {
+    const sessionId = key.slice(0, key.indexOf("|"));
+    if (bout.rows.some((r) => r.id === sessionId)) valueIds.push(id);
+  }
+  for (const id of valueIds) {
+    const res = evolu.update("subunit_values", { id: id as SubunitValueId, isDeleted: 1 });
+    if (!checked(res, "subunit delete")) return { ok: false, reason: "Write failed — see console." };
+  }
+  for (const row of bout.rows) {
+    const res = evolu.update("sessions", { id: row.id as SessionId, isDeleted: 1 });
+    if (!checked(res, "session delete")) return { ok: false, reason: "Write failed — see console." };
+  }
+  return { ok: true, removed: { sessionIds: bout.rows.map((r) => r.id), valueIds, label } };
+};
+
+/** Undo — the same rows, un-deleted. Nothing is re-created, so nothing shifts. */
+export const restoreBout = (removed: RemovedBout): WriteResult => {
+  for (const id of removed.sessionIds) {
+    const res = evolu.update("sessions", { id: id as SessionId, isDeleted: 0 });
+    if (!checked(res, "session restore")) return bad("Restore failed — see console.");
+  }
+  for (const id of removed.valueIds) {
+    const res = evolu.update("subunit_values", { id: id as SubunitValueId, isDeleted: 0 });
+    if (!checked(res, "subunit restore")) return bad("Restore failed — see console.");
+  }
+  return good;
+};
+
+/**
+ * CLEAR ALL — every session logged on the day, across every habit.
+ *
+ * A HEAVY delete, so it rides the count-carrying danger confirm and NOT the undo
+ * toast ([[Delete Safety & Undo]]: "irreversible, so it must be deliberate").
+ * There is deliberately no undo path back from here.
+ *
+ * Drafts are untouched by design — they were never written, so there is nothing
+ * to clear; the caller remounts its strips so each opens on a fresh empty one.
+ */
+export const clearDay = (
+  sessions: ReadonlyArray<{ id: string }>,
+  catRowIds: ReadonlyMap<string, string>,
+): WriteResult => {
+  const ids = new Set(sessions.map((s) => s.id));
+  for (const [key, valueId] of catRowIds) {
+    if (!ids.has(key.slice(0, key.indexOf("|")))) continue;
+    const res = evolu.update("subunit_values", { id: valueId as SubunitValueId, isDeleted: 1 });
+    if (!checked(res, "clear-day subunit delete")) return bad("Write failed — see console.");
+  }
+  for (const id of ids) {
+    const res = evolu.update("sessions", { id: id as SessionId, isDeleted: 1 });
+    if (!checked(res, "clear-day session delete")) return bad("Write failed — see console.");
+  }
+  return good;
+};
+
+// ── Entries · the inline quick-create (title-only stub) ──────────────────────
+
+/**
+ * The no-match face IS the quick-create door: one click mints a title-only stub
+ * and the session row carries it — no modal on the fast path. Status is
+ * "Current" iff the habit's own bundle carries status.
+ */
+export const quickCreateEntry = (
+  habit: SpineHabit,
+  entryAttributesJson: string | null,
+  title: string,
+): { ok: true; id: EntryId } | { ok: false; reason: string } => {
+  const clean = title.trim();
+  if (clean.length === 0) return { ok: false, reason: "A title is required." };
+  let hasStatus = false;
+  try {
+    hasStatus = entryAttributesJson
+      ? (entryAttributesFromJson(entryAttributesJson as never) as unknown as string[]).includes(
+          "status",
+        )
+      : false;
+  } catch {
+    hasStatus = false;
+  }
+  const res = evolu.insert("entries", {
+    habit_fk: habit.id as HabitId,
+    title: NonEmptyString1000.orThrow(clean),
+    status: hasStatus ? NonEmptyString100.orThrow("Current") : null,
+  });
+  if (!res.ok) {
+    console.error("spine: quick-create failed", res.error);
+    return { ok: false, reason: "Entry creation failed." };
+  }
+  return { ok: true, id: res.value.id };
+};
+
+// ── 5 · Keyboard's three deferred controls ───────────────────────────────────
+
+/**
+ * BOARD-ONLY LOGGING. "You never type a Keyboard word count — only the board is
+ * logged": picking a board writes the day's count session with `source:
+ * derived`, carrying Writing's current word total. The engine was pre-built at
+ * the 2026-07-23 derive ruling; this is the UI's thin wrapper over it.
+ */
+export const logBoard = async (
+  habit: SpineHabit,
+  day: string,
+  definitionId: string,
+  definitionKey: string,
+  board: string,
+  existing: Bout | null,
+  catRowIds: ReadonlyMap<string, string>,
+): Promise<WriteResult> => {
+  if (existing?.count != null) {
+    // Same day, same session — just re-point the board.
+    return setBoutSubunit(existing, definitionId, definitionKey, board, catRowIds);
+  }
+  const words = await writingWordsForDay(evolu, day);
+  const created = insertSession({
+    habit,
+    day,
+    entryId: null,
+    measure: "count",
+    value: words,
+    start: null,
+    end: null,
+    source: "derived",
+  });
+  if (!created.ok) return bad(created.reason);
+  const res = evolu.insert("subunit_values", {
+    session_fk: created.id,
+    definition_fk: definitionId as SubunitDefinitionId,
+    value: NonEmptyString1000.orThrow(board),
+  });
+  return checked(res, "board write") ? good : bad("Write failed — see console.");
+};
+
+/** The visible REFRESH control: re-derive the count from Writing's current total. */
+export const refreshDerived = async (id: string, day: string): Promise<WriteResult> => {
+  const words = await writingWordsForDay(evolu, day);
+  const res = evolu.update("sessions", {
+    id: id as SessionId,
+    value: FiniteNumber.orThrow(words),
+    source: "derived",
+  });
+  return checked(res, "derived refresh") ? good : bad("Write failed — see console.");
+};
+
+/** The OVERRIDE field: a hand value detaches the count (`derived` → `manual`). */
+export const overrideDerived = (id: string, value: number): WriteResult => {
+  if (!Number.isFinite(value) || value < 0) return bad("A word count cannot be negative.");
+  const res = evolu.update("sessions", {
+    id: id as SessionId,
+    value: FiniteNumber.orThrow(value),
+    source: "manual",
+  });
+  return checked(res, "derived override") ? good : bad("Write failed — see console.");
+};
+
+// ── Finalize (ruling 1: the state change into state 2, not a submit) ─────────
+
+/**
+ * INERT until state 2 exists. Kept here so the button has a real home the moment
+ * the cover wall lands: it writes the `days` ledger's `finalized` flag and
+ * nothing else — no session is touched, because every session was already saved
+ * the instant it was typed.
+ */
+export const finalizeDay = (
+  day: string,
+  existingRow: { id: string } | null,
+  at: string,
+): WriteResult => {
+  const res = existingRow
+    ? evolu.update("days", {
+        id: existingRow.id as never,
+        finalized: 1,
+        finalized_at: DateTimeLocal.orThrow(at),
+      })
+    : evolu.insert("days", {
+        date: DateOnly.orThrow(day),
+        finalized: 1,
+        finalized_at: DateTimeLocal.orThrow(at),
+        feed_snapshot: null,
+      });
+  return checked(res, "finalize") ? good : bad("Write failed — see console.");
+};
+
+/** The habit's own `entry_attributes` JSON, needed by quick-create. */
+export type EntryAttributesJsonString = string | null;
+
+export const stripNeedsEntry = (spec: StripSpec): boolean => spec.needsEntry;

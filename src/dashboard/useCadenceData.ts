@@ -25,7 +25,10 @@ const habitsQuery = evolu.createQuery((db) =>
 const sessionsQuery = evolu.createQuery((db) =>
   db
     .selectFrom("sessions")
-    .select(["id", "habit_fk", "entry_fk", "day", "measure_kind", "value", "start", "end"])
+    // `source` rides along for Daily's milestone catalog, which must EXCLUDE
+    // `derived` count sessions (Keyboard's word count IS Writing's, so counting
+    // both would cross 100,000 words twice and say the same thing twice).
+    .select(["id", "habit_fk", "entry_fk", "day", "measure_kind", "value", "start", "end", "source"])
     .where("isDeleted", "is not", 1),
 );
 
@@ -80,6 +83,8 @@ export interface CadSession {
   value: number | null;
   start: string | null;
   end: string | null;
+  /** Provenance — Daily's milestone catalog filters on it. */
+  source: string;
 }
 
 export interface CadEntry {
@@ -145,6 +150,7 @@ export function useCadenceData(): CadenceData {
           value: r.value,
           start: r.start,
           end: r.end,
+          source: (r.source as string | null) ?? "manual",
         })),
     [sessionRows],
   );

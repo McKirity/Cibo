@@ -19,6 +19,7 @@ import { evolu } from "../db/evolu";
 import { clearRichSeed, seedRich } from "../db/seedRich";
 import { LogForm } from "../log/LogForm";
 import { Daily } from "../daily/Daily";
+import { ToastSlot } from "./toast";
 import { ConsumptionDashboard } from "../dashboard/ConsumptionDashboard";
 import { CreationDashboard } from "../dashboard/CreationDashboard";
 import { SimpleDashboard } from "../dashboard/SimpleDashboard";
@@ -292,6 +293,11 @@ export function Shell() {
           <LogView />
         )}
       </div>
+
+      {/* kit-toast — the app's ONE slide-in slot, mounted once by the shell so
+          any surface can raise it. First tenant: the form spine's session-remove
+          undo. */}
+      <ToastSlot />
     </div>
   );
 }

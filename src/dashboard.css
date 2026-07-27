@@ -13,7 +13,7 @@
 /* ------- BASE (claimed verbatim) ------- */
 .emptybox .es{font-size:var(--size-body); color:var(--text-secondary); margin-bottom:var(--space-6); max-width:56ch; margin-left:auto; margin-right:auto;}
 .phead{display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-5); margin-bottom:var(--space-6); padding-bottom:var(--space-4); border-bottom:var(--border-hairline) solid var(--divider);}
-.tile{background:var(--window-background); border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-medium); padding:calc(var(--frame-clear-tile) + var(--space-4)); height:var(--tile-height); display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-rows:auto auto; align-content:space-between; column-gap:var(--space-4); row-gap:var(--space-3);}
+.tile{background:var(--window-background); border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-medium); padding:calc(var(--frame-clear-tile) + var(--space-4)); height:auto; min-height:var(--tile-height); display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-rows:auto auto; align-content:space-between; column-gap:var(--space-4); row-gap:var(--space-3);}
 .bars{display:flex; flex-direction:column; gap:var(--space-5); max-height:calc(var(--bar-row-h) * 5 + var(--space-5) * 4); overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--border) transparent; scrollbar-gutter:stable;}
 .brow{display:grid; grid-template-columns:var(--bar-label-w) 1fr var(--bar-value-w); gap:var(--space-4); align-items:center; min-height:var(--bar-row-h);}
 .emptybox{border:var(--border-standard) dashed var(--border); border-radius:var(--radius-large); padding:var(--space-8); text-align:center;}
@@ -23,7 +23,13 @@
 .brow .blabel{font-size:var(--size-small); color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .emptybox .ehint{font-size:var(--size-caption); color:var(--text-muted);}
 .emptybox .et{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); margin-bottom:var(--space-3);}
-.trow{display:flex; flex-wrap:wrap; gap:var(--space-6);}
+/* TILES IN A ROW ALL MATCH THE TALLEST — user-ruled 2026-07-26 at the box-model
+   pass. `--tile-height` was already documented as "a FLOOR (min-height)" in its
+   own dial comment, but `.tile` was claimed from the FINAL setting it as a fixed
+   `height` — a drift invisible while no tile's content exceeded 128px. With
+   `height:auto` the flex row's default `stretch` does the rest, so a row of
+   tiles is as tall as its tallest member and no taller. */
+.trow{display:flex; flex-wrap:wrap; gap:var(--space-6); align-items:stretch;}
 .chartwrap{position:relative; padding-left:var(--chart-axis-gutter);}
 .cover{width:var(--cover-w); height:var(--cover-h); border-radius:var(--radius-small); position:relative; cursor:pointer; overflow:hidden; background:repeating-linear-gradient(135deg, var(--inset-background), var(--inset-background) 7px, var(--divider) 7px, var(--divider) 14px); transition:box-shadow var(--motion-fast) var(--ease-standard);}
 .deltachip{display:inline-flex; align-items:center; gap:var(--space-2); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--verdict-done); background:color-mix(in oklch, var(--verdict-done), var(--window-background) var(--tint-mix)); border-radius:var(--radius-small); padding:var(--space-2) var(--space-4);}

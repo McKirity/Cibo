@@ -91,7 +91,7 @@ export function SunCard({ sun, lon, now }: { sun: SunInfo; lon: number; now: Dat
   const len =
     sun.state === "midnight-sun" ? "24h 00m" : sun.state === "polar-night" ? "0h 00m" : hm(sun.dayLengthMin);
   return (
-    <div className="card whimsy sun-card" style={{ flex: "2.2 0 229px" }}>
+    <div className="card whimsy sun-card" style={{ flex: "2.2 0 285px" }}>
       <Ovl label="Sun" d={I_SUN} />
       <div className="sun-len">
         <span className="whead">{len}</span>
@@ -138,7 +138,7 @@ export function SunCard({ sun, lon, now }: { sun: SunInfo; lon: number; now: Dat
 
 export function WeatherCard() {
   return (
-    <div className="card whimsy" style={{ flex: "1.2 0 125px" }}>
+    <div className="card whimsy" style={{ flex: "1.2 0 156px" }}>
       <Ovl label="Weather" d={I_WX} />
       <div className="art wx">
         <div className="wx-nowblock">
@@ -154,7 +154,7 @@ export function SeasonCard({ dayKey, lat }: { dayKey: string; lat: number }) {
   const s = seasonInfo(dayKey, lat);
   const band = seasonBand(dayKey, lat);
   return (
-    <div className="card whimsy season-card" style={{ flex: "1.15 0 120px" }}>
+    <div className="card whimsy season-card" style={{ flex: "1.15 0 149px" }}>
       <Ovl label="Season" d={I_SEASON} />
       <div className="art season-art" style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
         <div className="season-head">
@@ -215,7 +215,7 @@ export function MoonCard({ moon }: { moon: MoonInfo }) {
   });
   const currentIdx = Math.round(moon.phase * 28) % 28;
   return (
-    <div className="card whimsy moon-card" style={{ flex: "1.9 0 198px" }}>
+    <div className="card whimsy moon-card" style={{ flex: "1.9 0 247px" }}>
       <Ovl label="Moon" d={I_MOON} />
       <div className="art">
         <div className="field moon-field">
@@ -251,7 +251,7 @@ export function MoonCard({ moon }: { moon: MoonInfo }) {
 export function TonightSkyCard({ dayKey, lat }: { dayKey: string; lat: number }) {
   const list = tonightsSky(dayKey, lat);
   return (
-    <div className="card whimsy tonight-card" style={{ flex: "1.35 0 140px" }}>
+    <div className="card whimsy tonight-card" style={{ flex: "1.35 0 175px" }}>
       <Ovl label="Tonight's sky" d={I_STAR} />
       <div className="field night-field">
         <svg className="stars" viewBox="0 0 480 230" preserveAspectRatio="xMidYMid slice" aria-hidden="true">

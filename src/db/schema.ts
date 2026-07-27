@@ -1,6 +1,7 @@
 /**
  * The 8-table Evolu schema, transcribed from the locked keystone
- * (`Data Schema (Keystone).md`, locked 2026-07-02, amended 2026-07-06 / 2026-07-19).
+ * (`Data Schema (Keystone).md`, locked 2026-07-02, amended 2026-07-06 / 2026-07-19 /
+ * 2026-07-26 — Habits gains `milestone_ladders`; table count stays 8).
  *
  * No design decisions are made here — Build step 2 transcribes.
  * Column names keep the keystone's snake_case exactly, so the design docs and the
@@ -145,6 +146,36 @@ export const [DerivedRulesJson, derivedRulesToJson, derivedRulesFromJson] = json
 );
 export type DerivedRulesJson = typeof DerivedRulesJson.Type;
 
+/**
+ * One milestone threshold ladder — rules-as-data, the shape the ladders were
+ * dictated in ("2/5/10, then intervals of 10, and from 100 intervals of 25"):
+ * an optional leading `steps` list plus `bands` of `{every, until}` (a band
+ * with no `until` runs forever). Keystone § Habits, added 2026-07-26.
+ */
+export const MilestoneLadder = object({
+  steps: optional(array(FiniteNumber)),
+  bands: array(object({ every: FiniteNumber, until: optional(FiniteNumber) })),
+});
+export type MilestoneLadder = typeof MilestoneLadder.Type;
+
+/**
+ * A habit's ladder OVERRIDES, keyed by subject — holding only what it
+ * overrides; every absent subject falls to the global default. `wave_gap_days`
+ * semantics exactly: null = use the global.
+ */
+export const MilestoneLadders = object({
+  days: optional(MilestoneLadder),
+  hours: optional(MilestoneLadder),
+  entryHours: optional(MilestoneLadder),
+  words: optional(MilestoneLadder),
+  sessions: optional(MilestoneLadder),
+});
+export type MilestoneLadders = typeof MilestoneLadders.Type;
+
+export const [MilestoneLaddersJson, milestoneLaddersToJson, milestoneLaddersFromJson] =
+  json(MilestoneLadders, "MilestoneLadders");
+export type MilestoneLaddersJson = typeof MilestoneLaddersJson.Type;
+
 // ── The eight tables ─────────────────────────────────────────────────────────
 
 export const Schema = {
@@ -174,6 +205,13 @@ export const Schema = {
     derived_rules: nullOr(DerivedRulesJson),
     /** Per-habit wave gap-threshold override, days; null = global default. */
     wave_gap_days: nullOr(PositiveInt),
+    /**
+     * Per-habit milestone threshold-ladder overrides, keyed by subject; null =
+     * every subject uses the global default (Settings → Tracking → Metrics,
+     * built at step 10). Milestones stay DERIVED — only the rules are data.
+     * Additive-nullable, the path proven at step 2; table count stays 8.
+     */
+    milestone_ladders: nullOr(MilestoneLaddersJson),
     /** The two-state lifecycle flag. */
     archived: SqliteBoolean,
     /** User-arranged ordering; null until first reordered (seeds get registry order). */

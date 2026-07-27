@@ -21,7 +21,10 @@
  * Keyboard's word count is Writing's — is imported from `db/derivedKeyboard.ts`,
  * which has been its code-side home since it was ruled.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@evolu/react";
+import { evolu } from "../db/evolu";
+import { syncDerivedKeyboardForDay, WRITING_KEY } from "../db/derivedKeyboard";
 import { showErrorToast, showUndoToast } from "../shell/toast";
 import { useMilestoneDay } from "./useMilestoneDay";
 import {
@@ -54,6 +57,16 @@ import {
 } from "./spineWrites";
 import { DateTimePicker } from "./DateTimePicker";
 import { DangerConfirm } from "../shell/DangerConfirm";
+import {
+  AUTOSAVE_DEFAULT_MINUTES,
+  autosaveQuery,
+  clampInterval,
+  dropQueued,
+  queueWrite,
+  setAutosaveMinutes,
+  subscribePending,
+  useAutosave,
+} from "./autosave";
 
 // ── Icons (lucide paths, exactly the FINAL's) ────────────────────────────────
 
@@ -181,6 +194,28 @@ const nowLocalDateTime = (): string => {
 export function Spine({ dayKey }: { dayKey: string }) {
   const data = useDayData(dayKey);
   const [confirmClear, setConfirmClear] = useState(false);
+  // AUTO-SAVE (user-ruled 2026-07-27). Writes buffer and flush on the interval,
+  // on close, on hide, and on leaving the screen — see autosave.ts for what that
+  // trades away.
+  const autosaveRows = useQuery(autosaveQuery);
+  const autosaveMinutes = clampInterval(
+    Number(autosaveRows[0]?.value ?? AUTOSAVE_DEFAULT_MINUTES),
+  );
+  // THE KEYBOARD→WRITING AUTO-FOLLOW hangs off the flush, not off the write.
+  // Buffering broke it: the sync used to fire inside `createBout`, where it read
+  // Writing's word total before its own insert had reached the worker.
+  const afterFlush = useCallback(() => {
+    void syncDerivedKeyboardForDay(evolu, dayKey);
+  }, [dayKey]);
+  const { flushNow, pending } = useAutosave(autosaveMinutes, showErrorToast, afterFlush);
+
+  // THE AUTO-FOLLOW IS A DERIVATION, so it is derived LIVE and the store catches
+  // up at the flush — user-ruled 2026-07-27: "keyboard automatically updates
+  // whenever I change word count in writing." Waiting for the flush meant the
+  // tie only caught up every ten minutes, which is what made Refresh look like
+  // the only way to move it. The Writing strip publishes its running total
+  // (committed rows plus anything still buffered); the Keyboard strip shows it.
+  const [liveWritingWords, setLiveWritingWords] = useState<number | null>(null);
   // Bumped by Clear all so every strip remounts: their drafts are local state,
   // and a cleared day should open each habit on a fresh empty session again.
   const [formEpoch, setFormEpoch] = useState(0);
@@ -232,8 +267,48 @@ export function Spine({ dayKey }: { dayKey: string }) {
                 spec={spec}
                 data={data}
                 dayKey={dayKey}
+                flushNow={flushNow}
+                liveWritingWords={liveWritingWords}
+                onWritingWords={setLiveWritingWords}
               />
             ))
+          )}
+
+          {/* The honest counterpart to buffering. The frozen screen's own
+              "nothing is unsaved" stopped being true the moment writes started
+              waiting, so the form says how many are waiting and offers the
+              flush — quiet register, never a demand. */}
+          {import.meta.env.DEV && (
+            /* STAND-IN for Settings → Data → Auto-save (step 10), the same
+               pattern the whimsy panel uses for first-run setup: the panel
+               replaces where the value comes FROM, never the value's shape. */
+            <p className="fieldnote" style={{ marginTop: "var(--space-5)", textAlign: "right" }}>
+              auto-save every{" "}
+              <input
+                className="inp num"
+                inputMode="numeric"
+                defaultValue={autosaveMinutes}
+                style={{ minWidth: "56px" }}
+                onBlur={(e) => {
+                  const row = autosaveRows[0];
+                  setAutosaveMinutes(row ? { id: row.id as string } : null, Number(e.target.value));
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                }}
+              />{" "}
+              min <span className="cap">· dev stand-in for Settings</span>
+            </p>
+          )}
+
+          {pending > 0 && (
+            <p className="fieldnote" style={{ marginTop: "var(--space-5)", textAlign: "right" }}>
+              {pending} unsaved change{pending === 1 ? "" : "s"} · saves every {autosaveMinutes} min
+              {" · "}
+              <span className="door" role="button" tabIndex={0} onClick={flushNow} onKeyDown={onActivate(flushNow)}>
+                save now
+              </span>
+            </p>
           )}
 
           <FinalizeButton dayKey={dayKey} finalized={data.dayRow?.finalized ?? false} />
@@ -277,6 +352,8 @@ export function Spine({ dayKey }: { dayKey: string }) {
           confirmLabel={`Delete ${data.sessions.length} session${data.sessions.length === 1 ? "" : "s"}`}
           onCancel={() => setConfirmClear(false)}
           onConfirm={() => {
+            // Anything still buffered would re-create what this is deleting.
+            dropQueued("");
             const res = clearDay(data.sessions, data.catRowIds);
             setConfirmClear(false);
             if (!res.ok) showErrorToast(res.reason);
@@ -366,6 +443,10 @@ interface StripProps {
   spec: StripSpec;
   data: DayData;
   dayKey: string;
+  flushNow: () => void;
+  /** Writing's running word total for the day, buffered edits included. */
+  liveWritingWords: number | null;
+  onWritingWords: (total: number) => void;
 }
 
 interface Draft {
@@ -382,7 +463,7 @@ interface Draft {
   endTime: string;
 }
 
-function Strip({ spec, data, dayKey }: StripProps) {
+function Strip({ spec, data, dayKey, flushNow, liveWritingWords, onWritingWords }: StripProps) {
   const { habit } = spec;
   const rows = useMemo(
     () => data.sessions.filter((s) => s.habit_fk === habit.id),
@@ -401,6 +482,53 @@ function Strip({ spec, data, dayKey }: StripProps) {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [error, setError] = useState<string | null>(null);
   const draftId = useRef(1);
+
+  // BUFFERED WRITES need an optimistic overlay: the live query cannot show an
+  // edit that has not been written yet, so a picked value would snap back to
+  // the stored one. Measure fields are exempt — they already hold their own
+  // text — so this is only the fields whose display reads from the store.
+  const [pendingCats, setPendingCats] = useState<Record<string, Record<string, string>>>({});
+  const [pendingEntry, setPendingEntry] = useState<Record<string, string>>({});
+  const [pendingMeasures, setPendingMeasures] = useState<Record<string, number>>({});
+  const queuedDrafts = useRef<Set<number>>(new Set());
+
+  // A flush emptied the queue, so the store now holds what the drafts held:
+  // drop them and let the real bouts render.
+  useEffect(
+    () =>
+      subscribePending((n) => {
+        if (n !== 0 || queuedDrafts.current.size === 0) return;
+        const done = queuedDrafts.current;
+        queuedDrafts.current = new Set();
+        setDrafts((d) => d.filter((x) => !done.has(x.key)));
+      }),
+    [],
+  );
+
+  const catsOf = (bout: Bout) => ({ ...bout.cats, ...(pendingCats[bout.key] ?? {}) });
+  const entryOf = (bout: Bout) => pendingEntry[bout.key] ?? bout.entryId;
+
+  /**
+   * Writing's day total, as the form currently reads: every committed count row
+   * with any buffered edit laid over it, plus the counts sitting in drafts.
+   * Published on every change so the Keyboard strip can mirror it immediately —
+   * the DB write still happens at the flush, and the two agree by then.
+   */
+  const publishWordsIfWriting = (overrides: Record<string, number> = {}) => {
+    if (habit.key !== WRITING_KEY) return;
+    const pend = { ...pendingMeasures, ...overrides };
+    let total = 0;
+    for (const b of bouts) total += pend[`${b.key}|count`] ?? b.count?.value ?? 0;
+    for (const d of drafts) {
+      const v = Number(d.count);
+      if (d.count.trim() !== "" && Number.isFinite(v)) total += v;
+    }
+    onWritingWords(total);
+  };
+  useEffect(() => {
+    publishWordsIfWriting();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bouts, drafts, pendingMeasures]);
 
   // A range session's owning day is its END date (keystone), so a night runs
   // from yesterday into today — user-ruled 2026-07-26: "bedtime and wake should
@@ -445,7 +573,11 @@ function Strip({ spec, data, dayKey }: StripProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, habit.id, dayKey, bouts.length, spec.isMeasureless, spec.derivesCount]);
 
-  const dropDraft = (key: number) => setDrafts((d) => d.filter((x) => x.key !== key));
+  const dropDraft = (key: number) => {
+    dropQueued(`draft|${habit.id}|${key}`);
+    queuedDrafts.current.delete(key);
+    setDrafts((d) => d.filter((x) => x.key !== key));
+  };
 
   /** A draft commits the moment it holds enough to be a valid bout. */
   const commit = (draft: Draft) => {
@@ -483,21 +615,23 @@ function Strip({ spec, data, dayKey }: StripProps) {
         value: draft.flags[d.key] ? "true" : "false",
       })),
     ];
-    const res = createBout({
-      habit,
-      day: dayKey,
-      entryId: draft.entryId,
-      measures,
-      range,
-      measureless: spec.isMeasureless,
-      cats,
-    });
-    if (!res.ok) {
-      setError(res.reason);
-      return false;
-    }
+    // BUFFERED, not written: the draft stays on screen until the flush replaces
+    // it with the real bout. Re-queuing under the same key means editing a
+    // still-unflushed bout rewrites its pending create rather than stacking a
+    // second one.
+    queueWrite(`draft|${habit.id}|${draft.key}`, () =>
+      createBout({
+        habit,
+        day: dayKey,
+        entryId: draft.entryId,
+        measures,
+        range,
+        measureless: spec.isMeasureless,
+        cats,
+      }),
+    );
+    queuedDrafts.current.add(draft.key);
     setError(null);
-    dropDraft(draft.key);
     return true;
   };
 
@@ -536,7 +670,16 @@ function Strip({ spec, data, dayKey }: StripProps) {
       </summary>
       <div className="body">
         {spec.derivesCount ? (
-          <BoardOnly spec={spec} data={data} dayKey={dayKey} bouts={bouts} onError={setError} />
+          <BoardOnly
+            spec={spec}
+            data={data}
+            dayKey={dayKey}
+            bouts={bouts}
+            liveWritingWords={liveWritingWords}
+            queue={(field, run) => queueWrite(`board|${habit.id}|${field}`, run)}
+            flushNow={flushNow}
+            onError={setError}
+          />
         ) : (
           <>
             {bouts.map((bout, i) => (
@@ -544,6 +687,24 @@ function Strip({ spec, data, dayKey }: StripProps) {
                 key={bout.key}
                 index={i + 1}
                 bout={bout}
+                cats={catsOf(bout)}
+                entryId={entryOf(bout)}
+                queue={(field, run) => queueWrite(`sess|${bout.key}|${field}`, run)}
+                onOptimistic={(field, value) => {
+                  if (field.endsWith("|measure")) {
+                    const kind = field.slice(0, field.indexOf("|"));
+                    const num = Number(value);
+                    setPendingMeasures((p) => ({ ...p, [`${bout.key}|${kind}`]: num }));
+                    publishWordsIfWriting({ [`${bout.key}|${kind}`]: num });
+                    return;
+                  }
+                  if (field === "entry") setPendingEntry((p) => ({ ...p, [bout.key]: value }));
+                  else
+                    setPendingCats((p) => ({
+                      ...p,
+                      [bout.key]: { ...(p[bout.key] ?? {}), [field]: value },
+                    }));
+                }}
                 spec={spec}
                 data={data}
                 dayKey={dayKey}
@@ -696,18 +857,42 @@ function BoardOnly({
   data,
   dayKey,
   bouts,
+  liveWritingWords,
+  queue,
+  flushNow,
   onError,
 }: {
   spec: StripSpec;
   data: DayData;
   dayKey: string;
   bouts: Bout[];
+  /** Writing's running total for the day — what a `derived` count mirrors. */
+  liveWritingWords: number | null;
+  queue: (field: string, run: () => { ok: boolean; reason?: string }) => void;
+  flushNow: () => void;
   onError: (m: string | null) => void;
 }) {
   const def = spec.categoricals[0];
   const bout = bouts.find((b) => b.count != null) ?? null;
-  const chosen = def ? (bout ? (bout.cats[def.key] ?? null) : null) : null;
-  const stored = bout?.count?.value ?? null;
+  const stored_ = def ? (bout ? (bout.cats[def.key] ?? null) : null) : null;
+  // Optimistic, like every other buffered field: the pick has not been written
+  // yet, so the store cannot show it.
+  const [picked, setPicked] = useState<string | null>(null);
+  const chosen = picked ?? stored_;
+  const pickBoard = (v: string) => {
+    if (def == null) return;
+    setPicked(v);
+    queue("board", () => logBoard(spec.habit, dayKey, def.id, def.key, v, bout, data.catRowIds));
+  };
+  // A DERIVED count mirrors Writing live; an overridden one is its own number
+  // and is never auto-touched (the 2026-07-23 ruling).
+  // Optimistic, like every other buffered field: `bout.countDerived` cannot
+  // flip until the override write lands, and until then the live mirror would
+  // stomp the number the user just typed.
+  const [detached, setDetached] = useState<boolean | null>(null);
+  const following = detached != null ? !detached : (bout?.countDerived ?? true);
+  const stored =
+    following && liveWritingWords != null ? liveWritingWords : (bout?.count?.value ?? null);
   const [words, setWords] = useState<string>(stored == null ? "" : String(stored));
   useEffect(() => {
     setWords(stored == null ? "" : String(stored));
@@ -729,16 +914,8 @@ function BoardOnly({
               role="radio"
               aria-checked={v === chosen}
               tabIndex={0}
-              onKeyDown={onActivate(() => {
-                void logBoard(spec.habit, dayKey, def.id, def.key, v, bout, data.catRowIds).then(
-                  (r) => onError(r.ok ? null : r.reason),
-                );
-              })}
-              onClick={() => {
-                void logBoard(spec.habit, dayKey, def.id, def.key, v, bout, data.catRowIds).then(
-                  (r) => onError(r.ok ? null : r.reason),
-                );
-              }}
+              onKeyDown={onActivate(() => pickBoard(v))}
+              onClick={() => pickBoard(v)}
             >
               {v}
             </span>
@@ -767,22 +944,35 @@ function BoardOnly({
                 return;
               }
               if (v === (bout.count?.value ?? 0)) return;
-              const r = overrideDerived(bout.count!.id, v);
-              onError(r.ok ? null : r.reason);
+              setDetached(true);
+              const id = bout.count!.id;
+              queue("override", () => overrideDerived(id, v));
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") e.currentTarget.blur();
             }}
           />
           <span className="unit">{bout.countDerived ? "follows Writing" : "overridden"}</span>
-          {!bout.countDerived && (
+          {/* ALWAYS PRESENT (user-ruled 2026-07-27). It was conditional on the
+              count being overridden — nothing to refresh otherwise — but that
+              made it look like the only way to move the number, and a control
+              that comes and goes is worse than one that is occasionally a
+              no-op. */}
+          {(
             <button
               className="btn-plain btn-sm"
               title="Re-derive from Writing's current total"
               onClick={() => {
-                void refreshDerived(bout.count!.id, dayKey).then((r) =>
-                  onError(r.ok ? null : r.reason),
-                );
+                // Flush first, or the re-derive reads a Writing total that is
+                // still sitting in the buffer. The tick is Evolu's mutation
+                // microtask, same as the post-flush sync.
+                setDetached(false);
+                flushNow();
+                setTimeout(() => {
+                  void refreshDerived(bout.count!.id, dayKey).then((r) =>
+                    onError(r.ok ? null : r.reason),
+                  );
+                }, 0);
               }}
             >
               <IRefresh />
@@ -806,24 +996,54 @@ function BoardOnly({
 function SessionBlock({
   index,
   bout,
+  cats,
+  entryId,
   spec,
   data,
   dayKey,
   entries,
   showEntry,
+  queue,
+  onOptimistic,
   onRemove,
   onError,
 }: {
   index: number;
   bout: Bout;
+  /** The bout's answers WITH anything still buffered laid over them. */
+  cats: Readonly<Record<string, string>>;
+  entryId: string | null;
   spec: StripSpec;
   data: DayData;
   dayKey: string;
   entries: DayEntry[];
   showEntry: boolean;
+  /** Buffer a write against this bout's field. */
+  queue: (field: string, run: () => { ok: boolean; reason?: string }) => void;
+  /** Show it before it is written. */
+  onOptimistic: (field: string, value: string) => void;
   onRemove: () => void;
   onError: (m: string | null) => void;
 }) {
+  // The range pair is held locally for the same reason the other fields get an
+  // overlay: a buffered edit has not been written, so reading it back from the
+  // bout would snap the field to its stored value mid-edit.
+  const stored = {
+    sd: bout.range?.start?.slice(0, 10) ?? "",
+    st: bout.range?.start?.slice(11, 16) ?? "",
+    ed: bout.range?.end?.slice(0, 10) ?? "",
+    et: bout.range?.end?.slice(11, 16) ?? "",
+  };
+  const [range, setRange] = useState(stored);
+  useEffect(() => {
+    setRange({
+      sd: bout.range?.start?.slice(0, 10) ?? "",
+      st: bout.range?.start?.slice(11, 16) ?? "",
+      ed: bout.range?.end?.slice(0, 10) ?? "",
+      et: bout.range?.end?.slice(11, 16) ?? "",
+    });
+  }, [bout.range?.start, bout.range?.end]);
+
   return (
     <div className="sess">
       <div className="stag">
@@ -852,10 +1072,10 @@ function SessionBlock({
         <EntryRow
           entries={entries}
           habit={spec.habit}
-          value={bout.entryId}
+          value={entryId}
           onPick={(id) => {
-            const r = setBoutEntry(bout, id);
-            onError(r.ok ? null : r.reason);
+            onOptimistic("entry", id);
+            queue("entry", () => setBoutEntry(bout, id));
           }}
           onError={onError}
         />
@@ -863,29 +1083,27 @@ function SessionBlock({
 
       <CategoricalRows
         spec={spec}
-        value={bout.cats}
+        value={cats}
         onPick={(def, v) => {
-          const r = setBoutSubunit(bout, def.id, def.key, v, data.catRowIds);
-          onError(r.ok ? null : r.reason);
+          onOptimistic(def.key, v);
+          queue(def.key, () => setBoutSubunit(bout, def.id, def.key, v, data.catRowIds));
         }}
       />
 
       {spec.isRange ? (
         <RangeRows
           spec={spec}
-          startDate={bout.range?.start?.slice(0, 10) ?? ""}
-          startTime={bout.range?.start?.slice(11, 16) ?? ""}
-          endDate={bout.range?.end?.slice(0, 10) ?? ""}
-          endTime={bout.range?.end?.slice(11, 16) ?? ""}
+          startDate={range.sd}
+          startTime={range.st}
+          endDate={range.ed}
+          endTime={range.et}
           onChange={(sd, st, ed, et) => {
+            setRange({ sd, st, ed, et });
             if (bout.range == null || sd === "" || st === "" || ed === "" || et === "") return;
-            const r = updateRange(
-              bout.range.id,
-              `${sd}T${st}`,
-              `${ed}T${et}`,
-              spec.habit.range_max_midnights ?? 0,
+            const id = bout.range.id;
+            queue("range", () =>
+              updateRange(id, `${sd}T${st}`, `${ed}T${et}`, spec.habit.range_max_midnights ?? 0),
             );
-            onError(r.ok ? null : r.reason);
           }}
         />
       ) : (
@@ -910,26 +1128,29 @@ function SessionBlock({
                     if (row == null) {
                       // A measure the bout does not yet carry: add its row,
                       // sharing this bout's entry and categorical answers.
-                      const res = createBout({
-                        habit: spec.habit,
-                        day: dayKey,
-                        entryId: bout.entryId,
-                        measures: [{ kind: m.kind, value: v }],
-                        range: null,
-                        measureless: false,
-                        cats: spec.categoricals.flatMap((d) =>
-                          bout.cats[d.key] ? [{ definitionId: d.id, value: bout.cats[d.key] }] : [],
-                        ),
-                      });
-                      onError(res.ok ? null : res.reason);
+                      queue(`add-${m.kind}`, () =>
+                        createBout({
+                          habit: spec.habit,
+                          day: dayKey,
+                          entryId,
+                          measures: [{ kind: m.kind, value: v }],
+                          range: null,
+                          measureless: false,
+                          cats: spec.categoricals.flatMap((d) =>
+                            cats[d.key] ? [{ definitionId: d.id, value: cats[d.key] }] : [],
+                          ),
+                        }),
+                      );
                       return;
                     }
-                    const r = updateMeasureValue(row.id, v, {
-                      habitKey: spec.habit.key,
-                      measure: m.kind,
-                      day: dayKey,
-                    });
-                    onError(r.ok ? null : r.reason);
+                    onOptimistic(`${m.kind}|measure`, String(v));
+                    queue(`${m.kind}-value`, () =>
+                      updateMeasureValue(row.id, v, {
+                        habitKey: spec.habit.key,
+                        measure: m.kind,
+                        day: dayKey,
+                      }),
+                    );
                   }}
                 />
               );
@@ -941,10 +1162,11 @@ function SessionBlock({
       {spec.flags.length > 0 && (
         <FlagRows
           spec={spec}
-          value={bout.cats}
+          value={cats}
           onToggle={(def, on) => {
-            const r = setBoutSubunit(bout, def.id, def.key, on ? "true" : "false", data.catRowIds);
-            onError(r.ok ? null : r.reason);
+            const v = on ? "true" : "false";
+            onOptimistic(def.key, v);
+            queue(def.key, () => setBoutSubunit(bout, def.id, def.key, v, data.catRowIds));
           }}
         />
       )}

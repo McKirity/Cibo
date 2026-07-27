@@ -31,7 +31,7 @@ import {
   validateSessionAgainstHabit,
   validateSessionMeasure,
 } from "../db/validate";
-import { syncDerivedKeyboardForDay, writingWordsForDay, WRITING_KEY } from "../db/derivedKeyboard";
+import { writingWordsForDay } from "../db/derivedKeyboard";
 import type { Bout, SpineHabit, StripSpec } from "./spineSpec";
 
 export type WriteResult = { ok: true } | { ok: false; reason: string };
@@ -187,9 +187,10 @@ export const createBout = (args: {
       });
       if (!checked(res, "subunit insert")) return { ok: false, reason: "Write failed — see console." };
     }
-  // Auto-follow: a new Writing word count re-derives that day's Keyboard words.
-  if (args.habit.key === WRITING_KEY && args.measures.some((m) => m.kind === "count"))
-    void syncDerivedKeyboardForDay(evolu, args.day);
+  // The auto-follow is NOT fired here. Writes are buffered now, so the flush is
+  // the transaction boundary: syncing from inside a queued write would read
+  // Writing's total before its own insert had reached the worker. `afterFlush`
+  // in autosave.ts owns it.
   return { ok: true, ids };
 };
 
@@ -205,8 +206,8 @@ export const updateMeasureValue = (
     value: FiniteNumber.orThrow(value),
   });
   if (!checked(res, "measure update")) return bad("Write failed — see console.");
-  if (ctx.habitKey === WRITING_KEY && ctx.measure === "count")
-    void syncDerivedKeyboardForDay(evolu, ctx.day);
+  // Same as createBout: the sync happens after the flush, never inside a write.
+  void ctx;
   return good;
 };
 
@@ -385,7 +386,7 @@ export const quickCreateEntry = (
  * derived`, carrying Writing's current word total. The engine was pre-built at
  * the 2026-07-23 derive ruling; this is the UI's thin wrapper over it.
  */
-export const logBoard = async (
+export const logBoard = (
   habit: SpineHabit,
   day: string,
   definitionId: string,
@@ -393,18 +394,21 @@ export const logBoard = async (
   board: string,
   existing: Bout | null,
   catRowIds: ReadonlyMap<string, string>,
-): Promise<WriteResult> => {
+): WriteResult => {
   if (existing?.count != null) {
     // Same day, same session — just re-point the board.
     return setBoutSubunit(existing, definitionId, definitionKey, board, catRowIds);
   }
-  const words = await writingWordsForDay(evolu, day);
+  // Planted at ZERO and left `derived`, deliberately: reading Writing's total
+  // here would need an await, and a buffered write must be synchronous. The
+  // post-flush sync fills it from Writing — which is the same machinery that
+  // keeps it following afterwards, so there is no second path to get wrong.
   const created = insertSession({
     habit,
     day,
     entryId: null,
     measure: "count",
-    value: words,
+    value: 0,
     start: null,
     end: null,
     source: "derived",

@@ -20,6 +20,9 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
+# The whimsy network tier (weather · horoscope) — all fetches run Rust-side;
+# the webview never talks to the network (Importer Runtime & External Access).
+tauri-plugin-http = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 

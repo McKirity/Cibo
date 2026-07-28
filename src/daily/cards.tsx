@@ -12,10 +12,22 @@
  * given and reaches its max there, scaling below when squeezed. That is what
  * keeps Daily's sealed frame from ballooning.
  *
- * Three cards are network-fed (horoscope · tarot · weather) and render a
- * waiting state until the fetch layer lands.
+ * Three cards are ephemeral (horoscope · tarot · weather) and render from the
+ * day's `feed_snapshot` — the network tier landed 2026-07-27. Absent means a
+ * quiet waiting face, never fabricated content; on a past day absence is
+ * permanent and the copy says so.
  */
 import { useState, type ReactNode } from "react";
+import {
+  buildWxCurve,
+  displayTemp,
+  weatherWords,
+  WX_BOX,
+  type HoroscopeSnap,
+  type TarotSnap,
+  type WeatherGlyph,
+  type WeatherSnap,
+} from "./feedData";
 import {
   atLocation,
   moonDiscPaths,
@@ -136,15 +148,214 @@ export function SunCard({ sun, lon, now }: { sun: SunInfo; lon: number; now: Dat
   );
 }
 
-export function WeatherCard() {
+/** The cloud's drawn line \u2014 the frozen face's own mix, reused by every glyph. */
+const WX_CLOUD_STROKE = "color-mix(in oklch, var(--whimsy-day), var(--text-strong) 22%)";
+
+/**
+ * The condition glyph family. "Partly" is the frozen face's sun-and-cloud
+ * verbatim; the siblings are drawn in its stroke vocabulary (the FINAL stood in
+ * one sample condition, so the family is a Build-side variant set, not a
+ * deviation).
+ */
+function WxGlyph({ glyph }: { glyph: WeatherGlyph }) {
+  const sun = (cx: number, cy: number, r: number, ray: number) => (
+    <g stroke="var(--whimsy-sun)" strokeWidth="1.8" strokeLinecap="round">
+      <circle cx={cx} cy={cy} r={r} fill="var(--whimsy-sun)" stroke="none" />
+      {Array.from({ length: 8 }, (_, i) => {
+        const a = (i * Math.PI) / 4;
+        const r1 = r + 3.5;
+        const r2 = r + 3.5 + ray;
+        return (
+          <line
+            key={i}
+            x1={cx + r1 * Math.cos(a)}
+            y1={cy + r1 * Math.sin(a)}
+            x2={cx + r2 * Math.cos(a)}
+            y2={cy + r2 * Math.sin(a)}
+          />
+        );
+      })}
+    </g>
+  );
+  const cloud = (d: string) => (
+    <path d={d} fill="var(--panel-background)" stroke={WX_CLOUD_STROKE} strokeWidth="1.5" />
+  );
+  // The frozen combo's cloud, and a centred variant for the cloud-led states.
+  const CLOUD_LOW = "M18 42 a8 8 0 0 1 1-15 a10 10 0 0 1 19 2 a7 7 0 0 1 -1 13 z";
+  const CLOUD_MID = "M17 36 a8 8 0 0 1 1-15 a10 10 0 0 1 19 2 a7 7 0 0 1 -1 13 z";
+  switch (glyph) {
+    case "sun":
+      return <svg width="54" height="46" viewBox="0 0 60 48" aria-hidden="true">{sun(30, 24, 8.5, 4.5)}</svg>;
+    case "partly":
+      return (
+        <svg width="54" height="46" viewBox="0 0 60 48" aria-hidden="true">
+          {sun(24, 16, 7.5, 4)}
+          {cloud(CLOUD_LOW)}
+        </svg>
+      );
+    case "cloud":
+      return <svg width="54" height="46" viewBox="0 0 60 48" aria-hidden="true">{cloud("M16 38 a9 9 0 0 1 1-17 a11 11 0 0 1 21 2 a8 8 0 0 1 -1 15 z")}</svg>;
+    case "fog":
+      return (
+        <svg width="54" height="46" viewBox="0 0 60 48" aria-hidden="true">
+          {cloud(CLOUD_MID)}
+          <g stroke={WX_CLOUD_STROKE} strokeWidth="1.5" strokeLinecap="round">
+            <line x1="15" y1="41" x2="41" y2="41" />
+            <line x1="20" y1="45" x2="36" y2="45" />
+          </g>
+        </svg>
+      );
+    case "rain":
+      return (
+        <svg width="54" height="46" viewBox="0 0 60 48" aria-hidden="true">
+          {cloud(CLOUD_MID)}
+          <g stroke={WX_CLOUD_STROKE} strokeWidth="1.6" strokeLinecap="round">
+            <line x1="22" y1="40" x2="20" y2="46" />
+            <line x1="29" y1="40" x2="27" y2="46" />
+            <line x1="36" y1="40" x2="34" y2="46" />
+          </g>
+        </svg>
+      );
+    case "snow":
+      return (
+        <svg width="54" height="46" viewBox="0 0 60 48" aria-hidden="true">
+          {cloud(CLOUD_MID)}
+          <g fill={WX_CLOUD_STROKE}>
+            <circle cx="22" cy="42" r="1.5" />
+            <circle cx="29" cy="45" r="1.5" />
+            <circle cx="36" cy="42" r="1.5" />
+          </g>
+        </svg>
+      );
+    case "storm":
+      return (
+        <svg width="54" height="46" viewBox="0 0 60 48" aria-hidden="true">
+          {cloud(CLOUD_MID)}
+          <path
+            d="M29 36 l-4.5 7 h5 l-4.5 7"
+            fill="none"
+            stroke="var(--whimsy-star)"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+  }
+}
+
+/** The drawn hour labels \u2014 fixed plot-percent positions, first/last pinned. */
+const WX_HOURS: Array<[left: string, label: string]> = [
+  ["4.2%", "12a"], ["27.1%", "6a"], ["50%", "12p"], ["72.9%", "6p"], ["95.8%", "12a"],
+];
+
+export function WeatherCard({
+  snap,
+  unit,
+  isToday,
+  now,
+}: {
+  snap: WeatherSnap | null;
+  unit: "F" | "C";
+  isToday: boolean;
+  now: Date;
+}) {
+  if (snap == null) {
+    // Quiet absence, never fabricated. On a past day it is permanent \u2014 the
+    // capture moment only ever existed then ("honest and unrecoverable").
+    return (
+      <div className="card whimsy" style={{ flex: "1.2 0 156px" }}>
+        <Ovl label="Weather" d={I_WX} />
+        <div className="art wx">
+          <div className="wx-nowblock">
+            <span className="whead">{"\u2014"}</span>
+            <div className="cond">{isToday ? "Waiting on the forecast" : "No weather captured"}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const { cond, glyph } = weatherWords(snap.code);
+  // Today the marker is NOW and rides the minute tick; a past day marks the
+  // hour the forecast was captured \u2014 the snapshot is that moment's truth.
+  const markT = isToday ? now.getHours() + now.getMinutes() / 60 : snap.hour;
+  const curve = buildWxCurve(snap.hourlyC, markT);
+  const markTemp =
+    curve?.mark != null
+      ? isToday
+        ? displayTemp(snap.tempC, unit)
+        : displayTemp(snap.hourlyC[Math.max(0, Math.min(24, Math.round(markT)))], unit)
+      : null;
+
   return (
     <div className="card whimsy" style={{ flex: "1.2 0 156px" }}>
       <Ovl label="Weather" d={I_WX} />
       <div className="art wx">
-        <div className="wx-nowblock">
-          <span className="whead">{"\u2014"}</span>
-          <div className="cond">Arrives with the network tier</div>
+        <div className="wx-glyph">
+          <WxGlyph glyph={glyph} />
         </div>
+        <div className="wx-nowblock">
+          <span className="whead">{displayTemp(snap.tempC, unit)}&deg;</span>
+          <div className="cond">{cond}</div>
+          <div className="hl">
+            H {displayTemp(snap.hiC, unit)}&deg;&emsp;L {displayTemp(snap.loC, unit)}&deg;
+          </div>
+        </div>
+        {curve != null && (
+          <div className="wx-curve">
+            <div className="wx-plot">
+              <svg viewBox={`0 0 ${WX_BOX.w} ${WX_BOX.h}`} preserveAspectRatio="none" aria-hidden="true">
+                <path
+                  d={curve.areaPath}
+                  fill="color-mix(in oklch, var(--whimsy-sun), transparent var(--chart-area-mix))"
+                  stroke="none"
+                />
+                <path
+                  d={curve.linePath}
+                  fill="none"
+                  stroke="var(--whimsy-sun)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {curve.mark != null && (
+                  <>
+                    <line
+                      x1={curve.mark.x}
+                      y1={curve.mark.y}
+                      x2={curve.mark.x}
+                      y2={WX_BOX.h}
+                      stroke="var(--whimsy-ink)"
+                      strokeWidth="1"
+                      strokeDasharray="2 3"
+                      opacity="0.5"
+                    />
+                    <circle cx={curve.mark.x} cy={curve.mark.y} r="3" fill="var(--whimsy-ink)" />
+                  </>
+                )}
+              </svg>
+              {curve.mark != null && markTemp != null && (
+                <span
+                  className="wx-mark"
+                  style={{
+                    left: `${((curve.mark.x / WX_BOX.w) * 100).toFixed(1)}%`,
+                    top: `${((curve.mark.y / WX_BOX.h) * 100).toFixed(1)}%`,
+                  }}
+                >
+                  {markTemp}&deg;
+                </span>
+              )}
+            </div>
+            <div className="wx-hours" aria-hidden="true">
+              {WX_HOURS.map(([left, label], i) => (
+                <span key={i} style={{ left }}>
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -576,7 +787,15 @@ const I_REDISC = ["M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", "M3 3v5h5
 const I_CD = ["M10 2h4", "M12 14l3-3", "circle:8"];
 const I_LIFE = ["M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"];
 
-export function HoroscopeCard({ config }: { config: WhimsyConfig }) {
+export function HoroscopeCard({
+  config,
+  reading,
+  isToday,
+}: {
+  config: WhimsyConfig;
+  reading: HoroscopeSnap | null;
+  isToday: boolean;
+}) {
   const sign = sunSign(config.birthdate);
   return (
     <div className="card whimsy horo">
@@ -590,25 +809,89 @@ export function HoroscopeCard({ config }: { config: WhimsyConfig }) {
             <div className="nm">{sign.name}</div>
           </div>
         )}
-        {/* The sign is a pure function of the birthdate, so it renders now; the
-            reading itself is ephemeral (snapshot-at-fetch) and waits. */}
-        <p className="wpending">
-          {sign
-            ? "Today's reading for " + sign.name + " arrives with the network tier."
-            : "Set a birthdate to see your sign."}
-        </p>
+        {/* The sign is a pure function of the birthdate, so it always renders;
+            the reading is ephemeral — snapshot-at-fetch, absent means absent. */}
+        {reading != null ? (
+          <p>{reading.text}</p>
+        ) : (
+          <p className="wpending">
+            {sign == null
+              ? "Set a birthdate to see your sign."
+              : isToday
+                ? `Waiting on today's reading for ${sign.name}…`
+                : "No reading was captured for this day."}
+          </p>
+        )}
       </div>
     </div>
   );
 }
 
 /**
- * The card face is drawn to the FINAL's geometry, but DELIBERATELY blank of a
- * named card: the daily draw is ephemeral, and inventing "The Star" would be
- * fabricating a reading the app has not made. The frame, gilt border and star
- * field stand; the numeral, name and keywords arrive with the fetch.
+ * With a draw in the snapshot the face renders WHOLE — numeral, emblem, name,
+ * keywords. The star emblem is the deck's shared face for every card
+ * (network-tier fork D, user-ruled 2026-07-27: per-card SVGs are authored once
+ * the network is confirmed working). A reversed draw turns the pictorial group
+ * upside down — the numeral and name stay readable.
+ *
+ * Without one the face is DELIBERATELY blank of a named card: inventing
+ * "The Star" would fabricate a reading the app has not made.
  */
-export function TarotCard() {
+export function TarotCard({ draw, isToday }: { draw: TarotSnap | null; isToday: boolean }) {
+  if (draw != null) {
+    const longName = draw.name.length > 11;
+    return (
+      <div className="card whimsy tarot">
+        <Ovl label="Tarot" d={I_TAROT} />
+        <div className="body art">
+          <svg className="tarot-card" viewBox="0 0 104 182" aria-hidden="true">
+            <rect x="2" y="2" width="100" height="178" rx="7" fill="var(--whimsy-parchment)" stroke="var(--whimsy-ink)" strokeWidth="1.5" />
+            <rect x="8" y="8" width="88" height="166" rx="4" fill="none" stroke="var(--whimsy-star)" strokeWidth="1" />
+            <text x="52" y="26" textAnchor="middle" fontFamily="var(--font-heading)" fontSize="11" letterSpacing="1.5" fill="var(--whimsy-ink)">
+              {draw.numeral}
+            </text>
+            <g transform={draw.reversed ? "rotate(180 52 96)" : undefined}>
+              <g fill="var(--whimsy-star)">
+                <path d="M52 49 L55.9 62.1 L69 66 L55.9 69.9 L52 83 L48.1 69.9 L35 66 L48.1 62.1 Z" />
+                <path d="M60.5 57.5 L56 66 L60.5 74.5 L52 70 L43.5 74.5 L48 66 L43.5 57.5 L52 62 Z" />
+                <circle cx="24" cy="34" r="1.6" />
+                <circle cx="80" cy="30" r="1.4" />
+                <circle cx="52" cy="31" r="1.5" />
+                <circle cx="30" cy="58" r="1.2" />
+                <circle cx="74" cy="60" r="1.3" />
+                <circle cx="20" cy="88" r="1.2" />
+                <circle cx="84" cy="90" r="1.4" />
+              </g>
+              <g fill="none" stroke="var(--whimsy-ink)" strokeWidth="1.3" strokeLinecap="round">
+                <path d="M46 98 q-3 13 -5 28" />
+                <path d="M60 98 q3 13 6 28" />
+                <path d="M14 132 q11 -6 22 0 t22 0 t22 0" />
+                <path d="M14 144 q11 -6 22 0 t22 0 t22 0" opacity="0.6" />
+              </g>
+            </g>
+            <text
+              x="52"
+              y="169"
+              textAnchor="middle"
+              fontFamily="var(--font-ui)"
+              fontSize="8.5"
+              letterSpacing="2"
+              fill="var(--whimsy-ink)"
+              textLength={longName ? 84 : undefined}
+              lengthAdjust={longName ? "spacingAndGlyphs" : undefined}
+            >
+              {draw.name.toUpperCase()}
+            </text>
+          </svg>
+          <div>
+            <div className="nm">{draw.name}</div>
+            <div className="kw">{draw.keywords.join(" · ")}</div>
+            <div className="up">{draw.reversed ? "reversed" : "upright"} · daily draw</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="card whimsy tarot">
       <Ovl label="Tarot" d={I_TAROT} />
@@ -631,7 +914,9 @@ export function TarotCard() {
           </g>
         </svg>
         <div>
-          <p className="wpending">The daily draw arrives with the network tier.</p>
+          <p className="wpending">
+            {isToday ? "Drawing today's card…" : "No card was drawn on this day."}
+          </p>
         </div>
       </div>
     </div>

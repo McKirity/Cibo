@@ -18,6 +18,7 @@ import {
   type DatedEvent,
   type WhimsyConfig,
 } from "./whimsyConfig";
+import { devClearTodayFeeds, ensureTodayFeeds } from "./feeds";
 
 export function DevWhimsyPanel({
   config,
@@ -118,6 +119,15 @@ export function DevWhimsyPanel({
                 onChange={(e) => onChange({ ...config, birthdate: e.target.value || null })}
               />
             </label>
+            <label className="dw-field">
+              <span>Temp unit</span>
+              <button
+                className="btn"
+                onClick={() => onChange({ ...config, tempUnit: config.tempUnit === "F" ? "C" : "F" })}
+              >
+                °{config.tempUnit} — switch to °{config.tempUnit === "F" ? "C" : "F"}
+              </button>
+            </label>
           </div>
 
           <div className="dw-row dw-actions">
@@ -126,6 +136,15 @@ export function DevWhimsyPanel({
             </button>
             <button className="btn" onClick={() => sync(DEFAULT_CONFIG)}>
               Reset
+            </button>
+            <button
+              className="btn"
+              title="Wipe today's feed_snapshot and re-capture (weather · horoscope · tarot)"
+              onClick={() => {
+                void devClearTodayFeeds().then(() => ensureTodayFeeds(config));
+              }}
+            >
+              ↻ Re-capture feeds
             </button>
             <span className="dw-note">
               Randomize is weighted toward the cases that break things — polar latitudes, the

@@ -31,18 +31,22 @@ import {
   type ClusterTile,
   type BannerTile,
   type CoverTile,
+  type HoroscopeWallTile,
   type KeepsakeWallTile,
   type MilestoneTile,
   type StreaksTile,
+  type TarotWallTile,
   type UnloggedTile,
   type WallTile,
+  type WeatherWallTile,
   type WhimsyWhich,
 } from "./wallSpec";
 import { packWall, WALL_COLS, type Span } from "./wallPack";
 import { KeepsakeTile } from "./KeepsakeTile";
 import { useWallData } from "./useWallData";
 import { useMilestoneDay } from "./useMilestoneDay";
-import { holidayFor, factFor, onThisDay, quoteFor, timeProgress, wordFor } from "./almanac";
+import { displayTemp, weatherWords } from "./feedData";
+import { holidayFor, factFor, onThisDay, quoteFor, signGlyph, timeProgress, wordFor } from "./almanac";
 import { moonDiscPaths, moonInfo, seasonBand, seasonInfo, sunInfo } from "./sky";
 import { loadWhimsyConfig } from "./whimsyConfig";
 import { hoursMinutes } from "../metrics/format";
@@ -81,9 +85,9 @@ export function CoverWall({
   const [config] = useState(loadWhimsyConfig);
 
   // The eight COMPUTED whimsy cards recompute for the date ("time-travelling
-  // shows the day as it was"). The three network ones — weather · horoscope ·
-  // tarot — are `feed_snapshot`'s, absent until the network tier, and absent
-  // means OMITTED, never faked.
+  // shows the day as it was"). The three ephemeral ones — weather · horoscope ·
+  // tarot — come from `feed_snapshot` (live since the network tier, 2026-07-27):
+  // exactly what the day captured, and absent means OMITTED, never faked.
   const whimsy = useMemo<WhimsyWhich[]>(() => {
     const list: WhimsyWhich[] = ["sun", "season", "moon", "word", "fact", "quote", "year"];
     if (onThisDay(dayKey).length > 0) list.push("otd");
@@ -102,17 +106,25 @@ export function CoverWall({
         ruleHits: data.ruleHits,
         milestones,
         whimsy,
+        snapshot: data.snapshot,
       }),
     [dayKey, data, milestones, whimsy],
   );
 
   // ── the measuring pass ────────────────────────────────────────────────────
+  // Milestone/streaks cards probe all three candidate widths; the horoscope
+  // tile joined 2026-07-27 (user-ruled: "the card just flexes to include the
+  // entire text") at its FIXED drawn width — 4 columns, height measured.
   const probeRef = useRef<HTMLDivElement | null>(null);
   const [measured, setMeasured] = useState<Map<string, Span>>(new Map());
   const textTiles = useMemo(
-    () => tiles.filter((t) => t.body.kind === "milestone" || t.body.kind === "streaks"),
+    () =>
+      tiles.filter(
+        (t) => t.body.kind === "milestone" || t.body.kind === "streaks" || t.body.kind === "horo",
+      ),
     [tiles],
   );
+  const probeWidths = (t: WallTile): number[] => (t.body.kind === "horo" ? [4] : [2, 3, 4]);
   const probeKey = textTiles.map((t) => t.id).join("|");
 
   useLayoutEffect(() => {
@@ -127,11 +139,13 @@ export function CoverWall({
     const step = (unit - gap) / 2 + gap; // one half-row plus its own gap
     const next = new Map<string, Span>();
     for (const t of textTiles) {
-      // Three clones per card, one per candidate width. The narrowest width
-      // whose height matches the widest IS "the fewest columns that hold the
-      // longest line" — measured by its consequence, so no nowrap trickery.
+      // One clone per candidate width. The narrowest width whose height
+      // matches the widest IS "the fewest columns that hold the longest
+      // line" — measured by its consequence, so no nowrap trickery. A
+      // fixed-width tile (horo) renders one clone; the find below then lands
+      // on that width because the missing candidates read Infinity.
       const heights: Record<number, number> = {};
-      for (const cols of [2, 3, 4]) {
+      for (const cols of probeWidths(t)) {
         const el = probe.querySelector<HTMLElement>(`[data-probe="${t.id}:${cols}"]`);
         if (el != null) heights[cols] = el.getBoundingClientRect().height;
       }
@@ -270,7 +284,7 @@ export function CoverWall({
           the wrong height — the exhibit paid for that once already. */}
       <div className="wall wall-probe" aria-hidden="true" ref={probeRef}>
         {textTiles.map((t) =>
-          [2, 3, 4].map((cols) => (
+          probeWidths(t).map((cols) => (
             <div
               key={`${t.id}:${cols}`}
               data-probe={`${t.id}:${cols}`}
@@ -321,6 +335,12 @@ const tileClass = (t: WallTile): string => {
       return "keep";
     case "whimsy":
       return `whim ${WHIMSY_CLASS[b.which]}`;
+    case "wx":
+      return "whim glance whim-weather";
+    case "horo":
+      return "whim strip-tile whim-horo";
+    case "tarot":
+      return "whim whim-tarot";
     case "milestone":
       return `ms-tile${b.items.length === 1 ? " plate" : ""}`;
     case "streaks":
@@ -363,6 +383,12 @@ function TileBody({
       return <Keepsake t={b} />;
     case "whimsy":
       return <Whimsy which={b.which} dayKey={dayKey} config={config} />;
+    case "wx":
+      return <WeatherWall t={b} config={config} />;
+    case "horo":
+      return <HoroscopeWall t={b} />;
+    case "tarot":
+      return <TarotWall t={b} />;
     case "milestone":
       return <MilestoneCard t={b} />;
     case "streaks":
@@ -680,6 +706,91 @@ function Whimsy({
       );
     }
   }
+}
+
+// ── The ephemeral three — feed_snapshot's tenants, drawn faces verbatim ──────
+
+function WeatherWall({
+  t,
+  config,
+}: {
+  t: WeatherWallTile;
+  config: ReturnType<typeof loadWhimsyConfig>;
+}) {
+  const { cond } = weatherWords(t.snap.code);
+  return (
+    <>
+      <span className="wl">Weather</span>
+      <div className="body">
+        <span className="t">{displayTemp(t.snap.tempC, config.tempUnit)}&deg;</span>
+        <span className="c">{cond}</span>
+      </div>
+    </>
+  );
+}
+
+function HoroscopeWall({ t }: { t: HoroscopeWallTile }) {
+  // The SNAPSHOTTED sign, not the configured one — the wall shows the day as
+  // it was, even if the birthdate later changes.
+  const glyph = signGlyph(t.snap.sign);
+  return (
+    <>
+      <span className="sign">
+        {glyph != null && (
+          <span className="glyph" aria-hidden="true">
+            {glyph}
+          </span>
+        )}
+        {t.snap.sign}
+      </span>
+      <p>{t.snap.text}</p>
+    </>
+  );
+}
+
+/**
+ * The mini card face — the state-2 FINAL's own tarot anatomy (fewer stars, no
+ * figure lines) with the drawn draw's numeral and name in place of the frozen
+ * sample's. Reversed turns the pictorial group, as on state 1.
+ */
+function TarotWall({ t }: { t: TarotWallTile }) {
+  const longName = t.snap.name.length > 11;
+  return (
+    <svg viewBox="0 0 104 182" aria-hidden="true">
+      <rect x="2" y="2" width="100" height="178" rx="7" fill="var(--whimsy-parchment)" stroke="var(--whimsy-ink)" strokeWidth="1.5" />
+      <rect x="8" y="8" width="88" height="166" rx="4" fill="none" stroke="var(--whimsy-star)" strokeWidth="1" />
+      <text x="52" y="26" textAnchor="middle" fontFamily="var(--font-heading)" fontSize="11" letterSpacing="1.5" fill="var(--whimsy-ink)">
+        {t.snap.numeral}
+      </text>
+      <g transform={t.snap.reversed ? "rotate(180 52 91)" : undefined}>
+        <g fill="var(--whimsy-star)">
+          <path d="M52 49 L55.9 62.1 L69 66 L55.9 69.9 L52 83 L48.1 69.9 L35 66 L48.1 62.1 Z" />
+          <circle cx="24" cy="34" r="1.6" />
+          <circle cx="80" cy="30" r="1.4" />
+          <circle cx="52" cy="31" r="1.5" />
+          <circle cx="30" cy="58" r="1.2" />
+          <circle cx="74" cy="60" r="1.3" />
+        </g>
+        <g fill="none" stroke="var(--whimsy-ink)" strokeWidth="1.3" strokeLinecap="round">
+          <path d="M14 128 q11 -6 22 0 t22 0 t22 0" />
+          <path d="M14 140 q11 -6 22 0 t22 0 t22 0" opacity="0.6" />
+        </g>
+      </g>
+      <text
+        x="52"
+        y="169"
+        textAnchor="middle"
+        fontFamily="var(--font-ui)"
+        fontSize="8.5"
+        letterSpacing="2"
+        fill="var(--whimsy-ink)"
+        textLength={longName ? 84 : undefined}
+        lengthAdjust={longName ? "spacingAndGlyphs" : undefined}
+      >
+        {t.snap.name.toUpperCase()}
+      </text>
+    </svg>
+  );
 }
 
 // ── The milestone family cards — direction D, "the sealed certificate" ───────

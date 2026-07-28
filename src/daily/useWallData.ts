@@ -15,6 +15,7 @@ import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
 import { DateOnly, derivedRulesFromJson, type DerivedRule } from "../db/schema";
 import { ruleHolds } from "./milestones";
+import { parseFeedSnapshot, type FeedSnapshot } from "./feedData";
 import type { WallEntry, WallHabit, WallSession } from "./wallSpec";
 
 const habitsQuery = evolu.createQuery((db) =>
@@ -46,6 +47,8 @@ export interface WallData {
   ruleHits: Map<string, string[]>;
   /** The `days` ledger row — null until the day carries any bookkeeping. */
   dayRow: { id: string; finalized: boolean } | null;
+  /** The day's ephemeral capture, parsed — empty object when none. */
+  snapshot: FeedSnapshot;
 }
 
 export function useWallData(dayKey: string): WallData {
@@ -94,7 +97,7 @@ export function useWallData(dayKey: string): WallData {
       evolu.createQuery((db) =>
         db
           .selectFrom("days")
-          .select(["id", "finalized"])
+          .select(["id", "finalized", "feed_snapshot"])
           .where("isDeleted", "is not", 1)
           .where("date", "=", DateOnly.orThrow(dayKey)),
       ),
@@ -210,6 +213,14 @@ export function useWallData(dayKey: string): WallData {
     return r ? { id: r.id as string, finalized: r.finalized === 1 } : null;
   }, [dayRows]);
 
+  const snapshot = useMemo(
+    () =>
+      parseFeedSnapshot(
+        dayRows[0]?.feed_snapshot != null ? String(dayRows[0].feed_snapshot) : null,
+      ),
+    [dayRows],
+  );
+
   return useMemo(
     () => ({
       ready: habitRows.length > 0,
@@ -219,7 +230,8 @@ export function useWallData(dayKey: string): WallData {
       cats,
       ruleHits,
       dayRow,
+      snapshot,
     }),
-    [habitRows.length, habits, sessions, entries, cats, ruleHits, dayRow],
+    [habitRows.length, habits, sessions, entries, cats, ruleHits, dayRow, snapshot],
   );
 }

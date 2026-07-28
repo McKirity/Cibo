@@ -407,6 +407,14 @@ const ZODIAC: Array<{ from: string; name: string; glyph: string }> = [
   { from: "12-22", name: "Capricorn", glyph: "♑" },
 ];
 
+/**
+ * Glyph by sign NAME — the wall's horoscope tile renders the SNAPSHOTTED sign,
+ * which stays honest even if the configured birthdate later changes.
+ */
+export function signGlyph(name: string): string | null {
+  return ZODIAC.find((z) => z.name === name)?.glyph ?? null;
+}
+
 export function sunSign(birthdate: string | null): SunSign | null {
   if (!birthdate) return null;
   const md = birthdate.slice(5);

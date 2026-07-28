@@ -51,6 +51,8 @@ import {
 import { anniversariesFor, trackingAnniversary } from "./almanac";
 import { appAnniversary, ensureAppStartDate } from "../db/appStart";
 import { loadWhimsyConfig, saveWhimsyConfig, type WhimsyConfig } from "./whimsyConfig";
+import { parseFeedSnapshot } from "./feedData";
+import { ensureTodayFeeds } from "./feeds";
 import "./daily.css";
 
 const todayLocal = (): string => {
@@ -130,13 +132,36 @@ export function Daily({
       evolu.createQuery((db) =>
         db
           .selectFrom("days")
-          .select(["id", "finalized"])
+          .select(["id", "finalized", "feed_snapshot"])
           .where("isDeleted", "is not", 1)
           .where("date", "=", DateOnly.orThrow(dayKey)),
       ),
     [dayKey],
   );
-  const finalized = useQuery(dayStateQuery)[0]?.finalized === 1;
+  const dayState = useQuery(dayStateQuery);
+  const finalized = dayState[0]?.finalized === 1;
+
+  // The day's ephemeral content — whatever was snapshotted at its own fetch
+  // moment. A live read: today's capture lands seconds after mount and the
+  // three cards fill in as it does.
+  const snapshot = useMemo(
+    () =>
+      parseFeedSnapshot(
+        dayState[0]?.feed_snapshot != null ? String(dayState[0].feed_snapshot) : null,
+      ),
+    [dayState],
+  );
+
+  const isToday = dayKey === todayLocal();
+
+  // THE CAPTURE MOMENT — fetch-on-open, for the current day only ("Calendar &
+  // Whimsy" § network behaviour). Past days never fetch: their snapshot is
+  // whatever was captured then, and absence is honest and permanent. Re-runs
+  // when the config changes (the dev panel / future Settings); feeds.ts
+  // throttles retries internally, so this can never poll.
+  useEffect(() => {
+    if (isToday) void ensureTodayFeeds(config);
+  }, [isToday, config]);
   // A ticking clock: the sun's position, the sky gradient and the day meter are
   // all live values. A minute is plenty — nothing here moves faster.
   const [now, setNow] = useState(() => new Date());
@@ -216,7 +241,12 @@ export function Daily({
         <div className="col sky">
           <div className="sky-stack">
             <SunCard sun={sun} lon={config.lon} now={now} />
-            <WeatherCard />
+            <WeatherCard
+              snap={snapshot.weather ?? null}
+              unit={config.tempUnit}
+              isToday={isToday}
+              now={now}
+            />
             <SeasonCard dayKey={dayKey} lat={config.lat} />
             <MoonCard moon={moon} />
             <TonightSkyCard dayKey={dayKey} lat={config.lat} />
@@ -244,8 +274,8 @@ export function Daily({
       </div>
 
       <div className="shelf">
-        <HoroscopeCard config={config} />
-        <TarotCard />
+        <HoroscopeCard config={config} reading={snapshot.horoscope ?? null} isToday={isToday} />
+        <TarotCard draw={snapshot.tarot ?? null} isToday={isToday} />
         {/* "Upgraded in the new model: a DOOR to that day's cover wall" — live
             since the wall exists. */}
         <RediscoverCard dayKey={dayKey} pastDays={pastDays} onOpenDay={onOpenDay} />

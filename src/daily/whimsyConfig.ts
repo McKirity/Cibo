@@ -29,8 +29,14 @@ export interface WhimsyConfig {
   lon: number;
   /** Purely a dev-panel affordance so a random fixture is recognisable. */
   label: string;
-  /** Drives the lifetime card (and, once network lands, the horoscope sign). */
+  /** Drives the lifetime card and the horoscope sign. */
   birthdate: string | null;
+  /**
+   * The weather card's DISPLAY unit — the snapshot stores Celsius canonically
+   * (network-tier fork A's rider, 2026-07-27). Defaults to °F because the
+   * drawn face reads Fahrenheit; a real Settings row owns this at step 10.
+   */
+  tempUnit: "F" | "C";
   events: DatedEvent[];
 }
 
@@ -42,6 +48,7 @@ export const DEFAULT_CONFIG: WhimsyConfig = {
   lon: -0.1278,
   label: "London",
   birthdate: "1995-06-15",
+  tempUnit: "F",
   events: [
     { id: "e1", label: "Birthday", date: "1995-06-15", recurring: true },
     { id: "e2", label: "New Year", date: "2026-01-01", recurring: true },
@@ -137,6 +144,7 @@ export function randomWhimsyConfig(): WhimsyConfig {
     lon: place.lon,
     label: `${place.label} — ${place.why}`,
     birthdate,
+    tempUnit: Math.random() < 0.5 ? "F" : "C",
     events: randomEvents(birthdate),
   };
 }

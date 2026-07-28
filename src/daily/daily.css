@@ -1469,6 +1469,35 @@
                   color: color-mix(in oklch, var(--whimsy-star), var(--text-strong) 32%); }
   .whim-otd .ev { font-size:var(--size-caption); color:var(--text-secondary); line-height:var(--line-normal); text-wrap:pretty; }
 
+  /* ---- the ephemeral three — claimed from staging at the network tier
+          (2026-07-27), re-scoped under .wallscreen like the rest ---- */
+  .whim-weather { background: color-mix(in oklch, var(--whimsy-day), var(--panel-background) 40%);
+                  border-color: color-mix(in oklch, var(--whimsy-day), var(--border) 60%); }
+  .whim-weather .wl { color: color-mix(in oklch, var(--whimsy-ink), var(--whimsy-day) 20%); }
+  .whim-weather .body { flex:1 1 auto; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; }
+  .whim-weather .t { font-family:var(--font-mono); font-size:var(--size-display); font-weight:var(--weight-bold); line-height:1; color:var(--whimsy-ink); }
+  .whim-weather .c { font-size:var(--size-caption); color: color-mix(in oklch, var(--whimsy-ink), var(--whimsy-day) 26%); margin-top:var(--space-2); }
+
+  .whim-horo .sign { display:flex; align-items:center; gap:var(--space-3); font-family:var(--font-heading);
+                     font-size:var(--size-small); font-weight:var(--weight-bold); color:var(--text-strong); }
+  .whim-horo .sign .glyph { font-size:var(--size-subheading); line-height:1; color:var(--whimsy-star); }
+  /* The FINAL's sample reading was ONE short sentence; the live API returns a
+     paragraph (user-ruled 2026-07-27, first GUI pass: the tile "just flexes to
+     include the entire text"). No clamp — the tile keeps its drawn 4-column
+     width and its HEIGHT IS MEASURED by the wall's probe pass, milestone-card
+     style, so the pack absorbs whatever the reading needs. The extra bottom
+     padding (same pass) keeps descenders clear of the tile edge; the probe
+     wears this class too, so the measurement grows with it. */
+  .whim-horo { padding-bottom: var(--space-7); }
+  .whim-horo p { margin:var(--space-2) 0 0; font-size:var(--size-caption); color:var(--text-secondary); line-height:var(--line-normal); text-wrap:pretty; }
+
+  /* tarot (1×2) — the wall's only small vertical: a real card face */
+  .whim-tarot { display:flex; align-items:center; justify-content:center; padding:var(--space-5);
+                background: color-mix(in oklch, var(--whimsy-night), var(--panel-background) 8%);
+                border-color: color-mix(in oklch, var(--whimsy-night), var(--text-strong) 12%); }
+  .whim-tarot svg { width:auto; height:100%; max-width:100%; max-height:100%; display:block;
+                    aspect-ratio:var(--tarot-card-w) / var(--tarot-card-h); }
+
   /* ---- unlogged habit — uniform 1×1 grayed label-square (never the logged shape) ---- */
   .unlogged { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--space-2);
               text-align:center; padding:var(--space-4); border-radius:var(--radius-medium);

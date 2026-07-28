@@ -30,6 +30,7 @@
  * owns — absent until the network tier, therefore omitted, never faked.
  */
 import type { ContinuingStreak, MilestoneDay, MilestoneFamily, MilestoneItem } from "./milestones";
+import type { FeedSnapshot, HoroscopeSnap, TarotSnap, WeatherSnap } from "./feedData";
 import { hoursMinutes, groupInt } from "../metrics/format";
 import type { KeepsakeValues } from "./keepsake";
 import { keepsakeValues } from "./keepsake";
@@ -94,6 +95,27 @@ export interface WhimsyTile {
   which: WhimsyWhich;
 }
 
+/**
+ * The three EPHEMERAL tiles — `feed_snapshot`'s tenants (the network tier,
+ * 2026-07-27). Unlike the computed whimsy they never recompute: the wall shows
+ * exactly what was captured on the day, and an uncaptured day shows nothing —
+ * "absent → omitted, never faked" applies to these three literally.
+ */
+export interface WeatherWallTile {
+  kind: "wx";
+  snap: WeatherSnap;
+}
+
+export interface HoroscopeWallTile {
+  kind: "horo";
+  snap: HoroscopeSnap;
+}
+
+export interface TarotWallTile {
+  kind: "tarot";
+  snap: TarotSnap;
+}
+
 export interface MilestoneTile {
   kind: "milestone";
   family: MilestoneFamily;
@@ -123,6 +145,9 @@ export type WallTileBody =
   | BannerTile
   | KeepsakeWallTile
   | WhimsyTile
+  | WeatherWallTile
+  | HoroscopeWallTile
+  | TarotWallTile
   | MilestoneTile
   | StreaksTile
   | UnloggedTile
@@ -151,6 +176,8 @@ const SPANS = {
   strip: { cols: 3, halfRows: 2 },      // 3×1
   wideStrip: { cols: 4, halfRows: 2 },  // 4×1
   cluster: { cols: 3, halfRows: 4 },    // 3×2
+  /** 1×2 — the tarot, "the wall's only small vertical" (drawn anatomy). */
+  tarotTall: { cols: 1, halfRows: 4 },
   /** Provisional only — a milestone card's real span is MEASURED at render. */
   milestone: { cols: 3, halfRows: 4 },
 } as const satisfies Record<string, Span>;
@@ -180,6 +207,14 @@ export const spanOf = (t: WallTileBody): Span => {
       return t.wide ? SPANS.sleep : SPANS.square;
     case "whimsy":
       return WHIMSY_SPANS[t.which];
+    // The ephemeral three wear their drawn spans: weather = 1×1 glance,
+    // horoscope = 4×1 strip, tarot = the 1×2 vertical.
+    case "wx":
+      return SPANS.glance;
+    case "horo":
+      return SPANS.wideStrip;
+    case "tarot":
+      return SPANS.tarotTall;
     case "milestone":
     case "streaks":
       return SPANS.milestone;
@@ -203,6 +238,10 @@ export const rankOf = (t: WallTileBody, seedHabitKey: string | null): number => 
     case "streaks":
       return RANK.milestone;
     case "whimsy":
+    case "wx":
+    case "horo":
+    case "tarot":
+      // The snapshot tiles are grout exactly like the computed whimsy.
       return RANK.whimsy;
     case "unlogged":
       return RANK.unlogged;
@@ -262,6 +301,8 @@ export interface WallInput {
   milestones: MilestoneDay | null;
   /** Which computed whimsy tiles have something to say on this day. */
   whimsy: ReadonlyArray<WhimsyWhich>;
+  /** The day's ephemeral capture — weather · horoscope · tarot, or null. */
+  snapshot: FeedSnapshot | null;
 }
 
 // ── Small derivations ────────────────────────────────────────────────────────
@@ -447,6 +488,14 @@ export function buildWall(input: WallInput): WallTile[] {
   // ── the folded whimsy — the grout ──────────────────────────────────────────
   for (const which of input.whimsy)
     tiles.push({ id: `whimsy:${which}`, body: { kind: "whimsy", which } });
+
+  // ── the ephemeral three — only what the day itself captured ───────────────
+  if (input.snapshot?.weather != null)
+    tiles.push({ id: "snap:wx", body: { kind: "wx", snap: input.snapshot.weather } });
+  if (input.snapshot?.horoscope != null)
+    tiles.push({ id: "snap:horo", body: { kind: "horo", snap: input.snapshot.horoscope } });
+  if (input.snapshot?.tarot != null)
+    tiles.push({ id: "snap:tarot", body: { kind: "tarot", snap: input.snapshot.tarot } });
 
   // ── the milestone family cards ────────────────────────────────────────────
   if (input.milestones != null) {

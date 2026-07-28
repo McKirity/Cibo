@@ -1,7 +1,8 @@
 /**
  * The 8-table Evolu schema, transcribed from the locked keystone
  * (`Data Schema (Keystone).md`, locked 2026-07-02, amended 2026-07-06 / 2026-07-19 /
- * 2026-07-26 — Habits gains `milestone_ladders`; table count stays 8).
+ * 2026-07-26 — Habits gains `milestone_ladders` AND `keepsake_snippet`; table
+ * count stays 8 for both).
  *
  * No design decisions are made here — Build step 2 transcribes.
  * Column names keep the keystone's snake_case exactly, so the design docs and the
@@ -212,6 +213,17 @@ export const Schema = {
      * Additive-nullable, the path proven at step 2; table count stays 8.
      */
     milestone_ladders: nullOr(MilestoneLaddersJson),
+    /**
+     * The cover-wall keepsake tile, stored as one HTML/SVG fragment — the third
+     * cosmetics column beside `colour_slot`/`icon` (keystone § Habits, added
+     * 2026-07-26). **Unbounded on purpose:** both homes [[Habit Artwork &
+     * Assets]] originally guessed at cap at `NonEmptyString1000` against tiles
+     * of 2 KB and up. Null = the habit wears the `kit-tile-fallback` lettermark,
+     * which is a legitimate permanent look, never an error state.
+     *
+     * Project habits never carry one — their tiles ARE their entry art.
+     */
+    keepsake_snippet: nullOr(EvoluString),
     /** The two-state lifecycle flag. */
     archived: SqliteBoolean,
     /** User-arranged ordering; null until first reordered (seeds get registry order). */

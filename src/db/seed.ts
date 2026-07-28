@@ -17,8 +17,10 @@ import {
   NonEmptyString100,
   NonEmptyString1000,
   NonNegativeInt,
+  String as EvoluString,
   type Evolu,
 } from "@evolu/common";
+import { KEEPSAKE_SEEDS } from "./keepsakeSeeds";
 import {
   Schema,
   derivedRulesToJson,
@@ -34,7 +36,7 @@ const s100 = (v: string) => NonEmptyString100.orThrow(v);
 const s1000 = (v: string) => NonEmptyString1000.orThrow(v);
 const num = (v: number) => FiniteNumber.orThrow(v);
 
-export const SEED_VERSION = 5;
+export const SEED_VERSION = 6;
 
 type CiboEvolu = Evolu<typeof Schema>;
 
@@ -321,7 +323,8 @@ export async function runSeed(evolu: CiboEvolu): Promise<SeedResult> {
   // re-runs the same idempotent flip, verified this time.
   if (foundVersion < 4) await seedBatch4(evolu);
   if (foundVersion < 5) await seedBatch5(evolu);
-  // Future batches: if (foundVersion < 6) await seedBatch6(evolu); …
+  if (foundVersion < 6) await seedBatch6(evolu);
+  // Future batches: if (foundVersion < 7) await seedBatch7(evolu); …
 
   // A batch that throws above skips this on purpose: the gate must never
   // record a version whose batch didn't verifiably land.
@@ -379,6 +382,9 @@ async function seedBatch1(evolu: CiboEvolu): Promise<void> {
       milestone_ladders: ENTRY_HOUR_LADDERS[habit.key]
         ? milestoneLaddersToJson(ENTRY_HOUR_LADDERS[habit.key] as unknown as MilestoneLadders)
         : null,
+      // The six non-project habits' cover-wall art. Project habits get none,
+      // ever — their tiles ARE their entry art.
+      keepsake_snippet: keepsakeFor(habit.key),
       archived: 1, // ALL built-ins arrive archived.
       sort_order: num(i + 1), // Registry order.
     });
@@ -596,6 +602,62 @@ async function seedBatch5(evolu: CiboEvolu): Promise<void> {
   for (const h of await evolu.loadQuery(habitQuery)) {
     if (h.key != null && ENTRY_HOUR_LADDERS[h.key] != null && h.milestone_ladders == null) {
       throw new Error(`Seed batch 5: "${h.key}" still carries no ladder after the write`);
+    }
+  }
+}
+
+/** The keepsake snippet a built-in habit ships with; project habits get none. */
+const keepsakeFor = (key: string): typeof EvoluString.Type | null => {
+  const seed = KEEPSAKE_SEEDS.find((s) => s.key === key);
+  return seed ? EvoluString.orThrow(seed.snippet) : null;
+};
+
+/**
+ * Batch 6 (2026-07-27) — plant the six pre-seeded KEEPSAKE SNIPPETS on the
+ * non-project habits (Sleep · Keyboard · Walking · Embroidery · Drawing ·
+ * Coding). A fresh store gets them at batch 1 (the column is written there too);
+ * this fills an already-seeded store.
+ *
+ * Idempotent, and deliberately NON-DESTRUCTIVE: a habit that already carries a
+ * snippet is skipped, because from step 10 that snippet may be the user's own
+ * and a seed batch must never overwrite authored art.
+ *
+ * Follows the batch-4 pattern exactly — check the `Result`, await `onComplete`
+ * (which fires only after the worker commits), re-read the row, and throw so
+ * runSeed never records a version whose writes did not verifiably land.
+ */
+async function seedBatch6(evolu: CiboEvolu): Promise<void> {
+  const habitQuery = evolu.createQuery((db) =>
+    db
+      .selectFrom("habits")
+      .select(["id", "key", "keepsake_snippet"])
+      .where("isDeleted", "is not", 1),
+  );
+  const rows = await evolu.loadQuery(habitQuery);
+  for (const h of rows) {
+    const key = h.key;
+    if (key == null || h.keepsake_snippet != null) continue;
+    const seed = KEEPSAKE_SEEDS.find((s) => s.key === key);
+    if (seed == null) continue;
+    await new Promise<void>((resolve, reject) => {
+      const r = evolu.update(
+        "habits",
+        { id: h.id, keepsake_snippet: EvoluString.orThrow(seed.snippet) },
+        { onComplete: () => resolve() },
+      );
+      if (!r.ok) {
+        console.error(`Seed batch 6: keepsake for "${key}" rejected`, r.error);
+        reject(new Error(`Seed batch 6: keepsake for "${key}" failed validation`));
+      }
+    });
+  }
+  for (const h of await evolu.loadQuery(habitQuery)) {
+    if (
+      h.key != null &&
+      KEEPSAKE_SEEDS.some((s) => s.key === h.key) &&
+      h.keepsake_snippet == null
+    ) {
+      throw new Error(`Seed batch 6: "${h.key}" still carries no keepsake after the write`);
     }
   }
 }

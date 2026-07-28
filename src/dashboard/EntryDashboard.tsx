@@ -53,10 +53,12 @@ export function EntryDashboard({
   entryId,
   onOpenHabit,
   onOpenEntry,
+  onOpenDay,
 }: {
   entryId: string;
   onOpenHabit: (habitKey: string) => void;
   onOpenEntry: (entryId: string) => void;
+  onOpenDay?: (day: string) => void;
 }) {
   const data = useEntryData(entryId);
   const [today] = useState(todayLocal);
@@ -197,7 +199,7 @@ export function EntryDashboard({
 
           {/* ── Day log ── */}
           <Panel title="Day log">
-            <DayLog log={m.daylog} />
+            <DayLog log={m.daylog} onOpenDay={onOpenDay} />
           </Panel>
         </div>
       </div>
@@ -1416,10 +1418,10 @@ function EntryHeatmap({ heatmap }: { heatmap: Omit<CreationModel["heatmap"], "tr
 }
 
 // ── The day log (Year › Month tree) ───────────────────────────────────────────
-// Day rows are DOORS to their cover walls — inert until the Daily screen lands
-// (the chunk-4 day-cell precedent).
+// Day rows are DOORS to their cover walls — LIVE since 2026-07-27, when Daily
+// state 2 landed (they were inert on the chunk-4 day-cell precedent).
 
-function DayLog({ log }: { log: DayLogSpec }) {
+function DayLog({ log, onOpenDay }: { log: DayLogSpec; onOpenDay?: (day: string) => void }) {
   const [open, setOpen] = useState<Record<string, boolean>>(() => {
     const o: Record<string, boolean> = {};
     for (const y of log.years) {
@@ -1460,7 +1462,24 @@ function DayLog({ log }: { log: DayLogSpec }) {
                 </div>
                 <div className="ldays">
                   {mo.days.map((d) => (
-                    <div className="day" key={d.day} title="Cover wall — later step">
+                    <div
+                      className={`day${onOpenDay ? " door" : ""}`}
+                      key={d.day}
+                      title={onOpenDay ? "Open this day's cover wall" : undefined}
+                      role={onOpenDay ? "button" : undefined}
+                      tabIndex={onOpenDay ? 0 : undefined}
+                      onClick={onOpenDay ? () => onOpenDay(d.day) : undefined}
+                      onKeyDown={
+                        onOpenDay
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                onOpenDay(d.day);
+                              }
+                            }
+                          : undefined
+                      }
+                    >
                       <span className="dt">{d.label}</span>
                       <span className="dval">{d.val}</span>
                       {d.chips.map((c) => (

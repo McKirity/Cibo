@@ -201,6 +201,8 @@
        cursor: pointer; border-radius: var(--radius-small); border-top: var(--border-hairline) solid var(--divider);
        transition: background var(--motion-fast) var(--ease-standard); }
 .log .day:hover { background: var(--hover-wash); }
+/* Live since 2026-07-27: a day row opens its cover wall. */
+.log .day.door { cursor: pointer; }
 .log .day .dt { font-family: var(--font-mono); color: var(--text-muted); width: 132px; flex: 0 0 auto; }
 .log .day .dval { font-family: var(--font-mono); color: var(--text-strong); }
 .log .day .dchip { font-size: var(--size-caption); color: var(--text-secondary); background: var(--panel-background);

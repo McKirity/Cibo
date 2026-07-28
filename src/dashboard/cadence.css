@@ -262,3 +262,13 @@
 .cadash .rowlegend{display:flex; align-items:center; gap:var(--space-6); flex-wrap:wrap; margin-top:var(--space-4);}
 .cadash .rowlegend .lg{display:inline-flex; align-items:center; gap:var(--space-3); font-size:var(--size-caption); color:var(--text-secondary);}
 .cadash .rowlegend .lg .cell{width:16px; height:16px;}
+
+
+/* DAY DOORS — live 2026-07-27 with Daily state 2. A past day opens its cover
+   wall; a future day is a dead route and gets no affordance at all. Build-side:
+   the frozen cadence FINALs draw these cells inert, because the screen they
+   open did not exist when they froze. */
+.cadash .vc.door, .cadash .wcol.door, .cadash .ncell.door, .cadash .tile.doortile[role="button"] { cursor: pointer; }
+.cadash .vc.door:hover, .cadash .wcol.door:hover { outline: var(--border-standard) solid var(--accent); outline-offset: -1px; }
+.cadash .ncell.door:hover { outline: var(--border-hairline) solid var(--accent); outline-offset: -1px; }
+.cadash .tile.doortile[role="button"]:hover { border-color: var(--accent); }

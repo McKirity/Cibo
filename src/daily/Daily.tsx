@@ -12,13 +12,22 @@
  * height-neutralized, because its internal scroll is the logging form's own
  * designed behaviour, not a whimsy column's.
  *
- * State 2 (the cover wall at finalize) and the catch-up queue are the next
- * slice; the finalize control here is present but inert until then.
+ * STATE 2 — the cover wall — landed 2026-07-27. Which state this screen shows
+ * is one question: does the day's `days` row carry `finalized`? The flag is the
+ * sole finalize truth, and finalize is the GENERATIVE condition, not a view
+ * flip: "a day's cover wall can only populate once the day is finalized."
+ *
+ * EDIT DAY is the one exception, and it does NOT move the flag. A finalized day
+ * stays editable behind the light affordance and "remains finalized through the
+ * edit — no unlock → edit → re-finalize dance" ([[Day Finalize & Catch-Up]]),
+ * so `editing` is view state and nothing else.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
+import { DateOnly } from "../db/schema";
 import { Spine } from "./Spine";
+import { CoverWall } from "./CoverWall";
 import { DevWhimsyPanel } from "./DevWhimsyPanel";
 import {
   CountdownsCard,
@@ -81,8 +90,53 @@ const entryCountQuery = evolu.createQuery((db) =>
   db.selectFrom("entries").select((eb) => eb.fn.countAll<number>().as("n")).where("isDeleted", "is not", 1),
 );
 
-export function Daily({ dayKey = todayLocal() }: { dayKey?: string }) {
+/**
+ * The catch-up queue's SECOND door — the conditional card on Daily's
+ * unfinalized state ("Monday is still open — finish it"), for the
+ * log-a-day-late habit. Functional, not whimsy: it never folds into the wall
+ * and it is exempt from whimsy-fails-silent.
+ *
+ * The queue's membership is exactly the `days` rows whose `finalized` is
+ * false — the ledger is SPARSE, so a day never touched has no row and never
+ * enters the queue; it stays a door on the nav calendar. The first door, the
+ * rail's catch-up FLAG and its popover, belongs to step 9's nav calendar and is
+ * deliberately not built here.
+ */
+const unfinalizedQuery = evolu.createQuery((db) =>
+  db
+    .selectFrom("days")
+    .select(["date"])
+    .where("isDeleted", "is not", 1)
+    .where("finalized", "=", 0)
+    .orderBy("date", "desc"),
+);
+
+export function Daily({
+  dayKey = todayLocal(),
+  onOpenDay,
+  onOpenEntry,
+}: {
+  dayKey?: string;
+  onOpenDay?: (day: string) => void;
+  onOpenEntry?: (entryId: string, habitKey: string | null) => void;
+}) {
   const [config, setConfig] = useState<WhimsyConfig>(loadWhimsyConfig);
+  // View state ONLY — Edit day never touches the finalize flag.
+  const [editing, setEditing] = useState(false);
+  useEffect(() => setEditing(false), [dayKey]);
+
+  const dayStateQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("days")
+          .select(["id", "finalized"])
+          .where("isDeleted", "is not", 1)
+          .where("date", "=", DateOnly.orThrow(dayKey)),
+      ),
+    [dayKey],
+  );
+  const finalized = useQuery(dayStateQuery)[0]?.finalized === 1;
   // A ticking clock: the sun's position, the sky gradient and the day meter are
   // all live values. A minute is plenty — nothing here moves faster.
   const [now, setNow] = useState(() => new Date());
@@ -138,6 +192,22 @@ export function Daily({ dayKey = todayLocal() }: { dayKey?: string }) {
 
   const holiday = <HolidayCard dayKey={dayKey} />;
 
+  // Recent unfinalized days, today excluded — today is not "behind".
+  const unfinalizedRows = useQuery(unfinalizedQuery);
+  const catchUp = useMemo(
+    () => unfinalizedRows.map((r) => String(r.date)).filter((d) => d < dayKey).slice(0, 4),
+    [unfinalizedRows, dayKey],
+  );
+
+  if (finalized && !editing)
+    return (
+      <CoverWall
+        dayKey={dayKey}
+        onEditDay={() => setEditing(true)}
+        onOpenEntry={onOpenEntry}
+      />
+    );
+
   return (
     <div className="daily">
       <div className="triptych">
@@ -154,10 +224,11 @@ export function Daily({ dayKey = todayLocal() }: { dayKey?: string }) {
         </div>
 
         <div className="col spine">
-          <Spine dayKey={dayKey} />
+          <Spine dayKey={dayKey} onFinalized={() => setEditing(false)} />
         </div>
 
         <div className="col almanac">
+          {catchUp.length > 0 && <CatchUpCard days={catchUp} onOpenDay={onOpenDay} />}
           <QuoteCard dayKey={dayKey} />
           <WordCard dayKey={dayKey} />
           <FactCard dayKey={dayKey} />
@@ -175,12 +246,72 @@ export function Daily({ dayKey = todayLocal() }: { dayKey?: string }) {
       <div className="shelf">
         <HoroscopeCard config={config} />
         <TarotCard />
-        <RediscoverCard dayKey={dayKey} pastDays={pastDays} />
+        {/* "Upgraded in the new model: a DOOR to that day's cover wall" — live
+            since the wall exists. */}
+        <RediscoverCard dayKey={dayKey} pastDays={pastDays} onOpenDay={onOpenDay} />
         <CountdownsCard config={config} dayKey={dayKey} />
         <LifetimeCard daysTracked={dayRows.length} sessions={sessionCount} entries={entryCount} />
       </div>
 
       {import.meta.env.DEV && <DevWhimsyPanel config={config} onChange={updateConfig} />}
+    </div>
+  );
+}
+
+const CATCH_WEEKDAY = new Intl.DateTimeFormat(undefined, { weekday: "long" });
+
+/**
+ * The catch-up card. Drawn-vs-described: the frozen state-1 file STYLES `.catch`
+ * and never renders it — the writing-rail-banner situation exactly, and it is
+ * built for the same reason (described, styled, and the only thing missing was
+ * the markup).
+ *
+ * Each listed day is a door. "Open the catch-up queue" — the popover the ruling
+ * gives the rail's flag — waits for step 9's nav calendar; until then this card
+ * IS the queue, which is what the ruling calls a second door to the same
+ * machinery rather than a different feature.
+ */
+function CatchUpCard({
+  days,
+  onOpenDay,
+}: {
+  days: string[];
+  onOpenDay?: (day: string) => void;
+}) {
+  const first = days[0];
+  const label = CATCH_WEEKDAY.format(new Date(`${first}T12:00:00`));
+  return (
+    <div className="card catch">
+      <div className="ttl">
+        <span className="dot" />
+        <span className="lbl">
+          {days.length === 1 ? `${label} is still open` : `${days.length} days to finalize`}
+        </span>
+      </div>
+      <p>
+        {days.length === 1
+          ? "Finish it and it becomes a keepsake."
+          : "Late days stay unfinalized until you close them — nothing is counted as missed in the meantime."}
+      </p>
+      <div className="acts">
+        {days.map((d) => (
+          <span
+            key={d}
+            className="door"
+            role="button"
+            tabIndex={0}
+            onClick={onOpenDay ? () => onOpenDay(d) : undefined}
+            onKeyDown={(e) => {
+              if (onOpenDay && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                onOpenDay(d);
+              }
+            }}
+          >
+            {CATCH_WEEKDAY.format(new Date(`${d}T12:00:00`))}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

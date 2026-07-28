@@ -230,6 +230,17 @@
   /* pass 5 — every whimsy card clips its own art: nothing paints past its shell */
     /* iteration 2 · slot 7 — 12px frame clearance reserved inside the card (squished twice: own frame + the spine's growth) */
     .card.whimsy { overflow:hidden; min-height:fit-content; /* sizes to its interior — never clips or spills (re-ruled 2026-07-19). `auto` resolves to ZERO under overflow:hidden, so the ruled floor silently did not exist; `fit-content` is the floor this file's own note below prescribes. */ padding:calc(var(--frame-clear-whimsy) + var(--space-4)); }
+  /* ---- the CATCH-UP CARD — the almanac column's one NON-whimsy tenant.
+     Functional, not whimsy: it never folds into the wall and it is exempt from
+     whimsy-fails-silent. Claimed 2026-07-27 from `kit-staging.css`, which held
+     it because the frozen file styles it and never renders it. ---- */
+    .catch { background: color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-mix));
+             border:var(--border-hairline) solid color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-border)); }
+    .catch .ttl { display:flex; align-items:center; gap:var(--space-4); }
+    .catch .dot { width:var(--dot-size); height:var(--dot-size); border-radius:var(--radius-full); background:var(--attention-dot); flex:0 0 auto; }
+    .catch .lbl { font-size:var(--size-subheading); font-weight:var(--weight-medium); }
+    .catch p { font-size:var(--size-small); color:var(--text-secondary); margin:var(--space-3) 0 var(--space-5); }
+    .catch .acts { display:flex; gap:var(--space-5); font-size:var(--size-small); font-weight:var(--weight-medium); flex-wrap:wrap; }
   .ovl { font-size:var(--whimsy-size-caption); font-weight:var(--weight-bold); letter-spacing:.09em;
            text-transform:uppercase; color:var(--text-muted); margin:0 0 var(--space-4);
            display:flex; align-items:center; justify-content:space-between; }
@@ -1212,4 +1223,350 @@
   margin: 0;
   font-size: var(--size-caption);
   color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DAILY — STATE 2, THE COVER WALL
+   ---------------------------------------------------------------------------
+   CLAIMED, NOT AUTHORED. Every rule between here and the milestone block is
+   the frozen `Final/daily-state-2.html` / `kit-staging.css` text verbatim,
+   nested under `.wallscreen`.
+
+   THE SCOPE IS LOAD-BEARING, not tidiness: the wall's vocabulary collides with
+   already-claimed names — `.tile` is the stat tile in `dashboard.css`, `.cover`
+   is the channel cover-card in `screen.css`, `.head` and `.banner` are the
+   entry dashboard's. The `.picker-style` name-collision family, which the wall
+   itself has already been bitten by once (the 2026-07-17 sweep found its
+   `.cluster` rules stacking the titlebar's window buttons).
+
+   TWO RULED DEVIATIONS FROM THE FROZEN TEXT, both cited:
+
+   1 · `grid-auto-rows` is a HALF-unit, per [[Daily state 2 (cover wall)]]
+       § Amended 2026-07-26. "Every existing tile spans 2N half-rows and is
+       pixel-identical, and nothing in kit-wall-cover changes" — 2 rows of
+       (u − gap)/2 plus the gap between them is exactly u. Only the milestone
+       cards use the odd steps.
+   2 · The `.keep-*` ART blocks are NOT claimed. The FINAL froze the tile
+       ANATOMY and stood in placeholder art; the real six were authored
+       2026-07-26 and now arrive as pre-seeded snippets rendered in a shadow
+       root. `.keep` (the host) is claimed; `.keep .cap` / `.keep .val` and the
+       three art blocks stay in staging with no tenant — a retirement for the
+       Phase-2 completion audit to make, not a claim for this slice.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wallscreen {
+  /* The FINAL's `.content` role: the two zones never rearrange, so the screen
+     is a flex column with a definite height and the WALL owns the scroll. The
+     seam inset and the outer --space-7 are the shell's already. */
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wallscreen {
+  /* HEAD — date + edit-day corner button. No day-summary line (keepsake, not
+     report). */
+  .head { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
+          padding:var(--space-5) var(--space-7); border-bottom:var(--border-hairline) solid var(--divider); }
+  .head .date { font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold);
+                letter-spacing:-.01em; }
+  .head .date .dow { color:var(--text-secondary); font-weight:var(--weight-medium); }
+  .head .fin-tag { margin-left:var(--space-5); display:inline-flex; align-items:center; gap:var(--space-3);
+                   font-size:var(--size-caption); color:var(--text-muted); vertical-align:middle; }
+  .head .fin-tag .fm { width:var(--marker-size); height:var(--marker-size); border-radius:var(--radius-full);
+                       background:var(--finalize-mark); }
+  .edit-day { display:inline-flex; align-items:center; gap:var(--space-3); padding:var(--space-3) var(--space-5);
+              background:transparent; border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small);
+              color:var(--text-secondary); font-family:var(--font-ui); font-size:var(--size-small);
+              font-weight:var(--weight-medium); cursor:pointer;
+              transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+  .edit-day:hover { background:var(--hover-wash); color:var(--text-strong); }
+  .edit-day .ico { fill:none; stroke:currentColor; stroke-width:var(--icon-stroke);
+                   stroke-linecap:round; stroke-linejoin:round; }
+
+  /* THE WALL — centre-anchored masonry on the hidden u-grid. Scrolls on
+     overflow; NEVER compresses tiles. */
+  .wall-wrap { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+  .wall { min-height:100%; display:grid; grid-template-columns:repeat(15, 1fr);
+          grid-auto-rows:calc((var(--wall-unit) - var(--wall-gap)) / 2); gap:var(--wall-gap);
+          padding:var(--space-6) var(--space-7); align-content:center; justify-content:stretch; }
+
+  /* ---- base tile ---- */
+  .tile { min-width:0; min-height:0; overflow:hidden; border-radius:var(--radius-medium);
+          box-shadow:var(--shadow-low); position:relative; }
+  /* THE NAME-COLLISION FAMILY STRIKES EXACTLY WHERE THE CLAIM LOG WARNED
+     (found live 2026-07-27): dashboard.css's UNSCOPED `.cover` — the 5★-hall
+     cover THUMB — pins width/height to --cover-w/--cover-h (60×84), and since
+     the wall's own rules never set a size (the grid does), the thumb sizing
+     reached in unopposed and every cover tile rendered as a tiny square.
+     Scoping this side is not enough when the other tenant is unscoped; the
+     reset below restores the grid's stretch. */
+  .tile.cover, .tile.yt { width:auto; height:auto; }
+
+  /* ---- cover tiles (consumption) — typographic keepsake over the habit slot.
+     Real art when the entry has it; the kit-tile-fallback treatment underneath
+     is the permanent look for an entry that never got any. ---- */
+  .cover { display:flex; flex-direction:column; justify-content:flex-end;
+           padding:var(--space-6); color:var(--text-on-filled);
+           background:var(--slot); }
+  .cover > .art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; }
+  .cover:has(> .art)::after { content:""; position:absolute; inset:0; z-index:0;
+                              background:linear-gradient(to top, var(--scrim), transparent 62%); }
+  .cover .kind { position:absolute; top:var(--space-5); left:var(--space-6); z-index:1;
+                 font-family:var(--font-mono); font-size:var(--size-caption); letter-spacing:.06em;
+                 text-transform:uppercase; color:var(--text-on-filled); opacity:.8; }
+  .cover .glyph { position:absolute; top:var(--space-4); right:var(--space-5); opacity:.34; z-index:1; }
+  .cover .glyph .ico { width:34px; height:34px; color:var(--text-on-filled);
+                       fill:none; stroke:currentColor; stroke-width:var(--icon-stroke);
+                       stroke-linecap:round; stroke-linejoin:round; }
+  .cover .ttl { position:relative; z-index:1;
+                font-family:var(--font-heading); font-weight:var(--weight-bold); line-height:var(--line-tight);
+                font-size:var(--size-subheading); text-wrap:pretty; }
+  .cover.big .ttl { font-size:var(--size-heading); }
+  .cover .meta { position:relative; z-index:1;
+                 margin-top:var(--space-4); display:flex; align-items:center; gap:var(--space-4);
+                 flex-wrap:wrap; font-family:var(--font-mono); font-size:var(--size-caption); }
+  .cover .chip { display:inline-flex; align-items:center; gap:var(--space-2); padding:var(--space-1) var(--space-4);
+                 border-radius:var(--radius-full); background: color-mix(in oklch, var(--slot), var(--scrim) 55%);
+                 color:var(--text-on-filled); }
+  .cover .dur { font-weight:var(--weight-bold); }
+  .cover .stars { letter-spacing:.12em; color:var(--text-on-filled); }
+  /* the square-source entry — shape follows content (a channel pfp) */
+  .yt { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--space-4);
+        padding:var(--space-5); background:var(--slot); color:var(--text-on-filled); text-align:center; }
+  .yt .pfp { width:64px; height:64px; border-radius:var(--radius-full); flex:0 0 auto;
+             background: color-mix(in oklch, var(--slot), var(--text-on-filled) 24%);
+             display:flex; align-items:center; justify-content:center;
+             font-family:var(--font-heading); font-weight:var(--weight-bold); font-size:var(--size-heading); }
+  .yt .ch { font-size:var(--size-small); font-weight:var(--weight-medium); line-height:var(--line-tight); }
+  .yt .sub { font-family:var(--font-mono); font-size:var(--size-caption); opacity:.82; }
+  .cover, .yt, .banner { cursor:pointer; }
+
+  /* ---- keepsake host (kit-tile-keepsake). The snippet fills it and never
+     draws it; the shadow root seals the snippet's own <style> while custom
+     properties still inherit through the boundary. ---- */
+  .keep { background:var(--panel-background); border:var(--border-hairline) solid var(--border); }
+  .ksh { position:absolute; inset:0; }
+  /* the lettermark fallback — the FINAL's own `.keep-square` anatomy with the
+     habit's initial where Walking's done-mark sits. Silent, and a legitimate
+     permanent look for a habit whose art has not landed. */
+  .ksfall { display:none; position:absolute; inset:0; flex-direction:column; align-items:center;
+            justify-content:center; gap:var(--space-4); color:var(--text-on-filled); background:var(--slot); }
+  .ksh.blank ~ .ksfall { display:flex; }
+  .ksfall .lm { font-family:var(--font-heading); font-size:var(--size-display); font-weight:var(--weight-bold);
+                line-height:1; }
+  .ksfall .lbl { font-size:var(--size-small); font-weight:var(--weight-medium); }
+  .ksfall .sub { font-family:var(--font-mono); font-size:var(--size-caption); opacity:.85; }
+
+  /* ---- creation banner panel (6×2) ----
+     RE-CUT 2026-07-27, user-ruled, OVERRIDING the FINAL's two-column grid:
+     "the banner art is supposed to span the whole card as a shadowed
+     background with the [content] sitting above it. Refer to the cover wall
+     in references." Translated from the old wall's WritingPanel
+     (`Reference/Visual Reference/coverwall.html`): with-banner = an
+     absolute-inset object-fit:cover img under a dark overlay; without = a
+     slot-derived gradient field (the old tile's 165° two-stop). Text rides
+     above on z-index, in --text-on-filled — a filled surface either way.
+     The habit's own slot arrives as --slot, so nothing is habit-keyed. */
+  .banner { display:flex; flex-direction:column; justify-content:space-between; padding:var(--space-6);
+            color:var(--text-on-filled);
+            background:linear-gradient(165deg,
+              color-mix(in oklch, var(--slot), var(--text-strong) 12%),
+              color-mix(in oklch, var(--slot), var(--text-strong) 48%)); }
+  .banner > img.art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; }
+  /* the shadow the art sits under — legibility for the text above it */
+  .banner:has(> img.art)::after { content:""; position:absolute; inset:0; z-index:1;
+                                  background:linear-gradient(to top, var(--scrim), color-mix(in oklch, var(--scrim), transparent 55%)); }
+  .banner .kind { position:relative; z-index:2; font-family:var(--font-mono); font-size:var(--size-caption);
+                  text-transform:uppercase; letter-spacing:.18em;
+                  color: color-mix(in oklch, var(--slot), var(--text-on-filled) 55%); }
+  .banner .foot { position:relative; z-index:2; display:flex; flex-direction:column; gap:var(--space-3); }
+  .banner .ttl { font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold);
+                 line-height:var(--line-tight); text-wrap:pretty; }
+  .banner .meta { display:flex; align-items:center; gap:var(--space-4); flex-wrap:wrap; }
+  .banner .stage { font-family:var(--font-mono); font-size:var(--size-caption);
+                   padding:var(--space-1) var(--space-4); border-radius:var(--radius-small);
+                   background: color-mix(in oklch, var(--slot), var(--scrim) 55%);
+                   color:var(--text-on-filled); }
+  .banner .nums { font-family:var(--font-mono); font-size:var(--size-subheading); font-weight:var(--weight-bold); }
+  .banner .nums span { font-weight:var(--weight-regular); opacity:.7; }
+
+  /* ---- whimsy tiles — the grout: kit shell, whimsy-palette interiors, quieter ---- */
+  .whim { background:var(--panel-background); border:var(--border-hairline) solid var(--border); }
+  .whim .wl { position:absolute; z-index:2; font-family:var(--font-mono); font-size:var(--size-caption);
+              text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted);
+              left:var(--space-5); top:var(--space-4); }
+
+  /* Sun sliver (2×1) — folded to a bar, drawn at SOLAR NOON (disc at zenith) */
+  .whim-sun { overflow:hidden; display:flex; }
+  .whim-sun .sky { position:absolute; inset:0;
+                   background:linear-gradient(to bottom, var(--whimsy-zenith), var(--whimsy-day)); }
+  .whim-sun .disc { position:absolute; left:50%; top:26%; transform:translate(-50%,-50%);
+                    width:22px; height:22px; border-radius:var(--radius-full); background:var(--whimsy-sun); }
+  .whim-sun .disc::after { content:""; position:absolute; inset:-5px; border-radius:var(--radius-full);
+                           border:2px solid color-mix(in oklch, var(--whimsy-sun), transparent 66%); }
+  .whim-sun .noon { position:absolute; z-index:2; right:var(--space-5); bottom:var(--space-4);
+                    font-family:var(--font-mono); font-size:var(--size-caption); color:var(--whimsy-ink); }
+  .whim-sun .len { position:absolute; z-index:2; left:var(--space-5); bottom:var(--space-4);
+                   font-family:var(--font-mono); font-size:var(--size-small); font-weight:var(--weight-bold); color:var(--whimsy-ink); }
+  .whim-sun .wl { color: color-mix(in oklch, var(--whimsy-ink), var(--whimsy-day) 30%); }
+
+  /* Season / Year slivers (2×1) — a month ribbon with a today tick */
+  .whim-ribbon { display:flex; flex-direction:column; justify-content:center; gap:var(--space-3); padding:var(--space-5); padding-top:24px; }
+  .whim-ribbon .band { position:relative; display:flex; height:14px; border-radius:var(--radius-small); overflow:hidden; }
+  .whim-ribbon .band > i { display:block; height:100%; }
+  .whim-ribbon .tick { position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--text-strong); border-radius:1px; }
+  .whim-ribbon .foot { display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted); }
+  .whim-ribbon .foot b { color:var(--text-secondary); font-weight:var(--weight-medium); }
+
+  /* glances (1×1) */
+  .glance { display:flex; flex-direction:column; padding:var(--space-5); padding-top:24px; }
+
+  /* Re-cut 2026-07-27 (user-ruled): the wall's word tile carries the DEFINITION
+     — real content the FINAL's 1×1 glance never held — and widens to a strip. */
+  .whim-word .body { flex:1 1 auto; display:flex; flex-direction:column; justify-content:center; }
+  .whim-word .w { font-family:var(--font-heading); font-size:var(--size-subheading); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong); }
+  .whim-word .rule { width:26px; height:2px; border-radius:1px; background:var(--whimsy-star); margin:var(--space-3) 0; }
+  .whim-word .pos { font-style:italic; font-weight:var(--weight-regular); font-family:var(--font-ui); font-size:var(--size-caption); color:var(--text-secondary); }
+  .whim-word .def { font-size:var(--size-caption); color:var(--text-secondary); line-height:var(--line-normal); text-wrap:pretty; }
+
+  .whim-moon { background:var(--whimsy-night); border-color: color-mix(in oklch, var(--whimsy-night), var(--text-strong) 12%); }
+  .whim-moon .wl { color: color-mix(in oklch, var(--whimsy-moon), var(--whimsy-night) 40%); }
+  .whim-moon .body { flex:1 1 auto; display:flex; align-items:center; gap:var(--space-4); }
+  .whim-moon .disc { width:44px; height:44px; flex:0 0 auto; }
+  .whim-moon .il { font-family:var(--font-mono); font-size:var(--size-subheading); font-weight:var(--weight-bold); color:var(--whimsy-moon); line-height:1; }
+  .whim-moon .ph { font-size:var(--size-caption); color: color-mix(in oklch, var(--whimsy-moon), var(--whimsy-night) 42%); }
+
+  .whim-fact .body { flex:1 1 auto; display:flex; flex-direction:column; justify-content:center; gap:var(--space-3); }
+  /* The FINAL pins the chip to --cat-1; the app's fact carries its own slot,
+     so the literal becomes the card's `--c` local. Same rule, live subject.
+     The 86% it froze with reads --tint-mix (85%) — the screen note's own
+     Build note, applied here. */
+  .whim-fact .chip { align-self:flex-start; font-size:var(--size-caption); font-weight:var(--weight-medium);
+                     text-transform:uppercase; letter-spacing:.05em; color:var(--c, var(--cat-1));
+                     background: color-mix(in oklch, var(--c, var(--cat-1)), var(--panel-background) var(--tint-mix));
+                     border-radius:var(--radius-full); padding:var(--space-1) var(--space-4); }
+  .whim-fact .tx { font-size:var(--size-caption); color:var(--text-secondary); line-height:var(--line-normal); text-wrap:pretty; }
+
+  .whim-holiday .body { flex:1 1 auto; display:flex; align-items:center; gap:var(--space-4); }
+  .whim-holiday .dt { display:flex; flex-direction:column; align-items:center; line-height:1;
+                      padding-left:var(--space-4); border-left:3px solid var(--month-jun); }
+  .whim-holiday .d { font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); color:var(--text-strong); line-height:.85; }
+  .whim-holiday .mon { font-family:var(--font-mono); font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--month-jun); margin-top:var(--space-2); }
+  .whim-holiday .nm { font-size:var(--size-caption); color:var(--text-secondary); font-weight:var(--weight-medium); text-wrap:pretty; }
+
+  /* strips (3–4 × 1) */
+  .strip-tile { display:flex; flex-direction:column; justify-content:center; padding:var(--space-5) var(--space-6); padding-top:24px; }
+  .whim-quote { position:relative; }
+  .whim-quote .qm { position:absolute; top:2px; left:var(--space-4); font-family:var(--font-heading); font-size:46px; line-height:1; color:var(--whimsy-star); }
+  .whim-quote p { margin:0; padding-left:var(--space-8); font-family:var(--font-heading); font-style:italic;
+                  font-size:var(--size-small); line-height:var(--line-normal); color:var(--text-strong); text-wrap:pretty; }
+  .whim-quote .by { padding-left:var(--space-8); margin-top:var(--space-2); font-size:var(--size-caption); color:var(--text-muted); }
+  .whim-otd .row { display:grid; grid-template-columns:auto 1fr; gap:var(--space-5); align-items:baseline; }
+  .whim-otd .row + .row { margin-top:var(--space-3); }
+  .whim-otd .yr { font-family:var(--font-mono); font-size:var(--size-caption); font-weight:var(--weight-medium);
+                  color: color-mix(in oklch, var(--whimsy-star), var(--text-strong) 32%); }
+  .whim-otd .ev { font-size:var(--size-caption); color:var(--text-secondary); line-height:var(--line-normal); text-wrap:pretty; }
+
+  /* ---- unlogged habit — uniform 1×1 grayed label-square (never the logged shape) ---- */
+  .unlogged { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--space-2);
+              text-align:center; padding:var(--space-4); border-radius:var(--radius-medium);
+              background: color-mix(in oklch, var(--text-muted), var(--panel-background) var(--absent-wash));
+              border:var(--border-hairline) solid var(--border); color:var(--text-muted); box-shadow:none; }
+  .unlogged .nm { font-size:var(--size-small); font-weight:var(--weight-medium); }
+  .unlogged .st { font-family:var(--font-mono); font-size:var(--size-caption); letter-spacing:.04em; }
+
+  /* the cluster block — the unlogged remainder collected into one labelled block */
+  .cluster { border:var(--border-standard) dashed color-mix(in oklch, var(--border), var(--window-background) 20%);
+             border-radius:var(--radius-medium); background: color-mix(in oklch, var(--text-muted), var(--panel-background) 90%);
+             padding:var(--space-5); display:flex; flex-direction:column; box-shadow:none; }
+  .cluster .cl { font-family:var(--font-mono); font-size:var(--size-caption); text-transform:uppercase;
+                 letter-spacing:.06em; color:var(--text-muted); margin-bottom:var(--space-4); }
+  .cluster .grid { flex:1 1 auto; display:grid; grid-template-columns:repeat(3,1fr); gap:var(--space-4); }
+  .cluster .u { display:flex; align-items:center; justify-content:center; text-align:center; border-radius:var(--radius-small);
+                background: color-mix(in oklch, var(--text-muted), var(--panel-background) 80%);
+                border:var(--border-hairline) solid var(--border); color:var(--text-muted);
+                font-size:var(--size-caption); font-weight:var(--weight-medium); padding:var(--space-3); }
+
+  /* the empty-canvas whisper (the ragged fringe reads as air) */
+  .island-note { grid-column:2 / 15; align-self:center; text-align:center; margin-top:var(--space-6);
+                 font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted); letter-spacing:.03em; }
+
+  /* ═════════════════════════════════════════════════════════════════════════
+     THE MILESTONE FAMILY CARDS — direction D, "the sealed certificate".
+     Transcribed from the design project's `FINAL Milestone Exhibit.html`
+     (cited by name, the wave-exhibit precedent; it never freezes into Final/).
+     The exhibit's `.dir-d` prefix is folded away — A, B and C were struck, so
+     there is only one direction left to scope against.
+     ═════════════════════════════════════════════════════════════════════════ */
+  .ms-tile { display:flex; flex-direction:column; gap:var(--space-4);
+             padding:calc(var(--frame-clear-whimsy) + var(--space-4));
+             background:var(--whimsy-parchment); color:var(--whimsy-ink);
+             border:var(--border-hairline) solid color-mix(in oklch, var(--whimsy-star), var(--whimsy-parchment) var(--whimsy-line-mix)); }
+  .ms-head { display:flex; align-items:center; gap:var(--space-4); flex:0 0 auto;
+             padding-bottom:var(--space-3);
+             border-bottom:var(--border-hairline) solid color-mix(in oklch, var(--whimsy-star), var(--whimsy-parchment) var(--whimsy-line-mix)); }
+  /* --swatch-size is the entry rail's habit-swatch mark: same job, same size,
+     so the seal reuses it rather than minting or hardcoding one. */
+  .ms-mark { width:var(--swatch-size); height:var(--swatch-size); flex:0 0 auto; border-radius:var(--radius-full);
+             display:flex; align-items:center; justify-content:center;
+             background:var(--whimsy-ink); border:var(--border-hairline) solid var(--whimsy-star); color:var(--whimsy-star); }
+  /* The glyph is a RATIO of the disc (60%), not --icon-size: this is art inside
+     a keepsake seal, not a UI icon. `non-scaling-stroke` makes --icon-stroke
+     mean 1.5px RENDERED at any glyph size — both repairs from the exhibit. */
+  .ms-mark .ico { width:calc(var(--swatch-size) * .6); height:calc(var(--swatch-size) * .6);
+                  stroke:currentColor; stroke-width:var(--icon-stroke); vector-effect:non-scaling-stroke;
+                  fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  .ms-fam { font-family:var(--font-mono); font-size:var(--whimsy-size-caption); text-transform:uppercase;
+            letter-spacing:.1em; line-height:var(--line-tight);
+            color: color-mix(in oklch, var(--whimsy-ink), var(--whimsy-parchment) var(--whimsy-fade)); }
+  .ms-list { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:center; gap:var(--space-5); }
+  /* SPLIT LIST — Thresholds carries two kinds that are not comparable: counts
+     and accumulations. One column reads as one ranked list, which they are not. */
+  .ms-list.split { display:grid; grid-template-columns:1fr var(--border-hairline) 1fr; gap:var(--space-5); align-content:center; }
+  .ms-col { display:flex; flex-direction:column; gap:var(--space-5); min-width:0; }
+  .ms-colh { font-family:var(--font-mono); font-size:var(--whimsy-size-caption); text-transform:uppercase;
+             letter-spacing:.1em; line-height:var(--line-tight);
+             color: color-mix(in oklab, var(--whimsy-ink), var(--whimsy-parchment) var(--whimsy-fade)); }
+  .ms-split-rule { align-self:stretch; background:currentColor; opacity:.24; }
+  .ms-list.split .ms-it { gap:var(--space-4); }
+  .ms-it { display:grid; grid-template-columns:auto minmax(0,1fr); gap:var(--space-4); align-items:baseline; }
+  /* a value-less item — every Rank change entry — spans the whole row rather
+     than sizing the auto value track to its own max-content */
+  .ms-it.plain { grid-template-columns:minmax(0,1fr); }
+  .ms-n { font-family:var(--font-mono); font-weight:var(--weight-bold); font-size:var(--whimsy-size-subheading);
+          white-space:nowrap; line-height:var(--line-tight); color:var(--whimsy-ink); }
+  .ms-t { font-size:var(--whimsy-size-small); line-height:var(--line-normal); text-wrap:pretty;
+          color: color-mix(in oklch, var(--whimsy-ink), var(--whimsy-parchment) var(--whimsy-fade)); }
+  /* the longest run wears the gilt star rather than the words "— longest"; the
+     mark's PRESENCE is the second signal, so it never rests on colour alone */
+  .ms-star { color: color-mix(in oklab, var(--whimsy-star), var(--whimsy-ink) var(--whimsy-line-mix));
+             font-size:var(--whimsy-size-small); letter-spacing:.06em; }
+
+  /* the PLATE — the single-item state. Same anatomy, centred, with the issuing
+     rule. It exists because the promoted-value solo does nothing for a Rank
+     change, whose one item is a sentence with no figure in it. */
+  .ms-tile.plate { align-items:center; text-align:center; justify-content:center; gap:var(--space-5); }
+  .ms-tile.plate .ms-head { flex-direction:column; gap:var(--space-3); padding-bottom:0; border-bottom:none; }
+  .ms-tile.plate .ms-list { flex:0 0 auto; align-self:stretch; }
+  .ms-tile.plate .ms-it { grid-template-columns:minmax(0,1fr); justify-items:center; gap:var(--space-3); }
+  /* pretty balances a SHORT phrase onto two lines, which is exactly wrong on a
+     centred plate; it earns its keep on the Rank change sentence, so it stays
+     on .ms-t and is overridden only where the phrase is short enough to break badly */
+  .ms-tile.plate .ms-t { text-wrap:auto; }
+  .ms-tile.plate .ms-n { font-size:var(--whimsy-size-heading); }
+  .ms-rule { display:none; }
+  .ms-tile.plate .ms-rule { display:block; width:var(--space-8); flex:0 0 auto;
+                            border-top:var(--border-hairline) solid var(--whimsy-star); }
+
+  /* THE MEASURING PASS. A milestone card's span is derived, not authored —
+     width is the fewest whole columns holding the longest line, height the
+     measured content quantised to the half-unit. The probe lives inside a
+     `.wall` on purpose: the plate rules are `.ms-tile.plate ...`, and a probe
+     parked elsewhere measures the wrong height. */
+  .wall-probe { position:absolute; left:-99999px; top:0; display:block;
+                visibility:hidden; pointer-events:none; min-height:0; padding:0; }
+  .wall-probe .tile { height:auto; }
+  .wall-probe .ms-list { flex:0 0 auto; }
 }

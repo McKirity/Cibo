@@ -447,10 +447,18 @@ export const overrideDerived = (id: string, value: number): WriteResult => {
 // ── Finalize (ruling 1: the state change into state 2, not a submit) ─────────
 
 /**
- * INERT until state 2 exists. Kept here so the button has a real home the moment
- * the cover wall lands: it writes the `days` ledger's `finalized` flag and
- * nothing else — no session is touched, because every session was already saved
- * the instant it was typed.
+ * LIVE since 2026-07-27, when the cover wall landed. It writes the `days`
+ * ledger's `finalized` flag and nothing else — no session is touched, because
+ * finalize is a state change, not a submit.
+ *
+ * THE CALLER MUST FLUSH THE AUTO-SAVE BUFFER FIRST. Writes buffer since
+ * 2026-07-27, so finalizing an unflushed day would seal a day whose sessions
+ * are still in memory. `FinalizeButton` does it; anything else that finalizes
+ * has to as well.
+ *
+ * Finalizing an EMPTY day is valid, and the sparse ledger is why this inserts
+ * when there is no row: a genuine rest day reads as "did none of these", not
+ * "unlogged".
  */
 export const finalizeDay = (
   day: string,

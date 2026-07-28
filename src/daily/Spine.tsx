@@ -44,6 +44,7 @@ import { dayFromIndex, dayIndex } from "../metrics/dates";
 import {
   clearDay,
   createBout,
+  finalizeDay,
   logBoard,
   overrideDerived,
   quickCreateEntry,
@@ -191,7 +192,14 @@ const nowLocalDateTime = (): string => {
 
 // ── The spine ────────────────────────────────────────────────────────────────
 
-export function Spine({ dayKey }: { dayKey: string }) {
+export function Spine({
+  dayKey,
+  onFinalized,
+}: {
+  dayKey: string;
+  /** Daily swaps to the cover wall; the write itself happens here. */
+  onFinalized?: () => void;
+}) {
   const data = useDayData(dayKey);
   const [confirmClear, setConfirmClear] = useState(false);
   // AUTO-SAVE (user-ruled 2026-07-27). Writes buffer and flush on the interval,
@@ -311,7 +319,13 @@ export function Spine({ dayKey }: { dayKey: string }) {
             </p>
           )}
 
-          <FinalizeButton dayKey={dayKey} finalized={data.dayRow?.finalized ?? false} />
+          <FinalizeButton
+            dayKey={dayKey}
+            finalized={data.dayRow?.finalized ?? false}
+            dayRow={data.dayRow}
+            flushNow={flushNow}
+            onFinalized={onFinalized ?? (() => {})}
+          />
 
           {/* CLEAR ALL — a Build-side addition to a frozen screen (user-asked
               2026-07-26; the FINAL draws no such control). Kept in the quiet
@@ -389,25 +403,54 @@ function ZeroActiveHabits() {
 
 /**
  * kit-control-finalize — the day's closing gesture, NOT a submit (ruling 1).
- * Inert until state 2 exists: it would write the `days` ledger and swap the
- * screen for the cover wall, and there is no cover wall yet.
+ *
+ * IT MUST FLUSH FIRST. Writes buffer since 2026-07-27, so finalizing without a
+ * flush would seal a day whose sessions are still in memory — a cover wall
+ * built from a store that has not seen the day yet.
+ *
+ * ON AN ALREADY-FINALIZED DAY it is the way BACK to the wall, not a second
+ * write. [[Day Finalize & Catch-Up]]: a finalized day stays editable behind the
+ * light "edit this day" affordance and "remains finalized through the edit —
+ * no unlock → edit → re-finalize dance". So the flag never moves here; only the
+ * view does. *(Un-finalize is allowed by that ruling and has no drawn control;
+ * it stays unbuilt rather than invented.)*
  */
-function FinalizeButton({ dayKey, finalized }: { dayKey: string; finalized: boolean }) {
+function FinalizeButton({
+  dayKey,
+  finalized,
+  dayRow,
+  flushNow,
+  onFinalized,
+}: {
+  dayKey: string;
+  finalized: boolean;
+  dayRow: { id: string } | null;
+  flushNow: () => void;
+  onFinalized: () => void;
+}) {
   return (
     <button
       className="finalize"
-      aria-disabled="true"
-      title="Finalize turns the day into its cover wall — state 2, the next slice."
+      title={
+        finalized
+          ? "This day is already finalized — back to its cover wall."
+          : "Finalize turns the day into its cover wall."
+      }
       onClick={() => {
-        showErrorToast(
-          finalized
-            ? `${dayKey} is already finalized — the cover wall is the next slice.`
-            : "Finalize lands with the cover wall (state 2).",
-        );
+        // The buffer first, always. Everything typed today has to be in the
+        // store before the day is sealed.
+        flushNow();
+        if (finalized) {
+          onFinalized();
+          return;
+        }
+        const res = finalizeDay(dayKey, dayRow, nowLocalDateTime());
+        if (!res.ok) showErrorToast(res.reason);
+        else onFinalized();
       }}
     >
       <IFinalize />
-      Finalize
+      {finalized ? "Back to the wall" : "Finalize"}
     </button>
   );
 }

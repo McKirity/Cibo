@@ -35,7 +35,7 @@
  */
 import type { DerivedRule } from "../db/schema";
 import { dayFromIndex, dayGap, dayIndex } from "../metrics/dates";
-import { groupInt } from "../metrics/format";
+import { groupInt, hoursMinutes } from "../metrics/format";
 
 // ── Ladders ──────────────────────────────────────────────────────────────────
 
@@ -190,10 +190,40 @@ export type MilestoneFamily =
   | "lifecycle"
   | "rank";
 
+/**
+ * A threshold's kind, for the wall card's SPLIT LIST. Thresholds carries two
+ * things that are not comparable — COUNTS ("100th Gaming day") and
+ * ACCUMULATIONS ("500 h of Reading") — and run together in one column they read
+ * as one ranked list, which they are not. Every other family is unsplit.
+ * *(Implementation of the exhibit's `.ms-list.split`; the family itself is the
+ * ruling.)*
+ */
+export type ThresholdBucket = "count" | "total";
+
 export interface MilestoneItem {
   family: MilestoneFamily;
-  /** The house form: a subject and a short predicate. Plain text, never HTML. */
+  /**
+   * The figure, as the wall card's `.ms-n` shows it ("100th", "500 h", "3h 20m").
+   * EMPTY for an item that has no figure — every Rank change entry — which the
+   * card lays out as a full-width sentence instead.
+   */
+  value: string;
+  /** What the figure is about, as `.ms-t` shows it. Plain text, never HTML. */
+  subject: string;
+  /** Thresholds only. */
+  bucket?: ThresholdBucket;
+  /** The house form, `value` and `subject` joined — what the harness reads. */
   text: string;
+}
+
+/** One streak in progress, for the wall's single continuing-streaks card. */
+export interface ContinuingStreak {
+  value: string;
+  subject: string;
+  /** Marked with the gilt ★ rather than the words "— longest". */
+  longest: boolean;
+  /** Sort key; not rendered. */
+  days: number;
 }
 
 export interface MilestoneDay {
@@ -203,6 +233,11 @@ export interface MilestoneDay {
   recordCount: number;
   /** Streaks in progress. Rides along ONLY when the banner is already showing. */
   continuingStreaks: number;
+  /**
+   * The same streaks, named — the wall's continuing-streaks card lists them
+   * where the banner only counts them. Longest first.
+   */
+  streaks: ContinuingStreak[];
   /** Empty when nothing fired — the banner is an event, not furniture. */
   headline: string;
 }
@@ -224,8 +259,12 @@ const ordinal = (n: number): string => {
   return `${groupInt(n)}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
 };
 
-/** Rule results for one range session — the same templates rangeSpec evaluates. */
-const ruleHolds = (rule: DerivedRule, s: MSession): boolean => {
+/**
+ * Rule results for one range session — the same templates rangeSpec evaluates.
+ * Exported because the cover wall's keepsake `{{flags}}` asks the same question
+ * of the same rules, and two copies of a rules-as-data evaluator would drift.
+ */
+export const ruleHolds = (rule: DerivedRule, s: MSession): boolean => {
   if (s.start == null || s.end == null) return false;
   if (rule.template === "duration" && rule.minutes != null) {
     const mins = minutesOf(s);
@@ -332,9 +371,36 @@ export const streakOvertaken = (days: ReadonlyArray<string>, day: string): numbe
 
 // ── The five families ────────────────────────────────────────────────────────
 
+/**
+ * Build one item. `text` is DERIVED from the two halves rather than written
+ * beside them, so the banner's count and the wall card's face can never
+ * disagree about what fired.
+ */
+const item = (
+  family: MilestoneFamily,
+  value: string,
+  subject: string,
+  bucket?: ThresholdBucket,
+): MilestoneItem => ({
+  family,
+  value,
+  subject,
+  ...(bucket ? { bucket } : {}),
+  text: value === "" ? subject : `${value} ${subject}`,
+});
+
+/**
+ * A day subject's display name. Where absence is impossible the subject got
+ * finer (Sleep's "8 hrs", Keyboard's board), and on the wall those need their
+ * habit back: "Sleep · 8 hrs" reads, "8 hrs" alone does not.
+ */
+const qualify = (habit: MHabit, label: string): string =>
+  label === habit.name ? habit.name : `${habit.name} · ${label}`;
+
 export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
   const { day } = input;
   const items: MilestoneItem[] = [];
+  const streaks: ContinuingStreak[] = [];
   const habitById = new Map(input.habits.map((h) => [h.id, h]));
   const rowsByHabit = new Map<string, MSession[]>();
   for (const s of input.sessions) {
@@ -353,24 +419,28 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
 
     // ── Thresholds · Nth day (per SUBJECT) + the streak record + continuing ──
     for (const subject of daySubjects(habit, rows, input.cats)) {
+      const named = qualify(habit, subject.label);
       const idx = subject.days.indexOf(day);
       if (idx >= 0) {
         const n = idx + 1;
         const crossed = ladderCrossings(ladderFor(habit.ladders, "days"), n - 1, n);
-        for (const v of crossed)
-          items.push({
-            family: "threshold",
-            text: `${ordinal(v)} ${subject.label} day`,
-          });
+        for (const v of crossed) items.push(item("threshold", ordinal(v), named, "count"));
       }
       // 3 · the streak record fires on OVERTAKING, never on extending
-      if (runEndingAt(subject.days, day) >= 2) continuingStreaks++;
+      const run = runEndingAt(subject.days, day);
+      if (run >= 2) {
+        continuingStreaks++;
+        const runStart = dayFromIndex(dayIndex(day) - (run - 1));
+        streaks.push({
+          value: `${groupInt(run)} d`,
+          subject: named,
+          longest: run > bestRunBefore(subject.days, runStart),
+          days: run,
+        });
+      }
       const overtook = streakOvertaken(subject.days, day);
       if (overtook != null)
-        items.push({
-          family: "record",
-          text: `${subject.label} ▸ longest streak, ${groupInt(overtook)} days`,
-        });
+        items.push(item("record", `${groupInt(overtook)} d`, `longest ${named} streak`));
     }
 
     if (today.length === 0) continue;
@@ -383,7 +453,7 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
       totalBefore / 60,
       totalNow / 60,
     ))
-      items.push({ family: "threshold", text: `${groupInt(v)} hours of ${habit.name}` });
+      items.push(item("threshold", `${groupInt(v)} h`, habit.name, "total"));
 
     // ── Thresholds · the count measure (words) ───────────────────────────────
     // `source: derived` is EXCLUDED: Keyboard's word count IS Writing's, so
@@ -393,10 +463,14 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
       const cBefore = counted.filter((s) => s.day < day).reduce((a, s) => a + (s.value ?? 0), 0);
       const cNow = counted.filter((s) => s.day <= day).reduce((a, s) => a + (s.value ?? 0), 0);
       for (const v of ladderCrossings(ladderFor(habit.ladders, "words"), cBefore, cNow))
-        items.push({
-          family: "threshold",
-          text: `${groupInt(v)} ${habit.count_unit ?? "logged"} of ${habit.name}`,
-        });
+        items.push(
+          item(
+            "threshold",
+            `${groupInt(v)} ${habit.count_unit ?? "logged"}`,
+            habit.name,
+            "total",
+          ),
+        );
     }
 
     // ── Thresholds · the Nth hour of an ENTRY ────────────────────────────────
@@ -412,7 +486,7 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
           before / 60,
           now / 60,
         ))
-          items.push({ family: "threshold", text: `${groupInt(v)} hours of ${title}` });
+          items.push(item("threshold", `${groupInt(v)} h`, title, "total"));
       }
     }
 
@@ -424,20 +498,18 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
     if (todayTotal > 0 && priorDays.length > 0) {
       const priorBest = Math.max(...priorDays.map(([, v]) => v));
       if (priorBest > 0 && todayTotal > priorBest)
-        items.push({
-          family: "record",
-          text: `${habit.name} ▸ best day, ${(todayTotal / 60).toFixed(1)}h`,
-        });
+        items.push(
+          item("record", hoursMinutes(todayTotal), `best ${habit.name} day`),
+        );
     }
     const priorSessions = rows.filter((s) => s.day < day).map(minutesOf);
     const todayLongest = Math.max(0, ...today.map(minutesOf));
     if (todayLongest > 0 && priorSessions.length > 0) {
       const priorBest = Math.max(...priorSessions);
       if (priorBest > 0 && todayLongest > priorBest)
-        items.push({
-          family: "record",
-          text: `${habit.name} ▸ longest session, ${(todayLongest / 60).toFixed(1)}h`,
-        });
+        items.push(
+          item("record", hoursMinutes(todayLongest), `longest ${habit.name} session`),
+        );
     }
 
     // ── Lifecycle · waves started · the comeback · a habit revived ───────────
@@ -446,10 +518,13 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
     const earlier = habitDays.filter((d) => d < day);
     const previousDay = earlier.length > 0 ? earlier[earlier.length - 1] : null;
     if (previousDay != null && dayGap(previousDay, day) >= 180)
-      items.push({
-        family: "lifecycle",
-        text: `${habit.name} ▸ revived after ${Math.round(dayGap(previousDay, day) / 30)} months`,
-      });
+      items.push(
+        item(
+          "lifecycle",
+          "",
+          `${habit.name} revived after ${Math.round(dayGap(previousDay, day) / 30)} months`,
+        ),
+      );
 
     if (habit.kind === "project") {
       const touched = new Set(today.map((s) => s.entry_fk).filter((e): e is string => e != null));
@@ -463,12 +538,11 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
         let waveNo = 1;
         for (let k = 1; k <= i; k++) if (dayGap(days[k - 1], days[k]) > gapDays) waveNo++;
         const title = input.entryTitle.get(entryId) ?? "an entry";
-        items.push({ family: "lifecycle", text: `${title} ▸ ${ordinal(waveNo)} run` });
+        items.push(item("lifecycle", ordinal(waveNo), `wave of ${title}`));
         if (gap >= 365)
-          items.push({
-            family: "lifecycle",
-            text: `${title} ▸ back after ${Math.floor(gap / 365)}y`,
-          });
+          items.push(
+            item("lifecycle", "", `${title} back after ${Math.floor(gap / 365)}y away`),
+          );
       }
 
       // ── Rank change · the leaderboard OVERTAKE, top spot only ─────────────
@@ -489,12 +563,18 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
       const beforeTop = topOf(totalsTo(previousDay ?? "0000-01-01"));
       const nowTop = topOf(totalsTo(day));
       if (beforeTop != null && nowTop != null && beforeTop !== nowTop)
-        items.push({
-          family: "rank",
-          // "shorten" (user-ruled): a subject and a short predicate, the house
-          // form — the naming of BOTH parties lives on the wall's rank card.
-          text: `${input.entryTitle.get(nowTop) ?? "an entry"} ▸ now your most-played`,
-        });
+        // "shorten" (user-ruled): a subject and a short predicate. The card
+        // names BOTH parties, which is what the exhibit's Rank-change sentence
+        // does; the banner only ever counts, so it never carries the sentence.
+        items.push(
+          item(
+            "rank",
+            "",
+            `${input.entryTitle.get(nowTop) ?? "an entry"} passed ${
+              input.entryTitle.get(beforeTop) ?? "an entry"
+            } as most-played`,
+          ),
+        );
     }
 
     // ── Anniversaries · the habit's first session ───────────────────────────
@@ -502,10 +582,13 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
     if (first != null && first.slice(5) === day.slice(5) && first < day) {
       const years = Number(day.slice(0, 4)) - Number(first.slice(0, 4));
       if (years >= 1)
-        items.push({
-          family: "anniversary",
-          text: `${habit.name} ▸ ${years} ${years === 1 ? "year" : "years"} tracked`,
-        });
+        items.push(
+          item(
+            "anniversary",
+            `${years} ${years === 1 ? "year" : "years"}`,
+            `of ${habit.name}`,
+          ),
+        );
     }
   }
 
@@ -513,37 +596,45 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
   const allBefore = input.sessions.filter((s) => s.day < day).length;
   const allNow = input.sessions.filter((s) => s.day <= day).length;
   for (const v of ladderCrossings(DEFAULT_LADDERS.sessions, allBefore, allNow))
-    items.push({ family: "threshold", text: `${ordinal(v)} session logged` });
+    items.push(item("threshold", ordinal(v), "session logged", "count"));
 
   // ── Lifecycle · Nth entry finished ──────────────────────────────────────────
   const finishedToday = input.entriesCompleted.filter((e) => e.completed === day);
   for (const e of finishedToday) {
     const n = input.entriesCompleted.filter((o) => o.habit_fk === e.habit_fk && o.completed <= day).length;
     const habit = habitById.get(e.habit_fk);
-    items.push({
-      family: "lifecycle",
-      text: `${input.entryTitle.get(e.id) ?? "an entry"} ▸ ${ordinal(n)} ${habit?.name ?? ""} finish`.trim(),
-    });
+    items.push(
+      item(
+        "lifecycle",
+        ordinal(n),
+        `${habit?.name ?? ""} finished — ${input.entryTitle.get(e.id) ?? "an entry"}`.trim(),
+      ),
+    );
   }
 
   // ── Anniversaries · the app's own start date ────────────────────────────────
   if (input.appStart != null && input.appStart.slice(5) === day.slice(5) && input.appStart < day) {
     const years = Number(day.slice(0, 4)) - Number(input.appStart.slice(0, 4));
     if (years >= 1)
-      items.push({
-        family: "anniversary",
-        text: `Cibo ▸ ${years} ${years === 1 ? "year" : "years"} of tracking`,
-      });
+      items.push(
+        item(
+          "anniversary",
+          `${years} ${years === 1 ? "year" : "years"}`,
+          "of tracking with Cibo",
+        ),
+      );
   }
 
   const recordCount = items.filter((i) => i.family === "record").length;
   const milestoneCount = items.length - recordCount;
+  streaks.sort((a, b) => b.days - a.days || a.subject.localeCompare(b.subject));
 
   return {
     items,
     milestoneCount,
     recordCount,
     continuingStreaks,
+    streaks,
     ...bannerText(milestoneCount, recordCount, continuingStreaks),
   };
 }

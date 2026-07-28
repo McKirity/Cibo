@@ -63,7 +63,9 @@ export interface VerdictCellVM {
 
 export interface RibbonColVM {
   weekNum: number;
-  cells: { cls: string; tip: string | null }[]; // 7, Mon-first
+  /** 7, Mon-first. `day` is null for a spilled ghost cell — it belongs to the
+   *  neighbouring period, so it is not this ribbon's door. */
+  cells: { cls: string; tip: string | null; day: string | null }[];
   /** A section boundary follows this column (quarterly: month · yearly: quarter). */
   monthTick: boolean;
 }
@@ -74,6 +76,8 @@ export interface StatTileVM {
   unit: string | null;
   sub: string;
   door: boolean;
+  /** The day the door opens — live since Daily state 2 landed (2026-07-27). */
+  doorDay?: string | null;
 }
 
 export interface StripVM {
@@ -310,10 +314,10 @@ export function buildCadenceModel(
       const cells = Array.from({ length: 7 }, (_, j) => {
         const day = dayFromIndex(dayIndex(ws) + j);
         const d = byDay.get(day);
-        if (!d) return { cls: "ghost", tip: null }; // spilled (rides the neighbour period)
-        if (d.future) return { cls: "blank", tip: null };
-        if (!d.finalized) return { cls: "unf", tip: dayTips.get(day) || null };
-        return { cls: `i${Math.max(0, d.stage - 1)}`, tip: dayTips.get(day) || null };
+        if (!d) return { cls: "ghost", tip: null, day: null }; // spilled (rides the neighbour period)
+        if (d.future) return { cls: "blank", tip: null, day: null };
+        if (!d.finalized) return { cls: "unf", tip: dayTips.get(day) || null, day };
+        return { cls: `i${Math.max(0, d.stage - 1)}`, tip: dayTips.get(day) || null, day };
       });
       const next = weeks[i + 1];
       return {
@@ -387,6 +391,7 @@ export function buildCadenceModel(
       unit: null,
       sub: s.bestDay ? `${s.bestDay.done} of ${s.bestDay.active} habits` : "",
       door: s.bestDay != null,
+      doorDay: s.bestDay?.day ?? null,
     },
   ];
 

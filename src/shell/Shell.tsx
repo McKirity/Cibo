@@ -12,7 +12,7 @@
  * The dev seed/activation panels ride the Log view — the working loop that
  * turns seeds into rail habits: seed rich → activate → click → dashboard.
  */
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@evolu/react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { evolu } from "../db/evolu";
@@ -43,8 +43,12 @@ const activeHabitsQuery = evolu.createQuery((db) =>
 );
 
 type View =
-  /** The front door. "Launch opens to Daily — there is NO homepage." */
-  | { kind: "daily" }
+  /**
+   * The front door. "Launch opens to Daily — there is NO homepage."
+   * `day` addresses ANY date: a past unfinalized day is the same working state,
+   * date-addressed, and a finalized one is its cover wall. Absent = today.
+   */
+  | { kind: "daily"; day?: string }
   /** The dev logging view — hosts the seed/activation panels until step 15. */
   | { kind: "log" }
   | { kind: "habit"; key: string }
@@ -92,8 +96,20 @@ export function Shell() {
   }, [view, active, replaceView]);
 
   // Back/forward bindings: Alt+←/→ and mouse buttons 4/5 (the ruled set, minus
-  // the chrome arrows below). Ctrl+K and Ctrl+Home wait for their targets —
-  // the palette and Daily are both step 6's catch-up.
+  // the chrome arrows below). `Ctrl+Home` went live 2026-07-27 — its target is
+  // Daily, and Daily now exists in both states. `Ctrl+K` still waits for the
+  // palette.
+  useEffect(() => {
+    const onHome = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Home") {
+        e.preventDefault();
+        setView({ kind: "daily" });
+      }
+    };
+    window.addEventListener("keydown", onHome);
+    return () => window.removeEventListener("keydown", onHome);
+  }, [setView]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
@@ -130,6 +146,20 @@ export function Shell() {
   }, [back, forward]);
 
   const today = todayStr();
+  /**
+   * The one day door every surface routes through. The FUTURE is a dead route
+   * (no target until the date arrives), so it is refused here rather than in
+   * each caller — the cadence cells, the entry day log, Rediscover and the
+   * catch-up card all come through this.
+   */
+  const openDay = useCallback(
+    (day: string) => {
+      if (day > today) return;
+      setView({ kind: "daily", day });
+    },
+    [setView, today],
+  );
+
   const title =
     view.kind === "habit"
       ? active.find((h) => h.key === view.key)?.name ?? "Cibo"
@@ -137,7 +167,16 @@ export function Shell() {
         ? active.find((h) => h.key === view.habitKey)?.name ?? "Cibo"
         : view.kind === "cadence"
           ? { week: "Weekly", month: "Monthly", quarter: "Quarterly", year: "Yearly" }[view.scale]
-          : "Today";
+          : view.kind === "daily" && view.day != null && view.day !== today
+            ? // The FINAL's titlebar carries the viewed day, not the word
+              // "Today", the moment the screen is date-addressed.
+              new Intl.DateTimeFormat(undefined, {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              }).format(new Date(`${view.day}T12:00:00`))
+            : "Today";
   const monthName = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(today.slice(5, 7)) - 1];
 
   return (
@@ -278,6 +317,7 @@ export function Shell() {
             entryId={view.id}
             onOpenHabit={(key) => setView({ kind: "habit", key })}
             onOpenEntry={(id) => setView({ kind: "entry", id, habitKey: view.habitKey })}
+            onOpenDay={openDay}
           />
         ) : view.kind === "cadence" ? (
           <CadenceDashboard
@@ -286,9 +326,17 @@ export function Shell() {
             anchor={view.anchor}
             onNavigate={(nav) => setView({ kind: "cadence", scale: nav.scale, anchor: nav.anchor })}
             onOpenHabit={(key) => setView({ kind: "habit", key })}
+            onOpenDay={openDay}
           />
         ) : view.kind === "daily" ? (
-          <Daily />
+          <Daily
+            key={view.day ?? today}
+            dayKey={view.day}
+            onOpenDay={openDay}
+            onOpenEntry={(id, habitKey) => {
+              if (habitKey != null) setView({ kind: "entry", id, habitKey });
+            }}
+          />
         ) : (
           <LogView />
         )}

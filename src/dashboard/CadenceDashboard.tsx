@@ -5,8 +5,10 @@
  * tile stat block as its aside) · composition · review · habit rows.
  *
  * Doors wired: prev/next arrows · the containment updoors · habit rows → the
- * habit dashboards. Day-cell doors (verdict calendar → Daily) stay INERT —
- * the Daily screen is a later step; the cells keep their tooltips.
+ * habit dashboards. Day-cell doors (verdict calendar · weekly strip · quarterly
+ * ribbon · the Best-day tile) went LIVE 2026-07-27 with Daily state 2 — every
+ * past day is a door to its cover wall, and a FUTURE day stays a dead route
+ * (no target until the date arrives).
  */
 import { useMemo, useState } from "react";
 import { buildCadenceModel, type CadenceModel, type HabitRowVM, type StripVM } from "./cadenceSpec";
@@ -30,11 +32,13 @@ export function CadenceDashboard({
   anchor,
   onNavigate,
   onOpenHabit,
+  onOpenDay,
 }: {
   scale: CadenceScale;
   anchor: string;
   onNavigate: (nav: CadenceNav) => void;
   onOpenHabit: (habitKey: string) => void;
+  onOpenDay?: (day: string) => void;
 }) {
   const data = useCadenceData();
   const today = todayLocal();
@@ -48,6 +52,8 @@ export function CadenceDashboard({
       model={model}
       onNavigate={onNavigate}
       onOpenHabit={onOpenHabit}
+      onOpenDay={onOpenDay}
+      today={today}
     />
   );
 }
@@ -56,11 +62,19 @@ function CadenceView({
   model,
   onNavigate,
   onOpenHabit,
+  onOpenDay,
+  today,
 }: {
   model: CadenceModel;
   onNavigate: (nav: CadenceNav) => void;
   onOpenHabit: (key: string) => void;
+  onOpenDay?: (day: string) => void;
+  today: string;
 }) {
+  // A past or present day is a door to its cover wall; the future is a dead
+  // route, which is the same rule the prev/next arrows already obey.
+  const dayDoor = (day: string | null | undefined) =>
+    onOpenDay != null && day != null && day <= today ? () => onOpenDay(day) : undefined;
   const m = model;
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [allOpen, setAllOpen] = useState(false);
@@ -132,34 +146,40 @@ function CadenceView({
               <div className="vhdr"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
               <div className="vcal">
                 {Array.from({ length: m.verdict.lead }, (_, i) => <div key={`b${i}`} className="vc blank" />)}
-                {m.verdict.cells.map((c, i) => (
-                  <div key={c.day ?? `x${i}`} className={`vc ${c.cls}${c.best ? " best" : ""}`} title={c.tip ?? undefined}>
+                {m.verdict.cells.map((c, i) => {
+                  const go = dayDoor(c.day);
+                  return (
+                  <div key={c.day ?? `x${i}`} className={`vc ${c.cls}${c.best ? " best" : ""}${go ? " door" : ""}`} title={c.tip ?? undefined} onClick={go} role={go ? "button" : undefined} tabIndex={go ? 0 : undefined} onKeyDown={go ? onKeyActivate(go) : undefined}>
                     <span className="dn">{c.label}</span>
                     {c.cls === "gap" && <span className="hc">gap · 0/{c.active}</span>}
                     {c.cls === "unf" && <span className="hc">unfinalized</span>}
                     {c.best && c.done != null && <span className="hc">best · {c.done}/{c.active}</span>}
                   </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="calnote"><b>Shade</b> = habits done · <b>dashed</b> = unfinalized · <b>ring</b> = best day</div>
             </div>
-            <StatGrid m={m} cols={2} />
+            <StatGrid m={m} cols={2} dayDoor={dayDoor} />
           </div>
         )}
         {m.verdict.kind === "strip" && (
           <>
             <div className="wstrip">
-              {m.verdict.cells.map((c, i) => (
-                <div key={c.day ?? i} className={`wcol ${c.cls}${c.best ? " best" : ""}`} title={c.tip ?? undefined}>
+              {m.verdict.cells.map((c, i) => {
+                const go = dayDoor(c.day);
+                return (
+                <div key={c.day ?? i} className={`wcol ${c.cls}${c.best ? " best" : ""}${go ? " door" : ""}`} title={c.tip ?? undefined} onClick={go} role={go ? "button" : undefined} tabIndex={go ? 0 : undefined} onKeyDown={go ? onKeyActivate(go) : undefined}>
                   <span className="wdow">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}</span>
                   <span className="wdate">{c.label}</span>
                   <span className="wcount">{c.done != null ? <>{c.done}<span className="u"> / {c.active}</span></> : "—"}</span>
                   <span className="wfin">{c.cls === "unf" ? "unfinalized — unknown" : c.cls === "blank future" ? "future" : c.best ? "best day · finalized" : "finalized"}</span>
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div className="calnote"><b>Shade</b> = habits done · <b>dashed</b> = unfinalized · <b>ring</b> = best day</div>
-            <StatGrid m={m} cols={6} />
+            <StatGrid m={m} cols={6} dayDoor={dayDoor} />
           </>
         )}
         {m.verdict.kind === "ribbon" && (
@@ -169,9 +189,10 @@ function CadenceView({
                 {m.verdict.cols.map((col) => (
                   <div key={col.weekNum} className={`${m.scale === "year" ? "hcol" : "rcol"}${col.monthTick ? (m.scale === "year" ? " qtick" : " tick") : ""}`}>
                     {m.scale === "quarter" && <span className="wklab">{col.weekNum}</span>}
-                    {col.cells.map((c, i) => (
-                      <div key={i} className={`ncell ${c.cls}`} title={c.tip ?? undefined} />
-                    ))}
+                    {col.cells.map((c, i) => {
+                      const go = dayDoor(c.day);
+                      return <div key={i} className={`ncell ${c.cls}${go ? " door" : ""}`} title={c.tip ?? undefined} onClick={go} role={go ? "button" : undefined} />;
+                    })}
                   </div>
                 ))}
               </div>
@@ -189,7 +210,7 @@ function CadenceView({
               )}
             </div>
             <div className={m.scale === "year" ? "heataside" : "ribbonaside"}>
-              <StatGrid m={m} cols={m.scale === "year" ? 6 : 3} />
+              <StatGrid m={m} cols={m.scale === "year" ? 6 : 3} dayDoor={dayDoor} />
             </div>
           </div>
         )}
@@ -323,19 +344,30 @@ function CadenceView({
   );
 }
 
-function StatGrid({ m, cols }: { m: CadenceModel; cols: number }) {
+function StatGrid({ m, cols, dayDoor }: { m: CadenceModel; cols: number; dayDoor: (d: string | null | undefined) => (() => void) | undefined }) {
   return (
     <div className={`statgrid c${cols}`}>
-      {m.stats.map((t) => (
-        <div key={t.label} className={`tile${t.door ? " doortile" : ""}`} title={t.door ? "Day doors arrive with the Daily screen" : undefined}>
+      {m.stats.map((t) => {
+        const go = t.door ? dayDoor(t.doorDay) : undefined;
+        return (
+        <div key={t.label} className={`tile${t.door ? " doortile" : ""}`} title={go ? "Open this day" : undefined} onClick={go} role={go ? "button" : undefined} tabIndex={go ? 0 : undefined} onKeyDown={go ? onKeyActivate(go) : undefined}>
           <span className="tl">{t.label}</span>
           <span className={`tv${t.door ? " date" : ""}`}>{t.value}{t.unit && <span className="u">{t.unit}</span>}</span>
           <span className="ts">{t.sub}</span>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
+
+/** Enter/Space on a non-button door — the corpus draws these as plain cells. */
+const onKeyActivate = (fn: () => void) => (e: React.KeyboardEvent) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    fn();
+  }
+};
 
 function StackChart({ data, weekly }: { data: { totals: number[]; segs: { colour: string; minutes: number }[][] }; weekly: boolean }) {
   const max = Math.max(1, ...data.totals);

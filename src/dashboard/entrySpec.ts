@@ -144,7 +144,7 @@ export interface LaneWave {
 }
 
 export type WavePart =
-  | { kind: "wave"; buckets: WaveBucket[]; waves: LaneWave[]; xlabel: string; xlabelEnd?: string }
+  | { kind: "wave"; buckets: WaveBucket[]; waves: LaneWave[]; xlabelEnd?: "now" }
   | { kind: "break"; label: string };
 
 /** A chapter-track era span. Captions list eras PLAINLY — "Era N", no span or
@@ -185,9 +185,9 @@ export interface WavesSpec {
   subLabel: string | null;
   parts: WavePart[];
   /** Bookend markers anchor to their TRUE day (2026-07-24 coherence pass —
-   *  edge-pinning let the line drift from the data); `at` keeps the label's
-   *  flip side for the band edges. */
-  markers: { day: string; at: "start" | "end"; label: string; colorVar: string }[];
+   *  edge-pinning let the line drift from the data); the renderer flips the
+   *  label geometrically when it nears the band edge. */
+  markers: { day: string; label: string; colorVar: string }[];
   eras: EraSpan[];
   table: {
     amountHeader: string; // "Written" / "Played" / "Worked"
@@ -829,15 +829,14 @@ function buildWaves(
       };
     });
     const isLast = ri === runs.length - 1;
-    // The end label only draws when the run is long enough for the two labels
-    // not to collide (the label-collision fix).
-    const endLabel = isLast && span >= 60 ? (ongoing ? "now" : fmtMonY(monthKey(end))) : undefined;
+    // Only the "now" cap renders — the band draws its own month/year axis, so
+    // dated end labels have no consumer. The span guard is the label-collision
+    // fix: no cap on a run too short to hold it.
     parts.push({
       kind: "wave",
       buckets: buckets.length > 0 ? buckets : [{ v: 0, s: start, len: 1 }],
       waves: lane,
-      xlabel: fmtMonY(monthKey(start)),
-      xlabelEnd: endLabel,
+      xlabelEnd: isLast && span >= 60 && ongoing ? "now" : undefined,
     });
   });
 
@@ -846,11 +845,11 @@ function buildWaves(
   const markers: WavesSpec["markers"] = [];
   if (template === "creation") {
     if (entry.started != null)
-      markers.push({ day: entry.started, at: "start", label: `▲ started ${fmtDMY(entry.started)}`, colorVar: "--verdict-done" });
+      markers.push({ day: entry.started, label: `▲ started ${fmtDMY(entry.started)}`, colorVar: "--verdict-done" });
     if (entry.completed != null)
-      markers.push({ day: entry.completed, at: "end", label: `■ completed ${fmtDMY(entry.completed)}`, colorVar: "--cat-4" });
+      markers.push({ day: entry.completed, label: `■ completed ${fmtDMY(entry.completed)}`, colorVar: "--cat-4" });
   } else if (waves.length > 0) {
-    markers.push({ day: waves[0].start, at: "start", label: "◀ first session", colorVar: "--text-muted" });
+    markers.push({ day: waves[0].start, label: "◀ first session", colorVar: "--text-muted" });
   }
 
   // ── Chapter-track era spans (plain labels — the 2026-07-24 ruling) ──

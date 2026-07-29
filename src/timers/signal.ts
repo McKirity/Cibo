@@ -1,0 +1,62 @@
+/**
+ * Build step 7 — the end-of-interval SIGNAL.
+ *
+ * "Countdown/pomodoro end-of-interval signals: sound by default, style
+ * configurable in Settings" — the style control is step 10's; this ships the
+ * default. The signal passes the pinned notification fence ("did the user
+ * start something that ends?") — a completion signal for a user-started clock,
+ * never a reminder; the app still builds no notification infrastructure.
+ *
+ * When the window is unfocused or minimized the OS is asked for attention
+ * (user-ruled 2026-07-28: "throw up some kind of system flag or allow the icon
+ * on the docket to glow") — taskbar flash on Windows, dock bounce on macOS.
+ * Same fence: it fires only at a boundary the user scheduled.
+ */
+import { getCurrentWindow, UserAttentionType } from "@tauri-apps/api/window";
+import type { Boundary } from "./timerCore";
+
+let ctx: AudioContext | null = null;
+
+/** A small two-tone chime, synthesized — no bundled asset, no network. */
+const chime = () => {
+  try {
+    ctx ??= new AudioContext();
+    const t0 = ctx.currentTime;
+    for (const [freq, at] of [
+      [880, 0],
+      [1174.66, 0.18],
+    ] as const) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t0 + at);
+      gain.gain.exponentialRampToValueAtTime(0.18, t0 + at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.6);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0 + at);
+      osc.stop(t0 + at + 0.65);
+    }
+  } catch {
+    /* no audio device — the visual state change is the fallback */
+  }
+};
+
+const flagAttention = () => {
+  try {
+    if (document.hasFocus()) return;
+    void getCurrentWindow()
+      .requestUserAttention(UserAttentionType.Informational)
+      .catch(() => {});
+  } catch {
+    /* not in a Tauri webview */
+  }
+};
+
+export const fireSignal = (boundary: Exclude<Boundary, null>): void => {
+  // Every boundary sounds; a break-end is quieter business (the clock keeps
+  // running) but still a completion the user scheduled.
+  void boundary;
+  chime();
+  flagAttention();
+};

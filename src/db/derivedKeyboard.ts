@@ -163,24 +163,3 @@ export const syncDerivedKeyboardForDay = async (
   }
   return updated;
 };
-
-/** Refresh control: force a Keyboard session back to Writing's current total. */
-export const refreshKeyboardSession = async (
-  evolu: CiboEvolu,
-  id: SessionId,
-  day: string,
-): Promise<boolean> => {
-  const words = await writingWordsForDay(evolu, day);
-  const w = resolveKeyboardWrite("refresh", { source: "derived", value: null }, words);
-  return w ? writeKeyboard(evolu, id, w) : false;
-};
-
-/** Override: detach a Keyboard word count to a hand-entered value. */
-export const overrideKeyboardSession = (
-  evolu: CiboEvolu,
-  id: SessionId,
-  value: number,
-): boolean => {
-  const w = resolveKeyboardWrite("override", { source: "manual", value: null }, 0, value);
-  return w ? writeKeyboard(evolu, id, w) : false;
-};

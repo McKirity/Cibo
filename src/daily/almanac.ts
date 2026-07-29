@@ -17,7 +17,7 @@
  * locale-specific and the user has not picked one, so swapping this array is the
  * whole change.
  */
-import type { DatedEvent, WhimsyConfig } from "./whimsyConfig";
+import type { DatedEvent } from "./whimsyConfig";
 import { dayStart } from "./sky";
 
 const DAY_MS = 86_400_000;
@@ -348,39 +348,6 @@ export function countdowns(events: DatedEvent[], dayKey: string): Countdown[] {
   );
 }
 
-export interface Lifetime {
-  days: number;
-  years: number;
-  /** Progress through the current year of life, 0…1. */
-  yearProgress: number;
-  nextBirthdayDays: number;
-}
-
-/** Null when no birthdate is configured — the card is absent, not zeroed. */
-export function lifetime(birthdate: string | null, dayKey: string): Lifetime | null {
-  if (!birthdate) return null;
-  const born = dayStart(birthdate);
-  const today = dayStart(dayKey);
-  if (born.getTime() > today.getTime()) return null;
-  const days = Math.floor((today.getTime() - born.getTime()) / DAY_MS);
-
-  let years = today.getFullYear() - born.getFullYear();
-  const hadBirthday =
-    today.getMonth() > born.getMonth() ||
-    (today.getMonth() === born.getMonth() && today.getDate() >= born.getDate());
-  if (!hadBirthday) years -= 1;
-
-  const lastBd = new Date(today.getFullYear() - (hadBirthday ? 0 : 1), born.getMonth(), born.getDate());
-  const nextBd = new Date(today.getFullYear() + (hadBirthday ? 1 : 0), born.getMonth(), born.getDate());
-  const span = nextBd.getTime() - lastBd.getTime();
-  return {
-    days,
-    years,
-    yearProgress: span > 0 ? (today.getTime() - lastBd.getTime()) / span : 0,
-    nextBirthdayDays: Math.round((nextBd.getTime() - today.getTime()) / DAY_MS),
-  };
-}
-
 /**
  * The zodiac sign, from the birthdate. The horoscope's PROSE is ephemeral and
  * network-fed, but the sign is a pure function of the birthdate — so the card's
@@ -425,6 +392,3 @@ export function sunSign(birthdate: string | null): SunSign | null {
   }
   return { name: "Capricorn", glyph: "♑" };
 }
-
-/** The config a card needs, narrowed so cards don't take the whole object. */
-export type AlmanacConfig = Pick<WhimsyConfig, "birthdate" | "events">;

@@ -215,8 +215,6 @@ export function Daily({
   }, []);
   const appYears = useMemo(() => appAnniversary(appStart, dayKey), [appStart, dayKey]);
 
-  const holiday = <HolidayCard dayKey={dayKey} />;
-
   // Recent unfinalized days, today excluded — today is not "behind".
   const unfinalizedRows = useQuery(unfinalizedQuery);
   const catchUp = useMemo(
@@ -268,7 +266,7 @@ export function Daily({
             trackingYears={trackingYears}
             appYears={appYears}
           />
-          {holiday}
+          <HolidayCard dayKey={dayKey} />
           <TimeProgressCard dayKey={dayKey} now={now} />
         </div>
       </div>

@@ -10,6 +10,13 @@
     "core:window:allow-toggle-maximize",
     "core:window:allow-close",
     "core:window:allow-start-dragging",
+    "core:window:allow-unminimize",
+    "core:window:allow-is-minimized",
+    "core:window:allow-set-focus",
+    "core:window:allow-request-user-attention",
+    "core:tray:default",
+    "core:image:default",
+    "core:app:allow-default-window-icon",
     {
       "identifier": "http:default",
       "allow": [

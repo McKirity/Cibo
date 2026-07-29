@@ -56,142 +56,6 @@
 .daily {
   a, .door { color:var(--accent); text-decoration:none; cursor:pointer; }
   a:hover, .door:hover { color: color-mix(in oklch, var(--accent), var(--text-strong) var(--hover-shift)); }
-  .door-dotted { color:var(--text-secondary); text-decoration:underline dotted var(--border);
-                   text-underline-offset:3px; cursor:pointer;
-                   transition:color var(--motion-fast) var(--ease-standard); }
-  .door-dotted:hover { color:var(--accent); }
-  /* lucide icon base — stroke-drawn, doors/actions only */
-    .ico { width:var(--icon-size); height:var(--icon-size); flex:0 0 auto;
-           stroke:currentColor; stroke-width:var(--icon-stroke); fill:none;
-           stroke-linecap:round; stroke-linejoin:round; display:block; }
-  .ico.sm { width:var(--icon-size-small); height:var(--icon-size-small); }
-  /* ================= desk head ================= */
-    .desk-head { padding:var(--space-7) var(--space-8) var(--space-6); color:var(--window-background); }
-  .desk-head h1 { font-family:var(--font-heading); font-size:var(--size-display);
-                    font-weight:var(--weight-bold); line-height:var(--line-tight); margin:0; letter-spacing:-.01em; }
-  .desk-head .sub { font-size:var(--size-subheading); opacity:.82; margin:var(--space-4) 0 0; max-width:110ch; }
-  .desk-head .chips { display:flex; gap:var(--space-4); flex-wrap:wrap; margin-top:var(--space-5); }
-  .desk-head .chip { font-size:var(--size-small); font-weight:var(--weight-medium);
-                       padding:var(--space-2) var(--space-5); border-radius:var(--radius-full);
-                       background: color-mix(in oklch, var(--window-background), transparent 82%);
-                       border:var(--border-hairline) solid color-mix(in oklch, var(--window-background), transparent 70%); }
-  .page { width:2560px; margin:0 auto; }
-  .tb-btn { display:flex; align-items:center; justify-content:center; gap:var(--space-3);
-      height:var(--titlebar-height); padding:0 var(--space-5);
-      background:transparent; border:none; cursor:pointer; color:var(--text-secondary);
-      font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium);
-      transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
-  .tb-btn:hover { background:var(--hover-wash); color:var(--text-strong); }
-  .tb-btn.disabled { color:var(--text-muted); pointer-events:none; opacity:.55; }
-  .tb-btn.close:hover { background:var(--danger); color:var(--text-on-filled); }
-  .drag .title { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-                   white-space:nowrap; font-size:var(--size-small); font-weight:var(--weight-medium);
-                   color:var(--text-secondary); letter-spacing:.01em; }
-  .restore { position:relative; display:none; }
-  .restore .dot { position:absolute; top:6px; right:6px; width:var(--dot-size); height:var(--dot-size);
-                    border-radius:var(--radius-full); background:var(--attention-dot);
-                    box-shadow:0 0 0 var(--border-heavy) var(--window-background); }
-  #frame[data-frame-state="collapsed"] .tb .restore { display:flex; }
-  .overline { font-size:var(--size-caption); font-weight:var(--weight-bold);
-                letter-spacing:.09em; text-transform:uppercase; color:var(--text-muted);
-                margin:0 0 var(--space-4); }
-  .calhead { display:grid; grid-template-columns:1fr auto; align-items:start; margin-bottom:var(--space-4); }
-  .calhead .chain { display:flex; gap:var(--space-4); font-size:var(--size-small); }
-  .doorlink { color:var(--text-secondary); text-decoration:underline dotted var(--border);
-                text-underline-offset:3px; cursor:pointer; transition:color var(--motion-fast) var(--ease-standard); }
-  .doorlink:hover { color:var(--accent); }
-  .calhead .month { grid-column:1 / -1; margin-top:calc(-1 * var(--space-5)); text-align:center;
-                      font-family:var(--font-heading); font-size:var(--size-heading);
-                      font-weight:var(--weight-bold); line-height:var(--line-tight); color:var(--text-strong); cursor:pointer; }
-  .calhead .month:hover { color:var(--accent); }
-  .jump { display:flex; align-items:center; gap:var(--space-3); padding:var(--space-2) var(--space-4);
-            background:transparent; border:var(--border-hairline) solid var(--border);
-            border-radius:var(--radius-small); color:var(--text-secondary);
-            font-family:var(--font-ui); font-size:var(--size-caption); font-weight:var(--weight-medium);
-            cursor:pointer; transition:background var(--motion-fast) var(--ease-standard); }
-  .jump:hover { background:var(--hover-wash); color:var(--text-strong); }
-  .cal { display:grid; grid-template-columns:var(--week-col-width) repeat(7,1fr); gap:var(--space-1); align-items:stretch; }
-  .cal .dow { text-align:center; font-size:var(--size-caption); color:var(--text-muted);
-                padding-bottom:var(--space-3); border-bottom:var(--border-hairline) solid var(--divider); }
-  .cal .wk { display:flex; align-items:center; justify-content:center; font-size:var(--size-caption);
-               color:var(--text-muted); cursor:pointer; padding-right:var(--space-3);
-               border-right:var(--border-hairline) solid var(--divider); transition:color var(--motion-fast) var(--ease-standard); }
-  .cal .wk:empty { border-right:none; cursor:default; }
-  .cal .wk:hover { color:var(--accent); }
-  .cal .wk.cur { color:var(--accent); font-weight:var(--weight-bold); }
-  .cal .d { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center;
-              gap:var(--space-1); min-height:var(--cal-cell-min-h); aspect-ratio:1/1; border-radius:var(--radius-small);
-              font-size:var(--size-small); color:var(--text-strong); transition:background var(--motion-fast) var(--ease-standard); }
-  .cal .d .m { width:var(--marker-size); height:var(--marker-size); border-radius:var(--radius-full); }
-  .cal .d.empty { color:var(--text-secondary); cursor:pointer; }
-  .cal .d.future { color:var(--text-muted); pointer-events:none; }
-  .cal .d.out { color: color-mix(in oklch, var(--text-muted), var(--panel-background) var(--fade)); }
-  .cal .d.fin .m { background:var(--finalize-mark); }
-  .cal .d.fin:hover, .cal .d.today:hover, .cal .d.empty:hover, .cal .d.unf:hover { background:var(--hover-wash); cursor:pointer; }
-  .cal .d.today { color:var(--accent); font-weight:var(--weight-bold); background:var(--today-wash);
-                    box-shadow:inset 0 0 0 var(--border-heavy) var(--accent); cursor:pointer; }
-  /* catch-up state: in-month unfinalized days outline in the attention colour,
-       their marker flips to a HOLLOW ring (open, not colour alone) */
-    #frame[data-frame-state="catchup"] .cal .d.unf {
-      box-shadow:inset 0 0 0 var(--border-standard) var(--attention-dot); }
-  #frame[data-frame-state="catchup"] .cal .d.unf .m {
-      background:transparent; box-shadow:inset 0 0 0 var(--border-standard) var(--attention-dot); }
-  /* catch-up flag (lit only in catch-up state) — same signal as the almanac's catch-up card */
-    .catch-flag { display:none; align-items:center; gap:var(--space-4); width:100%;
-                  margin-top:var(--space-5); padding:var(--space-4) var(--space-5);
-                  background: color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-mix));
-                  border:var(--border-hairline) solid color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-border));
-                  border-radius:var(--radius-small); cursor:pointer; text-align:left;
-                  font-family:var(--font-ui); color:var(--text-strong);
-                  transition:background var(--motion-fast) var(--ease-standard); }
-  .catch-flag:hover { background: color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-hover)); }
-  .catch-flag .dot { width:var(--dot-size); height:var(--dot-size); border-radius:var(--radius-full);
-                       background:var(--attention-dot); flex:0 0 auto; }
-  .catch-flag .lbl { font-size:var(--size-small); font-weight:var(--weight-medium); }
-  .catch-flag .cnt { margin-left:auto; font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-secondary); }
-  #frame[data-frame-state="catchup"] .catch-flag { display:flex; }
-  .entry { display:flex; align-items:center; gap:var(--space-5); width:100%;
-             padding:var(--space-4) var(--space-4); border:var(--border-hairline) solid var(--divider); background:transparent;
-             border-radius:var(--radius-small); cursor:pointer; text-align:left; font-family:var(--font-ui); color:var(--rail-text);
-             transition:background var(--motion-fast) var(--ease-standard); }
-  .entry + .entry { margin-top:var(--space-2); }
-  .entry:hover { background:var(--hover-wash); }
-  .entry.active { background:var(--selected-wash); box-shadow:inset var(--border-heavy) 0 0 var(--accent); }
-  .entry .swatch { width:var(--swatch-size); height:var(--swatch-size); border-radius:var(--radius-small); flex:0 0 auto;
-                     display:flex; align-items:center; justify-content:center; color:var(--text-on-filled);
-                     font-family:var(--font-heading); font-size:var(--size-small); font-weight:var(--weight-bold); }
-  .entry .name { font-size:var(--size-body); font-weight:var(--weight-medium); }
-  /* Habits — two per row, grouped (Projects / Daily) · added 2026-07-11.
-       A 2-col grid over the same kit-entry-rail buttons keeps the section short
-       on the compact/MacBook canvas; a kind-derived sub-group label heads each
-       grid. Empty groups are not rendered (handled in markup, per Nav Rail). */
-    .habitgrid { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-2); }
-  .habitgrid .entry { gap:var(--space-4); padding:calc(var(--frame-clear-hcard) + var(--space-4)); min-width:0; }
-  .habitgrid .entry + .entry { margin-top:0; }
-  .subgroup { font-size:var(--size-caption); font-weight:var(--weight-medium);
-                color:var(--text-secondary); letter-spacing:.02em; margin:0 0 var(--space-3); }
-  .habitgrid + .subgroup { margin-top:var(--space-5); }
-  .tools { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); }
-  .tool { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--space-3);
-            padding:calc(var(--frame-clear-tool) + var(--space-4)); background:var(--window-background); border:var(--border-hairline) solid var(--divider);
-            border-radius:var(--radius-medium); cursor:pointer; color:var(--text-secondary); text-align:center;
-            font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium);
-            transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
-  .tool:hover { background:var(--hover-wash); color:var(--text-strong); }
-  .tool .ico { color:var(--text-secondary); }
-  .tool:hover .ico { color:var(--text-strong); }
-  .ambience { flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:var(--space-3); }
-  .ambience .clock { width:auto; height:100%; max-height:var(--clock-max); max-width:100%; aspect-ratio:1 / 1; }
-  .settings-row { display:flex; align-items:center; gap:var(--space-5); width:100%; padding:var(--space-4); border:none;
-                    background:transparent; border-radius:var(--radius-small); cursor:pointer; text-align:left;
-                    font-family:var(--font-ui); color:var(--rail-text); transition:background var(--motion-fast) var(--ease-standard); }
-  .settings-row:hover { background:var(--hover-wash); }
-  .settings-row .name { font-size:var(--size-body); font-weight:var(--weight-medium); }
-  .settings-row .ico { color:var(--text-secondary); }
-  .clock .sweep { transform-box:view-box; transform-origin:60px 60px; animation:clock-sweep 60s linear infinite; }
-  /* rail collapse reflows the content canvas 2180 -> 2560 (derived 2560 − --rail-width) */
-    #frame[data-frame-state="collapsed"] .rail { display:none; }
-  #frame[data-frame-state="collapsed"] { grid-template-columns:0 1fr; }
   /* header strip */
     .dayhdr { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; }
   .dayhdr .date { font-family:var(--font-heading); font-size:var(--size-display);
@@ -314,12 +178,6 @@
   .wx .cond { font-size:var(--whimsy-size-small); color:var(--text-secondary); margin-top:var(--space-2); }
   .wx .hl { font-family:var(--font-mono); font-size:var(--whimsy-size-small); color:var(--text-muted); margin-top:var(--space-2); }
   /* ---- SEASON · YEAR — the bars stretch the card ---- */
-    .bar { height:var(--space-5); background:var(--inset-background); border-radius:var(--radius-full); overflow:hidden; }
-  .bar.tall { height:var(--space-6); }
-  .bar > i { display:block; height:100%; border-radius:var(--radius-full); }
-  .barline { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:var(--space-4); }
-  .barline b { font-weight:var(--weight-medium); font-size:var(--whimsy-size-subheading); }
-  .barline .kv { color:var(--text-secondary); font-size:var(--whimsy-size-small); }
   .season-head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:var(--space-5); }
   .season-head b { font-size:var(--whimsy-size-subheading); font-weight:var(--weight-medium); }
   .season-head .kv { font-family:var(--font-mono); color:var(--text-secondary); font-size:var(--whimsy-size-small); }
@@ -333,8 +191,6 @@
   .yr-ticks { position:relative; height:18px; margin-top:var(--space-4); }
   .yr-tick { position:absolute; transform:translateX(-50%); font-size:var(--whimsy-size-caption); color:var(--text-muted); white-space:nowrap; }
   .yr-tick::before { content:""; position:absolute; top:-7px; left:50%; width:1px; height:6px; background:var(--border); }
-  .season-trend { font-size:var(--whimsy-size-small); color:var(--text-secondary); margin-top:var(--space-5); display:flex; align-items:baseline; gap:var(--space-3); }
-  .season-trend b { color:var(--text-strong); font-weight:var(--weight-medium); }
   /* ---- MOON — disc on a night ground with a real terminator; 30-day strip over night ---- */
     .moon-card .art { display:flex; flex-direction:column; }
   /* so the field fills & the disc yields (pass-6 fix: strip was clipped) */
@@ -353,8 +209,6 @@
               padding:10px var(--space-6); }
   .pstrip .pd { flex:1 1 0; min-width:0; aspect-ratio:1; display:block; }
   .pstrip .pd svg { width:100%; height:100%; display:block; }
-  .pstrip-cap { font-size:var(--whimsy-size-caption); color:var(--text-muted); margin-top:var(--space-3);
-                  display:flex; justify-content:space-between; }
   /* ---- TONIGHT'S SKY — the screen's one window onto black ---- */
     .night-field { flex:1 1 auto; min-height:0; max-height:var(--sun-arc-h); }
   .night-field::before { background:var(--whimsy-night); }
@@ -424,22 +278,10 @@
   .tp-ring { width:var(--donut-size); height:auto; aspect-ratio:1; max-width:100%; display:block; }
   .tp-lbl { font-size:var(--whimsy-size-caption); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); }
   .tp-note { font-size:var(--whimsy-size-caption); color:var(--text-muted); text-align:center; margin-top:var(--space-5); }
-  /* catch-up card (functional, not whimsy — attention token, card anatomy) */
-    .catch { background: color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-mix));
-             border:var(--border-hairline) solid color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-border)); }
-  .catch .ttl { display:flex; align-items:center; gap:var(--space-4); }
-  .catch .dot { width:var(--dot-size); height:var(--dot-size); border-radius:var(--radius-full); background:var(--attention-dot); flex:0 0 auto; }
-  .catch .lbl { font-size:var(--size-subheading); font-weight:var(--weight-medium); }
-  .catch p { font-size:var(--size-small); color:var(--text-secondary); margin:var(--space-3) 0 var(--space-5); }
-  .catch .acts { display:flex; gap:var(--space-5); font-size:var(--size-small); font-weight:var(--weight-medium); }
   /* =================================================================
        THE FORM SPINE — the logging path. Scrolls independently.
        ================================================================= */
     .spine { min-height:0; display:flex; flex-direction:column; }
-  .spine-head { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
-                  padding:0 var(--space-2) var(--space-4); }
-  .spine-head .t { font-size:var(--size-subheading); font-weight:var(--weight-bold); }
-  .spine-head .n { font-size:var(--size-small); color:var(--text-muted); max-width:62ch; text-align:right; }
   /* pass 7 — the form is lifted out of intrinsic sizing (absolute in .form-wrap)
        so the spine contributes only its head to the triptych's height; the scroll
        region simply fills whatever height the almanac + floor decide. */
@@ -497,7 +339,6 @@
                     border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-full);
                     padding:var(--space-1) var(--space-3); }
   .picker .hint { margin-left:auto; font-size:var(--size-caption); color:var(--text-muted); }
-  .qc { font-size:var(--size-small); font-weight:var(--weight-medium); }
   /* segmented one-of (Stage | Wiki) */
     .seg { display:inline-flex; background:var(--inset-background); border-radius:var(--radius-small); padding:var(--space-1); gap:var(--space-1); }
   .seg span { font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-secondary);
@@ -621,39 +462,6 @@
   .life .r .n { font-family:var(--font-mono); font-size:var(--whimsy-size-heading); font-weight:var(--weight-bold); line-height:1; }
   .life .r.lead .n { font-size:var(--whimsy-size-stat); }
   .life .r .l { font-size:var(--whimsy-size-small); color:var(--text-secondary); }
-  /* =================================================================
-       DOCUMENTATION — below the canvas, narrower, for the record.
-       ================================================================= */
-    .docs { background:var(--window-background); }
-  .docs-inner { max-width:1760px; margin:0 auto; padding:var(--space-8) var(--space-8) 96px; }
-  .docs h2 { font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.08em;
-               color:var(--text-muted); font-weight:var(--weight-bold); margin:var(--space-8) 0 var(--space-6); }
-  .docs h2:first-child { margin-top:0; }
-  .dcard { background:var(--panel-background); border:var(--border-hairline) solid var(--border);
-             border-radius:var(--radius-medium); box-shadow:var(--shadow-low); padding:var(--space-7); }
-  .grid-cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px,1fr)); gap:var(--space-6); }
-  .ctitle { font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.05em;
-              color:var(--text-muted); font-weight:var(--weight-bold); margin:0 0 var(--space-5); }
-  .ctitle span { font-weight:var(--weight-regular); text-transform:none; letter-spacing:0;
-                   font-family:var(--font-mono); color:var(--text-secondary); }
-  .muted { color:var(--text-secondary); font-size:var(--size-small); }
-  .muted strong { color:var(--text-strong); font-weight:var(--weight-medium); }
-  .spec { display:grid; grid-template-columns:110px 1fr; gap:var(--space-3) var(--space-5); font-size:var(--size-small); }
-  .spec dt { color:var(--text-muted); font-weight:var(--weight-medium); }
-  .spec dd { margin:0; color:var(--text-secondary); }
-  .spec dd strong { color:var(--text-strong); font-weight:var(--weight-medium); }
-  /* chevron-states specimen */
-    .chevrow { display:grid; grid-template-columns:90px 1fr; gap:var(--space-5) var(--space-6); align-items:center; }
-  .chevrow .lg { font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); }
-  .demostrip { border:var(--border-hairline) solid var(--border); border-radius:var(--radius-medium);
-                 background:var(--panel-background); box-shadow:var(--shadow-low); display:flex; align-items:center;
-                 gap:var(--space-5); min-height:var(--strip-rest-h); padding:0 var(--space-6); }
-  .demostrip .swatch { width:var(--swatch-size); height:var(--swatch-size); border-radius:var(--radius-small); flex:0 0 auto;
-                         display:flex; align-items:center; justify-content:center; color:var(--text-on-filled); }
-  .demostrip .swatch .ico { color:var(--text-on-filled); }
-  .demostrip .hname { font-size:var(--size-subheading); font-weight:var(--weight-medium); }
-  .demostrip .kind { font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); }
-  .demostrip .chev { margin-left:auto; color:var(--text-muted); }
   /* milestone banner (kit-card-milestone · banner shape) */
     .milestone { display:flex; align-items:center; gap:var(--space-6);
                  background:var(--panel-background); border:var(--border-hairline) solid var(--border);
@@ -682,7 +490,6 @@
   .milestone .emblem .ico { width:calc(var(--seal) * .6); height:calc(var(--seal) * .6);
                               vector-effect:non-scaling-stroke; }
   .milestone .mh { font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); line-height:var(--line-tight); }
-  .milestone .ms { font-size:var(--size-small); color:var(--text-secondary); margin-top:var(--space-2); }
   /* empty form state (kit-state-empty) */
     .emptybox { border:var(--border-standard) dashed var(--border); border-radius:var(--radius-medium);
                 padding:var(--space-8); text-align:center; }
@@ -745,25 +552,13 @@
      `.calpop` is NOT the nav calendar: the frozen file draws it as a component
      wholly separate from `.cal` (week numbers, finalize markers, catch-up
      outlines), so step 9 neither helps this nor is helped by it. */
-    .calpop, .timepop { border:var(--border-hairline) solid var(--border); border-radius:var(--radius-medium); background:var(--raised-background); -webkit-backdrop-filter:var(--backdrop-blur); backdrop-filter:var(--backdrop-blur); box-shadow:var(--shadow-high); overflow:hidden; }
-  .reduce-effects .calpop, .reduce-effects .timepop { -webkit-backdrop-filter:none; backdrop-filter:none; background:var(--panel-background); }
-  .calpop { width:280px; padding:var(--space-5); }
-  .calpop .calnote { margin-top:var(--space-4); padding-top:var(--space-4); border-top:var(--border-hairline) solid var(--divider); font-size:var(--size-caption); color:var(--text-muted); }
-  .calpop .caltop { display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-4); }
-  .calpop .caltop .m { font-size:var(--size-body); font-weight:var(--weight-medium); color:var(--text-strong); }
-  .calpop .caltop .nav { display:flex; gap:var(--space-2); }
-  .calpop .caltop .nav .b { width:var(--step-btn-size); height:var(--step-btn-size); display:flex; align-items:center; justify-content:center; border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); background:var(--panel-background); color:var(--text-secondary); cursor:pointer; }
-  .calpop .caltop .nav .b:hover { background:var(--hover-wash); color:var(--text-strong); }
-  .calpop .cgrid { display:grid; grid-template-columns:repeat(7,1fr); gap:var(--space-2); }
-  .calpop .cdow { font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); text-align:center; padding-bottom:var(--space-2); }
-  .calpop .cd { aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:var(--size-small); color:var(--text-strong); border-radius:var(--radius-small); cursor:pointer; }
-  .calpop .cd:hover { background:var(--hover-wash); }
-  .calpop .cd.dead { color:color-mix(in oklch, var(--text-muted), var(--panel-background) var(--fade)); cursor:not-allowed; }
-  .calpop .cd.dead:hover { background:transparent; }
-  .calpop .cd.out { color:color-mix(in oklch, var(--text-muted), var(--panel-background) var(--fade)); cursor:default; }
-  .calpop .cd.out:hover { background:transparent; }
-  .calpop .cd.sel { background:var(--accent); color:var(--text-on-filled); }
-  .calpop .cd.today { box-shadow:inset 0 0 0 var(--border-hairline) var(--accent); }
+  /* THE SURFACE + THE WHOLE `.calpop` FAMILY MOVED TO src/kit.css (2026-07-27)
+     — this file nests everything under `.daily`, so they resolved to
+     `.daily .calpop` and the Comparing Statistics period picker, which reuses
+     the same anatomy, rendered completely unstyled. A genuinely shared
+     component cannot live inside a screen's nesting block. `.timepop`'s own
+     internals stay here (Daily is their only tenant); they read the surface
+     rule from kit.css. */
   .timepop { padding:var(--space-4) var(--space-4) var(--space-5); width:340px; }
   .timepop .thead { font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin-bottom:var(--space-3); }
   .timepop .tstrip { display:flex; gap:var(--space-2); overflow:hidden; }
@@ -1018,101 +813,14 @@
   color: var(--text-muted);
 }
 
-.wsince {
-  font-weight: var(--weight-regular);
-  color: var(--text-muted);
-}
 
-/* ===== INTERIM — untranslated columns (almanac + shelf) ===== */
+/* ── the one surviving interim atom: the "no data yet" line whimsy cards share ── */
 
-/* ── the card shell (KIT) ─────────────────────────────────────────────────── */
-
-.wcard {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--frame-clear-whimsy);
-  background: var(--panel-background);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-medium);
-  box-shadow: var(--shadow-low);
-  overflow: hidden;
-}
-.wtitle {
-  margin: 0;
-  font-size: var(--whimsy-size-caption);
-  font-weight: var(--weight-medium);
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-.wbody {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-height: 0;
-}
-
-/* ── shared interior atoms (whimsy TYPE tier) ─────────────────────────────── */
-
-.wbig {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--whimsy-size-stat);
-  line-height: 1;
-  color: var(--text-strong);
-}
-.wbig.sm {
-  font-size: var(--whimsy-size-heading);
-}
-.wnote {
-  margin: 0;
-  font-size: var(--whimsy-size-caption);
-  color: var(--text-muted);
-}
-.wmeaning {
-  margin: 0;
-  font-size: var(--whimsy-size-body);
-  color: var(--text-secondary);
-}
 .wpending {
   margin: 0;
   font-size: var(--whimsy-size-small);
   color: var(--text-muted);
   font-style: italic;
-}
-.wrows {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.wrow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  font-size: var(--whimsy-size-small);
-  color: var(--text-secondary);
-}
-.wrow strong {
-  color: var(--text-strong);
-  font-weight: var(--weight-medium);
-}
-.wdelta {
-  margin: 0;
-  font-size: var(--whimsy-size-caption);
-  color: var(--text-muted);
-}
-.wmeter {
-  height: var(--space-2);
-  border-radius: var(--radius-full);
-  background: color-mix(in oklch, var(--whimsy-night), transparent var(--tint-mix));
-  overflow: hidden;
-}
-.wmeter > span {
-  display: block;
-  height: 100%;
-  border-radius: var(--radius-full);
-  background: var(--whimsy-star);
 }
 
 

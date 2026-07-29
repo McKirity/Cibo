@@ -7,9 +7,9 @@
  * § Amended 2026-07-26 (2nd) — read that before changing anything here):
  *
  *  1 · FINALIZE IS THE ONLY OFFICIAL SAVE. The strips are a LIVE EDITOR over the
- *      day's real sessions — a field commits as you leave it, so nothing is ever
- *      "unsaved". Finalize is the state change into state 2, not a submit, and
- *      it stays inert until state 2 is built.
+ *      day's real sessions — edits buffer via autosave.ts and land at the flush.
+ *      Finalize is the state change into state 2 (the cover wall), not a submit;
+ *      it flushes the buffer first, then flips the day.
  *  2 · ONE SESSION BLOCK IS ONE BOUT, NOT ONE ROW (see spineSpec.groupBouts).
  *  3 · THE KIND EYEBROW DERIVES (spineSpec.kindEyebrow).
  *  4 · SESSION REMOVE SHIPS WITH A MINIMAL UNDO TOAST (shell/toast.tsx).
@@ -58,6 +58,7 @@ import {
 } from "./spineWrites";
 import { DateTimePicker } from "./DateTimePicker";
 import { DangerConfirm } from "../shell/DangerConfirm";
+import { subscribeHandoff, takeHandoffFor } from "../timers/logHandoff";
 import {
   AUTOSAVE_DEFAULT_MINUTES,
   autosaveQuery,
@@ -146,12 +147,6 @@ const DAY_MONTH_YEAR = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
 });
 
-/**
- * Dismiss whatever popover is open. Every dropdown here shows on
- * `:focus-within`, so releasing focus IS the close — user-ruled 2026-07-26:
- * "when I select something from the dropdown menus, it should close it
- * automatically instead of forcing me to click elsewhere."
- */
 /**
  * A field is bigger than the input inside it. Clicking a picker's search icon,
  * or the padding beside a time, hit the WRAPPER and focused nothing, so the
@@ -504,6 +499,8 @@ interface Draft {
   startTime: string;
   endDate: string;
   endTime: string;
+  /** step 7 — the draft arrived through the timer hand-off (source: "timer"). */
+  fromTimer?: boolean;
 }
 
 function Strip({ spec, data, dayKey, flushNow, liveWritingWords, onWritingWords }: StripProps) {
@@ -671,12 +668,43 @@ function Strip({ spec, data, dayKey, flushNow, liveWritingWords, onWritingWords 
         range,
         measureless: spec.isMeasureless,
         cats,
+        source: draft.fromTimer ? "timer" : undefined,
       }),
     );
     queuedDrafts.current.add(draft.key);
     setError(null);
     return true;
   };
+
+  // ── step 7: the timer hand-off ─────────────────────────────────────────────
+  // Staged accumulators (logHandoff.ts) become PREFILLED drafts, committed
+  // immediately — the user's "Log" in the management window was the intent, and
+  // the commit still rides the ordinary buffer, so nothing is official until
+  // the flush. One summed session per tracked item, `source: "timer"`.
+  // TODAY only: a staged item must never land on a browsed past day.
+  useEffect(() => {
+    const consume = () => {
+      const p = (n: number) => String(n).padStart(2, "0");
+      const d = new Date();
+      if (dayKey !== `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`) return;
+      const items = takeHandoffFor(habit.id);
+      if (items.length === 0) return;
+      // suppress the empty-session auto-seed — it REPLACES drafts when it fires
+      seeded.current = `${habit.id}|${dayKey}`;
+      const made = items.map((it) => ({
+        ...newDraft(),
+        entryId: it.entryId,
+        time: String(it.minutes),
+        fromTimer: true,
+      }));
+      setDrafts((prev) => [...prev, ...made]);
+      for (const m of made) commit(m);
+      setOpen(true);
+    };
+    consume();
+    return subscribeHandoff(consume);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [habit.id, dayKey]);
 
   const remove = (bout: Bout, label: string) => {
     const res = removeBout(bout, label, data.catRowIds);
@@ -1001,27 +1029,25 @@ function BoardOnly({
               made it look like the only way to move the number, and a control
               that comes and goes is worse than one that is occasionally a
               no-op. */}
-          {(
-            <button
-              className="btn-plain btn-sm"
-              title="Re-derive from Writing's current total"
-              onClick={() => {
-                // Flush first, or the re-derive reads a Writing total that is
-                // still sitting in the buffer. The tick is Evolu's mutation
-                // microtask, same as the post-flush sync.
-                setDetached(false);
-                flushNow();
-                setTimeout(() => {
-                  void refreshDerived(bout.count!.id, dayKey).then((r) =>
-                    onError(r.ok ? null : r.reason),
-                  );
-                }, 0);
-              }}
-            >
-              <IRefresh />
-              Refresh
-            </button>
-          )}
+          <button
+            className="btn-plain btn-sm"
+            title="Re-derive from Writing's current total"
+            onClick={() => {
+              // Flush first, or the re-derive reads a Writing total that is
+              // still sitting in the buffer. The tick is Evolu's mutation
+              // microtask, same as the post-flush sync.
+              setDetached(false);
+              flushNow();
+              setTimeout(() => {
+                void refreshDerived(bout.count!.id, dayKey).then((r) =>
+                  onError(r.ok ? null : r.reason),
+                );
+              }, 0);
+            }}
+          >
+            <IRefresh />
+            Refresh
+          </button>
         </div>
       )}
 
@@ -1187,13 +1213,7 @@ function SessionBlock({
                       return;
                     }
                     onOptimistic(`${m.kind}|measure`, String(v));
-                    queue(`${m.kind}-value`, () =>
-                      updateMeasureValue(row.id, v, {
-                        habitKey: spec.habit.key,
-                        measure: m.kind,
-                        day: dayKey,
-                      }),
-                    );
+                    queue(`${m.kind}-value`, () => updateMeasureValue(row.id, v));
                   }}
                 />
               );
@@ -1794,5 +1814,3 @@ function RangeRows({
     </>
   );
 }
-
-export { nowLocalDateTime };

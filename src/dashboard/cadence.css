@@ -63,7 +63,10 @@
 
 /* --- 2 · kit-chart-verdict — STRIP (weekly) ------------------------------- */
 .cadash .wstrip{display:grid; grid-template-columns:repeat(7,1fr); gap:var(--space-5);}
-.cadash .wcol{position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-3); min-height:calc(var(--verdict-cell-min-h) * 3); border-radius:var(--radius-small); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); background:var(--panel-background); padding:var(--space-5);}
+/* min-height 158px = the drawn face verbatim (weekly-cadence FINAL) — no dial composes it;
+   the old calc(var(--verdict-cell-min-h) * 3) only matched it under pre-2026-07-26 content-box.
+   Dial-ify = step-6a residue. */
+.cadash .wcol{position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-3); min-height:158px; border-radius:var(--radius-small); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); background:var(--panel-background); padding:var(--space-5) var(--space-5) var(--space-6);}
 .cadash .wcol .wdow{font-size:var(--size-caption); font-weight:var(--weight-bold); letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted);}
 .cadash .wcol .wdate{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong);}
 .cadash .wcol .wcount{margin-top:auto; font-family:var(--font-mono); font-size:var(--size-display); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong);}
@@ -123,7 +126,6 @@
 .cadash .tile .tl{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted);}
 .cadash .tile .tv{font-family:var(--font-mono); font-size:var(--size-stat-value); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong); white-space:nowrap;}
 .cadash .tile .tv .u{font-family:var(--font-ui); font-size:var(--size-body); color:var(--text-muted); font-weight:var(--weight-regular); margin-left:2px;}
-.cadash .tile .tv.date{font-size:var(--size-heading);}
 .cadash .tile .ts{font-size:var(--size-small); color:var(--text-secondary); min-height:0;}
 .cadash .tile .ts b{color:var(--text-strong); font-weight:var(--weight-medium);}
 /* RULED at the chunk-4 GUI pass (user, 2026-07-23): the Best-day doortile

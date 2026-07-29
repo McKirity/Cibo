@@ -9,7 +9,10 @@
    Ambience: backdrop + timer backdrop SILENT; the vignette is the
    code-drawn tick-face clock (the data-bearing carve-out — no files).
    ---------------------------------------------------------------------
-   244 dials (233 → 241 at the 2026-07-24 wave-zone mint; 234 → 233 at the 2026-07-19 --mini-verdict-cell retirement,
+   244 dials (--band-wash was minted and retired on 2026-07-28, same day, tenantless — the modal
+   appearance pass ruled ROLES instead of a wash amount; net zero. Four values moved at that pass:
+   --raised-background · --backdrop-blur · --overlay-dim · --shadow-high, each annotated in place;
+   241 → 244 at the 2026-07-26 whimsy-amount mint; 233 → 241 at the 2026-07-24 wave-zone mint; 234 → 233 at the 2026-07-19 --mini-verdict-cell retirement,
    tenantless; count corrected 2026-07-19 — was published as 220; 14 packed
    declarations were invisible to a line-anchored count. Nothing changed).
    Values are the frozen master
@@ -31,7 +34,13 @@
   /* -- Group 1 · Chrome colours (18) — interface, not data ------------- */
   --window-background:   #f5f5f7;              /* base canvas — faint-cool near-white */
   --panel-background:    #ffffff;              /* cards, tiles, the rail */
-  --raised-background:   rgba(255,255,255,.72);/* modals/popovers — translucent for the blur; resolves #ffffff under reduce-effects */
+  --raised-background:   #f5f5f7;              /* THE RAISED SHELL tone. RE-VALUED 2026-07-28 (modal
+                                                  appearance pass, user ruling F): opaque, and here equal to
+                                                  the canvas. A modal is a small window — its SHELL recedes
+                                                  and its CONTENT rides --panel-background. Depth is a value
+                                                  step every theme already owns; it is never an effect.
+                                                  A theme may run the ladder the other way (dark shell,
+                                                  lighter content) but never flatten it. */
   --inset-background:    #ececed;              /* inputs, wells — recessed */
   --text-strong:         #1c1c1e;              /* top of the 3-step hierarchy */
   --text-secondary:      #55555a;
@@ -91,10 +100,22 @@
   /* -- Group 5 · Effects (7) — reduce-effects zeroes blur+glow, --------
         flattens shadows; --overlay-dim SURVIVES (functional) ----------- */
   --shadow-low:   0 1px 2px rgba(0,0,0,.06), 0 1px 1px rgba(0,0,0,.04);
-  --shadow-high:  0 10px 34px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.08);
-  --backdrop-blur:  blur(20px) saturate(180%); /* raised surfaces ONLY */
+  --shadow-high:  inset 0 1px 0 rgba(255,255,255,.9), 0 3px 8px rgba(0,0,0,.16), 0 16px 44px rgba(0,0,0,.18);
+                                               /* RE-CUT 2026-07-28: a tighter, darker first layer + an inner
+                                                  top highlight, so a corner reads against a light ground.
+                                                  DECORATION ONLY — a theme may flatten it and nothing may
+                                                  become unreadable when it does. */
+  --backdrop-blur:  none;                      /* raised surfaces ONLY. OFF 2026-07-28: a theme may still
+                                                  reach for glass, but NOTHING may depend on it — the
+                                                  reduce-effects render is the test, and if legibility (not
+                                                  polish) differs between the two, the theme is cheating. */
   --glow:           none;
-  --overlay-dim:    rgba(0,0,0,.28);
+  --overlay-dim:    rgba(0,0,0,.42);           /* .28 → .42 2026-07-28. THE DIM IS THE LAYER THAT SEPARATES
+                                                  A MODAL FROM THE APP — the shell/content ladder cannot do
+                                                  that job. At .28 an opaque light modal on a light canvas
+                                                  had no outer edge at all. Every theme owes this a real
+                                                  value; it survives reduce-effects because it is
+                                                  functional, not decorative. */
   --shadow-inset:   inset 0 1px 2px rgba(0,0,0,.05);
   --scrim:          rgba(0,0,0,.25);           /* text over colour/art */
 
@@ -158,6 +179,11 @@
   --tint-border:       55%;   /* the border off the same meaning colour as a tint fill */
   --fade:              50%;   /* second-order muting of an already-muted colour */
   --chart-area-mix:    88%;   /* the faint fill under a trend line (toward transparent) */
+  /* --band-wash was minted here on 2026-07-28 and RETIRED the same day, tenantless. It faded a
+     surface toward transparent, which assumes the thing behind is lighter — the same class of
+     mistake as mixing toward white, and it would have inverted under the first dark theme. The
+     ruling replaced it with ROLES: shell = --raised-background · content = --panel-background ·
+     well = --inset-background. Roster returns to 244. */
   --absent-wash:       82%;   /* the unlogged/absent cover-wall tile */
 
   /* -- Group 7 · Motion (3 durations + 3 easings) — tuned snappy ------ */

@@ -228,10 +228,11 @@ export function LogForm() {
     }
 
     // Auto-follow: logging Writing's words re-syncs that day's derived Keyboard
-    // words (derivedKeyboard.ts). Fire-and-forget — the live query repaints when
-    // the write lands. Only a Writing word (count) change moves the total.
+    // words (derivedKeyboard.ts). Deferred a tick — Evolu batches mutations in a
+    // microtask, so a query fired synchronously here reads Writing's total
+    // BEFORE this insert reaches the worker (the Spine's stale-read lesson).
     if (habit.key === WRITING_KEY && measureKind === "count") {
-      void syncDerivedKeyboardForDay(evolu, owningDay);
+      setTimeout(() => void syncDerivedKeyboardForDay(evolu, owningDay), 0);
     }
 
     setError(null);

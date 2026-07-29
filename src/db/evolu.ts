@@ -11,7 +11,6 @@
  */
 import { createEvolu, SimpleName } from "@evolu/common";
 import { evoluReactWebDeps } from "@evolu/react-web";
-import { createUseEvolu } from "@evolu/react";
 import { Schema } from "./schema";
 
 export const evolu = createEvolu(evoluReactWebDeps)(Schema, {
@@ -27,5 +26,3 @@ export const evolu = createEvolu(evoluReactWebDeps)(Schema, {
     create("vocab_options_definition_fk").on("vocab_options").column("definition_fk"),
   ],
 });
-
-export const useEvolu = createUseEvolu(evolu);

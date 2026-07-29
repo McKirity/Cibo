@@ -200,7 +200,6 @@ export interface CreationModel {
     name: string;
     heat: HeatChip | null;
     archived: boolean;
-    archivedOn: string | null; // last active day (the derived archive marker)
     empty: boolean;
     sinceLive: string;
     tabs: { key: string; label: string }[];
@@ -632,7 +631,6 @@ export function buildCreationDashboard(input: CreationBuildInput, sel: ScopeSel)
       name: input.name,
       heat: empty ? null : input.archived ? "COLD" : heatChip(sessions, today),
       archived: input.archived,
-      archivedOn,
       empty,
       sinceLive,
       tabs,
@@ -821,7 +819,7 @@ function niceAxisMax(v: number): number {
 /** Exported (as buildCreationHeatmap) for the entry dashboard (chunk 5) — the
  *  entry face passes defs=[] (no scope faces) + its own sessions, keeping the
  *  Words⇄Time measure toggle on two-measure habits. */
-export function buildHeatmap(
+function buildHeatmap(
   defs: SessionDef[],
   sessions: SessionRow[],
   valOf: (sessionId: string, defKey: string) => string | null,

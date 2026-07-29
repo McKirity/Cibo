@@ -13,6 +13,9 @@
  * Day-log rows are inert doors until the Daily screen lands (the chunk-4
  * day-cell precedent).
  *
+ * (The danger foot went LIVE at the step-6 catch-up — the undo-toast tier
+ * exists since the form spine, so the chunk-5 deferral is discharged.)
+ *
  * The wave band + growth curve draw box-sized viewBoxes (the step-4 ruling —
  * never a fixed viewBox + stretch); the break width transcribes the
  * --wave-break-w dial (70), the band height rides --wave-band-h via CSS.
@@ -38,6 +41,8 @@ import {
 } from "./entrySpec";
 import { Panel, StatGroup } from "./kit";
 import { DistPanel } from "./CreationDashboard";
+import { deleteEntriesCascade } from "../library/entryDelete";
+import { showErrorToast, showUndoToast } from "../shell/toast";
 import type { CreationHeatCell, CreationModel } from "./creationSpec";
 import "../dashboard.css";
 import "./screen.css";
@@ -54,11 +59,14 @@ export function EntryDashboard({
   onOpenHabit,
   onOpenEntry,
   onOpenDay,
+  onDeleted,
 }: {
   entryId: string;
   onOpenHabit: (habitKey: string) => void;
   onOpenEntry: (entryId: string) => void;
   onOpenDay?: (day: string) => void;
+  /** After a tier-2 delete: leave the dead route (REPLACE, never push). */
+  onDeleted?: () => void;
 }) {
   const data = useEntryData(entryId);
   const [today] = useState(todayLocal);
@@ -100,7 +108,7 @@ export function EntryDashboard({
         <div className="railslot">
           <RailView m={m} data={data} onOpenHabit={onOpenHabit} onEdit={() => setRailMode("edit")} />
           {railMode === "edit" && (
-            <RailEdit data={data} m={m} onClose={() => setRailMode("view")} />
+            <RailEdit data={data} m={m} onClose={() => setRailMode("view")} onDeleted={onDeleted} />
           )}
         </div>
         <div className="emain">
@@ -308,7 +316,17 @@ function RailView({
 
 const STATUS_ANCHORS = ["Current", "Finished", "Dropped", "Planned", "Hiatus"];
 
-function RailEdit({ data, m, onClose }: { data: EntryData; m: EntryModel; onClose: () => void }) {
+function RailEdit({
+  data,
+  m,
+  onClose,
+  onDeleted,
+}: {
+  data: EntryData;
+  m: EntryModel;
+  onClose: () => void;
+  onDeleted?: () => void;
+}) {
   const e = data.entry!;
   const creation = m.template === "creation";
   const [title, setTitle] = useState(e.title);
@@ -566,12 +584,27 @@ function RailEdit({ data, m, onClose }: { data: EntryData; m: EntryModel; onClos
         </button>
       </div>
       <div className="raildanger">
-        {/* INERT — delete + the undo-toast tier arrive together (user-ruled
-            2026-07-23: deferred); the drawn face keeps its place. */}
-        <button className="btn-danger" disabled title="Delete arrives with the undo-toast machinery (later step)">
+        {/* LIVE since the step-6 catch-up — tier 2 of [[Delete Safety & Undo]]:
+            no confirm, the ~10 s undo toast IS the net; the cascade tombstones
+            the entry + its sessions and undo flips them back. The deferred
+            image-file half has no work until the cloud root exists (step 14). */}
+        <button
+          className="btn-danger"
+          onClick={() => {
+            const label = e.title;
+            void deleteEntriesCascade([data.entryId!]).then((res) => {
+              if (!res.ok) {
+                showErrorToast("The entry could not be deleted — some rows were rejected.");
+                return;
+              }
+              showUndoToast(`Deleted “${label}”`, res.undo);
+              onDeleted?.();
+            });
+          }}
+        >
           🗑 Delete entry
         </button>
-        <div className="dangernote">Delete → undo toast (~10 s) — later step.</div>
+        <div className="dangernote">No confirm — an undo toast (~10 s) is the way back.</div>
       </div>
     </div>
   );
@@ -1213,7 +1246,7 @@ function WaveTable({
                         {r.kind === "era"
                           ? `Era ${r.eraN}${r.soloWave != null ? ` · Wave ${r.soloWave}` : ""}`
                           : `Wave ${r.n}`}
-                        {(r.kind === "era" ? r.active : r.active) && <span className="chip">active</span>}
+                        {r.active && <span className="chip">active</span>}
                       </>
                     )}
                   </span>

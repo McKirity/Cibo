@@ -26,7 +26,17 @@
      count-carrying confirm, the HEAVY half of Delete Safety & Undo. First
      tenant: the daily form's Clear all. Its anatomy is byte-identical across
      all three drawn tenants (the 2026-07-14 drift survey), so it is claimed
-     unscoped. */
+     unscoped.
+
+   MOVED HERE 2026-07-27 (Comparing Statistics' period picker):
+   - the anchored-popover SURFACE (.calpop/.timepop) + the whole `.calpop`
+     calendar family. Claimed at the form spine into daily.css — but that file
+     nests under `.daily`, so they resolved to `.daily .calpop` and CS's date
+     pickers, which reuse the same anatomy, rendered with no styling at all.
+     Bodies are verbatim; only the home changed. `.timepop`'s internals stay
+     in daily.css (single tenant) and read the surface rule from here.
+     The RE-DESIGN OWED on this picker (ruled 2026-07-26) rides with it, and
+     now has a second consumer to satisfy. */
 
 /* ------- The box model -------
    `*{box-sizing:border-box}` — claimed 2026-07-26, and it should have been the
@@ -95,9 +105,12 @@
 /* ------- Labels ------- */
 .kicker{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); font-weight:var(--weight-bold); margin-bottom:var(--space-3);}
 
-/* ------- Segmented control ------- */
-.segctl{display:inline-flex; background:var(--inset-background); border-radius:var(--radius-small); padding:var(--space-1); gap:var(--space-1);}
-.segctl button{font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-secondary); background:transparent; border:none; cursor:pointer; padding:var(--space-3) var(--space-6); border-radius:calc(var(--radius-small) - var(--space-1)); transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+/* ------- Segmented control -------
+   THE PILL IS THE APP'S SEGMENTED IDIOM (user-ruled 2026-07-28, at the timer-modal
+   appearance pass): --radius-full on the track and on each segment, kit-toggle-segmented-wide.
+   The timers' .modeseg drew it first; .segctl moves with it so the two never diverge. */
+.segctl{display:inline-flex; background:var(--inset-background); border-radius:var(--radius-full); padding:var(--space-1); gap:var(--space-1);}
+.segctl button{font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-secondary); background:transparent; border:none; cursor:pointer; padding:var(--space-3) var(--space-6); border-radius:var(--radius-full); transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
 .segctl button[aria-pressed="true"]{background:var(--panel-background); color:var(--text-strong); box-shadow:var(--shadow-low);}
 
 /* ------- kit-toast — the one slide-in slot, two variants -------
@@ -125,7 +138,10 @@
    carries; `z-confirm` (60) is reserved for the one sanctioned
    overlay-atop-a-modal, which this is not. */
 .confirm{width:var(--modal-confirm-w); max-width:100%; background:var(--raised-background); -webkit-backdrop-filter:var(--backdrop-blur); backdrop-filter:var(--backdrop-blur); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-large); box-shadow:var(--shadow-high); padding:calc(var(--frame-clear-grand) + var(--space-4)); overflow:hidden;}
-.confirm-body{padding:var(--space-8); display:flex; flex-direction:column; gap:var(--space-5);}
+/* APPEARANCE PASS 2026-07-28 — the same double inset as the modal chassis: .confirm's
+   clearance ring (28+8) plus this box's space-8 put prose 68px off the edge. The ring is the
+   inset. */
+.confirm-body{padding:0; display:flex; flex-direction:column; gap:var(--space-5);}
 .confirm .ch{display:flex; align-items:center; gap:var(--space-4); font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); color:var(--text-strong);}
 .confirm .ch .ico{color:var(--danger); width:var(--size-heading); height:var(--size-heading);}
 .confirm p{font-size:var(--size-body); color:var(--text-secondary); line-height:var(--line-normal); margin:0;}
@@ -133,3 +149,116 @@
 .confirm-actions{display:flex; align-items:center; gap:var(--space-4); margin-top:var(--space-2);}
 .confirm-actions .escnote{margin-left:auto; font-size:var(--size-caption); color:var(--text-muted);}
 .dimlayer{position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; padding:var(--space-8); background:var(--overlay-dim);}
+/* the one sanctioned overlay-atop-a-modal (bulk delete): a SECOND dim at
+   `z-confirm` — the modal reads dimmed but present behind the confirm; Esc /
+   Cancel / dim-click close the TOP overlay only. */
+.dimlayer.stack{z-index:60;}
+
+/* ============================================================================
+   THE SURFACE LADDER — ruled 2026-07-28 (the modal appearance pass). This is a
+   THEME-PORTABILITY law, not a look: it exists so a modal survives themes that
+   have not been written yet.
+
+   WHY. The chassis used to get its separation from an EFFECT: a 72%-alpha white
+   surface plus a blur. That only works when what sits behind is busy and
+   mid-value. On the light Default it muddled (white shell, white content, one
+   hairline between them); under the first dark theme a white-alpha surface is
+   simply wrong — it inverts. Any rule whose LEGIBILITY depends on translucency
+   is a bug waiting for a theme.
+
+   THE LAW. A modal is a small window, and it repeats the app's own canvas/panel
+   relationship. Three roles, no new dials:
+
+     SHELL    --raised-background   the modal's ground; recedes from its content
+     CONTENT  --panel-background    head · foot · row sets · lists · cards
+     WELL     --inset-background    inputs, the sub-pick, the no-settings well
+
+   Every theme must already make canvas-vs-panel legible — the whole app depends
+   on it — so modals inherit that guarantee for free. A theme may re-value the
+   TONES and may run the ladder in either direction (a dark theme's shell is
+   darker, its content lighter); a theme may NEVER flatten the ladder, and no
+   rule may derive one of these surfaces by fading another toward transparent
+   (that assumes what is behind is lighter — the mixing-toward-white mistake).
+
+   THE THREE LAYERS, EACH WITH ONE JOB.
+     --overlay-dim    separates the modal FROM THE APP. Functional; survives
+                      reduce-effects; every theme owes it a real value (.28 was
+                      invisible under an opaque light modal — hence .42).
+     the ladder       makes the modal's INSIDE readable.
+     --shadow-high    decoration. A theme may flatten it; nothing may become
+                      unreadable when it does.
+     --backdrop-blur  optional flourish. A theme may reach for glass, but the
+                      design must read with blur off and alpha 1 — which is the
+                      reduce-effects contract already in force. THE TEST: render
+                      the chassis in each theme with reduce-effects on and off;
+                      if LEGIBILITY (not polish) differs, the theme is cheating.
+   ============================================================================ */
+/* ------- kit-shell-overlay — the shared modal CHASSIS -------
+   Claimed at the step-6 catch-up (Library's two modals; the importer modal and
+   habit creator are its future tenants). The base is the entry-creation
+   FINAL's `.mo` minus its tenant width — each tenant sets its own width dial
+   (.ecmodal → --modal-manage-w · .mo2 → --modal-bulk-w/-h · the importer's
+   --modal-import-w when step 8 lands). Slot 8 — the 28px modal clearance. */
+/* APPEARANCE PASS 2026-07-28 — --mo-ring is an ALIAS of the existing derivation
+   (--frame-clear-modal + --space-5), not a new dial. Nothing may cancel it: it is the
+   decoration overlay's room on all four borders (slot 8) and stays unpainted. */
+.mo{--mo-ring:calc(var(--frame-clear-modal) + var(--space-5)); display:flex; flex-direction:column; max-width:100%; max-height:100%; background:var(--raised-background); -webkit-backdrop-filter:var(--backdrop-blur); backdrop-filter:var(--backdrop-blur); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-large); box-shadow:var(--shadow-high); padding:var(--mo-ring); overflow:hidden;}
+/* reduce-effects has nothing to undo on the surface any more (the shell is opaque by ruling and
+   the blur dial is off); it only flattens the decorative shadow. */
+.reduce-effects .mo{box-shadow:var(--shadow-low);}
+/* APPEARANCE PASS 2026-07-28 — THE HEAD AND FOOT ARE INNER PANELS. They were padded boxes
+   with nothing but a hairline, and that hairline stopped ~40px shy of the modal's sides, so it
+   read as a stray line in a blank ring and the whole overlay read as one flat plane. They now
+   carry a faint recessed fill + their own hairline + --radius-medium, which is what makes the
+   head/body/foot anatomy legible and gives --shadow-high an edge to work against.
+
+   RULED APP-WIDE 2026-07-28 (user) — this is chassis law: every kit-shell-overlay tenant
+   (timers' create/manage · the importer · bulk edit · entry creation · first-run) takes it.
+
+   AND THE CLEARANCE RING STAYS UNPAINTED (user, same ruling): the decoration overlay owns all
+   four borders, so nothing bleeds out to the modal's edge. .mo's padding is still exactly
+   --frame-clear-modal + --space-5 and no chassis part enters it — the bands are inner panels
+   inside that room, never under it. The body's old space-8 horizontal padding is replaced by
+   space-6, matching the panels' own padding, so head, body and foot content align on one
+   column (ring + space-6) instead of the old ~72px double inset. */
+.mo-head{flex:0 0 auto; display:flex; align-items:flex-start; gap:var(--space-6); margin:0 0 var(--space-7); padding:var(--space-6); background:var(--panel-background); border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-medium);}
+.mo-titlewrap{display:flex; flex-direction:column; gap:var(--space-2); flex:1 1 auto; min-width:0;}
+.mo-title{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); line-height:var(--line-tight); display:flex; align-items:center; gap:var(--space-4);}
+/* the subtitle slot the chassis always had markup room for and no rule — the modal's SUBJECT
+   (which mode, how long it has run) belongs here, not buried in the body */
+.mo-sub{font-size:var(--size-small); color:var(--text-secondary);}
+.mo-sub .mono{font-family:var(--font-mono); color:var(--text-strong); font-variant-numeric:tabular-nums;}
+.mo-esc{margin-left:auto; display:flex; align-items:center; gap:var(--space-5); padding-top:var(--space-1);}
+.mo-esc .escnote{font-size:var(--size-caption); color:var(--text-muted); white-space:nowrap;}
+.mo-close{display:flex; align-items:center; justify-content:center; width:36px; height:36px; border:none; background:transparent; border-radius:var(--radius-small); color:var(--text-secondary); cursor:pointer; flex:0 0 auto; transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+.mo-close:hover{background:var(--hover-wash); color:var(--text-strong);}
+.mo-body{flex:1 1 auto; min-height:0; overflow:auto; padding:0 var(--space-6); display:flex; flex-direction:column; gap:var(--space-8);}
+.mo-foot{flex:0 0 auto; margin:var(--space-7) 0 0; padding:var(--space-6); background:var(--panel-background); border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-medium); display:flex; align-items:center; gap:var(--space-4) var(--space-5); flex-wrap:wrap;}
+
+/* == kit-picker-datetime — the anchored popover surface + the calendar ======
+   Moved out of daily.css 2026-07-27 (see the header): a shared component
+   cannot live inside a screen's nesting block. Tenants: Daily's Sleep strip
+   (its .timepop internals stay in daily.css) and Comparing Statistics' period
+   picker. Anchoring/positioning stays with each tenant — only the LOOK is
+   shared. */
+/* a popover is a single CONTENT surface, not a shell/content pair: it takes --panel-background.
+   Ruled with the modal ladder, 2026-07-28. */
+.calpop, .timepop { border:var(--border-hairline) solid var(--border); border-radius:var(--radius-medium); background:var(--panel-background); -webkit-backdrop-filter:var(--backdrop-blur); backdrop-filter:var(--backdrop-blur); box-shadow:var(--shadow-high); overflow:hidden; }
+.reduce-effects .calpop, .reduce-effects .timepop { -webkit-backdrop-filter:none; backdrop-filter:none; background:var(--panel-background); }
+.calpop { width:280px; padding:var(--space-5); }
+.calpop .calnote { margin-top:var(--space-4); padding-top:var(--space-4); border-top:var(--border-hairline) solid var(--divider); font-size:var(--size-caption); color:var(--text-muted); }
+.calpop .caltop { display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-4); }
+.calpop .caltop .m { font-size:var(--size-body); font-weight:var(--weight-medium); color:var(--text-strong); }
+.calpop .caltop .nav { display:flex; gap:var(--space-2); }
+.calpop .caltop .nav .b { width:var(--step-btn-size); height:var(--step-btn-size); display:flex; align-items:center; justify-content:center; border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); background:var(--panel-background); color:var(--text-secondary); cursor:pointer; }
+.calpop .caltop .nav .b:hover { background:var(--hover-wash); color:var(--text-strong); }
+.calpop .cgrid { display:grid; grid-template-columns:repeat(7,1fr); gap:var(--space-2); }
+.calpop .cdow { font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); text-align:center; padding-bottom:var(--space-2); }
+.calpop .cd { aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:var(--size-small); color:var(--text-strong); border-radius:var(--radius-small); cursor:pointer; }
+.calpop .cd:hover { background:var(--hover-wash); }
+.calpop .cd.dead { color:color-mix(in oklch, var(--text-muted), var(--panel-background) var(--fade)); cursor:not-allowed; }
+.calpop .cd.dead:hover { background:transparent; }
+.calpop .cd.out { color:color-mix(in oklch, var(--text-muted), var(--panel-background) var(--fade)); cursor:default; }
+.calpop .cd.out:hover { background:transparent; }
+.calpop .cd.sel { background:var(--accent); color:var(--text-on-filled); }
+.calpop .cd.today { box-shadow:inset 0 0 0 var(--border-hairline) var(--accent); }

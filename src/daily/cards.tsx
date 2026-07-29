@@ -17,7 +17,7 @@
  * quiet waiting face, never fabricated content; on a past day absence is
  * permanent and the copy says so.
  */
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import {
   buildWxCurve,
   displayTemp,
@@ -58,15 +58,6 @@ import {
 import type { WhimsyConfig } from "./whimsyConfig";
 
 const hm = (min: number): string => `${Math.floor(min / 60)}h ${String(Math.round(min % 60)).padStart(2, "0")}m`;
-
-export function Card({ title, children, className = "" }: { title: string; children: ReactNode; className?: string }) {
-  return (
-    <section className={`wcard ${className}`}>
-      <h3 className="wtitle">{title}</h3>
-      <div className="wbody">{children}</div>
-    </section>
-  );
-}
 
 // -- sky column: translated from Final/daily-state-1.html ---------------------
 
@@ -963,7 +954,7 @@ export function RediscoverCard({
         </div>
         <div className="plate">
           <div className="dt2">{WEEKDAY_LONG.format(new Date(day + "T12:00:00"))}</div>
-          {/* Door to that day's cover wall — inert until state 2 exists. */}
+          {/* Door to that day's cover wall, via the shell's openDay. */}
           <a className="go door" onClick={onOpenDay ? () => onOpenDay(day) : undefined}>
             step back into that day
             <svg className="ico sm" viewBox="0 0 24 24">

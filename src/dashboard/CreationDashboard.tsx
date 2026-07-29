@@ -29,6 +29,7 @@ import {
   type TrendSeries,
 } from "./creationSpec";
 import { Panel, StatGroup } from "./kit";
+import { EntryCreationModal } from "../library/EntryCreationModal";
 import "../dashboard.css";
 import "./screen.css";
 
@@ -51,6 +52,9 @@ export function CreationDashboard({
   const data = useCreationData(habitKey);
   const [today] = useState(todayLocal);
   const [scope, setScope] = useState<ScopeSel>({ kind: "all" });
+  // The hero row's "+ New entry" door — the creation modal summoned from this
+  // dashboard ([[Entry Creator (Manual Entry)]]; live since the step-6 catch-up).
+  const [creationOpen, setCreationOpen] = useState(false);
 
   const { model, ms } = useMemo(() => {
     const t0 = performance.now();
@@ -87,7 +91,7 @@ export function CreationDashboard({
       </div>
 
       {m.masthead.empty ? (
-        <EmptyState name={m.masthead.name} />
+        <EmptyState name={m.masthead.name} onNew={() => setCreationOpen(true)} />
       ) : (
         <div className="gs">
           {/* ── 1 · Masthead (creation variant: no type row, no library door) ── */}
@@ -155,13 +159,33 @@ export function CreationDashboard({
                 {m.heroes.cards.map((h) => (
                   <HeroCard key={h.title} h={h} onOpen={onOpenEntry} />
                 ))}
-                <div className="hero door" role="button" title="Entry creation modal (later step)">
+                <div
+                  className="hero door"
+                  role="button"
+                  tabIndex={0}
+                  title="New entry"
+                  onClick={() => setCreationOpen(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setCreationOpen(true);
+                  }}
+                >
                   <span className="dplus">＋ New entry</span>
                 </div>
               </div>
             </Panel>
           </div>
         </div>
+      )}
+
+      {creationOpen && (
+        <EntryCreationModal
+          habitKey={habitKey}
+          onClose={() => setCreationOpen(false)}
+          onOpenEntry={(id) => {
+            setCreationOpen(false);
+            onOpenEntry?.(id);
+          }}
+        />
       )}
     </div>
   );
@@ -275,8 +299,6 @@ function Shape({ chart }: { chart: ShapeChart }) {
 }
 
 // ── Trend panel (line · dots · stacked, box-sized viewBox) ────────────────────
-
-/** Measure an element's pixel box before paint; re-measure on resize. */
 
 /** Round up to a clean chart ceiling (1/2/5 × 10^k, min 2 for hour scales). */
 function niceCeil(v: number, unit: string): number {
@@ -669,7 +691,7 @@ function HeroCard({ h, onOpen }: { h: HeroSpec; onOpen?: (entryId: string) => vo
   );
 }
 
-function EmptyState({ name }: { name: string }) {
+function EmptyState({ name, onNew }: { name: string; onNew?: () => void }) {
   return (
     <div className="gs-empty" style={{ display: "block" }}>
       <div className="emptybox gen">
@@ -679,8 +701,8 @@ function EmptyState({ name }: { name: string }) {
           hero cards, so the one door that fills it is a first entry.
         </div>
         <div className="edoors">
-          <button className="btn-accent" type="button">+ New entry</button>
-          <button className="btn-plain" type="button">Set an icon</button>
+          <button className="btn-accent" type="button" onClick={onNew}>+ New entry</button>
+          <button className="btn-plain" type="button" disabled title="The icon picker arrives with Settings (step 10)">Set an icon</button>
         </div>
       </div>
     </div>

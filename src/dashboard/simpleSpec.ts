@@ -107,7 +107,6 @@ export interface SimpleModel {
     name: string;
     heat: HeatChip | null;
     archived: boolean;
-    archivedOn: string | null;
     empty: boolean;
     sinceLive: string;
     tabs: { key: string; label: string }[];
@@ -392,7 +391,6 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
     name: input.name,
     heat,
     archived: input.archived,
-    archivedOn,
     empty,
     sinceLive,
     tabs,

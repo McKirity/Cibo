@@ -23,10 +23,9 @@
  * applied to a text card — and the exhibit recorded that hand-assigning the
  * spans was wrong twice in two attempts, so they are computed here.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   buildWall,
-  spanOf,
   toPackInputs,
   type ClusterTile,
   type BannerTile,
@@ -41,7 +40,7 @@ import {
   type WeatherWallTile,
   type WhimsyWhich,
 } from "./wallSpec";
-import { packWall, WALL_COLS, type Span } from "./wallPack";
+import { packWall, type Span } from "./wallPack";
 import { KeepsakeTile } from "./KeepsakeTile";
 import { useWallData } from "./useWallData";
 import { useMilestoneDay } from "./useMilestoneDay";
@@ -926,14 +925,3 @@ function StreaksCard({ t }: { t: StreaksTile }) {
   );
 }
 
-/** Kept so the wall stays honest about scroll position when the day changes. */
-export function useScrollTop(dep: unknown) {
-  useEffect(() => {
-    const wrap = document.querySelector(".wall-wrap");
-    wrap?.scrollTo({ top: 0 });
-  }, [dep]);
-}
-
-export const wallColumns = WALL_COLS;
-export const formatDuration = hoursMinutes;
-export const provisionalSpan = spanOf;

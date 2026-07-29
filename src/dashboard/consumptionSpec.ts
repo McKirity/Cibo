@@ -70,8 +70,6 @@ export interface TileSpec {
   /** Streak tiles: a date line above the value + a key/value subtitle table.
    *  Rows may carry an entryId (the merged-catalog hall's door — chunk 5). */
   list?: { dateLine: string; rows: { k: string; v: string; entryId?: string }[] };
-  /** Best-record door tiles carry a date value line (kit-tile-stat `.tv.date`). */
-  dateValue?: boolean;
   /** Name-valued tiles (the categorical family's Current-value) read at --size-heading. */
   big?: boolean;
 }

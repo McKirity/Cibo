@@ -7,13 +7,13 @@
  * "unsaved" never exists in the drafting sense.
  *
  * Scoped to the day on purpose. The milestone banner needs the whole store, and
- * it gets it from `useCadenceData()` — the existing whole-store fetch — rather
- * than a second one.
+ * it gets it from `useMilestoneDay`'s debounced snapshot loader rather than a
+ * live subscription here (a live whole-store query on a form is the lag bug).
  */
 import { useMemo } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
-import { DateOnly, derivedRulesFromJson, type DerivedRule, type HabitId } from "../db/schema";
+import { DateOnly, derivedRulesFromJson, type DerivedRule } from "../db/schema";
 import type { SpineDefinition, SpineHabit, SpineSession, SubunitMap } from "./spineSpec";
 
 const habitsQuery = evolu.createQuery((db) =>
@@ -65,7 +65,6 @@ export interface DayEntry {
 }
 
 export interface DayData {
-  ready: boolean;
   habits: SpineHabit[];
   /** habit id → its session-scope definitions (picklists then flags, as declared). */
   defsByHabit: Map<string, SpineDefinition[]>;
@@ -256,7 +255,6 @@ export function useDayData(dayKey: string): DayData {
 
   return useMemo<DayData>(
     () => ({
-      ready: habitRows.length > 0,
       habits,
       defsByHabit,
       sessions,
@@ -265,9 +263,6 @@ export function useDayData(dayKey: string): DayData {
       entriesByHabit,
       dayRow,
     }),
-    [habitRows.length, habits, defsByHabit, sessions, cats, catRowIds, entriesByHabit, dayRow],
+    [habits, defsByHabit, sessions, cats, catRowIds, entriesByHabit, dayRow],
   );
 }
-
-/** Convenience: `HabitId` branding for the queries that need it downstream. */
-export const asHabitId = (id: string): HabitId => id as HabitId;

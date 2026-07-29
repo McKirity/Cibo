@@ -205,64 +205,6 @@ export function sunArcPoint(sun: SunInfo, now: Date): SunArcPoint {
   return { xPct: (x / A.w) * 100, yPct: (y / A.h) * 100, visible: true };
 }
 
-export interface SkyStops {
-  zenith: string;
-  horizon: string;
-}
-
-/**
- * The sun card's field — a vertical zenith→horizon gradient whose two stops are
- * picked by time of day, per the stop table in `theme.css`:
- *
- *   night  zenith --whimsy-ink     horizon --whimsy-night
- *   dawn   zenith --whimsy-night   horizon --whimsy-dawn
- *   day    zenith --whimsy-zenith  horizon --whimsy-day
- *   dusk   zenith --whimsy-night   horizon --whimsy-dusk
- *
- * Between adjacent moments the use-site mixes the two. The derivation law bans
- * hardcoded `color-mix` percentages — but this one is explicitly exempt because
- * **the mix amount IS data** (solar altitude), which is why the roster carries
- * no dial for it. Every colour still resolves to a dial; only the amount is
- * computed, and it mixes dial-toward-dial, never toward a literal.
- */
-export function skyGradient(altitudeDeg: number, rising: boolean): SkyStops {
-  const M = {
-    night: { z: "--whimsy-ink", h: "--whimsy-night" },
-    dawn: { z: "--whimsy-night", h: "--whimsy-dawn" },
-    dusk: { z: "--whimsy-night", h: "--whimsy-dusk" },
-    day: { z: "--whimsy-zenith", h: "--whimsy-day" },
-  } as const;
-  const twilight: "dawn" | "dusk" = rising ? "dawn" : "dusk";
-
-  let from: keyof typeof M;
-  let to: keyof typeof M;
-  let mix: number;
-  if (altitudeDeg >= 6) {
-    from = "day";
-    to = "day";
-    mix = 0;
-  } else if (altitudeDeg >= -6) {
-    // civil twilight → full day
-    from = twilight;
-    to = "day";
-    mix = (altitudeDeg + 6) / 12;
-  } else if (altitudeDeg >= -18) {
-    // night → twilight, across the nautical/astronomical band
-    from = "night";
-    to = twilight;
-    mix = (altitudeDeg + 18) / 12;
-  } else {
-    from = "night";
-    to = "night";
-    mix = 0;
-  }
-
-  const pct = Math.round(Math.max(0, Math.min(1, mix)) * 100);
-  const blend = (a: string, b: string) =>
-    a === b ? `var(${a})` : `color-mix(in oklch, var(${a}), var(${b}) ${pct}%)`;
-  return { zenith: blend(M[from].z, M[to].z), horizon: blend(M[from].h, M[to].h) };
-}
-
 export interface MoonInfo {
   /** 0 = new, 0.25 = first quarter, 0.5 = full, 0.75 = last quarter. */
   phase: number;

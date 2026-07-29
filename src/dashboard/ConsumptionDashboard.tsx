@@ -35,10 +35,13 @@ const HEAT_CLASS: Record<string, string> = { HOT: "hot", WARM: "warm", COOLING: 
 export function ConsumptionDashboard({
   habitKey,
   onOpenEntry,
+  onOpenLibrary,
 }: {
   habitKey: string;
   /** Entry doors (chunk 5) — leaderboard rows, hall covers, catalog cards. */
   onOpenEntry?: (entryId: string) => void;
+  /** The masthead's library door (live since the step-6 catch-up). */
+  onOpenLibrary?: () => void;
 }) {
   const data = useConsumptionData(habitKey);
   const [today] = useState(todayLocal);
@@ -90,7 +93,11 @@ export function ConsumptionDashboard({
               <div className="idrow">
                 <span className="hname">{m.masthead.name}</span>
                 {m.masthead.heat && (
-                  <span className={`heatchip ${HEAT_CLASS[m.masthead.heat]}`}>{m.masthead.heat}</span>
+                  // inline display defeats the claimed `.heatchip.cold{display:none}`
+                  // — same as the other three dashboards, so COLD renders here too.
+                  <span className={`heatchip ${HEAT_CLASS[m.masthead.heat]}`} style={{ display: "inline-flex" }}>
+                    {m.masthead.heat}
+                  </span>
                 )}
               </div>
               <div className="since">{m.masthead.sinceLive}</div>
@@ -122,8 +129,30 @@ export function ConsumptionDashboard({
                 </div>
               )}
             </div>
-            <button className="libdoor" type="button" title="Library (step 8)">
+            <button
+              className="libdoor"
+              type="button"
+              title={`Open the ${data.name} library`}
+              onClick={onOpenLibrary}
+            >
+              {/* the drawn face: book glyph · Library · door arrow (gaming FINAL) */}
+              <svg className="ico" viewBox="0 0 24 24">
+                <path d="M12 7v14" />
+                <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+              </svg>
               Library
+              <svg
+                className="ico"
+                viewBox="0 0 24 24"
+                style={{
+                  width: "var(--icon-size-small)",
+                  height: "var(--icon-size-small)",
+                  color: "var(--text-muted)",
+                }}
+              >
+                <path d="M5 12h14" />
+                <path d="m12 5 7 7-7 7" />
+              </svg>
             </button>
           </section>
 

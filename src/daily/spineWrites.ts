@@ -4,8 +4,9 @@
  * Ruling 1 (screen note § Amended 2026-07-26 (2nd)): "Finalize is the official
  * save that locks it and turns the form into the coverwall. All other saves are
  * unofficial saves that remembers any changes to the form but doesn't turn it
- * into the cover wall." So every function here commits IMMEDIATELY — a field
- * commits as you leave it — and Finalize writes nothing but the day's state.
+ * into the cover wall." Since the 2026-07-27 auto-save, those unofficial writes
+ * BUFFER (autosave.ts) and land at the flush; the functions here are what the
+ * flush invokes. Finalize flushes the buffer, then writes the day's state.
  *
  * EVOLU MUTATIONS FAIL SILENTLY. An unchecked `Result` can drop the entire
  * microtask transaction with no log (the coding-migration bug of 2026-07-23), so
@@ -32,7 +33,7 @@ import {
   validateSessionMeasure,
 } from "../db/validate";
 import { writingWordsForDay } from "../db/derivedKeyboard";
-import type { Bout, SpineHabit, StripSpec } from "./spineSpec";
+import type { Bout, SpineHabit } from "./spineSpec";
 
 export type WriteResult = { ok: true } | { ok: false; reason: string };
 const good: WriteResult = { ok: true };
@@ -126,6 +127,8 @@ export const createBout = (args: {
   range: { start: string; end: string } | null;
   measureless: boolean;
   cats: Array<{ definitionId: string; value: string }>;
+  /** provenance — "timer" when the bout arrived through the timer hand-off. */
+  source?: "manual" | "timer";
 }): { ok: true; ids: SessionId[] } | { ok: false; reason: string } => {
   const plan: NewSession[] = [];
   for (const m of args.measures)
@@ -137,6 +140,7 @@ export const createBout = (args: {
       value: m.value,
       start: null,
       end: null,
+      source: args.source,
     });
   if (args.range != null)
     plan.push({
@@ -194,21 +198,17 @@ export const createBout = (args: {
   return { ok: true, ids };
 };
 
-/** A measure edit on an existing row. Also re-syncs derived Keyboard words. */
-export const updateMeasureValue = (
-  id: string,
-  value: number,
-  ctx: { habitKey: string | null; measure: MeasureKind; day: string },
-): WriteResult => {
+/**
+ * A measure edit on an existing row. The derived-Keyboard sync happens after
+ * the flush (`afterFlush` in autosave.ts), never inside a write.
+ */
+export const updateMeasureValue = (id: string, value: number): WriteResult => {
   if (!Number.isFinite(value) || value < 0) return bad("A measure value cannot be negative.");
   const res = evolu.update("sessions", {
     id: id as SessionId,
     value: FiniteNumber.orThrow(value),
   });
-  if (!checked(res, "measure update")) return bad("Write failed — see console.");
-  // Same as createBout: the sync happens after the flush, never inside a write.
-  void ctx;
-  return good;
+  return checked(res, "measure update") ? good : bad("Write failed — see console.");
 };
 
 /** A range edit — validated against the habit's own midnight rule. */
@@ -479,8 +479,3 @@ export const finalizeDay = (
       });
   return checked(res, "finalize") ? good : bad("Write failed — see console.");
 };
-
-/** The habit's own `entry_attributes` JSON, needed by quick-create. */
-export type EntryAttributesJsonString = string | null;
-
-export const stripNeedsEntry = (spec: StripSpec): boolean => spec.needsEntry;

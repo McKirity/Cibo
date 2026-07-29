@@ -26,8 +26,17 @@ import { SimpleDashboard } from "../dashboard/SimpleDashboard";
 import { RangeDashboard } from "../dashboard/RangeDashboard";
 import { CadenceDashboard } from "../dashboard/CadenceDashboard";
 import { EntryDashboard } from "../dashboard/EntryDashboard";
+import { Library } from "../library/Library";
+import { CompareDashboard } from "../compare/CompareDashboard";
+import "../compare/compare.css";
+import { TimersScreen } from "../timers/TimersScreen";
+import { TimerOverlays } from "../timers/TimerOverlays";
+import { discardAllForQuit, hasLiveClocks } from "../timers/timerStore";
+import { registerTrayNavigate } from "../timers/tray";
+import { DangerConfirm } from "./DangerConfirm";
 import type { CadenceScale } from "../metrics/cadence";
 import { useHistory } from "./useHistory";
+import { HabitIcon, hasIcon } from "./habitIcons";
 import "./shell.css";
 // Routing reads the habit row's kind/sub_type (chunk 3) — the key sets are
 // gone, so a habit can never be routed by name: consumption/creation off
@@ -37,7 +46,7 @@ import "./shell.css";
 const activeHabitsQuery = evolu.createQuery((db) =>
   db
     .selectFrom("habits")
-    .select(["id", "key", "name", "kind", "sub_type", "colour_slot", "archived"])
+    .select(["id", "key", "name", "kind", "sub_type", "colour_slot", "icon", "archived"])
     .where("isDeleted", "is not", 1)
     .orderBy("sort_order"),
 );
@@ -52,8 +61,14 @@ type View =
   /** The dev logging view — hosts the seed/activation panels until step 15. */
   | { kind: "log" }
   | { kind: "habit"; key: string }
+  /** The consumption catalog — the stats-vs-library split's second screen. */
+  | { kind: "library"; habitKey: string }
   | { kind: "cadence"; scale: CadenceScale; anchor: string }
-  | { kind: "entry"; id: string; habitKey: string };
+  | { kind: "entry"; id: string; habitKey: string }
+  /** Comparing Statistics — the Tools-rail query workspace (step 6 catch-up). */
+  | { kind: "compare" }
+  /** Timers — the Tools-rail board of independent clocks (step 7). */
+  | { kind: "timers" };
 
 const todayStr = (): string => {
   const d = new Date();
@@ -89,7 +104,12 @@ export function Shell() {
   // REPLACE, not navigate: the user did not ask to go here, so it must not
   // become a history entry you can press "back" into (and bail out of again).
   useEffect(() => {
-    const key = view.kind === "habit" ? view.key : view.kind === "entry" ? view.habitKey : null;
+    const key =
+      view.kind === "habit"
+        ? view.key
+        : view.kind === "entry" || view.kind === "library"
+          ? view.habitKey
+          : null;
     if (key != null && !active.some((h) => h.key === key)) {
       replaceView({ kind: "daily" });
     }
@@ -145,6 +165,49 @@ export function Shell() {
     };
   }, [back, forward]);
 
+  // ── step 7: timers × the app lifecycle ─────────────────────────────────────
+  // Tray click = "reopen the app to the timer" (minimized-only tray, ruled).
+  useEffect(() => {
+    registerTrayNavigate(() => setView({ kind: "timers" }));
+  }, [setView]);
+
+  // Close = quit, ALWAYS — but a running clock gets the warning modal first:
+  // Stop aborts the close, Proceed discards the in-flight unlogged values
+  // ([[App Lifecycle & OS Integration]]). The intercept rides onCloseRequested
+  // so the titlebar ✕ and Alt+F4 hit the same gate; the DangerConfirm chassis
+  // stands in for the (never-drawn) quit warning face.
+  const [quitWarn, setQuitWarn] = useState(false);
+  const quitBypass = useRef(false);
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let gone = false;
+    try {
+      void getCurrentWindow()
+        .onCloseRequested((e) => {
+          if (quitBypass.current || !hasLiveClocks()) return; // clean close
+          e.preventDefault();
+          setQuitWarn(true);
+        })
+        .then((f) => {
+          if (gone) f();
+          else unlisten = f;
+        })
+        .catch(() => {});
+    } catch {
+      /* plain browser dev — no window close to intercept */
+    }
+    return () => {
+      gone = true;
+      unlisten?.();
+    };
+  }, []);
+  const proceedQuit = () => {
+    discardAllForQuit(); // nothing was written, so there is nothing to undo
+    quitBypass.current = true;
+    setQuitWarn(false);
+    winAction((w) => w.close())();
+  };
+
   const today = todayStr();
   /**
    * The one day door every surface routes through. The FUTURE is a dead route
@@ -163,9 +226,15 @@ export function Shell() {
   const title =
     view.kind === "habit"
       ? active.find((h) => h.key === view.key)?.name ?? "Cibo"
-      : view.kind === "entry"
+      : view.kind === "library"
+        ? `${active.find((h) => h.key === view.habitKey)?.name ?? "Cibo"} — Library`
+        : view.kind === "entry"
         ? active.find((h) => h.key === view.habitKey)?.name ?? "Cibo"
-        : view.kind === "cadence"
+        : view.kind === "compare"
+          ? "Comparing Statistics"
+        : view.kind === "timers"
+          ? "Timers"
+          : view.kind === "cadence"
           ? { week: "Weekly", month: "Monthly", quarter: "Quarterly", year: "Yearly" }[view.scale]
           : view.kind === "daily" && view.day != null && view.day !== today
             ? // The FINAL's titlebar carries the viewed day, not the word
@@ -229,7 +298,11 @@ export function Shell() {
                     key={h.id}
                     name={h.name ?? "—"}
                     colour={h.colour_slot ?? "habit-1"}
-                    active={(view.kind === "habit" && view.key === h.key) || (view.kind === "entry" && view.habitKey === h.key)}
+                    icon={(h.icon as string | null) ?? null}
+                    active={
+                      (view.kind === "habit" && view.key === h.key) ||
+                      ((view.kind === "entry" || view.kind === "library") && view.habitKey === h.key)
+                    }
                     onClick={() => h.key && setView({ kind: "habit", key: h.key })}
                   />
                 ))}
@@ -245,7 +318,11 @@ export function Shell() {
                     key={h.id}
                     name={h.name ?? "—"}
                     colour={h.colour_slot ?? "habit-1"}
-                    active={(view.kind === "habit" && view.key === h.key) || (view.kind === "entry" && view.habitKey === h.key)}
+                    icon={(h.icon as string | null) ?? null}
+                    active={
+                      (view.kind === "habit" && view.key === h.key) ||
+                      ((view.kind === "entry" || view.kind === "library") && view.habitKey === h.key)
+                    }
                     onClick={() => h.key && setView({ kind: "habit", key: h.key })}
                   />
                 ))}
@@ -263,11 +340,19 @@ export function Shell() {
         <div className="sec">
           <p className="overline">Tools</p>
           <div className="tools">
-            <button className="tool" disabled title="Step 7">
+            <button
+              className={`tool${view.kind === "timers" ? " active" : ""}`}
+              onClick={() => setView({ kind: "timers" })}
+            >
               <Ico d={["M10 2h4", "M12 14l3-3", "M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"]} />
               Timers
             </button>
-            <button className="tool" disabled title="Later">
+            {/* "Statistics" is the drawn display label; "Comparing Statistics"
+                stays the canonical name (the 2026-07-17 corpus-sweep rider). */}
+            <button
+              className={`tool${view.kind === "compare" ? " active" : ""}`}
+              onClick={() => setView({ kind: "compare" })}
+            >
               <Ico d={["M3 3v16a2 2 0 0 0 2 2h16", "M18 17V9", "M13 17V5", "M8 17v-3"]} />
               Statistics
             </button>
@@ -304,13 +389,27 @@ export function Shell() {
             // mode reset to All Time / All types on every swap.
             const openEntry = (id: string) => setView({ kind: "entry", id, habitKey: view.key });
             if (h?.sub_type === "consumption")
-              return <ConsumptionDashboard key={view.key} habitKey={view.key} onOpenEntry={openEntry} />;
+              return (
+                <ConsumptionDashboard
+                  key={view.key}
+                  habitKey={view.key}
+                  onOpenEntry={openEntry}
+                  onOpenLibrary={() => setView({ kind: "library", habitKey: view.key })}
+                />
+              );
             if (h?.sub_type === "creation")
               return <CreationDashboard key={view.key} habitKey={view.key} onOpenEntry={openEntry} />;
             if (h?.kind === "simple") return <SimpleDashboard key={view.key} habitKey={view.key} />;
             if (h?.kind === "range") return <RangeDashboard key={view.key} habitKey={view.key} />;
             return <NotYetDashboard habitKey={view.key} />;
           })()
+        ) : view.kind === "library" ? (
+          <Library
+            key={view.habitKey}
+            habitKey={view.habitKey}
+            onBackToStats={() => setView({ kind: "habit", key: view.habitKey })}
+            onOpenEntry={(id) => setView({ kind: "entry", id, habitKey: view.habitKey })}
+          />
         ) : view.kind === "entry" ? (
           <EntryDashboard
             key={view.id}
@@ -318,6 +417,9 @@ export function Shell() {
             onOpenHabit={(key) => setView({ kind: "habit", key })}
             onOpenEntry={(id) => setView({ kind: "entry", id, habitKey: view.habitKey })}
             onOpenDay={openDay}
+            // A deleted entry is a dead route — leave with REPLACE, never push
+            // (the archived-habit precedent), so back can't return to it.
+            onDeleted={() => replaceView({ kind: "habit", key: view.habitKey })}
           />
         ) : view.kind === "cadence" ? (
           <CadenceDashboard
@@ -327,6 +429,13 @@ export function Shell() {
             onNavigate={(nav) => setView({ kind: "cadence", scale: nav.scale, anchor: nav.anchor })}
             onOpenHabit={(key) => setView({ kind: "habit", key })}
             onOpenDay={openDay}
+          />
+        ) : view.kind === "compare" ? (
+          <CompareDashboard />
+        ) : view.kind === "timers" ? (
+          <TimersScreen
+            onOpenHabit={(key) => setView({ kind: "habit", key })}
+            onOpenEntry={(id, habitKey) => setView({ kind: "entry", id, habitKey })}
           />
         ) : view.kind === "daily" ? (
           <Daily
@@ -346,6 +455,26 @@ export function Shell() {
           any surface can raise it. First tenant: the form spine's session-remove
           undo. */}
       <ToastSlot />
+
+      {/* step 7 — the machinery-invoked timer overlays (a pomodoro interval-end
+          opens the management window from ANY screen; recovery is launch-moment).
+          "Log all → form" lands on Daily, where the spine consumes the hand-off. */}
+      <TimerOverlays onGoToForm={() => setView({ kind: "daily" })} />
+      {quitWarn && (
+        <DangerConfirm
+          title="A clock is still running"
+          body={
+            <>
+              Closing quits Cibo. The running clocks' <strong>unlogged accumulators are
+              discarded</strong> — stop the close and log them from the board if you want to
+              keep them.
+            </>
+          }
+          confirmLabel="Proceed · discard"
+          onConfirm={proceedQuit}
+          onCancel={() => setQuitWarn(false)}
+        />
+      )}
     </div>
   );
 }
@@ -353,18 +482,22 @@ export function Shell() {
 function HabitButton({
   name,
   colour,
+  icon,
   active,
   onClick,
 }: {
   name: string;
   colour: string;
+  icon: string | null;
   active: boolean;
   onClick: () => void;
 }) {
+  // Icon-in-swatch = the drawn frame face (seed batch 7 planted the names);
+  // the lettermark stays the ruled fallback for icon-less habits.
   return (
     <button className={`entry${active ? " active" : ""}`} onClick={onClick}>
       <span className="swatch" style={{ background: `var(--${colour})` }}>
-        {name[0]?.toUpperCase()}
+        {hasIcon(icon) ? <HabitIcon icon={icon} /> : name[0]?.toUpperCase()}
       </span>
       <span className="name">{name}</span>
     </button>

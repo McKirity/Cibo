@@ -27,6 +27,7 @@ export function DangerConfirm({
   confirmLabel,
   onConfirm,
   onCancel,
+  stacked = false,
 }: {
   title: string;
   /** Already-composed prose; `strong` marks the counts. */
@@ -34,6 +35,12 @@ export function DangerConfirm({
   confirmLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
+  /**
+   * The one sanctioned overlay-atop-a-modal (bulk delete): a SECOND dim at
+   * `z-confirm` (60) over the modal's own, so the modal reads dimmed but
+   * present behind the confirm. Esc still pops the top only.
+   */
+  stacked?: boolean;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -47,7 +54,7 @@ export function DangerConfirm({
   }, [onCancel]);
 
   return (
-    <div className="dimlayer" onMouseDown={onCancel} role="presentation">
+    <div className={`dimlayer${stacked ? " stack" : ""}`} onMouseDown={onCancel} role="presentation">
       <div
         className="confirm"
         role="alertdialog"

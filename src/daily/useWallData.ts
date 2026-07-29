@@ -39,7 +39,6 @@ const entriesQuery = evolu.createQuery((db) =>
 );
 
 export interface WallData {
-  ready: boolean;
   habits: WallHabit[];
   sessions: WallSession[];
   entries: WallEntry[];
@@ -223,7 +222,6 @@ export function useWallData(dayKey: string): WallData {
 
   return useMemo(
     () => ({
-      ready: habitRows.length > 0,
       habits,
       sessions,
       entries,
@@ -232,6 +230,6 @@ export function useWallData(dayKey: string): WallData {
       dayRow,
       snapshot,
     }),
-    [habitRows.length, habits, sessions, entries, cats, ruleHits, dayRow, snapshot],
+    [habits, sessions, entries, cats, ruleHits, dayRow, snapshot],
   );
 }

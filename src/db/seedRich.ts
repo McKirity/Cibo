@@ -325,7 +325,8 @@ const addVocab = (ctx: Ctx, hk: string, defKey: string, value: string) => {
   if (!did) return;
   const seen = ctx.vocab.get(did) ?? new Set<string>();
   if (seen.has(value)) return;
-  ctx.evolu.insert("vocab_options", { definition_fk: did, value: s100(value), sort_order: fin(seen.size + 1) });
+  const res = ctx.evolu.insert("vocab_options", { definition_fk: did, value: s100(value), sort_order: fin(seen.size + 1) });
+  if (!res.ok) console.error("seedRich: vocab insert failed", value, res.error);
   seen.add(value);
   ctx.vocab.set(did, seen);
 };
@@ -351,6 +352,7 @@ const insertSession = (
     res = ctx.evolu.insert("sessions", { ...base, measure_kind: "range", value: null, start: DateTimeLocal.orThrow(measure.start), end: DateTimeLocal.orThrow(measure.end) });
   else res = ctx.evolu.insert("sessions", { ...base, measure_kind: "none", value: null, start: null, end: null });
   if (res.ok) ctx.counts.sessions++;
+  else console.error("seedRich: session insert failed", day, res.error);
   return res as never;
 };
 
@@ -363,6 +365,7 @@ const addSubunit = (ctx: Ctx, sessionId: unknown, hk: string, defKey: string, va
     value: s1000(value),
   });
   if (r.ok) ctx.counts.subunits++;
+  else console.error("seedRich: subunit insert failed", defKey, r.error);
 };
 
 // ── Session-timeline model ────────────────────────────────────────────────────
@@ -581,7 +584,7 @@ function seedSleep(ctx: Ctx, playProb: number) {
 
 // ── Entry creation ────────────────────────────────────────────────────────────
 
-function makeConsumables(ctx: Ctx, hk: string, cat: Consumable[], source: string, genreDefKey: string, typeDefKey?: string): EntryRef[] {
+function makeConsumables(ctx: Ctx, hk: string, cat: Consumable[], source: string, genreDefKey: string): EntryRef[] {
   const habit = ctx.habitId.get(hk)!;
   const refs: EntryRef[] = [];
   cat.forEach((c, i) => {
@@ -601,11 +604,10 @@ function makeConsumables(ctx: Ctx, hk: string, cat: Consumable[], source: string
       source: s100(source),
       external_id: s100(`${source}-${i + 1}`),
     });
-    void typeDefKey;
     if (res.ok) {
       ctx.counts.entries++;
       refs.push({ id: res.value.id, meta: c });
-    }
+    } else console.error("seedRich: entry insert failed", c.title, res.error);
   });
   return refs;
 }
@@ -630,7 +632,7 @@ function makeCreations(ctx: Ctx, hk: string, cat: Creation[]): EntryRef[] {
     if (res.ok) {
       ctx.counts.entries++;
       refs.push({ id: res.value.id, meta: c });
-    }
+    } else console.error("seedRich: entry insert failed", c.title, res.error);
   }
   return refs;
 }
@@ -644,8 +646,11 @@ export async function clearRichSeed(evolu: CiboEvolu): Promise<{ removed: number
       evolu.createQuery((db) => db.selectFrom(table).select(["id"]).where("isDeleted", "is not", 1)),
     );
     for (const r of rows) {
-      evolu.update(table, { id: r.id as never, isDeleted: 1 } as never);
-      removed++;
+      const res = evolu.update(table, { id: r.id as never, isDeleted: 1 } as never);
+      // Count only writes that landed — an overstated clear count makes the
+      // "idempotent" re-seed double-count on top of ghost rows.
+      if (res.ok) removed++;
+      else console.error("seedRich: clear failed", table, res.error);
     }
   }
   return { removed };
@@ -674,7 +679,10 @@ async function normalizeReadingType(evolu: CiboEvolu): Promise<void> {
         .where("isDeleted", "is not", 1),
     ),
   );
-  for (const o of optRows) evolu.update("vocab_options", { id: o.id, value: s100("Fanfiction") });
+  for (const o of optRows) {
+    const res = evolu.update("vocab_options", { id: o.id, value: s100("Fanfiction") });
+    if (!res.ok) console.error("seedRich: type rename failed", res.error);
+  }
 }
 
 // ── Orchestrator ──────────────────────────────────────────────────────────────
@@ -702,7 +710,8 @@ export async function seedRich(
 
   // Activate the habits that should be active now; archive Gamedev.
   for (const [key, id] of ctx.habitId) {
-    evolu.update("habits", { id, archived: STAYS_ACTIVE.has(key) ? 0 : 1 });
+    const res = evolu.update("habits", { id, archived: STAYS_ACTIVE.has(key) ? 0 : 1 });
+    if (!res.ok) console.error("seedRich: lifecycle update failed", key, res.error);
   }
 
   // Belt-and-braces: ensure the Reading `type` vocab reads Fanfiction, not the
@@ -712,8 +721,8 @@ export async function seedRich(
 
   // ── Entries ──
   const games = makeConsumables(ctx, "gaming", GAMES, "steam", "gaming_genre");
-  const books = makeConsumables(ctx, "reading", BOOKS, "calibre", "reading_genre", "reading_type");
-  const media = makeConsumables(ctx, "media", MEDIA, "tmdb", "media_genre", "media_type");
+  const books = makeConsumables(ctx, "reading", BOOKS, "calibre", "reading_genre");
+  const media = makeConsumables(ctx, "media", MEDIA, "tmdb", "media_genre");
   const writing = makeCreations(ctx, "writing", WRITING_PROJECTS);
   const gamedev = makeCreations(ctx, "gamedev", GAMEDEV_PROJECTS);
 

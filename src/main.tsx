@@ -8,7 +8,7 @@ import "../src-tauri/resources/themes/Default (neutral light)/theme.css";
 import "./kit.css";
 import App from "./App";
 import { evolu } from "./db/evolu";
-import { runSeed } from "./db/seed";
+import { ensureHabitIcons, runSeed } from "./db/seed";
 import { ensureAppStartDate } from "./db/appStart";
 
 // Surface Evolu's error store — validation drops and worker-side rollbacks are
@@ -28,6 +28,10 @@ runSeed(evolu).then(
       `Seed: found version ${r.foundVersion}, ${r.applied ? "applied batch(es)" : "nothing to apply"}`,
     );
     void ensureAppStartDate(evolu);
+    // The icon plant is an always-run reconciler, NOT gate-trusted: the gate
+    // latched twice over transactions lost to mid-session reloads (batches
+    // 7 and 9). Idempotent null-fill → a lost write heals next launch.
+    void ensureHabitIcons(evolu);
   },
   (e) => console.error("Seed failed:", e),
 );

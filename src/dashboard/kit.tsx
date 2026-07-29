@@ -75,7 +75,7 @@ export function StatTile({ t }: { t: TileSpec }) {
           <span className={`deltachip${t.delta.down ? " down" : ""}`}>{t.delta.text}</span>
         </div>
       ) : (
-        <span className={`tv${t.dateValue ? " date" : ""}`}>{value}</span>
+        <span className="tv">{value}</span>
       )}
       {t.subtitle && <span className="ts">{t.subtitle}</span>}
     </div>

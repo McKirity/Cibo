@@ -437,8 +437,7 @@ export function buildCadenceModel(
 
   // ── Review layer ──
   const entryTitle = new Map(data.entries.map((e) => [e.id, e.title]));
-  const allByHabit = sessionsByHabit;
-  const milestones = deriveMilestones(roster, allByHabit, entryTitle, bounds, data);
+  const milestones = deriveMilestones(roster, sessionsByHabit, entryTitle, bounds, data);
   let review: ReviewColVM[] | null = null;
   let reviewTitle: string | null = null;
   let milestoneCards: MilestoneVM[] | null = null;
@@ -446,17 +445,17 @@ export function buildCadenceModel(
   if (scale === "week") {
     milestoneCards = milestones.slice(0, 4);
   } else {
-    const records = deriveRecords(roster, allByHabit, bounds);
-    const anniversaries = deriveAnniversaries(roster, allByHabit, entryTitle, bounds);
+    const records = deriveRecords(roster, sessionsByHabit, bounds);
+    const anniversaries = deriveAnniversaries(roster, sessionsByHabit, entryTitle, bounds);
     reviewTitle =
       scale === "month"
         ? `${bounds.label.split(" ")[0]} in review`
         : `${bounds.label} in review`;
     if (scale === "year") {
-      const finished = deriveFinished(roster, allByHabit, data, bounds);
+      const finished = deriveFinished(roster, sessionsByHabit, data, bounds);
       review = [
         { label: "Records", lines: records },
-        { label: "Arcs & churn", lines: deriveChurn(roster, allByHabit, data, bounds) },
+        { label: "Arcs & churn", lines: deriveChurn(roster, sessionsByHabit, data, bounds) },
         { label: "Finished · the 5★ club", lines: finished },
       ];
     } else {

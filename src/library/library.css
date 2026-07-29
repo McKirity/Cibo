@@ -1,0 +1,496 @@
+/* ============================================================================
+   Build step 6 catch-up — the LIBRARY screen + its two modals.
+   Rules CLAIMED from Layer 2 (kit-staging.css), faithful to the frozen
+   `Final/library.html` (re-frozen 2026-07-19) · `entry-creation-modal.html` ·
+   `bulk-edit-modal.html`. Screen rules are RE-SCOPED under `.libscreen`
+   (deliberate, the `.wallscreen` precedent — `.grid`, `.cat`, `.list`, `.tbar`
+   collide with names the corpus uses elsewhere); the modal chassis base
+   (.mo/.mo-head/.mo-body/.mo-foot/.mo-close + .dimlayer.stack) went to
+   kit.css — the importer modal and habit creator are its future tenants.
+   `.picker` was renamed `.picker2` (the daily form's entry picker owns the
+   staged `.picker`); `.mo2` composes over `.mo` rather than redeclaring it.
+   The `.libmenu` popover is Build-side implementation (the FINALs draw closed
+   chips only) — overlay-tier dials, nothing new minted.
+   ========================================================================= */
+
+/* ── the cover-card vocabulary (base rules — the library is the staged base's
+      tenant; the modals reuse it) ─────────────────────────────────────────── */
+
+.capsule { position: relative; overflow: hidden;
+  background: repeating-linear-gradient(135deg, var(--inset-background), var(--inset-background) 8px, var(--divider) 8px, var(--divider) 16px); }
+.capsule .cwm { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-weight: var(--weight-bold); letter-spacing: .06em;
+  color: color-mix(in oklch, var(--text-muted), var(--inset-background) 45%); }
+
+/* status pill — parametrized on --pill-cat (the frozen five `s-*` classes were
+   sample-vocab enumeration; a managed vocab reads the dial through the
+   property, the --cell-ink precedent). Tint per the --tint-mix rule. */
+.pill { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--size-caption);
+  font-weight: var(--weight-medium); border-radius: var(--radius-full); padding: 1px var(--space-4);
+  line-height: 1.7; color: var(--pill-cat, var(--text-secondary));
+  background: color-mix(in oklch, var(--pill-cat, var(--text-secondary)), var(--window-background) var(--tint-mix)); }
+
+.pill.neutral { color: var(--text-secondary); background: var(--inset-background); font-family: var(--font-mono); }
+
+.chip-h { display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: var(--size-caption);
+  color: var(--text-secondary); background: var(--inset-background); border-radius: var(--radius-full); padding: 1px var(--space-4); }
+.rating { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--size-caption); color: var(--text-secondary); }
+.rating .st { color: var(--text-muted); }
+.rating.none { color: var(--text-muted); }
+.prio { display: inline-flex; flex-direction: column-reverse; gap: 1px; line-height: 0; }
+.prio .ar { width: 12px; height: 7px; color: var(--divider); }
+.prio .ar.on { color: var(--accent); }
+
+/* ── the screen ─────────────────────────────────────────────────────────── */
+
+/* The screen wrapper carries the DASHBOARDS' pane inset (.gsdash's space-8 —
+   user-ruled 2026-07-27: the headliner matches its dashboard sibling's
+   dimensions and alignment, so the whole screen shares the dashboards' frame;
+   toggling stats ⇄ library keeps every edge still). */
+.libscreen { min-height: 100%; padding: var(--space-8); }
+/* toolbar · pin band · catalog read as ONE UNIT (user-ruled 2026-07-27): the
+   zone gap tightens to --space-4 and the headliner keeps its distance via its
+   own margin (net unchanged above the toolbar). The pin band's vertical share
+   of the panel clearance is compacted the same way (horizontal kept — it
+   aligns the band with the catalog's inner inset). */
+.libscreen .lib { min-height: 100%; display: flex; flex-direction: column; gap: var(--space-4); }
+/* the headliner stands apart from the toolbar-led unit (user-ruled 2026-07-27:
+   "more space between the toolbar and headliner") — mast margin + zone gap =
+   --space-7 + --space-4 = 32px, the dashboards' own zone rhythm (--space-8). */
+.libscreen .lib > .libmast { margin-bottom: var(--space-7); }
+
+/* zone 1 · HEADLINER — the dashboard masthead anatomy (user-ruled 2026-07-27,
+   overriding the FINAL's bare head row); .panel/.mast/.art/.idcol/.hname/
+   .since are the claimed dashboard.css family, reused not redeclared. The
+   back-door sits in the mast's door column, TOP-ALIGNED exactly like the
+   stats masthead's Library door (the mast's own align-items:start — no
+   override, so the two screens' doors sit at the same y). */
+.libscreen .backdoor { display: inline-flex; align-items: center; gap: var(--space-4); font-family: var(--font-ui);
+  font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong);
+  background: var(--panel-background); border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-small); padding: var(--space-4) var(--space-6); cursor: pointer; white-space: nowrap;
+  transition: background var(--motion-fast) var(--ease-standard); }
+.libscreen .backdoor:hover { background: var(--hover-wash); }
+.libscreen .backdoor .ico { color: var(--text-muted); }
+.libscreen .backdoor .hdot { width: var(--space-5); height: var(--space-5); border-radius: var(--radius-small); flex: 0 0 auto; }
+/* .htitle/.hcount retired with the bare head row (the headliner's .hname/.since
+   replace them) */
+
+/* zone 2 · toolbar (kit-toolbar-catalog — the Slab-pull re-lay: .tfilters wrap,
+   doors pushed right, the view toggle joins the doors) */
+.libscreen .tbar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); row-gap: var(--space-4);
+  flex: 0 0 auto; background: var(--panel-background); border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-medium); box-shadow: var(--shadow-low); padding: var(--space-4) var(--space-5); }
+/* (A roll-into-the-headliner experiment lived here for an hour on 2026-07-27
+   and was REVERSED the same day — the toolbar keeps its own panel, above.) */
+.libscreen .tfilters { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); flex: 1 1 auto; min-width: 0; }
+.libscreen .tsearch { flex: 1 1 auto; min-width: 240px; display: flex; align-items: center; gap: var(--space-4);
+  background: var(--inset-background); border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-small); padding: var(--space-3) var(--space-5); color: var(--text-muted);
+  box-shadow: var(--shadow-inset); font-size: var(--size-small); }
+.libscreen .tsearch .ico { color: var(--text-muted); width: var(--icon-size-small); height: var(--icon-size-small); }
+.libscreen .tsearch input { flex: 1 1 auto; min-width: 0; background: transparent; border: none; outline: none;
+  font-family: var(--font-ui); font-size: var(--size-small); color: var(--text-strong); }
+.libscreen .tsearch input::placeholder { color: var(--text-muted); }
+.libscreen .tsel { display: inline-flex; align-items: center; gap: var(--space-3); white-space: nowrap;
+  background: var(--panel-background); border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-small); padding: var(--space-3) var(--space-4); font-size: var(--size-small);
+  color: var(--text-secondary); cursor: pointer; font-family: var(--font-ui);
+  transition: background var(--motion-fast) var(--ease-standard); }
+.libscreen .tsel:hover { background: var(--hover-wash); color: var(--text-strong); }
+.libscreen .tsel .k { color: var(--text-muted); }
+.libscreen .tsel b { color: var(--text-strong); font-weight: var(--weight-medium); }
+.libscreen .tsel .ico { color: var(--text-muted); }
+/* an ACTIVE (non-default) filter reads accent */
+.libscreen .tsel.on { border-color: var(--accent); color: var(--accent); background: var(--selected-wash); }
+.libscreen .tsel.on .k, .libscreen .tsel.on b, .libscreen .tsel.on .ico { color: var(--accent); }
+/* the type filter is a MEDIUM DELTA — dashed + inert where no type is declared */
+.libscreen .tsel.delta { border-style: dashed; color: var(--text-muted); cursor: default; }
+.libscreen .tsel.delta .k, .libscreen .tsel.delta b { color: var(--text-muted); }
+.libscreen .towned { display: inline-flex; align-items: center; gap: var(--space-3); white-space: nowrap;
+  background: var(--panel-background); border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-small); padding: var(--space-3) var(--space-4); font-size: var(--size-small);
+  color: var(--text-secondary); cursor: pointer; font-family: var(--font-ui);
+  transition: background var(--motion-fast) var(--ease-standard); }
+.libscreen .towned:hover { background: var(--hover-wash); color: var(--text-strong); }
+.libscreen .towned .box { width: var(--space-6); height: var(--space-6); border-radius: var(--radius-cell);
+  border: var(--border-standard) solid var(--border); display: flex; align-items: center; justify-content: center;
+  color: var(--text-on-filled); }
+.libscreen .towned .box .ico { opacity: 0; stroke-width: 3; }
+.libscreen .towned.on { border-color: var(--accent); color: var(--accent); background: var(--selected-wash); }
+.libscreen .towned.on .box { background: var(--accent); border-color: var(--accent); }
+.libscreen .towned.on .box .ico { opacity: 1; }
+.libscreen .tclear { display: inline-flex; align-items: center; gap: var(--space-3); background: transparent; border: none;
+  color: var(--text-muted); font-family: var(--font-ui); font-size: var(--size-small); cursor: pointer;
+  padding: var(--space-3) var(--space-3); border-radius: var(--radius-small);
+  transition: color var(--motion-fast) var(--ease-standard); }
+.libscreen .tclear:hover { color: var(--text-strong); background: var(--hover-wash); }
+.libscreen .tdoors { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); flex: 0 0 auto; margin-left: auto; }
+.libscreen .tdoors .btn-accent, .libscreen .tdoors .btn-plain { font-size: var(--size-small);
+  padding: var(--space-3) var(--space-4); gap: var(--space-2); }
+/* empty state: the view-state controls dim inert, the manage doors stay LIVE */
+.libscreen[data-content="empty"] .tbar > *:not(.tdoors) { opacity: .5; pointer-events: none; }
+
+/* zone 3 · Current-pin band (kit-band-current) — panel-frame kinship tenant,
+   carries the panel clearance (the 2026-07-18 conform) */
+.libscreen .pinband { flex: 0 0 auto; display: flex; flex-direction: column; gap: var(--space-4);
+  padding: var(--space-3) calc(var(--frame-clear-grand) + var(--space-4)); }
+.libscreen .pinlabel { display: flex; align-items: baseline; gap: var(--space-4); }
+.libscreen .pinlabel .pl { font-size: var(--size-caption); text-transform: uppercase; letter-spacing: .08em;
+  color: var(--text-muted); font-weight: var(--weight-bold); }
+.libscreen .pinlabel .pc { font-size: var(--size-caption); color: var(--text-muted); }
+.libscreen .pinrow { display: flex; gap: var(--space-6); flex-wrap: wrap; }
+.libscreen .pincard { position: relative; width: var(--lib-pin-card-w); aspect-ratio: var(--lib-cover-ratio);
+  flex: 0 0 auto; border: none; padding: 0; background: none; font-family: var(--font-ui); text-align: left;
+  border-radius: var(--radius-medium); overflow: hidden; cursor: pointer; box-shadow: var(--shadow-low);
+  transition: box-shadow var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard); }
+.libscreen .pincard:hover { box-shadow: var(--shadow-low), inset 0 0 0 var(--border-heavy) var(--accent); transform: translateY(-2px); }
+
+/* zone 4 · catalog — panel-frame tenant (ruled 2026-07-18), carries the clearance */
+.libscreen .cat { flex: 1 1 auto; display: flex; flex-direction: column;
+  background: var(--panel-background); border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-medium); box-shadow: var(--shadow-low);
+  padding: calc(var(--frame-clear-grand) + var(--space-4)); }
+.libscreen .cathead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-5);
+  margin-bottom: var(--space-5); }
+.libscreen .cathead .ct { font-size: var(--size-body); font-weight: var(--weight-bold); color: var(--text-strong); }
+.libscreen .cathead .cm { font-size: var(--size-small); color: var(--text-muted); font-family: var(--font-mono); }
+
+/* GRID view — the cover IS the card, caption overlaid over the scrim wash */
+.libscreen .grid { flex: 1 1 auto; display: grid; grid-template-columns: repeat(var(--lib-grid-cols), 1fr);
+  grid-auto-rows: auto; align-content: start; align-items: start; gap: var(--space-6); }
+.libscreen .gcard { position: relative; aspect-ratio: var(--lib-cover-ratio); border: none; padding: 0;
+  background: none; font-family: var(--font-ui); text-align: left;
+  border-radius: var(--radius-medium); overflow: hidden; cursor: pointer; box-shadow: var(--shadow-low);
+  transition: box-shadow var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard); }
+.libscreen .gcard:hover { box-shadow: var(--shadow-low), inset 0 0 0 var(--border-heavy) var(--accent); transform: translateY(-2px); }
+.libscreen .gcover { position: absolute; inset: 0; }
+.libscreen .gcover .cwm { font-size: var(--size-subheading); }
+.libscreen .gbadges { position: absolute; top: var(--space-4); left: var(--space-4); right: var(--space-4);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); z-index: 2; }
+.libscreen .gbadges .cown { width: 22px; height: 22px; border-radius: var(--radius-full); background: var(--panel-background);
+  box-shadow: var(--shadow-low); display: flex; align-items: center; justify-content: center; color: var(--verdict-done); }
+.libscreen .gbadges .cown .ico { stroke-width: 3; }
+.libscreen .gcap { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+  padding: var(--space-6) var(--space-5) var(--space-5); display: flex; flex-direction: column; gap: var(--space-2);
+  background: linear-gradient(to top, var(--scrim), var(--scrim) 12%, transparent); }
+/* the cover-caption legibility wash — mix amounts carried as drawn (the frozen
+   corpus's tolerated literal family; the cover-scrim dial stays the flagged
+   candidate — per-screen note § freeze lint) */
+.libscreen .gcap::before { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(to top, color-mix(in oklch, var(--text-strong), transparent 10%),
+    color-mix(in oklch, var(--text-strong), transparent 45%) 55%, transparent); }
+.libscreen .gcap .gt { font-size: var(--size-body); font-weight: var(--weight-bold); color: var(--text-on-filled);
+  white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  line-height: var(--line-tight); }
+.libscreen .gcap .gcreator { font-size: var(--size-caption); color: var(--text-on-filled); opacity: .78;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1em; }
+.libscreen .gcap .grow { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-1); }
+.libscreen .gcap .rating, .libscreen .gcap .rating .st { color: var(--text-on-filled); }
+.libscreen .gcap .chip-h { color: var(--text-on-filled);
+  background: color-mix(in oklch, var(--text-on-filled), transparent 82%); }
+/* priority ENDS the title row, right-aligned (user-ruled 2026-07-27, final
+   placement): a flex SIBLING of the title, so the title's line box never
+   inflates — the glyph is compact-scaled to sit inside one line's height and
+   aligns to the title's first line. Zero priority draws nothing; ownership =
+   the top-right badge alone. On-scrim ink shares carry the caption family's
+   tolerated literal amounts (the .gcap 82% precedent). */
+.libscreen .gcap .gtrow { display: flex; align-items: flex-start; gap: var(--space-3); min-width: 0; }
+.libscreen .gcap .gtrow .gt { flex: 1 1 auto; min-width: 0; }
+.libscreen .gcap .gtprio { flex: 0 0 auto; display: flex; margin-top: 2px; margin-left: auto; }
+.libscreen .gcap .gtprio .prio { gap: 0; }
+.libscreen .gcap .gtprio .prio .ar { width: 9px; height: 5px;
+  color: color-mix(in oklch, var(--text-on-filled), transparent 65%); }
+.libscreen .gcap .gtprio .prio .ar.on { color: var(--text-on-filled); }
+.libscreen .gcap .chip-h { margin-left: auto; }
+
+/* The LIST view + grid⇄list toggle were REMOVED 2026-07-27 (user-ruled,
+   overriding the FINAL's drawn toggle): the library is grid-only; the tabular
+   face belongs to the bulk editor's picker. The FINAL stays the pre-ruling
+   record (the wave-zone precedent). */
+.libscreen .ownnone { color: var(--text-muted); }
+
+/* numbered pager — shared by both views */
+.libscreen .pager { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-5); margin-top: var(--space-5); padding-top: var(--space-5);
+  border-top: var(--border-hairline) solid var(--divider); }
+.libscreen .pgcount { font-family: var(--font-mono); font-size: var(--size-small); color: var(--text-muted); }
+.libscreen .pgnums { display: flex; align-items: center; gap: var(--space-2); }
+.libscreen .pgnum { min-width: var(--pager-btn-size); height: var(--pager-btn-size); display: inline-flex;
+  align-items: center; justify-content: center; padding: 0 var(--space-3);
+  border: var(--border-hairline) solid var(--border); background: var(--panel-background);
+  border-radius: var(--radius-small); font-family: var(--font-mono); font-size: var(--size-small);
+  color: var(--text-secondary); cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.libscreen .pgnum:hover { background: var(--hover-wash); color: var(--text-strong); }
+.libscreen .pgnum.on { border-color: var(--accent); background: var(--selected-wash); color: var(--accent);
+  font-weight: var(--weight-bold); cursor: default; }
+.libscreen .pgnum:disabled { color: var(--text-muted); pointer-events: none; opacity: .55; }
+.libscreen .pgell { color: var(--text-muted); padding: 0 var(--space-2); font-family: var(--font-mono); }
+
+/* empty state wrapper (the .emptybox anatomy is the claimed kit-state-empty) */
+.libscreen .lib-empty { display: flex; flex: 1 1 auto; min-height: 0; }
+
+/* ── the popover menu (Build-side implementation — overlay tier) ─────────── */
+
+.tselwrap { position: relative; display: inline-flex; }
+.tselwrap.block { display: block; }
+/* the shared popover SURFACE (the .calpop/.timepop recipe — consistency
+   user-asked 2026-07-27): border · radius-medium · raised + blur · shadow-high */
+.libmenu { position: absolute; top: calc(100% + var(--space-2)); left: 0; z-index: 45;
+  min-width: 160px; max-height: 320px; overflow-y: auto; padding: var(--space-2);
+  background: var(--raised-background); -webkit-backdrop-filter: var(--backdrop-blur); backdrop-filter: var(--backdrop-blur);
+  border: var(--border-hairline) solid var(--border); border-radius: var(--radius-medium); box-shadow: var(--shadow-high); }
+.reduce-effects .libmenu { -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: var(--panel-background); }
+.libmenu-item { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5);
+  width: 100%; text-align: left; background: transparent; border: none; border-radius: calc(var(--radius-small) - var(--space-1));
+  padding: var(--space-3) var(--space-4); font-family: var(--font-ui); font-size: var(--size-small);
+  color: var(--text-strong); cursor: pointer; white-space: nowrap;
+  transition: background var(--motion-fast) var(--ease-standard); }
+.libmenu-item:hover { background: var(--hover-wash); }
+.libmenu-item.on { color: var(--accent); }
+.libmenu-item .ico { color: var(--accent); }
+
+/* ── the entry-creation modal (kit-modal-entry-creation) ─────────────────── */
+
+.ecmodal { width: var(--modal-manage-w); }
+.ec-hatch { background:
+  repeating-linear-gradient(135deg, transparent 0, transparent 7px, var(--divider) 7px, var(--divider) 8px),
+  var(--inset-background); }
+.ec-top { display: flex; gap: var(--space-7); align-items: stretch; }
+.ec-cover { flex: 0 0 auto; width: 156px; aspect-ratio: var(--lib-cover-ratio); border-radius: var(--radius-medium);
+  border: var(--border-standard) dashed var(--border); display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: var(--space-3); color: var(--text-muted); text-align: center; cursor: pointer;
+  overflow: hidden; padding: var(--space-5);
+  transition: border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.ec-cover:hover { border-color: var(--accent); color: var(--text-secondary); }
+.ec-cover .ico { color: var(--text-muted); margin-bottom: var(--space-2); }
+.ec-cover .ecn { font-family: var(--font-mono); font-size: var(--size-caption); letter-spacing: .06em;
+  text-transform: uppercase; line-height: 1.4; }
+.ec-cover .ecsub { font-size: var(--size-caption); line-height: 1.3; }
+.ec-banner { width: 100%; height: 112px; border-radius: var(--radius-medium);
+  border: var(--border-standard) dashed var(--border); display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: var(--space-2); color: var(--text-muted); cursor: pointer;
+  transition: border-color var(--motion-fast) var(--ease-standard); }
+.ec-banner:hover { border-color: var(--accent); }
+.ec-banner .ecn { font-family: var(--font-mono); font-size: var(--size-caption); letter-spacing: .06em; text-transform: uppercase; }
+.ec-primary { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-5); }
+.ec-titrow { display: flex; flex-direction: column; gap: var(--space-3); }
+.ec-caplbl { font-size: var(--size-caption); text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text-muted); font-weight: var(--weight-bold); }
+.ec-req { color: var(--accent); font-weight: var(--weight-regular); letter-spacing: 0; text-transform: none; }
+.ec-input { display: inline-block; width: 100%; background: var(--inset-background);
+  border: var(--border-hairline) solid var(--border); border-radius: var(--radius-small);
+  box-shadow: var(--shadow-inset); color: var(--text-strong); font-family: var(--font-ui);
+  font-size: var(--size-body); padding: var(--space-4) var(--space-5); outline: none; }
+.ec-input:focus { box-shadow: var(--shadow-inset), 0 0 0 var(--focus-ring-weight) var(--focus-ring); }
+.ec-input::placeholder { color: var(--text-muted); }
+.ec-input.big { font-size: var(--size-subheading); font-weight: var(--weight-medium); }
+.ec-input.mini { width: auto; }
+.ec-input.wide { min-width: 300px; }
+.ec-input.series { min-width: 200px; }
+.ec-input.order { width: 56px; text-align: center; }
+.ec-input.words { width: 88px; }
+.ec-input.date { width: 200px; }
+.ec-select { display: inline-flex; align-items: center; gap: var(--space-4); background: var(--inset-background);
+  border: var(--border-hairline) solid var(--border); border-radius: var(--radius-small);
+  padding: var(--space-3) var(--space-4); color: var(--text-strong); font-size: var(--size-body);
+  font-family: var(--font-ui); cursor: pointer; }
+.ec-select .ico { color: var(--text-muted); }
+.ec-nudge { display: flex; align-items: flex-start; gap: var(--space-4); background: var(--selected-wash);
+  border-radius: var(--radius-small); padding: var(--space-4) var(--space-5); font-size: var(--size-small);
+  color: var(--text-secondary); line-height: 1.5; }
+.ec-nudge .ico { color: var(--accent); flex: 0 0 auto; margin-top: 1px; }
+.ec-nudge b { color: var(--text-strong); font-weight: var(--weight-medium); }
+.ec-nudge .nlink { color: var(--accent); font-weight: var(--weight-medium); cursor: pointer; white-space: nowrap; }
+.ec-nudge .nsep { color: var(--text-muted); padding: 0 var(--space-1); }
+.ec-fields { display: flex; flex-direction: column; gap: var(--space-6); }
+.ec-secl { font-size: var(--size-caption); text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted);
+  font-weight: var(--weight-bold); padding-bottom: var(--space-4); border-bottom: var(--border-hairline) solid var(--divider); }
+.ec-field { display: flex; align-items: flex-start; gap: var(--space-5); }
+.ec-field.center { align-items: center; }
+.ec-lbl { flex: 0 0 auto; width: 128px; padding-top: var(--space-3); font-size: var(--size-small);
+  color: var(--text-secondary); font-weight: var(--weight-medium); }
+.ec-field.center .ec-lbl { padding-top: 0; }
+.ec-lbl .opt { display: block; font-size: var(--size-caption); color: var(--text-muted);
+  font-weight: var(--weight-regular); margin-top: 1px; }
+.ec-ctrl { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
+.ec-ctrl.block { display: block; }
+.ec-chip { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--size-small);
+  background: var(--panel-background); border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-full); padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4);
+  color: var(--text-strong); }
+.ec-chip .x { display: flex; color: var(--text-muted); cursor: pointer; }
+.ec-chip .x:hover { color: var(--danger); }
+.ec-add { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--size-small);
+  color: var(--accent); background: transparent; border: var(--border-hairline) dashed var(--border);
+  border-radius: var(--radius-full); padding: var(--space-1) var(--space-4); cursor: pointer;
+  font-family: var(--font-ui); }
+.ec-add:hover { background: var(--hover-wash); }
+.ec-prio { display: inline-flex; gap: var(--space-3); flex-wrap: wrap; }
+.ec-prio .po { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); min-width: 46px;
+  border: var(--border-hairline) solid var(--border); border-radius: var(--radius-small);
+  background: var(--inset-background); padding: var(--space-3) var(--space-4); cursor: pointer;
+  font-family: var(--font-ui); }
+.ec-prio .po .prio { min-height: 12px; }
+.ec-prio .po .dash { color: var(--text-muted); line-height: 12px; }
+.ec-prio .po .pl { font-size: var(--size-caption); color: var(--text-muted); }
+.ec-prio .po.on { border-color: var(--accent); background: var(--selected-wash); }
+.ec-prio .po.on .pl { color: var(--accent); font-weight: var(--weight-medium); }
+.ec-stars { display: inline-flex; align-items: center; gap: var(--space-2); }
+.ec-stars .str { font-size: var(--size-subheading); line-height: 1; cursor: pointer; color: var(--text-muted);
+  background: none; border: none; padding: 0; }
+.ec-stars .str.on { color: var(--accent); }
+.ec-check { display: inline-flex; align-items: center; gap: var(--space-4); font-size: var(--size-body);
+  cursor: pointer; background: none; border: none; padding: 0; }
+.ec-check .box { width: 20px; height: 20px; border-radius: var(--radius-small); flex: 0 0 auto;
+  border: var(--border-standard) solid var(--border); background: var(--inset-background);
+  display: flex; align-items: center; justify-content: center; }
+.ec-check .box .ico { color: var(--text-on-filled); opacity: 0; }
+.ec-check.on .box { background: var(--accent); border-color: var(--accent); }
+.ec-check.on .box .ico { opacity: 1; }
+.ec-inline { display: inline-flex; align-items: center; gap: var(--space-3); }
+.ec-inline .k { font-size: var(--size-caption); color: var(--text-muted); font-family: var(--font-mono); }
+.ec-inline .ico { color: var(--text-muted); }
+.ec-provenance { display: inline-flex; align-items: center; gap: var(--space-3); font-size: var(--size-caption);
+  color: var(--text-muted); margin-right: auto; }
+.ec-provenance .ico { color: var(--text-muted); }
+.mo-foot .btn-accent.create { margin-left: auto; }
+/* inline where-caused (tier 2 of the failure model) — the form error line */
+.ec-err { font-size: var(--size-small); color: var(--danger); }
+
+/* ── the bulk-edit modal (kit-modal-bulk-edit) ───────────────────────────── */
+
+.mo2 { width: var(--modal-bulk-w); height: var(--modal-bulk-h); }
+.mo2 .mo-head { align-items: center; }
+.mo2 .mo-title b { color: var(--accent); font-weight: var(--weight-bold); }
+.mb-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr var(--bulk-rail-w);
+  gap: var(--space-7); padding: var(--space-7) var(--space-8); }
+
+/* the cover-grid picker (renamed .picker2 — the daily form owns `.picker`) */
+.picker2 { min-height: 0; display: flex; flex-direction: column; gap: var(--space-5);
+  border: var(--border-hairline) solid var(--divider); border-radius: var(--radius-medium); padding: var(--space-6); }
+/* wrap-capable since the full library filter set joined (user-ruled 2026-07-27) */
+.ptop { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); flex: 0 0 auto; }
+.psearch { flex: 1 1 auto; display: flex; align-items: center; gap: var(--space-4);
+  background: var(--inset-background); border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-small); padding: var(--space-3) var(--space-5); color: var(--text-muted);
+  box-shadow: var(--shadow-inset); font-size: var(--size-small); }
+.psearch .ico { color: var(--text-muted); width: var(--icon-size-small); height: var(--icon-size-small); }
+.psearch input { flex: 1 1 auto; min-width: 0; background: transparent; border: none; outline: none;
+  font-family: var(--font-ui); font-size: var(--size-small); color: var(--text-strong); }
+.psearch input::placeholder { color: var(--text-muted); }
+.bf { display: inline-flex; align-items: center; gap: var(--space-3); white-space: nowrap;
+  background: var(--panel-background); border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-small); padding: var(--space-3) var(--space-4); font-size: var(--size-small);
+  color: var(--text-secondary); cursor: pointer; font-family: var(--font-ui);
+  transition: background var(--motion-fast) var(--ease-standard); }
+.bf:hover { background: var(--hover-wash); color: var(--text-strong); }
+.bf .k { color: var(--text-muted); }
+.bf .ico { color: var(--text-muted); }
+.bf.dashed { border-style: dashed; color: var(--text-muted); cursor: default; }
+/* an ACTIVE (non-default) picker filter reads accent — the .tsel.on rule */
+.bf.on { border-color: var(--accent); color: var(--accent); background: var(--selected-wash); }
+.bf.on .k, .bf.on .ico { color: var(--accent); }
+/* THE PICKER TABLE — the 2026-07-27 exhibit ruling (v3 "list"): the cover
+   grid is GONE; every quality is a COLUMN, aligned; headers sort (status by
+   lifecycle order); rows toggle selection. Translated verbatim from
+   `Exhibit - Bulk edit picker qualities v3 -E list-.html`, with the exhibit's
+   .lgrid/.lhead/.lrow heads RENAMED .plgrid/.plhead/.plrow (they collide with
+   the library screen's claimed list names — the .picker2 rename precedent).
+   The 11/8/6px micro values are exhibit-authored (the corpus's tolerated
+   micro-geometry band); flagged as 6a dial candidates, not silently dialed. */
+.listwrap { flex: 1 1 auto; min-height: 0; overflow: auto; border: var(--border-hairline) solid var(--divider);
+  border-radius: var(--radius-medium); background: var(--panel-background); }
+.plgrid { display: grid;
+  grid-template-columns: 22px 24px minmax(0, 1fr) 104px 74px 82px 92px minmax(0, 1.1fr) 34px;
+  align-items: center; gap: var(--space-5); }
+/* no declared type (Gaming): the Type COLUMN drops entirely — user-ruled
+   2026-07-27 (type absent, never dashed, anywhere in a typeless library) */
+.listwrap.notype .plgrid {
+  grid-template-columns: 22px 24px minmax(0, 1fr) 104px 74px 82px minmax(0, 1.1fr) 34px; }
+.plhead { padding: 0 var(--space-5); background: var(--inset-background);
+  border-bottom: var(--border-hairline) solid var(--divider);
+  position: sticky; top: 0; z-index: 2; }
+.plhead .h { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-muted); background: none; border: 0; padding: var(--space-4) 0; text-align: left;
+  display: flex; align-items: center; gap: var(--space-2); }
+.plhead .h.sortable { cursor: pointer; }
+.plhead .h.sortable:hover { color: var(--text-secondary); }
+.plhead .h.on { color: var(--text-strong); }
+.plhead .h .car { opacity: 0; }
+.plhead .h.on .car { opacity: 1; }
+.plrow { padding: var(--space-3) var(--space-5); border: 0; border-top: var(--border-hairline) solid var(--divider);
+  width: 100%; text-align: left; font-family: var(--font-ui); background: none; cursor: pointer; }
+.plrow:first-of-type { border-top: 0; }
+.plrow:hover { background: var(--hover-wash); }
+.plrow.sel { background: var(--selected-wash); }
+.picker2 .lcb { width: 18px; height: 18px; border-radius: var(--radius-small);
+  border: var(--border-standard) solid var(--border); background: var(--panel-background);
+  display: flex; align-items: center; justify-content: center; color: transparent; }
+.picker2 .lcb .ico { stroke-width: 3.5; }
+.plrow.sel .lcb { background: var(--accent); border-color: var(--accent); color: var(--text-on-filled); }
+.picker2 .lthumb { width: 24px; aspect-ratio: var(--lib-cover-ratio); border-radius: var(--radius-cell); }
+.picker2 .lthumb .cwm { font-size: 8px; }
+.picker2 .lt { font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-strong);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.picker2 .cell { font-size: var(--size-caption); color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.picker2 .mono { font-family: var(--font-mono); }
+.picker2 .dim { color: var(--text-muted); }
+/* rating = N WHOLE stars (user-ruled: ★★★★, never "★ 4"), priority = the
+   read-only chevrons — the exhibit's dot/mono faces swapped at translation */
+.picker2 .starrow { color: var(--text-secondary); letter-spacing: .08em; font-size: var(--size-caption); }
+.picker2 .ltick { color: var(--verdict-done); display: flex; }
+.picker2 .ltick .ico { stroke-width: 3; }
+.plempty { padding: var(--space-7); text-align: center; font-size: var(--size-small);
+  color: var(--text-muted); border-top: var(--border-hairline) solid var(--divider); }
+.pfoot { flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-5);
+  border-top: var(--border-hairline) dashed var(--border); padding-top: var(--space-5);
+  font-size: var(--size-small); color: var(--text-muted); }
+.pfoot .live { margin-left: auto; font-size: var(--size-body); color: var(--text-strong); }
+.pfoot .live b { font-weight: var(--weight-bold); }
+
+/* the compact field rail */
+.rail2 { min-height: 0; display: flex; flex-direction: column; gap: var(--space-4); overflow: auto;
+  padding-right: var(--space-2); }
+.fblock { border: var(--border-hairline) solid var(--divider); border-radius: var(--radius-small);
+  padding: var(--space-5); background: var(--panel-background); }
+.fblock.dashed { border-style: dashed; background: transparent; }
+.fname { font-size: var(--size-caption); font-weight: var(--weight-bold); color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: .05em; margin: 0 0 var(--space-3); }
+.fsel { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); width: 100%;
+  background: var(--inset-background); border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-small); padding: var(--space-3) var(--space-4); font-family: var(--font-ui);
+  font-size: var(--size-small); color: var(--text-muted); cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard); }
+.fsel:hover { background: var(--hover-wash); color: var(--text-strong); }
+.fsel .ico { color: var(--text-muted); flex: 0 0 auto; }
+.fsel.inert { cursor: default; }
+.lane { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3);
+  border: var(--border-hairline) dashed var(--border); border-radius: var(--radius-small);
+  padding: var(--space-3) var(--space-4); margin-top: var(--space-3); }
+.lane .lk { font-size: var(--size-caption); font-weight: var(--weight-bold); color: var(--text-muted);
+  letter-spacing: .06em; flex: 0 0 auto; }
+.gtag { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--size-caption);
+  background: var(--inset-background); border-radius: var(--radius-full); padding: var(--space-1) var(--space-4);
+  color: var(--text-strong); }
+.gtag .x { color: var(--text-muted); cursor: pointer; display: flex; }
+.addtag { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px;
+  border-radius: var(--radius-full); border: var(--border-hairline) dashed var(--border); color: var(--text-muted);
+  cursor: pointer; font-size: var(--size-small); background: none; font-family: var(--font-ui); }
+.addtag:hover { color: var(--accent); border-color: var(--accent); }
+.applyrow { flex: 0 0 auto; margin-top: var(--space-2); }
+.applyrow .btn-accent { width: 100%; justify-content: center; }
+.applynote { font-size: var(--size-caption); color: var(--text-muted); margin: var(--space-3) 0 0; }
+
+/* danger zone at the rail's foot — every amount a dial (the exemplary tier) */
+.dz { flex: 0 0 auto; margin-top: auto;
+  border: var(--border-standard) dashed color-mix(in oklch, var(--danger), var(--panel-background) var(--tint-border));
+  border-radius: var(--radius-small); padding: var(--space-5);
+  background: color-mix(in oklch, var(--danger), var(--window-background) var(--tint-mix)); }
+.dzh { font-size: var(--size-caption); text-transform: uppercase; letter-spacing: .08em;
+  font-weight: var(--weight-bold); color: var(--danger); margin: 0 0 var(--space-4); }
+.dz .btn-danger { width: 100%; justify-content: center; font-size: var(--size-small);
+  padding: var(--space-4) var(--space-5); }

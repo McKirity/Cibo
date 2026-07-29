@@ -36,7 +36,7 @@ const s100 = (v: string) => NonEmptyString100.orThrow(v);
 const s1000 = (v: string) => NonEmptyString1000.orThrow(v);
 const num = (v: number) => FiniteNumber.orThrow(v);
 
-export const SEED_VERSION = 6;
+export const SEED_VERSION = 9;
 
 type CiboEvolu = Evolu<typeof Schema>;
 
@@ -324,7 +324,17 @@ export async function runSeed(evolu: CiboEvolu): Promise<SeedResult> {
   if (foundVersion < 4) await seedBatch4(evolu);
   if (foundVersion < 5) await seedBatch5(evolu);
   if (foundVersion < 6) await seedBatch6(evolu);
-  // Future batches: if (foundVersion < 7) await seedBatch7(evolu); …
+  if (foundVersion < 7) await seedBatch7(evolu);
+  // Batch 7 LATCHED WITHOUT LANDING on the dev store (2026-07-27, the batch-3
+  // class re-manifested): its first run fired via a mid-session Vite reload —
+  // the fresh Evolu client raced the old page's worker teardown, the icon
+  // transaction was lost, the OPTIMISTIC reads satisfied the batch's own
+  // verification, and the version write (a separate transaction) landed after.
+  // Verified offline against the raw store: seed_version=7 present, four of
+  // the seven icon names absent. Batch 8 re-runs the same idempotent plant.
+  if (foundVersion < 8) await seedBatch8(evolu);
+  if (foundVersion < 9) await seedBatch9(evolu);
+  // Future batches: if (foundVersion < 10) await seedBatch10(evolu); …
 
   // A batch that throws above skips this on purpose: the gate must never
   // record a version whose batch didn't verifiably land.
@@ -659,5 +669,115 @@ async function seedBatch6(evolu: CiboEvolu): Promise<void> {
     ) {
       throw new Error(`Seed batch 6: "${h.key}" still carries no keepsake after the write`);
     }
+  }
+}
+
+/**
+ * Batch 7 (2026-07-27, user-ruled at the Comparing Statistics GUI pass):
+ * ICONS AS DATA — the seven lucide names the frozen frame draws in the rail,
+ * planted onto `habits.icon`. Until now the assignments existed only as
+ * mockup DOM (which dies by law), so the column stayed null and every surface
+ * wore the lettermark fallback. Non-destructive on the keepsake pattern: a
+ * habit already carrying an icon is skipped (from step 10 it may be the
+ * user's own pick). The archived four (embroidery · drawing · coding ·
+ * gamedev) have NO drawn assignment and stay lettermarks by ruling.
+ * Renderer + roster: src/shell/habitIcons.tsx.
+ */
+const ICON_SEEDS: { key: string; icon: string }[] = [
+  { key: "writing", icon: "pencil" },
+  { key: "gaming", icon: "gamepad-2" },
+  { key: "reading", icon: "book-open" },
+  { key: "media", icon: "clapperboard" },
+  { key: "keyboard", icon: "keyboard" },
+  { key: "sleep", icon: "moon" },
+  { key: "walking", icon: "footprints" },
+  // The archived four (batch 9, user-ruled "add in icons for those as well"):
+  // the OLD PLUGIN's assignments (Homepage.tsx HABIT_ICON_BY_KEY), except
+  // Drawing — its old "pencil" belongs to Writing under the frozen frame.
+  { key: "embroidery", icon: "scissors" },
+  { key: "drawing", icon: "brush" },
+  { key: "coding", icon: "code" },
+  { key: "gamedev", icon: "joystick" },
+];
+
+async function plantIcons(evolu: CiboEvolu, batch: string): Promise<void> {
+  const habitQuery = evolu.createQuery((db) =>
+    db
+      .selectFrom("habits")
+      .select(["id", "key", "icon"])
+      .where("isDeleted", "is not", 1),
+  );
+  const rows = await evolu.loadQuery(habitQuery);
+  for (const h of rows) {
+    const key = h.key;
+    if (key == null || h.icon != null) continue;
+    const seed = ICON_SEEDS.find((s) => s.key === key);
+    if (seed == null) continue;
+    await new Promise<void>((resolve, reject) => {
+      const r = evolu.update(
+        "habits",
+        { id: h.id, icon: s100(seed.icon) },
+        { onComplete: () => resolve() },
+      );
+      if (!r.ok) {
+        console.error(`Seed ${batch}: icon for "${key}" rejected`, r.error);
+        reject(new Error(`Seed ${batch}: icon for "${key}" failed validation`));
+      }
+    });
+  }
+  for (const h of await evolu.loadQuery(habitQuery)) {
+    if (h.key != null && ICON_SEEDS.some((s) => s.key === h.key) && h.icon == null) {
+      throw new Error(`Seed ${batch}: "${h.key}" still carries no icon after the write`);
+    }
+  }
+}
+
+async function seedBatch7(evolu: CiboEvolu): Promise<void> {
+  await plantIcons(evolu, "batch 7");
+}
+
+/** The batch-7 re-arm (see the gate comment) — the same idempotent plant. */
+async function seedBatch8(evolu: CiboEvolu): Promise<void> {
+  await plantIcons(evolu, "batch 8");
+}
+
+/**
+ * Batch 9: the archived four join ICON_SEEDS (user-ruled 2026-07-27). The
+ * plant is the same null-filling routine — stores already at version 8 pick
+ * up only the four new rows.
+ */
+async function seedBatch9(evolu: CiboEvolu): Promise<void> {
+  await plantIcons(evolu, "batch 9");
+}
+
+/**
+ * The ALWAYS-RUN reconciler (2026-07-27, after the version gate latched TWICE
+ * over lost icon transactions — batches 7 and 9, both first-fired by a
+ * mid-session Vite reload). The plant is naturally idempotent (it fills nulls
+ * only), so it does not need one-shot semantics: any launch that finds a
+ * canonical habit icon-less re-plants it, and a lost transaction heals at the
+ * next launch BY CONSTRUCTION. Aligned with [[Iconography]]'s own ruling — a
+ * blank icon is never deliberate, "only forgotten". Called from main.tsx
+ * after runSeed; never throws (a failed launch-fill just tries again next
+ * launch, and the log says what happened).
+ */
+export async function ensureHabitIcons(evolu: CiboEvolu): Promise<void> {
+  try {
+    const q = evolu.createQuery((db) =>
+      db
+        .selectFrom("habits")
+        .select(["key", "icon"])
+        .where("isDeleted", "is not", 1),
+    );
+    const rows = await evolu.loadQuery(q);
+    const missing = rows
+      .filter((h) => h.key != null && h.icon == null && ICON_SEEDS.some((s) => s.key === h.key))
+      .map((h) => h.key as string);
+    if (missing.length === 0) return;
+    console.info(`Icons: planting ${missing.length} missing (${missing.join(", ")})`);
+    await plantIcons(evolu, "ensure");
+    console.info("Icons: plant verified in-page (durability confirmed at next launch)");
+  } catch (e) {
+    console.error("Icons: launch reconciliation failed (will retry next launch)", e);
   }
 }

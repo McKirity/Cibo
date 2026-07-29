@@ -1,0 +1,308 @@
+/* ============================================================================
+   Build step 7 — Timers: the board of independent clocks.
+   Claimed from `Final/timers.html` (frozen 2026-07-12, re-frozen 2026-07-17)
+   via kit-staging.css — values verbatim, selectors RE-SCOPED:
+     `.timerscreen` = the board (the FINAL's `.screen.board` + stage/switcher;
+        `.stage` collides with the entry dashboard's `.stage`, the `.wallscreen`
+        class of problem);
+     `.timer-mo`   = the three overlays (create · manage · recovery), which
+        mount at SHELL level on the kit.css modal chassis (.dimlayer/.mo —
+        the Library claim), so the screen scope cannot reach them.
+   Build adaptations, marked inline:
+     - the board escapes the content pane's padding with negative margins (the
+       FINAL zeroes `.content` padding per state; the app's pane is shared);
+     - the empty state keeps the pane padding (as drawn).
+   The mocked dusk-sky backdrop was STRUCK at the pull review — flat default
+   ground; the per-theme timer backdrop slot arrives at step 6a.
+   ========================================================================== */
+
+/* ── the board — one focused clock CENTERED, the switcher floating below ── */
+
+/* Build adaptation: undo the shared pane's padding (the FINAL sets the pane's
+   padding to 0 for the board states). Margins mirror shell.css `.content`. */
+.timerscreen {
+  position: relative;
+  overflow: hidden;
+  margin: calc(-1 * var(--space-7));
+  margin-left: calc(-1 * (var(--pane-pad-left) + var(--space-7) + var(--space-5)));
+  height: calc(100% + 2 * var(--space-7));
+  display: flex;
+  flex-direction: column;
+}
+
+/* the empty state keeps the ordinary pane inset (as drawn) */
+.timerscreen.empty {
+  margin: 0;
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+  gap: var(--space-7);
+}
+.timerscreen .scr-head { flex: 0 0 auto; }
+.timerscreen .scr-title { font-family: var(--font-heading); font-size: var(--size-display); font-weight: var(--weight-bold); line-height: var(--line-tight); letter-spacing: -.01em; color: var(--text-strong); }
+/* .scr-sub removed — user-ruled 2026-07-28: no annotation beneath the title */
+
+/* kit-state-empty — the zero-clocks board */
+.timerscreen .emptybox { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-5); border: var(--border-standard) dashed var(--border); border-radius: var(--radius-large); text-align: center; padding: var(--space-8); }
+.timerscreen .emptybox .eglyph svg { width: 56px; height: 56px; stroke-width: 1.25px; color: var(--text-muted); display: block; }
+.timerscreen .emptybox .et { font-family: var(--font-heading); font-size: var(--size-heading); font-weight: var(--weight-bold); color: var(--text-strong); }
+.timerscreen .emptybox .edoors { display: flex; gap: var(--space-4); margin-top: var(--space-4); }
+
+/* the stage — the minimalist live board (user-ruled: no card grid) */
+.timerscreen .tstage { position: relative; z-index: 1; flex: 1 1 auto; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-8); padding: var(--space-8) var(--space-7); }
+.timerscreen .focus { display: flex; flex-direction: column; align-items: center; gap: var(--space-6); text-align: center; }
+.timerscreen .focus-face { display: flex; flex-direction: column; align-items: center; gap: var(--space-5); }
+
+/* mode row — pill · config · run-state (word + glyph, never colour alone) */
+.timerscreen .fmode { display: flex; align-items: center; gap: var(--space-4); }
+.timerscreen .fpill { font-family: var(--font-ui); font-size: var(--size-caption); font-weight: var(--weight-bold); letter-spacing: .08em; text-transform: uppercase; color: var(--text-secondary); border: var(--border-hairline) solid var(--border); border-radius: var(--radius-full); padding: var(--space-2) var(--space-5); }
+.timerscreen .fcfg { font-family: var(--font-mono); font-size: var(--size-small); color: var(--text-secondary); }
+.timerscreen .fstate { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--size-caption); font-weight: var(--weight-medium); color: var(--text-secondary); }
+.timerscreen .fstate svg { width: 11px; height: 11px; display: block; }
+
+/* the count-up hero readout — the DEDICATED dial, not a stretched stat value */
+.timerscreen .fbig { font-family: var(--font-mono); font-size: var(--clock-face-size); font-weight: var(--weight-bold); line-height: 1; letter-spacing: .01em; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.timerscreen .fsub { font-size: var(--size-small); color: var(--text-muted); }
+.timerscreen .fphase { font-size: var(--size-small); text-transform: uppercase; letter-spacing: .06em; font-weight: var(--weight-bold); color: var(--text-secondary); }
+
+/* progress ring (countdown + pomodoro) — a SIBLING of the donut tiers, neutral
+   (never a habit colour); track = --inset-background, arc = --text-secondary */
+.timerscreen .ring-wrap { position: relative; width: var(--clock-ring-size); height: var(--clock-ring-size); }
+.timerscreen .ring-wrap svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
+/* stroke-width 5 = --clock-ring-stroke(18) / --clock-ring-size(360) × 100 (a
+   transcribed ratio in the 100-unit viewBox, cited per the ramp carve-out) */
+.timerscreen .ring-track { fill: none; stroke: var(--inset-background); stroke-width: 5; }
+.timerscreen .ring-arc { fill: none; stroke: var(--text-secondary); stroke-width: 5; stroke-linecap: round; }
+.timerscreen .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); }
+.timerscreen .ring-time { font-family: var(--font-mono); font-size: var(--size-display); font-weight: var(--weight-bold); line-height: 1; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.timerscreen .ring-cap { font-size: var(--size-caption); color: var(--text-muted); }
+
+/* pomodoro cycle dots — phase-shapes, never colour alone (● work ◌ break ◉ now) */
+.timerscreen .pomo { display: flex; gap: var(--space-3); justify-content: center; align-items: center; }
+.timerscreen .pdot { width: 12px; height: 12px; border-radius: var(--radius-full); border: var(--border-standard) solid var(--border); box-sizing: border-box; }
+.timerscreen .pdot.work { background: var(--text-secondary); border-color: var(--text-secondary); }
+.timerscreen .pdot.brk { background: transparent; border-style: dashed; }
+.timerscreen .pdot.now { background: transparent; border-color: var(--text-strong); border-width: var(--border-heavy); }
+
+/* accumulated (the honest total — work intervals only on pomodoro) */
+.timerscreen .faccrued { font-family: var(--font-ui); font-size: var(--size-small); color: var(--text-muted); }
+.timerscreen .faccrued b { font-family: var(--font-mono); font-weight: var(--weight-bold); color: var(--text-strong); }
+
+/* tracked set — habit colour rides THESE rows (canon slots), never the card;
+   names are doors, accumulators are readouts */
+.timerscreen .ftracked { display: flex; flex-direction: column; gap: var(--space-3); align-items: center; margin-top: var(--space-1); }
+.timerscreen .ftrow { display: inline-flex; align-items: center; gap: var(--space-3); font-size: var(--size-small); color: var(--text-strong); }
+.timerscreen .ftrow .dot { width: 12px; height: 12px; border-radius: var(--radius-small); flex: 0 0 auto; }
+.timerscreen .ftrow em { font-style: normal; color: var(--text-secondary); }
+/* the tracked NAME is a door (identity clickable, metrics not) — the drawn
+   `.trow .tnm` idiom: plain strong text, accent on hover, no underline */
+.timerscreen .ftrow .tnm { background: none; border: none; padding: 0; font: inherit; color: var(--text-strong); font-weight: var(--weight-medium); cursor: pointer; transition: color var(--motion-fast) var(--ease-standard); }
+.timerscreen .ftrow .tnm:hover { color: var(--accent); }
+.timerscreen .ftrow b { font-family: var(--font-mono); font-weight: var(--weight-medium); color: var(--text-secondary); margin-left: var(--space-4); }
+
+/* controls beneath the face */
+.timerscreen .focus-ctrls { display: inline-flex; align-items: center; gap: var(--space-4); margin-top: var(--space-5); background: transparent; border: none; box-shadow: none; padding: 0; }
+.timerscreen .focus-ctrls .cbtn { border: none; background: transparent; border-radius: var(--radius-full); padding: var(--space-3) var(--space-4); color: var(--text-secondary); }
+.timerscreen .focus-ctrls .cbtn svg { color: currentColor; }
+.timerscreen .focus-ctrls .cbtn:hover { background: var(--hover-wash); color: var(--text-strong); }
+.timerscreen .focus-ctrls .cbtn.accent { color: var(--text-strong); padding: var(--space-3) var(--space-6); border: var(--border-hairline) solid var(--border); }
+.timerscreen .focus-ctrls .cbtn.accent svg { color: currentColor; }
+.timerscreen .focus-ctrls .cbtn.accent:hover { background: var(--hover-wash); color: var(--text-strong); }
+
+/* the switcher — the other clocks compressed to chips on a floating pill tray */
+.timerscreen .switcher { position: absolute; left: 50%; bottom: var(--space-7); transform: translateX(-50%); display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; justify-content: center; background: var(--raised-background); -webkit-backdrop-filter: var(--backdrop-blur); backdrop-filter: var(--backdrop-blur); border: var(--border-hairline) solid var(--border); border-radius: var(--radius-full); box-shadow: var(--shadow-high); padding: var(--space-3) var(--space-4); }
+.reduce-effects .timerscreen .switcher { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--panel-background); box-shadow: var(--shadow-low); }
+.timerscreen .swchip { display: inline-flex; align-items: center; gap: var(--space-3); font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary); background: transparent; border: var(--border-hairline) solid transparent; border-radius: var(--radius-full); padding: var(--space-3) var(--space-5); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.timerscreen .swchip:hover { background: var(--hover-wash); color: var(--text-strong); }
+.timerscreen .swchip.active { background: var(--selected-wash); color: var(--text-strong); border-color: var(--accent); }
+.timerscreen .swchip .dot { width: 12px; height: 12px; border-radius: var(--radius-small); flex: 0 0 auto; }
+.timerscreen .swchip .swt { font-family: var(--font-mono); color: var(--text-muted); }
+.timerscreen .swchip.active .swt { color: var(--text-secondary); }
+.timerscreen .swnew { display: inline-flex; align-items: center; gap: var(--space-3); font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--accent); background: transparent; border: var(--border-standard) dashed color-mix(in oklch, var(--accent), var(--panel-background) var(--tint-border)); border-radius: var(--radius-full); padding: var(--space-3) var(--space-5); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard); }
+.timerscreen .swnew:hover { background: var(--selected-wash); }
+.timerscreen .swnew svg { width: var(--icon-size-small); height: var(--icon-size-small); display: block; }
+
+/* ── shared small buttons (board controls + manage-row actions) ── */
+.timerscreen .cbtn,
+.timer-mo .cbtn { display: inline-flex; align-items: center; gap: var(--space-2); font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); border-radius: var(--radius-small); padding: var(--space-3) var(--space-5); cursor: pointer; border: var(--border-hairline) solid transparent; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.timerscreen .cbtn svg,
+.timer-mo .cbtn svg { width: var(--icon-size-small); height: var(--icon-size-small); display: block; }
+.timer-mo .cbtn.plain { color: var(--text-strong); background: var(--panel-background); border-color: var(--border); }
+.timer-mo .cbtn.plain svg { color: var(--text-secondary); }
+.timer-mo .cbtn.plain:hover { background: var(--hover-wash); }
+/* APPEARANCE PASS 2026-07-28 — .cbtn.ghost RETIRED here. Dashed was meaning three things at
+   once in this scope (add · secondary · inert); it now means exactly ONE — "make a thing that
+   does not exist yet" (.maddrow · .epadd). Per-row verbs are QUIET: no chrome at rest, they
+   take the plain button's shell when their row is pointed at. */
+.timer-mo .cbtn.quiet { color: var(--text-secondary); background: transparent; border-color: transparent; }
+.timer-mo .cbtn.quiet svg { color: var(--text-muted); }
+.timer-mo .mrow:hover .cbtn.quiet,
+.timer-mo .cbtn.quiet:hover { background: var(--panel-background); border-color: var(--border); color: var(--text-strong); }
+.timer-mo .cbtn.quiet:hover svg { color: var(--text-secondary); }
+.timer-mo .cbtn.quiet.danger:hover { color: var(--danger); border-color: color-mix(in oklch, var(--danger), var(--panel-background) var(--tint-border)); }
+.timer-mo .cbtn.quiet.danger:hover svg { color: var(--danger); }
+
+/* ── the overlays — tenant widths + content on the kit.css modal chassis ── */
+
+.mo.timer-manage,
+.mo.timer-create { width: var(--modal-manage-w); }
+/* the recovery dialog reuses --modal-confirm-w and the GRAND clearance tier */
+.timer-mo .mo-title svg { display: block; }
+/* APPEARANCE PASS 2026-07-28 — RECOVERY ADOPTS kit-dialog-confirm's ANATOMY. It already
+   borrowed --modal-confirm-w while wearing the full chassis (head band + hairline + foot
+   band), so the app had two anatomies for one job: a short, decision-led, prose-led dialog.
+   It is now one column — icon-title, prose, the rows, the actions — quoting the confirm
+   verbatim; only the icon's colour differs, because recovery is ATTENTION, not destruction. */
+.confirm.timer-recovery { width: var(--modal-confirm-w); }
+.confirm.timer-recovery .ch .ico { color: var(--attention-dot); }
+
+/* tracked-set rows (kit-row-tracked's management/recovery faces) */
+/* APPEARANCE PASS 2026-07-28 — the tracked row is now an OBJECT you can point at: full-bleed
+   hover out through the body's inset, and the accumulator promoted to the row's hero. It is
+   the reason the window is open and it was 18px, smaller than the modal's own title. */
+/* the row set is CONTENT: a --panel-background card on the modal's shell (the ladder ruling). */
+.timer-mo .mset { display: flex; flex-direction: column; background: var(--panel-background); border: var(--border-hairline) solid var(--divider); border-radius: var(--radius-medium); padding: var(--space-3) var(--space-5); }
+.timer-mo .mset + .maddrow { margin-top: var(--space-5); }
+/* the row is a GRID, not a flex run (user 2026-07-28): swatch · identity · ACCUMULATOR · verbs,
+   so the times hold their own right-aligned column and read down the set instead of trailing
+   each title at a different x. */
+.timer-mo .mrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-6); padding: var(--space-5); border-radius: var(--radius-small); transition: background var(--motion-fast) var(--ease-standard); }
+.timer-mo .mrow:hover { background: var(--hover-wash); }
+.timer-mo .mrow + .mrow { box-shadow: inset 0 var(--border-hairline) 0 var(--divider); }
+.timer-mo .mrow .dot { width: 16px; height: 16px; border-radius: var(--radius-small); flex: 0 0 auto; }
+/* APPEARANCE PASS 2026-07-28 (2nd) — the name column used to stretch, which shoved the
+   accumulator to the far right and left --modal-manage-w reading sparse. Identity and its
+   number are ONE object now, sitting together; the verbs take the far edge. */
+.timer-mo .mrow .mnwrap { min-width: 0; }
+.timer-mo .mrow .mn { font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong); white-space: nowrap; }
+.timer-mo .mrow .mn .ent { color: var(--text-secondary); font-weight: var(--weight-regular); }
+/* .msub — the row's second line. STRUCK from the management face 2026-07-28 (user: cluttered);
+   the row is identity + its accumulator + its two verbs, nothing else. The rule survives for
+   the recovery face, which may still want it. */
+.timer-mo .mrow .msub { font-size: var(--size-caption); color: var(--text-muted); margin-top: var(--space-1); white-space: nowrap; }
+.timer-mo .mrow .macc { justify-self: end; text-align: right; font-family: var(--font-mono); font-size: var(--size-heading); font-weight: var(--weight-bold); line-height: var(--line-tight); letter-spacing: -.01em; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.timer-mo .mrow .macts { display: flex; gap: var(--space-2); flex: 0 0 auto; }
+.timer-mo .foothint { margin-left: auto; white-space: nowrap; font-size: var(--size-caption); color: var(--text-muted); }
+
+/* the dashed add row */
+.timer-mo .maddrow { white-space: nowrap; display: inline-flex; align-items: center; gap: var(--space-3); align-self: flex-start; font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary); background: transparent; border: var(--border-standard) dashed var(--border); border-radius: var(--radius-small); padding: var(--space-4) var(--space-5); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.timer-mo .maddrow:hover { background: var(--hover-wash); color: var(--text-strong); border-color: var(--accent); }
+.timer-mo .maddrow svg { width: var(--icon-size-small); height: var(--icon-size-small); display: block; }
+
+.timer-mo .mo-msg { font-size: var(--size-body); color: var(--text-secondary); line-height: var(--line-normal); }
+.timer-mo .mo-msg b { color: var(--text-strong); font-weight: var(--weight-medium); }
+.timer-mo .recnote { font-size: var(--size-caption); color: var(--text-muted); }
+
+/* ── the create flow (the create modal reuses the create-card steps, unwrapped) ── */
+/* APPEARANCE PASS 2026-07-28 — LABEL TIERS CUT FROM FOUR TO TWO. The step label was mono +
+   caps + bold + tracked + ORDINAL, sitting above a caps "WHICH ONE?" and a caps setting
+   label: three uppercase micro-labels inside one 720px column, which is what "cluttered"
+   was. The step label is now the corpus's ONE section-label idiom (entry creation's
+   .ec-secl, hairline included) and the ordinals are gone — the vertical order IS the
+   numbering. Everything below a section label speaks the sentence-case row idiom (.ec-lbl).
+   Rhythm re-ratioed too: 12 label>control, 32 step>step (it was 8 vs 16 — the groups could
+   not separate). */
+.timer-mo .create-card { display: flex; flex-direction: column; gap: var(--space-8); border: none; padding: 0; background: transparent; }
+.timer-mo .cstep { display: flex; flex-direction: column; gap: var(--space-5); }
+.timer-mo .steplbl { font-size: var(--size-caption); text-transform: uppercase; letter-spacing: .08em; font-weight: var(--weight-bold); color: var(--text-muted); padding-bottom: var(--space-4); border-bottom: var(--border-hairline) solid var(--divider); }
+
+/* mode segmented pick (kit-toggle-segmented) */
+/* APPEARANCE PASS 2026-07-28 (3rd) — the mode pick is a PILL: --radius-full on the track and
+   on each segment. RULED THE APP'S SEGMENTED IDIOM at the pull (user, same day): kit's .segctl
+   moved to the same radii, so the two never diverge. This rule keeps only what is local to the
+   mode pick (flex-fill segments · the roomier padding). */
+.timer-mo .modeseg { display: flex; background: var(--inset-background); border-radius: var(--radius-full); padding: var(--space-1); gap: var(--space-1); }
+.timer-mo .modeseg button { flex: 1 1 0; font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary); background: transparent; border: none; border-radius: var(--radius-full); padding: var(--space-4) var(--space-6); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.timer-mo .modeseg button:hover { color: var(--text-strong); }
+.timer-mo .modeseg button[aria-pressed="true"] { background: var(--panel-background); color: var(--text-strong); box-shadow: var(--shadow-low); }
+
+/* tracked-set picker — exclusivity READS THROUGH the disabled rows (no prose) */
+.timer-mo .picklist { display: flex; flex-direction: column; border: var(--border-hairline) solid var(--divider); border-radius: var(--radius-small); overflow: hidden; }
+/* APPEARANCE PASS 2026-07-28 — the picker was seven identical rows at 15px. The name is now at
+   body size with real row height; the sub-line that briefly annotated each row's state was
+   STRUCK (user, same day) — the row's own controls carry it: a checked box, a disclosure that
+   points open, an inert box + muted name for a habit already on another clock. */
+.timer-mo .prow2 { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-5); cursor: pointer; background: var(--panel-background); transition: background var(--motion-fast) var(--ease-standard); }
+.timer-mo .prow2 .pnwrap { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.timer-mo .prow2 + .prow2 { border-top: var(--border-hairline) solid var(--divider); }
+.timer-mo .prow2:hover { background: var(--hover-wash); }
+.timer-mo .prow2 .box { width: var(--check-size); height: var(--check-size); border-radius: var(--radius-cell); border: var(--border-standard) solid var(--border); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; color: var(--text-on-filled); background: var(--panel-background); }
+.timer-mo .prow2 .box svg { width: 12px; height: 12px; stroke-width: 3px; opacity: 0; display: block; }
+.timer-mo .prow2.on .box { background: var(--accent); border-color: var(--accent); }
+.timer-mo .prow2.on .box svg { opacity: 1; }
+.timer-mo .prow2 .dot { width: 12px; height: 12px; border-radius: var(--radius-small); flex: 0 0 auto; }
+.timer-mo .prow2 .pn { font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong); }
+.timer-mo .prow2 .pn .ent { color: var(--text-secondary); font-weight: var(--weight-regular); }
+.timer-mo .prow2 .pe { margin-left: auto; }
+/* APPEARANCE PASS 2026-07-28 (2nd) — the chevron was a bare glyph that read as a select while
+   the row itself did the checking: two verbs, one target. It is now a real DISCLOSURE button
+   (own hit area, own hover, rotates when open, aria-expanded), so the row toggles membership
+   and the chevron opens the entry pick. Icon-only, therefore tooltipped — the mandatory-
+   tooltip law. */
+.timer-mo .prow2 .pe.needs { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: var(--step-btn-size); height: var(--step-btn-size); border: none; background: transparent; border-radius: var(--radius-small); color: var(--text-muted); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard); }
+.timer-mo .prow2 .pe.needs:hover { background: var(--hover-wash); color: var(--text-strong); }
+.timer-mo .prow2 .pe.needs[aria-expanded="true"] { transform: rotate(180deg); color: var(--text-strong); }
+.timer-mo .prow2 .pe.needs svg { width: var(--icon-size-small); height: var(--icon-size-small); }
+/* APPEARANCE PASS 2026-07-28 — a blanket opacity:.42 over an inset fill went mushy. The
+   closed row now stays legible and carries its state as SHAPE, not fade: an inert box, a muted
+   name, a receded swatch — never-colour-alone satisfied without prose. */
+.timer-mo .prow2[aria-disabled="true"] { cursor: not-allowed; background: var(--inset-background); }
+.timer-mo .prow2[aria-disabled="true"]:hover { background: var(--inset-background); }
+.timer-mo .prow2[aria-disabled="true"] .box { background: var(--inset-background); border-color: var(--divider); }
+.timer-mo .prow2[aria-disabled="true"] .pn { color: var(--text-muted); }
+
+/* project-habit entry sub-picker — the entry is picked HERE at join */
+/* APPEARANCE PASS 2026-07-28 — was a foreign tinted slab on an arbitrary 32px indent; it is
+   now a CONTINUATION of its row: softened fill, STACKED (label over chips, user 2026-07-28 —
+   side by side, the chips started at label-width + gap and lined up with nothing), and its
+   content column lands on the row's NAME column — the row's own leading run, transcribed: inset + check + gap + dot + gap (71px). The
+   12px is the swatch-dot literal .prow2 .dot / .ftrow .dot / .swchip .dot already carry corpus-
+   wide; it is a flagged dial candidate, annotated here and NOT re-valued. If that dot ever
+   becomes a dial, this calc moves with it. The caps "WHICH ONE?" is demoted to a sentence-case
+   row label. */
+.timer-mo .entrypick { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); background: var(--inset-background); padding: var(--space-2) var(--space-5) var(--space-5) calc(var(--space-5) + var(--check-size) + var(--space-5) + 12px + var(--space-5)); }
+.timer-mo .epbody { align-self: stretch; min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.timer-mo .entrypick + .prow2 { border-top: var(--border-hairline) solid var(--divider); }
+.timer-mo .eplbl { flex: 0 0 auto; white-space: nowrap; font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary); }
+.timer-mo .epopts { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+/* THE SUB-PICK HAS TWO FACES (user, 2026-07-28) — the roster is not one size:
+     CREATION habits (Writing · Embroidery · Coding …) have a handful of long-lived projects:
+       the chip roster above (.epopts) shows them all, no search.
+     CONSUMPTION habits (Gaming · Reading · Media) can hold HUNDREDS of entries, so a chip
+       roster is impossible: a search field (.epsearch) over a short result list (.epresults).
+   Same block, same label, same New-entry door — only the selector changes. Not free text: a
+   query, not a stored field (charter law 12 is about data fields). */
+.timer-mo .epsearch { align-self: stretch; display: flex; align-items: center; gap: var(--space-4); background: var(--panel-background); border: var(--border-hairline) solid var(--border); border-radius: var(--radius-small); padding: var(--space-3) var(--space-5); transition: border-color var(--motion-fast) var(--ease-standard); }
+.timer-mo .epsearch:focus-within { border-color: var(--accent); box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring); }
+.timer-mo .epsearch svg { width: var(--icon-size-small); height: var(--icon-size-small); color: var(--text-muted); flex: 0 0 auto; display: block; }
+.timer-mo .epsearch input { flex: 1 1 auto; min-width: 0; background: transparent; border: none; outline: none; font-family: var(--font-ui); font-size: var(--size-small); color: var(--text-strong); }
+.timer-mo .epsearch input::placeholder { color: var(--text-muted); }
+.timer-mo .epresults { align-self: stretch; display: flex; flex-direction: column; background: var(--panel-background); border: var(--border-hairline) solid var(--divider); border-radius: var(--radius-small); overflow: hidden; }
+.timer-mo .epres { display: flex; align-items: center; gap: var(--space-4); font-family: var(--font-ui); font-size: var(--size-small); color: var(--text-strong); text-align: left; background: transparent; border: none; padding: var(--space-4) var(--space-5); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard); }
+.timer-mo .epres + .epres { border-top: var(--border-hairline) solid var(--divider); }
+.timer-mo .epres:hover { background: var(--hover-wash); }
+.timer-mo .epres .rk { flex: 0 0 auto; width: var(--icon-size-small); height: var(--icon-size-small); color: var(--accent); opacity: 0; display: block; }
+.timer-mo .epres.on { background: var(--selected-wash); font-weight: var(--weight-medium); }
+.timer-mo .epres.on .rk { opacity: 1; }
+.timer-mo .epres[aria-disabled="true"] { color: var(--text-muted); cursor: not-allowed; }
+.timer-mo .epres[aria-disabled="true"]:hover { background: transparent; }
+.timer-mo .epopt { white-space: nowrap; font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary); background: var(--panel-background); border: var(--border-hairline) solid var(--border); border-radius: var(--radius-full); padding: var(--space-2) var(--space-4); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard); }
+.timer-mo .epopt:hover { background: var(--hover-wash); color: var(--text-strong); }
+.timer-mo .epopt.on { border-color: var(--accent); background: var(--selected-wash); color: var(--text-strong); }
+.timer-mo .epopt[aria-disabled="true"] { opacity: .42; cursor: not-allowed; }
+.timer-mo .epopt[aria-disabled="true"]:hover { background: var(--panel-background); color: var(--text-secondary); }
+.timer-mo .epadd { white-space: nowrap; display: inline-flex; align-items: center; gap: var(--space-2); font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--accent); background: transparent; border: var(--border-standard) dashed color-mix(in oklch, var(--accent), var(--panel-background) var(--tint-border)); border-radius: var(--radius-full); padding: var(--space-2) var(--space-4); cursor: pointer; }
+.timer-mo .epadd:hover { background: var(--selected-wash); }
+.timer-mo .epadd svg { width: var(--icon-size-small); height: var(--icon-size-small); }
+
+/* per-mode settings */
+.timer-mo .setrow { display: flex; align-items: center; gap: var(--space-4); }
+/* APPEARANCE PASS 2026-07-28 — the third uppercase tier, demoted to entry creation's
+   labelled-row idiom. The 128px column is .ec-lbl's literal, already a flagged dial
+   candidate corpus-wide — annotated, not re-valued. */
+.timer-mo .setrow + .setrow { margin-top: var(--space-4); }
+.timer-mo .setlbl { font-size: var(--size-small); color: var(--text-secondary); font-weight: var(--weight-medium); width: 128px; flex: 0 0 auto; }
+.timer-mo .minifield { display: inline-flex; align-items: center; gap: var(--space-4); background: var(--inset-background); border: var(--border-hairline) solid transparent; border-radius: var(--radius-small); padding: var(--space-3) var(--space-5); font-family: var(--font-mono); font-size: var(--size-body); color: var(--text-strong); transition: border-color var(--motion-fast) var(--ease-standard); }
+.timer-mo .minifield:hover, .timer-mo .minifield:focus-within { border-color: var(--border); }
+.timer-mo .minifield input { background: transparent; border: none; outline: none; font: inherit; color: inherit; width: var(--input-inline-w); }
+.timer-mo .noset { font-size: var(--size-small); color: var(--text-muted); background: var(--inset-background); border-radius: var(--radius-small); padding: var(--space-5); }

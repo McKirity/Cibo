@@ -1,0 +1,137 @@
+/* == THE PALETTE (Build step 6 catch-up) ======================================
+   kit-palette, CLAIMED from Layer 2 (`kit-staging.css`) + the frozen
+   `Final/palette.html` — the `.pal-*` family keeps its bare names (collision-
+   checked: nothing in the app claims `.pal-*` or `.palette`). Width reuses
+   --modal-confirm-w (the ratified reuse; a --palette-w dial was weighed and
+   REJECTED at the freeze); top-third = an anchor offset, positioning not
+   paint; the overlay tier throughout; zero block-own dials.
+
+   STRUCTURAL ADAPTATIONS at claim (the shell-harvest precedent, recorded):
+   · .pal-scrim position:absolute → FIXED — the mockup drew inside the #frame
+     desk; the app's overlay tier is viewport-fixed (.dimlayer's convention).
+   · .pal-body always flex + scrolls — the mockup's #frame[data-palette] state
+     switcher (display:none per body) dies with the mockup chrome; React
+     renders one live body.
+   · .pal-q / .pal-ph / .pal-caret NOT claimed — the mockup's fake query spans
+     and blinking caret are superseded by the real input (`.pal-in`, build
+     glue below; caret-color carries the drawn accent caret).
+   · .pal-scope NOT claimed — styled in the frozen file but rendered nowhere
+     in its DOM; no tenant.
+   · `kbd` claimed into kit.css (element-level; the Settings hotkey reference
+     is its known second tenant).
+
+   BUILD GLUE (authored, dial-derived): .pal-in · the .pal-row button reset ·
+   .pal-row.off (a verb whose step hasn't landed — the rail's disabled-Tools
+   precedent) · .pal-row.static · .pal-more · .pal-letter.
+
+   THE `.advs` FACE (Advanced Search — the morph) is AUTHORED BUILD-SIDE by
+   standing ruling (no FINAL draws it): the same overlay chassis widened onto
+   CS's builder idiom — builder column at --builder-w, live results beside it.
+   The shared builder/picker/preset rules live in compare.css under
+   `:is(.csdash, .advs)`. Iterates at the GUI pass.
+   ========================================================================== */
+
+.pal-scrim{position:fixed; inset:0; z-index:80; background:var(--overlay-dim); animation:pal-dim var(--motion-standard) var(--ease-entering);}
+@keyframes pal-dim{from{opacity:0;} to{opacity:1;}}
+.palette{position:absolute; left:50%; top:13%; transform:translateX(-50%); /* top-third = anchor offset (positioning, not paint) */
+         width:var(--modal-confirm-w); max-width:calc(100% - var(--space-8) * 2); max-height:74%;
+         padding:calc(var(--frame-clear-palette) + var(--space-5));
+         display:flex; flex-direction:column; overflow:hidden;
+         background:var(--raised-background); -webkit-backdrop-filter:var(--backdrop-blur); backdrop-filter:var(--backdrop-blur);
+         border:var(--border-hairline) solid var(--border); border-radius:var(--radius-large); box-shadow:var(--shadow-high);
+         animation:pal-in var(--motion-standard) var(--ease-entering);}
+@keyframes pal-in{from{opacity:0; transform:translate(-50%,-6px);} to{opacity:1; transform:translate(-50%,0);}}
+.reduce-effects .pal-scrim{animation:none;}
+.reduce-effects .palette{-webkit-backdrop-filter:none; backdrop-filter:none; background:var(--panel-background); box-shadow:var(--shadow-low); animation:none;}
+
+/* search well — kit-input anatomy */
+.pal-well{display:flex; align-items:center; gap:var(--space-5); padding:var(--space-6); border-bottom:var(--border-hairline) solid var(--divider);}
+.pal-well .pal-mag{width:var(--size-subheading); height:var(--size-subheading); color:var(--text-muted); flex:0 0 auto;}
+.pal-qwrap{flex:1 1 auto; min-width:0; display:flex; align-items:center; font-size:var(--size-heading); color:var(--text-strong);}
+/* build glue — the real input replacing the mockup's fake query spans */
+.pal-in{flex:1 1 auto; min-width:0; font-family:var(--font-ui); font-size:var(--size-heading); color:var(--text-strong);
+        background:transparent; border:none; outline:none; padding:0; caret-color:var(--accent);}
+.pal-in::placeholder{color:var(--text-muted);}
+
+/* result bodies */
+.pal-body{display:flex; flex-direction:column; overflow-y:auto; padding:var(--space-5) var(--space-4);}
+.pal-hint{display:flex; align-items:center; gap:var(--space-4); padding:var(--space-4) var(--space-5) var(--space-5); font-size:var(--size-small); color:var(--text-muted); line-height:var(--line-normal);}
+.pal-hint .ico{width:var(--icon-size-small); height:var(--icon-size-small); color:var(--text-muted); flex:0 0 auto;}
+.pal-grp{font-size:var(--size-caption); font-weight:var(--weight-bold); letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); padding:var(--space-4) var(--space-5) var(--space-3);}
+.pal-grp:not(:first-child){margin-top:var(--space-3);}
+.pal-list{display:flex; flex-direction:column; gap:var(--space-1);}
+.pal-row{display:flex; align-items:center; gap:var(--space-5); padding:var(--space-4) var(--space-5); border-radius:var(--radius-small); cursor:pointer; text-align:left; transition:background var(--motion-fast) var(--ease-standard);
+         /* build glue: the drawn rows were divs; the app's are buttons */
+         width:100%; border:none; background:transparent; font-family:var(--font-ui);}
+.pal-row:hover{background:var(--hover-wash);}
+.pal-row.sel{background:var(--selected-wash); box-shadow:inset var(--border-heavy) 0 0 var(--accent);}
+/* build glue: a verb whose target step hasn't landed (the rail's disabled-
+   Tools precedent) — drawn, inert, "later" in the meta */
+.pal-row.off{cursor:default; opacity:.55;}
+.pal-row.off:hover{background:transparent;}
+/* build glue: the quick-create door row — a statement, not a control (the
+   habit pick below it is the live step) */
+.pal-row.static{cursor:default;}
+.pal-row.static:hover{background:transparent;}
+.pal-lead{flex:0 0 auto; width:calc(var(--icon-size) + var(--space-5)); height:calc(var(--icon-size) + var(--space-5)); display:flex; align-items:center; justify-content:center; border-radius:var(--radius-small); color:var(--text-secondary);}
+.pal-lead.sw{color:var(--text-on-filled);}
+.pal-lead .ico{width:var(--icon-size); height:var(--icon-size);}
+.pal-lead.sw .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
+.pal-lead .pal-dot{width:var(--dot-size); height:var(--dot-size); border-radius:var(--radius-full);}
+/* build glue: the ruled lettermark fallback inside a swatch lead */
+.pal-letter{font-size:var(--size-caption); font-weight:var(--weight-bold);}
+.pal-txt{flex:1 1 auto; min-width:0; display:flex; align-items:baseline; gap:var(--space-4);}
+.pal-title{font-size:var(--size-body); font-weight:var(--weight-medium); color:var(--text-strong); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.pal-sub{font-size:var(--size-small); color:var(--text-muted); white-space:nowrap; flex:0 0 auto;}
+.pal-meta{margin-left:auto; flex:0 0 auto; display:flex; align-items:center; gap:var(--space-5); font-size:var(--size-caption); color:var(--text-muted);}
+.pal-tier{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted);}
+.pal-enter{display:none; align-items:center; gap:var(--space-3); font-size:var(--size-caption); color:var(--accent); font-weight:var(--weight-medium);}
+.pal-row.sel .pal-enter{display:inline-flex;}
+.pal-none{padding:var(--space-5) var(--space-5) var(--space-3); font-size:var(--size-small); color:var(--text-muted);}
+.pal-none b{color:var(--text-secondary); font-weight:var(--weight-medium);}
+/* build glue: honest overflow — a capped group states its remainder */
+.pal-more{padding:var(--space-2) var(--space-5) var(--space-3); font-size:var(--size-caption); color:var(--text-muted);}
+.pal-pickhead{display:flex; flex-direction:column; gap:var(--space-3); padding:var(--space-5); margin-top:var(--space-3); border-top:var(--border-hairline) solid var(--divider);}
+.pal-eyebrow{font-size:var(--size-caption); font-weight:var(--weight-bold); letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted);}
+.pal-prompt{font-size:var(--size-small); color:var(--text-secondary); line-height:var(--line-normal); text-wrap:pretty;}
+.pal-prompt b{color:var(--text-strong); font-weight:var(--weight-medium);}
+/* CONFORMED AT FREEZE (2026-07-14): the foot ground is plain --inset-background */
+.pal-foot{display:flex; align-items:center; gap:var(--space-6); padding:var(--space-4) var(--space-6); border-top:var(--border-hairline) solid var(--divider); background:var(--inset-background);}
+.pal-legend{display:inline-flex; align-items:center; gap:var(--space-3); font-size:var(--size-caption); color:var(--text-muted);}
+
+/* == ADVANCED SEARCH — the morph (Build-side face; no FINAL) ================ */
+
+.palette.advs{width:min(calc(var(--builder-w) * 2 + var(--space-8) * 6), calc(100% - var(--space-8) * 2));
+              top:7%; max-height:86%;}
+.advs-head{display:flex; align-items:center; gap:var(--space-5); padding:var(--space-5) var(--space-6); border-bottom:var(--border-hairline) solid var(--divider);}
+.advs-back{display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+           width:calc(var(--icon-size) + var(--space-5)); height:calc(var(--icon-size) + var(--space-5));
+           border:none; background:transparent; border-radius:var(--radius-small); cursor:pointer; color:var(--text-secondary);
+           transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+.advs-back:hover{background:var(--hover-wash); color:var(--text-strong);}
+.advs-back .ico{width:var(--icon-size); height:var(--icon-size);}
+.advs-titlewrap{display:flex; flex-direction:column; gap:var(--space-1); min-width:0;}
+.advs-title{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); color:var(--text-strong); letter-spacing:-.005em;}
+.advs-sub{font-size:var(--size-caption); color:var(--text-muted);}
+.advs-acts{margin-left:auto; display:flex; align-items:center; gap:var(--space-4);}
+.advs-grid{display:grid; grid-template-columns:var(--builder-w) 1fr; gap:var(--space-6); padding:var(--space-6); flex:1 1 auto; min-height:0; overflow:hidden; align-items:stretch;}
+.advs-builder{overflow-y:auto; min-height:0; padding-right:var(--space-2);}
+.advs-results{overflow-y:auto; min-height:0; display:flex; flex-direction:column; gap:var(--space-4);}
+.advs-count{font-size:var(--size-body); color:var(--text-secondary);}
+.advs-count b{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); color:var(--text-strong); margin-right:var(--space-2);}
+.advs-capnote{font-size:var(--size-caption); color:var(--text-muted);}
+.advs-note{margin:var(--space-3) 0 0; font-size:var(--size-caption); color:var(--text-muted); line-height:var(--line-normal);}
+/* condition rows */
+.advs-cond{border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-small); padding:var(--space-4) var(--space-5); margin-bottom:var(--space-4);}
+.advs-cond-top{display:flex; align-items:center; gap:var(--space-3);}
+.advs-cond-top .wclose{margin-left:auto;}
+.advs-incomplete{font-size:var(--size-caption); color:var(--text-muted);}
+.advs-cond-body{display:flex; flex-direction:column; gap:var(--space-3); margin-top:var(--space-3);}
+.advs-inline{display:flex; align-items:center; gap:var(--space-4); flex-wrap:wrap;}
+.advs-unit{font-size:var(--size-caption); color:var(--text-muted);}
+.advs-num{width:7ch; font-family:var(--font-mono); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-strong);
+          background:var(--inset-background); border:var(--border-hairline) solid transparent; border-radius:var(--radius-small);
+          padding:var(--space-2) var(--space-3); outline:none;}
+.advs-num:focus{border-color:var(--accent);}
+.advs-add{margin-top:var(--space-2);}
+.advs-match{display:flex; align-items:center; gap:var(--space-4); margin-top:var(--space-5); padding-top:var(--space-4); border-top:var(--border-hairline) solid var(--divider);}

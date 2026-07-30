@@ -48,7 +48,7 @@ const IStop = () => (
 
 const RING_C = 2 * Math.PI * 45; // the 100-unit viewBox circle, r=45
 
-function Ring({ fraction, time, cap }: { fraction: number; time: string; cap: string }) {
+function Ring({ fraction, time, cap }: { fraction: number; time: string; cap?: string }) {
   const arc = Math.max(0, Math.min(1, fraction)) * RING_C;
   return (
     <div className="ring-wrap">
@@ -64,7 +64,7 @@ function Ring({ fraction, time, cap }: { fraction: number; time: string; cap: st
       </svg>
       <div className="ring-center">
         <span className="ring-time">{time}</span>
-        <span className="ring-cap">{cap}</span>
+        {cap != null && <span className="ring-cap">{cap}</span>}
       </div>
     </div>
   );
@@ -166,12 +166,11 @@ export function TimersScreen({
     <section className="timerscreen">
       <div className="tstage">
         <div className="focus">
-          {/* mode · config · run-state (word + glyph) */}
+          {/* mode · config · run-state (word + glyph). The countdown carries NO
+              config chip here — user-ruled 2026-07-28 (corrected): the target
+              above the ring was the redundant one; the ring keeps its "of 25:00". */}
           <div className="fmode">
             <span className="fpill">{mode}</span>
-            {c.mode === "countdown" && c.targetMs != null && (
-              <span className="fcfg">target {fmtTarget(c.targetMs)}</span>
-            )}
             {c.mode === "pomodoro" && c.workMs != null && c.breakMs != null && (
               <span className="fcfg">
                 {fmtTarget(c.workMs)} / {fmtTarget(c.breakMs)}

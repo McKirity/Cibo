@@ -41,7 +41,7 @@ import {
   takeTracked,
   useTimers,
 } from "./timerStore";
-import { stageHandoff, stagedCount } from "./logHandoff";
+import { stageHandoff } from "./logHandoff";
 import {
   selectionToItems,
   timerEntriesQuery,
@@ -140,8 +140,8 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
           <div className="mo-titlewrap">
             <span className="mo-title">New session</span>
           </div>
+          {/* no escnote — user-ruled 2026-07-28: no annotations in the timer modals */}
           <div className="mo-esc">
-            <span className="escnote">Esc to close</span>
             <button className="mo-close" title="Close" onClick={onClose}>
               <IClose />
             </button>
@@ -165,9 +165,12 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
               <span className="steplbl">Habits</span>
               <TrackedPicker selection={selection} onChange={setSelection} />
             </div>
+            {/* the stopwatch has no length — the SECTION hides rather than
+                carrying the "Counts up — nothing to set." note (the annotations
+                sweep, user-ruled 2026-07-28) */}
+            {mode !== "stopwatch" && (
             <div className="cstep">
               <span className="steplbl">Length</span>
-              {mode === "stopwatch" && <div className="noset">Counts up — nothing to set.</div>}
               {mode === "countdown" && (
                 <div className="setrow">
                   <span className="setlbl">Target</span>
@@ -205,6 +208,7 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
                 </>
               )}
             </div>
+            )}
           </div>
         </div>
         <div className="mo-foot">
@@ -244,11 +248,21 @@ function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => v
     return m;
   }, [entries]);
 
-  const staged = stagedCount();
 
+  // Emptying the set closes BOTH the window and the clock (user-ruled
+  // 2026-07-28, overriding the drawn "Resume + Add remain" clause): a clock
+  // whose last item was logged or removed has nothing left to time.
+  const discardIfEmptied = () => {
+    if (clock.tracked.length === 1) discardClock(clock.id);
+  };
   const logOne = (index: number) => {
     const item = takeTracked(clock.id, index);
     if (item != null) stageHandoff(toHandoff([item], clock));
+    discardIfEmptied();
+  };
+  const removeOne = (index: number) => {
+    removeTracked(clock.id, index);
+    discardIfEmptied();
   };
   const logAll = () => {
     const items = takeAllTracked(clock.id);
@@ -287,7 +301,6 @@ function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => v
             </span>
           </div>
           <div className="mo-esc">
-            <span className="escnote">Esc to close</span>
             <button className="mo-close" title="Close" onClick={() => closeManage()}>
               <IClose />
             </button>
@@ -310,7 +323,7 @@ function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => v
                     <IPencil />
                     Log
                   </button>
-                  <button className="cbtn quiet danger" onClick={() => removeTracked(clock.id, i)}>
+                  <button className="cbtn quiet danger" onClick={() => removeOne(i)}>
                     Remove
                   </button>
                 </span>
@@ -335,12 +348,6 @@ function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => v
               Add habit / entry to the set
             </button>
           )}
-          {staged > 0 && (
-            <p className="recnote">
-              {staged} accumulator{staged === 1 ? "" : "s"} staged for the form — they prefill the
-              daily form on your next visit.
-            </p>
-          )}
         </div>
         <div className="mo-foot">
           {hasItems && (
@@ -353,17 +360,15 @@ function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => v
             <IPlay />
             Resume
           </button>
-          {hasItems && (
-            <span className="foothint">Logging opens the daily form and dissolves the clock.</span>
-          )}
-          {/* Build glue: an emptied set collapses the log verbs (the drawn rule)
-              but would otherwise strand the clock — nothing accumulated, so the
-              discard needs no ceremony. */}
-          {!hasItems && (
-            <button className="btn-danger" onClick={() => discardClock(clock.id)}>
-              Discard clock
-            </button>
-          )}
+          <span style={{ marginLeft: "auto" }} />
+          {/* Per-clock scrap (user-ruled 2026-07-28): every clock can be
+              discarded whole from its own window. No ceremony — nothing was
+              written (the recovery dialog's Discard precedent); it sits in the
+              far corner, spacer-separated from Resume. */}
+          <button className="btn-danger" onClick={() => discardClock(clock.id)}>
+            <ITrash />
+            Discard clock
+          </button>
         </div>
       </div>
     </div>
@@ -374,7 +379,6 @@ function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => v
 
 function RecoveryDialog({ clock }: { clock: Clock }) {
   const now = Date.now();
-  const n = clock.tracked.length;
   // Deliberately NOT dismissable by dim-click/Esc — the three verbs are the
   // only exits (Discard is the destructive corner; an accidental Esc must not
   // pick for you).
@@ -409,10 +413,6 @@ function RecoveryDialog({ clock }: { clock: Clock }) {
               </div>
             ))}
           </div>
-          <p className="recnote">
-            Nothing is written until you log. Discard drops{" "}
-            {n === 1 ? "the accumulator" : `all ${n} accumulators`}.
-          </p>
           <div className="confirm-actions">
             <button className="btn-accent" onClick={() => recoveryContinue()}>
               <IPlay />
@@ -450,6 +450,36 @@ export function TimerOverlays({ onGoToForm }: { onGoToForm: () => void }) {
       )}
       {recovery != null && <RecoveryDialog clock={recovery} />}
     </>
+  );
+}
+
+/**
+ * The GLOBAL switcher tray (user-ruled 2026-07-28, at the GUI pass): while any
+ * clock is RUNNING, the board's switcher anatomy rides every other screen as
+ * the "a timer is running" reminder — fixed over the content pane, chips
+ * navigate back to the board with that clock focused. The shell mounts it and
+ * hides it on the Timers screen itself (the board carries its own).
+ */
+export function GlobalTimerTray({ onOpen }: { onOpen: (id: number) => void }) {
+  const state = useTimers();
+  const now = Date.now();
+  const running = state.clocks.filter((c) => c.running);
+  if (running.length === 0) return null;
+  return (
+    <div className="timertray">
+      {running.map((c) => (
+        <button key={c.id} className="swchip" onClick={() => onOpen(c.id)}>
+          <span
+            className="dot"
+            style={{ background: `var(--${c.tracked[0]?.colourSlot ?? "habit-1"})` }}
+          />
+          <span className="swm">
+            {c.mode === "stopwatch" ? "Stopwatch" : c.mode === "countdown" ? "Countdown" : "Pomodoro"}
+          </span>
+          <span className="swt">{clockChipReadout(c, now)}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 

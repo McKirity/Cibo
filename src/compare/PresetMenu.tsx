@@ -50,18 +50,25 @@ const ICaret = () => (
   </svg>
 );
 
-export function PresetControl({
+export function PresetControl<C = PresetCfg>({
   currentCfg,
   hasCurrent,
   onApply,
+  prefix,
 }: {
   /** The live configuration in its stored (partial, verbatim) form. */
-  currentCfg: PresetCfg;
+  currentCfg: C;
   /** Whether there is a comparison worth saving (the region hides when blank). */
   hasCurrent: boolean;
-  onApply: (cfg: PresetCfg) => void;
+  onApply: (cfg: C) => void;
+  /**
+   * The app_meta key prefix — absent = CS's own roster. Advanced Search (the
+   * spec'd second consumer) passes its mirror prefix so the two rosters never
+   * mix in one menu.
+   */
+  prefix?: string;
 }) {
-  const presets = usePresets();
+  const presets = usePresets<C>(prefix);
   const [open, setOpen] = useState(false);
   const [naming, setNaming] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -99,12 +106,12 @@ export function PresetControl({
 
   const commitSave = () => {
     const name = draft.trim();
-    if (name.length > 0 && savePreset(name, currentCfg)) {
+    if (name.length > 0 && savePreset(name, currentCfg, prefix)) {
       setNaming(false);
       setDraft("");
     }
   };
-  const commitRename = (p: Preset) => {
+  const commitRename = (p: Preset<C>) => {
     const name = draft.trim();
     if (name.length > 0 && renamePreset(p, name)) {
       setRenaming(null);

@@ -72,7 +72,10 @@
 /* stroke-width 5 = --clock-ring-stroke(18) / --clock-ring-size(360) × 100 (a
    transcribed ratio in the 100-unit viewBox, cited per the ramp carve-out) */
 .timerscreen .ring-track { fill: none; stroke: var(--inset-background); stroke-width: 5; }
-.timerscreen .ring-arc { fill: none; stroke: var(--text-secondary); stroke-width: 5; stroke-linecap: round; }
+/* GUI pass 2026-07-28 (user-ruled): the arc wears the BASE ACCENT, overriding the frozen
+   "neutral ring" clause ("a boring gray circle"). The never-a-habit-colour half of the law
+   still holds — the accent is chrome, not data. */
+.timerscreen .ring-arc { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; }
 .timerscreen .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); }
 .timerscreen .ring-time { font-family: var(--font-mono); font-size: var(--size-display); font-weight: var(--weight-bold); line-height: 1; color: var(--text-strong); font-variant-numeric: tabular-nums; }
 .timerscreen .ring-cap { font-size: var(--size-caption); color: var(--text-muted); }
@@ -110,13 +113,19 @@
 .timerscreen .focus-ctrls .cbtn.accent:hover { background: var(--hover-wash); color: var(--text-strong); }
 
 /* the switcher — the other clocks compressed to chips on a floating pill tray */
-.timerscreen .switcher { position: absolute; left: 50%; bottom: var(--space-7); transform: translateX(-50%); display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; justify-content: center; background: var(--raised-background); -webkit-backdrop-filter: var(--backdrop-blur); backdrop-filter: var(--backdrop-blur); border: var(--border-hairline) solid var(--border); border-radius: var(--radius-full); box-shadow: var(--shadow-high); padding: var(--space-3) var(--space-4); }
-.reduce-effects .timerscreen .switcher { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--panel-background); box-shadow: var(--shadow-low); }
-.timerscreen .swchip { display: inline-flex; align-items: center; gap: var(--space-3); font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary); background: transparent; border: var(--border-hairline) solid transparent; border-radius: var(--radius-full); padding: var(--space-3) var(--space-5); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
-.timerscreen .swchip:hover { background: var(--hover-wash); color: var(--text-strong); }
+/* GUI pass 2026-07-28 (user-ruled): the switcher also rides EVERY OTHER SCREEN while a clock
+   is RUNNING — `.timertray`, the same anatomy fixed over the content pane, as the "a timer is
+   running" reminder; its chips navigate back to the board. Below the overlay tier (z 30 < the
+   dim's 40) so modals still cover it. */
+.timerscreen .switcher, .timertray { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; justify-content: center; background: var(--raised-background); -webkit-backdrop-filter: var(--backdrop-blur); backdrop-filter: var(--backdrop-blur); border: var(--border-hairline) solid var(--border); border-radius: var(--radius-full); box-shadow: var(--shadow-high); padding: var(--space-3) var(--space-4); }
+.timerscreen .switcher { position: absolute; left: 50%; bottom: var(--space-7); transform: translateX(-50%); }
+.timertray { position: fixed; left: calc(50% + var(--rail-width) / 2); bottom: var(--space-7); transform: translateX(-50%); z-index: 30; }
+.reduce-effects .timerscreen .switcher, .reduce-effects .timertray { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--panel-background); box-shadow: var(--shadow-low); }
+.timerscreen .swchip, .timertray .swchip { display: inline-flex; align-items: center; gap: var(--space-3); font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary); background: transparent; border: var(--border-hairline) solid transparent; border-radius: var(--radius-full); padding: var(--space-3) var(--space-5); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.timerscreen .swchip:hover, .timertray .swchip:hover { background: var(--hover-wash); color: var(--text-strong); }
 .timerscreen .swchip.active { background: var(--selected-wash); color: var(--text-strong); border-color: var(--accent); }
-.timerscreen .swchip .dot { width: 12px; height: 12px; border-radius: var(--radius-small); flex: 0 0 auto; }
-.timerscreen .swchip .swt { font-family: var(--font-mono); color: var(--text-muted); }
+.timerscreen .swchip .dot, .timertray .swchip .dot { width: 12px; height: 12px; border-radius: var(--radius-small); flex: 0 0 auto; }
+.timerscreen .swchip .swt, .timertray .swchip .swt { font-family: var(--font-mono); color: var(--text-muted); }
 .timerscreen .swchip.active .swt { color: var(--text-secondary); }
 .timerscreen .swnew { display: inline-flex; align-items: center; gap: var(--space-3); font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--accent); background: transparent; border: var(--border-standard) dashed color-mix(in oklch, var(--accent), var(--panel-background) var(--tint-border)); border-radius: var(--radius-full); padding: var(--space-3) var(--space-5); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard); }
 .timerscreen .swnew:hover { background: var(--selected-wash); }

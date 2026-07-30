@@ -113,6 +113,15 @@
 .segctl button{font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-secondary); background:transparent; border:none; cursor:pointer; padding:var(--space-3) var(--space-6); border-radius:var(--radius-full); transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
 .segctl button[aria-pressed="true"]{background:var(--panel-background); color:var(--text-strong); box-shadow:var(--shadow-low);}
 
+/* ------- kbd — the keyboard-hint chip -------
+   Verbatim from staging (the palette FINAL drew it: the foot legend + the Esc
+   hint in the search well). Element-level on purpose — the Settings hotkey
+   reference (step 10) is its known second tenant. */
+kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-secondary);
+    background:var(--inset-background); border:var(--border-hairline) solid var(--border);
+    border-bottom-width:var(--border-standard); border-radius:var(--radius-small);
+    padding:0 var(--space-3); line-height:calc(var(--size-body) + var(--space-3)); display:inline-block;}
+
 /* ------- kit-toast — the one slide-in slot, two variants -------
    Verbatim from staging. The slot's POSITION is Build's: the corpus draws the
    toast as a bounded framed region standing in for the window, never a real

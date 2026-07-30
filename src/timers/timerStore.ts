@@ -23,7 +23,7 @@ import {
   type TimerMode,
   type TrackedItem,
 } from "./timerCore";
-import { fireSignal } from "./signal";
+import { fireSignal, unlockAudio } from "./signal";
 import { syncTray } from "./tray";
 
 const STORAGE_KEY = "cibo-timer-state-v1";
@@ -160,6 +160,7 @@ export interface NewClockConfig {
 }
 
 export const createClock = (cfg: NewClockConfig): void => {
+  unlockAudio(); // a click — the gesture that lets the boundary chime sound later
   const now = Date.now();
   const clock: Clock = {
     id: nextId++,
@@ -184,7 +185,10 @@ const patchClock = (id: number, fn: (c: Clock) => Clock) =>
 export const pauseClock = (id: number): void =>
   patchClock(id, (c) => ({ ...fold(c, Date.now()), running: false, resumedAt: null }));
 
-export const runClock = (id: number): void => patchClock(id, (c) => resumeClock(c, Date.now()));
+export const runClock = (id: number): void => {
+  unlockAudio();
+  patchClock(id, (c) => resumeClock(c, Date.now()));
+};
 
 /** A user stop: fold + pause + open the management window. */
 export const stopClock = (id: number): void =>
@@ -202,12 +206,14 @@ export const focusClock = (id: number): void => mutate((s) => ({ ...s, focusedId
 export const closeManage = (): void => mutate((s) => ({ ...s, manageId: null }));
 
 /** Resume out of the management window (a finished pomodoro work interval enters its break). */
-export const resumeFromManage = (id: number): void =>
+export const resumeFromManage = (id: number): void => {
+  unlockAudio();
   mutateAnd((s) => ({
     ...s,
     manageId: null,
     clocks: s.clocks.map((c) => (c.id === id ? resumeClock(c, Date.now()) : c)),
   }));
+};
 
 /** Add units to a running set — a newly added item starts at 0 (the ruled rule). */
 export const addTracked = (id: number, items: Omit<TrackedItem, "baseMs">[]): void =>
@@ -277,7 +283,8 @@ const popRecovery = (s: TimerState): [Clock | null, Clock[]] => [
 ];
 
 /** Continue — the clock resumes accruing from its last-persisted values. */
-export const recoveryContinue = (): void =>
+export const recoveryContinue = (): void => {
+  unlockAudio();
   mutateAnd((s) => {
     const [head, rest] = popRecovery(s);
     if (head == null) return s;
@@ -289,6 +296,7 @@ export const recoveryContinue = (): void =>
       focusedId: revived.id,
     };
   });
+};
 
 /** Log now — the management-window hand-off: restored paused, window open. */
 export const recoveryLogNow = (): void =>

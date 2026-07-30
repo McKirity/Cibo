@@ -29,9 +29,11 @@ import { EntryDashboard } from "../dashboard/EntryDashboard";
 import { Library } from "../library/Library";
 import { CompareDashboard } from "../compare/CompareDashboard";
 import "../compare/compare.css";
+import { PaletteOverlay } from "../palette/Palette";
 import { TimersScreen } from "../timers/TimersScreen";
-import { TimerOverlays } from "../timers/TimerOverlays";
-import { discardAllForQuit, hasLiveClocks } from "../timers/timerStore";
+import { GlobalTimerTray, TimerOverlays } from "../timers/TimerOverlays";
+import { focusClock } from "../timers/timerStore";
+import { armCloseGuard, proceedQuit, registerQuitWarning } from "../timers/closeGuard";
 import { registerTrayNavigate } from "../timers/tray";
 import { DangerConfirm } from "./DangerConfirm";
 import type { CadenceScale } from "../metrics/cadence";
@@ -117,13 +119,24 @@ export function Shell() {
 
   // Back/forward bindings: Alt+←/→ and mouse buttons 4/5 (the ruled set, minus
   // the chrome arrows below). `Ctrl+Home` went live 2026-07-27 — its target is
-  // Daily, and Daily now exists in both states. `Ctrl+K` still waits for the
-  // palette.
+  // Daily, and Daily now exists in both states. `Ctrl+K` went live 2026-07-29
+  // with the palette — the four-hotkey set ([[Shell Mechanics]] § 7) is whole.
+  // The palette is NEVER summoned over a modal holding input (the overlay
+  // policy) — the `.dimlayer` probe is the pragmatic gate: every modal tenant
+  // mounts on that chassis.
+  const [paletteOpen, setPaletteOpen] = useState(false);
   useEffect(() => {
     const onHome = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Home") {
         e.preventDefault();
         setView({ kind: "daily" });
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        setPaletteOpen((open) => {
+          if (open) return false;
+          return document.querySelector(".dimlayer") == null;
+        });
       }
     };
     window.addEventListener("keydown", onHome);
@@ -173,39 +186,20 @@ export function Shell() {
 
   // Close = quit, ALWAYS — but a running clock gets the warning modal first:
   // Stop aborts the close, Proceed discards the in-flight unlogged values
-  // ([[App Lifecycle & OS Integration]]). The intercept rides onCloseRequested
-  // so the titlebar ✕ and Alt+F4 hit the same gate; the DangerConfirm chassis
-  // stands in for the (never-drawn) quit warning face.
+  // ([[App Lifecycle & OS Integration]]). The intercept is a PAGE-LIFETIME
+  // SINGLETON (closeGuard.ts) — a per-mount listener trapped the window under
+  // HMR (the 2026-07-28 unclosable-window bug); the shell only registers the
+  // warning UI. The DangerConfirm chassis stands in for the (never-drawn)
+  // quit warning face.
   const [quitWarn, setQuitWarn] = useState(false);
-  const quitBypass = useRef(false);
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    let gone = false;
-    try {
-      void getCurrentWindow()
-        .onCloseRequested((e) => {
-          if (quitBypass.current || !hasLiveClocks()) return; // clean close
-          e.preventDefault();
-          setQuitWarn(true);
-        })
-        .then((f) => {
-          if (gone) f();
-          else unlisten = f;
-        })
-        .catch(() => {});
-    } catch {
-      /* plain browser dev — no window close to intercept */
-    }
-    return () => {
-      gone = true;
-      unlisten?.();
-    };
+    armCloseGuard();
+    registerQuitWarning(() => setQuitWarn(true));
+    return () => registerQuitWarning(null);
   }, []);
-  const proceedQuit = () => {
-    discardAllForQuit(); // nothing was written, so there is nothing to undo
-    quitBypass.current = true;
+  const onProceedQuit = () => {
     setQuitWarn(false);
-    winAction((w) => w.close())();
+    proceedQuit();
   };
 
   const today = todayStr();
@@ -356,7 +350,9 @@ export function Shell() {
               <Ico d={["M3 3v16a2 2 0 0 0 2 2h16", "M18 17V9", "M13 17V5", "M8 17v-3"]} />
               Statistics
             </button>
-            <button className="tool" disabled title="Later">
+            {/* The ONE rail entry that opens an overlay, not a screen — the
+                recorded exception ([[Nav Rail]] · [[Search & Quick-Find]]). */}
+            <button className="tool" onClick={() => setPaletteOpen(true)}>
               <Ico d={["M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16z", "m21 21-4.3-4.3"]} />
               Search
             </button>
@@ -451,6 +447,25 @@ export function Shell() {
         )}
       </div>
 
+      {/* kit-palette — the Ctrl+K command layer (step 6 catch-up). NEVER a
+          route: overlay state lives beside the history stack, so Back can't
+          reopen it. Summoned here + by the rail's Search entry above. */}
+      {paletteOpen && (
+        <PaletteOverlay
+          today={today}
+          onClose={() => setPaletteOpen(false)}
+          nav={{
+            openDay,
+            openHabit: (key) => setView({ kind: "habit", key }),
+            openLibrary: (habitKey) => setView({ kind: "library", habitKey }),
+            openEntry: (id, habitKey) => setView({ kind: "entry", id, habitKey }),
+            openCadence: (scale, anchor) => setView({ kind: "cadence", scale, anchor }),
+            openCompare: () => setView({ kind: "compare" }),
+            openTimers: () => setView({ kind: "timers" }),
+          }}
+        />
+      )}
+
       {/* kit-toast — the app's ONE slide-in slot, mounted once by the shell so
           any surface can raise it. First tenant: the form spine's session-remove
           undo. */}
@@ -460,6 +475,16 @@ export function Shell() {
           opens the management window from ANY screen; recovery is launch-moment).
           "Log all → form" lands on Daily, where the spine consumes the hand-off. */}
       <TimerOverlays onGoToForm={() => setView({ kind: "daily" })} />
+      {/* the running-clock reminder tray (user-ruled 2026-07-28) — every screen
+          but the board, which draws its own switcher */}
+      {view.kind !== "timers" && (
+        <GlobalTimerTray
+          onOpen={(id) => {
+            focusClock(id);
+            setView({ kind: "timers" });
+          }}
+        />
+      )}
       {quitWarn && (
         <DangerConfirm
           title="A clock is still running"
@@ -471,7 +496,7 @@ export function Shell() {
             </>
           }
           confirmLabel="Proceed · discard"
-          onConfirm={proceedQuit}
+          onConfirm={onProceedQuit}
           onCancel={() => setQuitWarn(false)}
         />
       )}

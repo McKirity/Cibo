@@ -55,8 +55,11 @@ const IPlus = () => (
   </svg>
 );
 
-/** A date field opening the shared `.calpop` calendar (past days only). */
-function DayField({
+/**
+ * A date field opening the shared `.calpop` calendar (past days only).
+ * Exported for Advanced Search's date conditions (the second consumer).
+ */
+export function DayField({
   label,
   value,
   today,
@@ -287,6 +290,7 @@ export function PeriodPicker({
   today,
   minWindowDays = 0,
   minWindowReason = null,
+  allowAllTime = false,
   onChange,
 }: {
   windows: WindowCfg[];
@@ -303,6 +307,13 @@ export function PeriodPicker({
   minWindowDays?: number;
   /** What the floor is for ("one month") — the disabled chips' tooltip. */
   minWindowReason?: string | null;
+  /**
+   * Advanced Search's face ([[Search & Quick-Find]] step 2: "all time ·
+   * relative presets · custom"): a leading "All time" chip that maps to
+   * `{mode:"none"}` — which CS reads as UNSET and Advanced Search reads as
+   * unbounded. CS never passes this, so its face is unchanged.
+   */
+  allowAllTime?: boolean;
   onChange: (windows: WindowCfg[]) => void;
 }) {
   const shown = single ? windows.slice(0, 1) : windows;
@@ -341,6 +352,14 @@ export function PeriodPicker({
                 <div className="wmode">
                   <span className="mlabel">Relative</span>
                   <div className="wopts">
+                  {allowAllTime && (
+                    <span
+                      className={`opt${w.mode === "none" ? " on" : ""}`}
+                      onClick={() => patch(i, { mode: "none" })}
+                    >
+                      All time
+                    </span>
+                  )}
                   {[{ days: 1, label: "Today", cfg: { mode: "today" } as WindowCfg }].concat(
                     RELATIVE_DAYS.map((d) => ({
                       days: d,

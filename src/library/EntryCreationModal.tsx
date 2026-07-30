@@ -32,24 +32,21 @@ import { Ico, ICON, Menu, StatusPill } from "./bits";
 
 export function EntryCreationModal({
   habitKey,
-  initialTitle,
   onClose,
   onOpenEntry,
 }: {
   habitKey: string;
-  /**
-   * The palette's quick-create handoff — "opens the library creation modal
-   * PRE-FILLED" ([[Search & Quick-Find]]). Absent from the two library doors.
-   */
-  initialTitle?: string;
   onClose: () => void;
   /** The nudge's "Open existing ↗" door. */
   onOpenEntry: (id: string) => void;
 }) {
+  // (An `initialTitle` pre-fill prop lived here for two days for the palette's
+  // quick-create handoff; it left 2026-07-29 when that flow was struck —
+  // "it's not the search's job to make it".)
   const data = useLibraryData(habitKey);
   const creation = data.subType === "creation";
 
-  const [title, setTitle] = useState(initialTitle ?? "");
+  const [title, setTitle] = useState("");
   const [status, setStatus] = useState("Planned");
   const [statusOpen, setStatusOpen] = useState(false);
   const [type, setType] = useState<string | null>(null);

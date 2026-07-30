@@ -349,9 +349,13 @@ export function PeriodPicker({
                 </button>
               )}
               <div className="wmodes">
-                <div className="wmode">
+                {/* `.many` = the wrap-alignment face (≥5 chips: the row may
+                    take a second line, the label pins to the first) — counted
+                    HERE rather than asked of the DOM via :has(), which
+                    re-ran style recalc on every hover (2026-07-29 lag fix). */}
+                <div className={`wmode${1 + RELATIVE_DAYS.length + (allowAllTime ? 1 : 0) >= 5 ? " many" : ""}`}>
                   <span className="mlabel">Relative</span>
-                  <div className="wopts">
+                  <div className={`wopts${1 + RELATIVE_DAYS.length + (allowAllTime ? 1 : 0) >= 5 ? " many" : ""}`}>
                   {allowAllTime && (
                     <span
                       className={`opt${w.mode === "none" ? " on" : ""}`}

@@ -211,10 +211,10 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
 /* APPEARANCE PASS 2026-07-28 — --mo-ring is an ALIAS of the existing derivation
    (--frame-clear-modal + --space-5), not a new dial. Nothing may cancel it: it is the
    decoration overlay's room on all four borders (slot 8) and stays unpainted. */
-.mo{--mo-ring:calc(var(--frame-clear-modal) + var(--space-5)); display:flex; flex-direction:column; max-width:100%; max-height:100%; background:var(--raised-background); -webkit-backdrop-filter:var(--backdrop-blur); backdrop-filter:var(--backdrop-blur); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-large); box-shadow:var(--shadow-high); padding:var(--mo-ring); overflow:hidden;}
+.dimlayer > .mo{--mo-ring:calc(var(--frame-clear-modal) + var(--space-5)); display:flex; flex-direction:column; max-width:100%; max-height:100%; background:var(--raised-background); -webkit-backdrop-filter:var(--backdrop-blur); backdrop-filter:var(--backdrop-blur); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-large); box-shadow:var(--shadow-high); padding:var(--mo-ring); overflow:hidden;}
 /* reduce-effects has nothing to undo on the surface any more (the shell is opaque by ruling and
    the blur dial is off); it only flattens the decorative shadow. */
-.reduce-effects .mo{box-shadow:var(--shadow-low);}
+.reduce-effects .dimlayer > .mo{box-shadow:var(--shadow-low);}
 /* APPEARANCE PASS 2026-07-28 — THE HEAD AND FOOT ARE INNER PANELS. They were padded boxes
    with nothing but a hairline, and that hairline stopped ~40px shy of the modal's sides, so it
    read as a stray line in a blank ring and the whole overlay read as one flat plane. They now

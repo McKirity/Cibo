@@ -25,18 +25,18 @@
 /* status pill — parametrized on --pill-cat (the frozen five `s-*` classes were
    sample-vocab enumeration; a managed vocab reads the dial through the
    property, the --cell-ink precedent). Tint per the --tint-mix rule. */
-.pill { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--size-caption);
+:is(.libscreen, .mo2) .pill { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--size-caption);
   font-weight: var(--weight-medium); border-radius: var(--radius-full); padding: 1px var(--space-4);
   line-height: 1.7; color: var(--pill-cat, var(--text-secondary));
   background: color-mix(in oklch, var(--pill-cat, var(--text-secondary)), var(--window-background) var(--tint-mix)); }
 
-.pill.neutral { color: var(--text-secondary); background: var(--inset-background); font-family: var(--font-mono); }
+:is(.libscreen, .mo2) .pill.neutral { color: var(--text-secondary); background: var(--inset-background); font-family: var(--font-mono); }
 
 .chip-h { display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: var(--size-caption);
   color: var(--text-secondary); background: var(--inset-background); border-radius: var(--radius-full); padding: 1px var(--space-4); }
-.rating { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--size-caption); color: var(--text-secondary); }
-.rating .st { color: var(--text-muted); }
-.rating.none { color: var(--text-muted); }
+:is(.libscreen, .mo2) .rating { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--size-caption); color: var(--text-secondary); }
+:is(.libscreen, .mo2) .rating .st { color: var(--text-muted); }
+:is(.libscreen, .mo2) .rating.none { color: var(--text-muted); }
 .prio { display: inline-flex; flex-direction: column-reverse; gap: 1px; line-height: 0; }
 .prio .ar { width: 12px; height: 7px; color: var(--divider); }
 .prio .ar.on { color: var(--accent); }
@@ -235,11 +235,14 @@
 
 .tselwrap { position: relative; display: inline-flex; }
 .tselwrap.block { display: block; }
-/* the shared popover SURFACE (the .calpop/.timepop recipe — consistency
-   user-asked 2026-07-27): border · radius-medium · raised + blur · shadow-high */
+/* the shared popover SURFACE — CONFORMED 2026-07-29 to the calpop/timepop
+   recipe's CURRENT form: "a popover is a single CONTENT surface, not a shell"
+   (the 2026-07-28 surface-ladder ruling moved .calpop/.timepop to
+   --panel-background; .libmenu had missed that sweep and still wore the old
+   raised+blur face — the inconsistency surfaced at the palette GUI pass). */
 .libmenu { position: absolute; top: calc(100% + var(--space-2)); left: 0; z-index: 45;
   min-width: 160px; max-height: 320px; overflow-y: auto; padding: var(--space-2);
-  background: var(--raised-background); -webkit-backdrop-filter: var(--backdrop-blur); backdrop-filter: var(--backdrop-blur);
+  background: var(--panel-background); -webkit-backdrop-filter: var(--backdrop-blur); backdrop-filter: var(--backdrop-blur);
   border: var(--border-hairline) solid var(--border); border-radius: var(--radius-medium); box-shadow: var(--shadow-high); }
 .reduce-effects .libmenu { -webkit-backdrop-filter: none; backdrop-filter: none;
   background: var(--panel-background); }
@@ -458,7 +461,7 @@
 .fblock { border: var(--border-hairline) solid var(--divider); border-radius: var(--radius-small);
   padding: var(--space-5); background: var(--panel-background); }
 .fblock.dashed { border-style: dashed; background: transparent; }
-.fname { font-size: var(--size-caption); font-weight: var(--weight-bold); color: var(--text-secondary);
+.mo2 .fname { font-size: var(--size-caption); font-weight: var(--weight-bold); color: var(--text-secondary);
   text-transform: uppercase; letter-spacing: .05em; margin: 0 0 var(--space-3); }
 .fsel { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); width: 100%;
   background: var(--inset-background); border: var(--border-hairline) solid var(--border);
@@ -468,10 +471,10 @@
 .fsel:hover { background: var(--hover-wash); color: var(--text-strong); }
 .fsel .ico { color: var(--text-muted); flex: 0 0 auto; }
 .fsel.inert { cursor: default; }
-.lane { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3);
+.mo2 .lane { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3);
   border: var(--border-hairline) dashed var(--border); border-radius: var(--radius-small);
   padding: var(--space-3) var(--space-4); margin-top: var(--space-3); }
-.lane .lk { font-size: var(--size-caption); font-weight: var(--weight-bold); color: var(--text-muted);
+.mo2 .lane .lk { font-size: var(--size-caption); font-weight: var(--weight-bold); color: var(--text-muted);
   letter-spacing: .06em; flex: 0 0 auto; }
 .gtag { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--size-caption);
   background: var(--inset-background); border-radius: var(--radius-full); padding: var(--space-1) var(--space-4);

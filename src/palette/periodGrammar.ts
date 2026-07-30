@@ -66,7 +66,7 @@ const SEASONS: Record<string, number> = { winter: 1, spring: 2, summer: 3, autum
 const pad = (n: number) => String(n).padStart(2, "0");
 
 /** The month-slot dial for a 1-based month ("--month-jun"). */
-const monthVar = (m1: number): string => `--month-${SLOT[m1 - 1]}`;
+export const monthVar = (m1: number): string => `--month-${SLOT[m1 - 1]}`;
 
 /** A quarter wears its compact MIDDLE month's colour (the drawn convention). */
 const quarterVar = (q: number): string => monthVar(q * 3 - 1);
@@ -156,6 +156,41 @@ function ladder(direct: PeriodPlace, today: string): PeriodPlace[] {
   }
   // The future is a dead route — a ladder rung that has not begun is dropped.
   return out.filter((p) => p.anchor <= today);
+}
+
+/**
+ * A stored period's display face (the Recent group re-renders visited periods
+ * in the same anatomy a teleport match wears). Week titles carry the ISO week
+ * of the anchor's Monday.
+ */
+export function periodDisplay(
+  scale: PeriodScale,
+  anchor: string,
+): { title: string; sub: string; colourVar: string } {
+  const y = Number(anchor.slice(0, 4));
+  const m1 = Number(anchor.slice(5, 7));
+  if (scale === "month") {
+    const p = monthPlace(y, m1, "");
+    return { title: p.title, sub: p.sub, colourVar: p.colourVar };
+  }
+  if (scale === "quarter") {
+    const q = Math.ceil(m1 / 3);
+    const p = quarterPlace(y, q, "");
+    return { title: p.title, sub: "quarterly cadence", colourVar: p.colourVar };
+  }
+  if (scale === "year") return { title: String(y), sub: "yearly cadence", colourVar: "--accent" };
+  // week — derive the ISO week number from the anchor
+  const d = new Date(`${anchor}T12:00:00Z`);
+  const dow = (d.getUTCDay() + 6) % 7;
+  const thu = new Date(d.getTime() + (3 - dow) * 86400000);
+  const isoY = thu.getUTCFullYear();
+  const week1Mon = Date.parse(isoWeekMonday(isoY, 1) + "T12:00:00Z");
+  const w = Math.round((thu.getTime() - week1Mon) / (7 * 86400000)) + 1;
+  return {
+    title: `W${w} · ${isoY}`,
+    sub: "weekly cadence",
+    colourVar: monthVar(m1),
+  };
 }
 
 /**

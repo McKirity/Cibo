@@ -124,13 +124,34 @@ export function AdvancedSearch({
   }, [onClose]);
 
   const win = window_.mode === "none" ? undefined : window_;
+  // RESULTS RUN ON DEMAND (user-ruled 2026-07-29, REVERSING the ruled "live
+  // as you build — no Run button" clause; recorded in [[Search & Quick-Find]]
+  // § Amended): the Search button SNAPSHOTS the builder and the results
+  // render from that snapshot; until it is pressed the results column is
+  // EMPTY, and edits after a run leave the last run standing until the next
+  // press.
+  const [submitted, setSubmitted] = useState<{
+    target: SearchTarget;
+    window?: WindowCfg;
+    match: MatchMode;
+    dayConds: DayCond[];
+    entryConds: EntryCond[];
+  } | null>(null);
+  const runSearch = () =>
+    setSubmitted({ target, window: win, match, dayConds, entryConds });
   const dayResult = useMemo(
-    () => (target === "days" ? searchDays(dayConds, match, win, data, today, CAP) : null),
-    [target, dayConds, match, win, data, today],
+    () =>
+      submitted != null && submitted.target === "days"
+        ? searchDays(submitted.dayConds, submitted.match, submitted.window, data, today, CAP)
+        : null,
+    [submitted, data, today],
   );
   const entryResult = useMemo(
-    () => (target === "entries" ? searchEntries(entryConds, match, win, data, today, CAP) : null),
-    [target, entryConds, match, win, data, today],
+    () =>
+      submitted != null && submitted.target === "entries"
+        ? searchEntries(submitted.entryConds, submitted.match, submitted.window, data, today, CAP)
+        : null,
+    [submitted, data, today],
   );
 
   // ── Presets — the CS mirror, its own roster ────────────────────────────────
@@ -175,8 +196,11 @@ export function AdvancedSearch({
   );
   const habitById = useMemo(() => new Map(data.habits.map((h) => [h.id, h])), [data.habits]);
 
+  // PANEL ONLY — the scrim lives in PaletteOverlay and persists across the
+  // morph (2026-07-29 GUI-pass fix): when each face carried its own scrim,
+  // swapping remounted it and replayed the dim's fade-in from 0 — a frame of
+  // undimmed app read as a white flash.
   return (
-    <div className="pal-scrim" onMouseDown={onClose} role="presentation">
       <div
         className="palette advs"
         role="dialog"
@@ -200,7 +224,7 @@ export function AdvancedSearch({
               prefix={AS_PREFIX}
             />
           </div>
-          <kbd>Esc</kbd>
+          {/* the head's Esc kbd died with the notes (user-ruled 2026-07-29) */}
         </div>
 
         <div className="advs-grid">
@@ -219,11 +243,8 @@ export function AdvancedSearch({
                   Entries
                 </button>
               </div>
-              <p className="advs-note">
-                {target === "days"
-                  ? "Which days match — interrogates your history."
-                  : "Which entries match — interrogates the catalog."}
-              </p>
+              {/* the explainer notes died 2026-07-29 (user-ruled, in-canvas) —
+                  the no-explainer-prose law reasserting itself */}
             </div>
 
             <div className="bsec">
@@ -243,9 +264,6 @@ export function AdvancedSearch({
                 allowAllTime
                 onChange={(w) => setWindow(w[0] ?? { mode: "none" })}
               />
-              {target === "entries" && (
-                <p className="advs-note">Attributes are timeless — the window scopes engagement conditions.</p>
-              )}
             </div>
 
             <div className="bsec">
@@ -297,11 +315,16 @@ export function AdvancedSearch({
                 </div>
               )}
             </div>
+
+            {/* the RUN control (user-ruled 2026-07-29) — results wait for it */}
+            <button className="btn-accent advs-run" onClick={runSearch}>
+              Search
+            </button>
           </div>
 
-          {/* ── live results — doors, never a Run button ── */}
+          {/* ── results — doors; EMPTY until Search is pressed ── */}
           <div className="advs-results">
-            {target === "days" && dayResult != null && (
+            {dayResult != null && (
               <>
                 <div className="advs-count">
                   <b>{dayResult.total.toLocaleString()}</b> {dayResult.total === 1 ? "day matches" : "days match"}
@@ -338,7 +361,7 @@ export function AdvancedSearch({
                 </div>
               </>
             )}
-            {target === "entries" && entryResult != null && (
+            {entryResult != null && (
               <>
                 <div className="advs-count">
                   <b>{entryResult.total.toLocaleString()}</b> {entryResult.total === 1 ? "entry matches" : "entries match"}
@@ -357,12 +380,21 @@ export function AdvancedSearch({
                         nav.openEntry(h.entry.id, h.habit.key);
                       }}
                     >
-                      <span className="pal-lead">
-                        <span
-                          className="pal-dot"
-                          style={{ background: `var(--${h.habit?.colourSlot ?? "accent"})` }}
-                        />
-                      </span>
+                      {/* LEAD RULING 2026-07-29: an entry wears its habit's
+                          glyph tinted in the habit colour; the dot is the
+                          icon-less fallback (days keep the dot). */}
+                      {h.habit != null && hasIcon(h.habit.icon) ? (
+                        <span className="pal-lead" style={{ color: `var(--${h.habit.colourSlot})` }}>
+                          <HabitIcon icon={h.habit.icon} />
+                        </span>
+                      ) : (
+                        <span className="pal-lead">
+                          <span
+                            className="pal-dot"
+                            style={{ background: `var(--${h.habit?.colourSlot ?? "accent"})` }}
+                          />
+                        </span>
+                      )}
                       <span className="pal-txt">
                         <span className="pal-title">{h.entry.title}</span>
                         <span className="pal-sub">{h.habit?.name ?? "—"}</span>
@@ -379,7 +411,6 @@ export function AdvancedSearch({
           </div>
         </div>
       </div>
-    </div>
   );
 }
 

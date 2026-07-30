@@ -245,12 +245,29 @@
    lead and the divider that separated them from it has nothing left to
    divide — no top rule, no top gap. */
 :is(.csdash, .advs) .wmodes{display:flex; flex-direction:column; gap:var(--space-3); margin-top:0; padding-top:0; border-top:none;}
-/* The period rows hold one line too (same ruling), on the same grid device:
-   the mode labels take max-content instead of the drawn fixed column, and the
-   reclaimed width goes to the pills rather than to slack. */
+/* The period rows sit on the same grid device: the mode labels take max-content
+   instead of the drawn fixed column, and the reclaimed width goes to the pills
+   rather than to slack.
+   AMENDED 2026-07-29 (user-ruled, in-canvas at the palette exhibit) — the
+   one-line ruling is REVERSED for the pill row. The Relative mode carries six
+   pills (All time · Today · 7/30/90/365 days), which overran the builder column
+   at --builder-w and clipped past the panel edge. nowrap → wrap: the row takes
+   a second line instead of leaving the panel, and the label aligns to the FIRST
+   line (align-self:start + the pill's own top padding) so a wrapped row still
+   reads as one labelled row. The +1px is the user's optical nudge — a raw px,
+   flagged as step-6a dial-ify residue. */
 :is(.csdash, .advs) .wmodes{display:grid; grid-template-columns:max-content 1fr; align-items:center; gap:var(--space-3) var(--space-4);}
 :is(.csdash, .advs) .wmode{display:contents;}
-:is(.csdash, .advs) .wopts{display:flex; flex-wrap:nowrap; gap:var(--space-3); min-width:0;}
+:is(.csdash, .advs) .wopts{display:flex; flex-wrap:wrap; gap:var(--space-3); min-width:0;}
+:is(.csdash, .advs) .wmode .mlabel{align-self:center;}
+:is(.csdash, .advs) .wopts.many{align-items:center;}
+/* a row that WILL wrap pins its label to the first line, not to the block.
+   `.many` is RENDER-SIDE (PeriodPicker counts its own chips) — this was
+   authored in-canvas as `:has(> :nth-child(5))`, but :has() invalidation
+   re-runs style recalculation on every hover while the screen is mounted
+   (the 2026-07-29 app-wide hover-lag report); the component knows the count,
+   so the selector doesn't have to ask the DOM. */
+:is(.csdash, .advs) .wmode.many .mlabel{align-self:start; padding-top:calc(var(--space-3) + 1px);}
 :is(.csdash, .advs) .wmode .opt{padding:var(--space-3) var(--space-4); white-space:nowrap;}
 /* The drawn 92px fixed column (the 2026-07-19 Slab-pull conform widened it
    64 → 92) is replaced by the grid's max-content column — same alignment, no

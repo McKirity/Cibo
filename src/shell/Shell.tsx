@@ -30,6 +30,7 @@ import { Library } from "../library/Library";
 import { CompareDashboard } from "../compare/CompareDashboard";
 import "../compare/compare.css";
 import { PaletteOverlay } from "../palette/Palette";
+import { recordRecent } from "../palette/recents";
 import { TimersScreen } from "../timers/TimersScreen";
 import { GlobalTimerTray, TimerOverlays } from "../timers/TimerOverlays";
 import { focusClock } from "../timers/timerStore";
@@ -216,6 +217,30 @@ export function Shell() {
     },
     [setView, today],
   );
+
+  // The palette's Recent group leads the at-rest face (user-ruled 2026-07-29):
+  // place-shaped navigations feed the per-device ledger. Today's Daily is the
+  // front door, not a "recent place"; dev/tool screens aren't nouns.
+  useEffect(() => {
+    if (view.kind === "habit") recordRecent({ kind: "habit", key: view.key });
+    else if (view.kind === "library") recordRecent({ kind: "library", habitKey: view.habitKey });
+    else if (view.kind === "entry") recordRecent({ kind: "entry", id: view.id, habitKey: view.habitKey });
+    else if (view.kind === "cadence") recordRecent({ kind: "period", scale: view.scale, anchor: view.anchor });
+    else if (view.kind === "daily" && view.day != null && view.day !== today)
+      recordRecent({ kind: "day", day: view.day });
+  }, [view, today]);
+
+  // Dev stand-in (step 10 owns the real switch): re-apply the persisted
+  // reduce-effects choice at launch. DEV-gated on purpose — a stale flag in a
+  // production build would degrade effects with no control to undo it.
+  useEffect(() => {
+    try {
+      if (import.meta.env.DEV && localStorage.getItem(REDUCE_KEY) === "1")
+        document.documentElement.classList.add("reduce-effects");
+    } catch {
+      /* per-device sugar */
+    }
+  }, []);
 
   const title =
     view.kind === "habit"
@@ -619,25 +644,34 @@ function VignetteClock() {
   const minTicks = Array.from({ length: 60 }, (_, i) => i).filter((i) => i % 5 !== 0);
   const hourTicks = Array.from({ length: 12 }, (_, h) => h);
 
+  // TWO stacked svgs (2026-07-29 hover-lag fix): the face, and a sweep layer
+  // that rotates as a WHOLE element — Chromium composites element transforms
+  // but not SVG-child ones, so the old in-svg animated line repainted the
+  // clock every frame. The hub dots ride the rotating layer (centered circles
+  // are rotation-invariant), keeping the draw order: hand under hubs.
   return (
-    <svg className="clock" viewBox="0 0 120 120">
-      <circle cx="60" cy="60" r="56" fill="var(--window-background)" stroke="var(--divider)" strokeWidth="1" />
-      <g stroke="var(--text-muted)" strokeWidth="1">
-        {minTicks.map((i) => (
-          <line key={i} x1="60" y1="6" x2="60" y2="10" transform={`rotate(${i * 6} 60 60)`} />
-        ))}
-      </g>
-      <g stroke="var(--text-secondary)" strokeWidth="2">
-        {hourTicks.map((h) => (
-          <line key={h} x1="60" y1="6" x2="60" y2="14" transform={`rotate(${h * 30} 60 60)`} />
-        ))}
-      </g>
-      <line x1="60" y1="60" x2="60" y2="34" stroke="var(--text-strong)" strokeWidth="3.5" strokeLinecap="round" transform={`rotate(${hAngle} 60 60)`} />
-      <line x1="60" y1="60" x2="60" y2="22" stroke="var(--text-strong)" strokeWidth="2.5" strokeLinecap="round" transform={`rotate(${mAngle} 60 60)`} />
-      <line className="sweep" x1="60" y1="68" x2="60" y2="18" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" style={{ animationDelay: sweepDelay }} />
-      <circle cx="60" cy="60" r="3" fill="var(--text-strong)" />
-      <circle cx="60" cy="60" r="1.6" fill="var(--accent)" />
-    </svg>
+    <div className="clockwrap">
+      <svg className="clock" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="56" fill="var(--window-background)" stroke="var(--divider)" strokeWidth="1" />
+        <g stroke="var(--text-muted)" strokeWidth="1">
+          {minTicks.map((i) => (
+            <line key={i} x1="60" y1="6" x2="60" y2="10" transform={`rotate(${i * 6} 60 60)`} />
+          ))}
+        </g>
+        <g stroke="var(--text-secondary)" strokeWidth="2">
+          {hourTicks.map((h) => (
+            <line key={h} x1="60" y1="6" x2="60" y2="14" transform={`rotate(${h * 30} 60 60)`} />
+          ))}
+        </g>
+        <line x1="60" y1="60" x2="60" y2="34" stroke="var(--text-strong)" strokeWidth="3.5" strokeLinecap="round" transform={`rotate(${hAngle} 60 60)`} />
+        <line x1="60" y1="60" x2="60" y2="22" stroke="var(--text-strong)" strokeWidth="2.5" strokeLinecap="round" transform={`rotate(${mAngle} 60 60)`} />
+      </svg>
+      <svg className="clock clock-sweep-layer" viewBox="0 0 120 120" style={{ animationDelay: sweepDelay }}>
+        <line className="sweep" x1="60" y1="68" x2="60" y2="18" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" />
+        <circle cx="60" cy="60" r="3" fill="var(--text-strong)" />
+        <circle cx="60" cy="60" r="1.6" fill="var(--accent)" />
+      </svg>
+    </div>
   );
 }
 
@@ -681,10 +715,41 @@ function LogView() {
           production build, so these panels (and seedRich) are tree-shaken out. */}
       {import.meta.env.DEV && (
         <>
+          <DevReduceEffectsToggle />
           <DevHabitPanel />
           <DevRichSeedPanel />
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * Dev stand-in for the reduce-effects switch — the real control is
+ * Settings → Appearance (step 10; a per-device lever, [[Cross-device]]'s
+ * 3-lever model). The class on the root element IS the mechanism the whole
+ * corpus keys on; localStorage persistence = the established per-device
+ * stand-in. First use: the 2026-07-29 hover-lag A/B (reduce-effects sheds
+ * the vignette clock sweep).
+ */
+const REDUCE_KEY = "cibo.dev.reduceEffects";
+function DevReduceEffectsToggle() {
+  const [on, setOn] = useState(() => document.documentElement.classList.contains("reduce-effects"));
+  const toggle = () => {
+    const next = !on;
+    document.documentElement.classList.toggle("reduce-effects", next);
+    try {
+      localStorage.setItem(REDUCE_KEY, next ? "1" : "0");
+    } catch {
+      /* per-device sugar */
+    }
+    setOn(next);
+  };
+  return (
+    <div style={{ marginTop: 16 }}>
+      <button className="btn-plain" onClick={toggle}>
+        Reduce effects: {on ? "ON" : "off"}
+      </button>
     </div>
   );
 }

@@ -10,11 +10,19 @@
  * Esc closes; one overlay at a time; also summoned by the rail's Search entry
  * (the recorded overlay exception).
  *
- * Four live states, exactly the drawn four: at-rest (the verb inventory under
- * a one-line hint) · mid-typing (grouped ranked results) · the period-grammar
- * teleport (periodGrammar; a period match fans out to its owning ladder) ·
- * unmatched → the QUICK-CREATE handoff ("Create entry 'X'…" → habit pick →
- * the frozen creation modal PRE-FILLED — cited, reused, never redrawn).
+ * Four live states: at-rest — RESTRUCTURED 2026-07-29 (user-ruled, in-canvas
+ * at the palette exhibit; a knowing delta over the FINAL's verb-inventory
+ * face): RECENT nouns lead (visit ledger ∪ logging recency, recents.ts), the
+ * commands follow as ONE flat ALPHABETICAL list with the last-used verb
+ * lifted, and Advanced Search moved to the WELL as a search escalation ·
+ * mid-typing (grouped ranked results) · the period-grammar teleport
+ * (periodGrammar; a period match fans out to its owning ladder) · unmatched —
+ * a stated miss and NOTHING ELSE (user-ruled 2026-07-29: "if something
+ * doesn't exist, then it doesn't exist — it's not the search's job to make
+ * it"; the drawn state 4's quick-create handoff is STRUCK, overriding the
+ * FINAL and [[Search & Quick-Find]]'s quick-create clause). Entry creation
+ * survives in the palette only as the New-entry VERB (habit pick → the frozen
+ * creation modal — cited, reused, never redrawn).
  *
  * The fifth face — the ADVANCED SEARCH MORPH — was never drawn (Build-side by
  * standing ruling); AdvancedSearch.tsx owns it. The morph replaces this face
@@ -33,7 +41,15 @@ import { EntryCreationModal } from "../library/EntryCreationModal";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { AdvancedSearch } from "./AdvancedSearch";
 import { rankPalette, type PalIndexItem, type RankedGroup } from "./paletteSpec";
-import { parsePeriods, type PeriodScale, type PlaceMatch } from "./periodGrammar";
+import { monthVar, parsePeriods, periodDisplay, type PeriodScale, type PlaceMatch } from "./periodGrammar";
+import {
+  placeId,
+  readLastVerb,
+  readRecents,
+  recordLastVerb,
+  relLabel,
+  type RecentPlace,
+} from "./recents";
 import { useSearchData } from "./useSearchData";
 import "./palette.css";
 
@@ -58,8 +74,13 @@ interface Verb {
   title: string;
   meta?: string;
   aliases: string[];
-  /** false = the target's step hasn't landed — drawn disabled, "later" meta. */
+  /** false = the target's step hasn't landed — drawn disabled. */
   live: boolean;
+  /**
+   * The domain an unlanded verb belongs to — shown in its meta INSTEAD of
+   * "later" (user-ruled 2026-07-29: "show what it's 'grouped' under").
+   */
+  group?: string;
   icon: ReactNode;
 }
 
@@ -122,15 +143,15 @@ const I = {
 };
 
 const VERBS: Verb[] = [
-  { id: "new-habit", title: "New habit", aliases: ["habit creator", "create habit"], live: false, icon: I.plus },
+  { id: "new-habit", title: "New habit", aliases: ["habit creator", "create habit"], live: false, group: "Habits", icon: I.plus },
   { id: "new-entry", title: "New entry", aliases: ["create entry"], live: true, icon: I.newEntry },
-  { id: "backup", title: "Back up now", aliases: ["backup"], live: false, icon: I.backup },
-  { id: "test-connection", title: "Test connection", meta: "per importer + all", aliases: ["importer test"], live: false, icon: I.test },
-  { id: "data-checks", title: "Run data checks", aliases: ["data doctor", "health"], live: false, icon: I.checks },
-  { id: "run-import", title: "Run import now", meta: "per importer", aliases: ["import"], live: false, icon: I.imp },
-  { id: "updates", title: "Check for updates", aliases: ["update"], live: false, icon: I.upd },
-  { id: "theme", title: "Switch theme", aliases: ["appearance"], live: false, icon: I.theme },
-  { id: "backups-folder", title: "Open backups folder", aliases: ["reveal backups"], live: false, icon: I.folder },
+  { id: "backup", title: "Back up now", aliases: ["backup"], live: false, group: "Backups", icon: I.backup },
+  { id: "test-connection", title: "Test connection", meta: "per importer + all", aliases: ["importer test"], live: false, group: "Health", icon: I.test },
+  { id: "data-checks", title: "Run data checks", aliases: ["data doctor", "health"], live: false, group: "Health", icon: I.checks },
+  { id: "run-import", title: "Run import now", meta: "per importer", aliases: ["import"], live: false, group: "Importers", icon: I.imp },
+  { id: "updates", title: "Check for updates", aliases: ["update"], live: false, group: "Updates", icon: I.upd },
+  { id: "theme", title: "Switch theme", aliases: ["appearance"], live: false, group: "Appearance", icon: I.theme },
+  { id: "backups-folder", title: "Open backups folder", aliases: ["reveal backups"], live: false, group: "Backups", icon: I.folder },
   { id: "advanced", title: "Advanced Search", meta: "filters this palette", aliases: ["search sets", "query"], live: true, icon: I.adv },
 ];
 
@@ -158,7 +179,7 @@ export function PaletteOverlay({
   const [mode, setMode] = useState<
     | { m: "palette" }
     | { m: "advanced" }
-    | { m: "create"; habitKey: string; title: string }
+    | { m: "create"; habitKey: string }
   >({ m: "palette" });
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -245,8 +266,9 @@ export function PaletteOverlay({
         if (a.s === "timers") return go(() => nav.openTimers());
         return go(() => nav.openCompare());
       }
-      // verbs
+      // verbs — a fired verb becomes the alphabetical list's one lifted row
       if (!a.live) return;
+      recordLastVerb(a.v);
       if (a.v === "advanced") return setMode({ m: "advanced" });
       if (a.v === "new-entry") {
         // the verb path: no unmatched title to carry — straight to the pick
@@ -274,6 +296,35 @@ export function PaletteOverlay({
     for (const e of data.entries) m.set(e.habitId, (m.get(e.habitId) ?? 0) + 1);
     return m;
   }, [data.entries]);
+
+  // ── The Recent group (user-ruled 2026-07-29 — the at-rest face leads with
+  // nouns). Two sources merge: the shell's visit ledger (periods · libraries ·
+  // days carry no other recency) and LOGGING recency (an entry played
+  // yesterday is recent whether or not its dashboard was opened). Read once
+  // per summon — the overlay mounts fresh each time.
+  const [visits] = useState(readRecents);
+  const [lastVerb] = useState(readLastVerb);
+  // RECENT = the VISIT LEDGER ONLY (user-ruled 2026-07-29, second pass: the
+  // section is "recently OPENED" — a logging-recency merge kept injecting
+  // rows the user never opened, day-labelled "today" because a session
+  // carries no clock; the merge is REMOVED with the label complaint, not
+  // patched). Unresolvable places (a deleted entry, an archived habit) are
+  // dropped before the cap so the group never shows dead doors.
+  const recents = useMemo<{ id: string; at: number; place: RecentPlace }[]>(() => {
+    const entryIds = new Set(data.entries.map((e) => e.id));
+    const keys = new Set(data.habits.flatMap((h) => (h.key != null ? [h.key] : [])));
+    const resolvable = (p: RecentPlace): boolean => {
+      if (p.kind === "entry") return entryIds.has(p.id) && keys.has(p.habitKey);
+      if (p.kind === "habit") return keys.has(p.key);
+      if (p.kind === "library") return keys.has(p.habitKey);
+      return true; // periods and days always resolve
+    };
+    return visits
+      .filter((v) => resolvable(v.place))
+      .map((v) => ({ id: placeId(v.place), at: v.at, place: v.place }))
+      .sort((a, b) => b.at - a.at)
+      .slice(0, 5);
+  }, [visits, data.habits, data.entries]);
 
   // ── Row list (render order = keyboard order) ──────────────────────────────
   const rows = useMemo<Row[]>(() => {
@@ -319,10 +370,25 @@ export function PaletteOverlay({
         <span className="pal-dot" style={{ background: `var(${colourVar})` }} />
       </span>
     );
+    const habitById = new Map(data.habits.map((h) => [h.id, h]));
+    const habitByKey = new Map(data.habits.filter((h) => h.key != null).map((h) => [h.key as string, h]));
+    // LEAD RULING (user-ruled 2026-07-29): an ENTRY wears its owning habit's
+    // GLYPH tinted in the habit colour — the dot survives only on days/periods.
+    const entryLead = (h: (typeof data.habits)[number] | undefined) =>
+      h != null && hasIcon(h.icon) ? (
+        <span className="pal-lead" style={{ color: `var(--${h.colourSlot})` }}>
+          <HabitIcon icon={h.icon} />
+        </span>
+      ) : (
+        dotLead(`--${h?.colourSlot ?? "accent"}`)
+      );
 
-    if (picking || (empty && query.trim() !== "")) {
-      // STATE 4 — unmatched → quick-create (or the New-entry verb's pick step)
-      const title = picking ? "" : query.trim();
+    if (picking) {
+      // The New-entry VERB's habit-pick step — the one creation path left in
+      // the palette. QUICK-CREATE FROM AN UNMATCHED QUERY IS REMOVED
+      // (user-ruled 2026-07-29: "if something doesn't exist, then it doesn't
+      // exist — it's not the search's job to make it"); an unmatched query
+      // now states the miss and offers nothing.
       for (const h of projectHabits) {
         const count = entryCounts.get(h.id) ?? 0;
         out.push(
@@ -332,7 +398,7 @@ export function PaletteOverlay({
             h.name,
             {
               sub: `${count} ${count === 1 ? "entry" : "entries"}`,
-              fire: () => setMode({ m: "create", habitKey: h.key as string, title }),
+              fire: () => setMode({ m: "create", habitKey: h.key as string }),
             },
           ),
         );
@@ -341,11 +407,88 @@ export function PaletteOverlay({
     }
 
     if (query.trim() === "") {
-      // STATE 1 — at rest: the pinned verb inventory (curation = step 10)
-      for (const v of VERBS) {
+      // STATE 1 — at rest, RESTRUCTURED 2026-07-29 (user-ruled, in-canvas —
+      // a knowing delta over the FINAL's verb-inventory rest face). Leads with
+      // the NOUNS you can teleport to (Recent, in query row anatomy), so ↵
+      // opens a THING by default and typing reads as FILTERING. A "Jump to"
+      // screen list was drawn and CUT — the nav rail owns those doors.
+      for (const r of recents) {
+        const p = r.place;
+        const when = relLabel(r.at);
+        if (p.kind === "entry") {
+          const e = data.entries.find((x) => x.id === p.id);
+          const h = e != null ? habitById.get(e.habitId) : undefined;
+          if (e == null || h == null) continue;
+          out.push(
+            palRow(`recent-${r.id}`, entryLead(h), e.title, {
+              sub: h.name,
+              meta: <span className="pal-tier">{when}</span>,
+              fire: () => fireAction({ t: "entry", id: e.id, habitKey: h.key as string }),
+            }),
+          );
+        } else if (p.kind === "habit" || p.kind === "library") {
+          const key = p.kind === "habit" ? p.key : p.habitKey;
+          const h = habitByKey.get(key);
+          if (h == null) continue;
+          const count = entryCounts.get(h.id) ?? 0;
+          out.push(
+            palRow(
+              `recent-${r.id}`,
+              habitLead(h.colourSlot, h.icon, h.name),
+              p.kind === "library" ? `${h.name} — Library` : h.name,
+              {
+                sub:
+                  p.kind === "library"
+                    ? "catalog"
+                    : h.kind === "project"
+                      ? `${count} ${count === 1 ? "entry" : "entries"}`
+                      : h.kind,
+                meta: <span className="pal-tier">{when}</span>,
+                fire: () =>
+                  fireAction(
+                    p.kind === "library" ? { t: "library", key } : { t: "habit", key },
+                  ),
+              },
+            ),
+          );
+        } else if (p.kind === "period") {
+          const disp = periodDisplay(p.scale, p.anchor);
+          out.push(
+            palRow(`recent-${r.id}`, dotLead(disp.colourVar), disp.title, {
+              sub: disp.sub,
+              meta: <span className="pal-tier">{when}</span>,
+              fire: () => go(() => nav.openCadence(p.scale, p.anchor)),
+            }),
+          );
+        } else {
+          out.push(
+            palRow(`recent-${r.id}`, dotLead(monthVar(Number(p.day.slice(5, 7)))), p.day, {
+              sub: "daily",
+              meta: <span className="pal-tier">{when}</span>,
+              fire: () => go(() => nav.openDay(p.day)),
+            }),
+          );
+        }
+      }
+      // THE COMMANDS (user-ruled 2026-07-29): ONE flat list, ALPHABETICAL,
+      // with the LAST-TOUCHED live verb lifted to the top — marked in the
+      // tier slot ("last used"), never with a second header. Advanced Search
+      // is NOT here: it moved to the well as a search escalation. Curation
+      // (hide, never disable) stays step 10.
+      const restVerbs = [...VERBS]
+        .filter((v) => v.id !== "advanced")
+        .sort((a, b) => a.title.localeCompare(b.title));
+      const lifted = lastVerb != null ? restVerbs.find((v) => v.id === lastVerb && v.live) : undefined;
+      const ordered = lifted != null ? [lifted, ...restVerbs.filter((v) => v !== lifted)] : restVerbs;
+      for (const v of ordered) {
         out.push(
           palRow(`verb-${v.id}`, verbLead(v), v.title, {
-            meta: v.live ? v.meta : [v.meta, "later"].filter(Boolean).join(" · "),
+            meta: (
+              <>
+                {v.live ? v.meta : [v.meta, v.group].filter(Boolean).join(" · ")}
+                {v === lifted && <span className="pal-tier">last used</span>}
+              </>
+            ),
             disabled: !v.live,
             fire: () => fireAction({ t: "verb", v: v.id, live: v.live }),
           }),
@@ -356,7 +499,6 @@ export function PaletteOverlay({
 
     // STATES 2 + 3 — ranked groups, period places folded into Screens & periods
     const verbsById = new Map(VERBS.map((v) => [v.id, v]));
-    const habitByKey = new Map(data.habits.filter((h) => h.key != null).map((h) => [h.key as string, h]));
     for (const g of groups) {
       if (g.group === "screens" && periods.length > 0) continue; // drawn: periods own the group
       for (const it of g.items) {
@@ -368,7 +510,7 @@ export function PaletteOverlay({
                 return h != null ? habitLead(h.colourSlot, h.icon, h.name) : dotLead("--accent");
               })()
             : a.t === "entry"
-              ? dotLead(`--${habitByKey.get(a.habitKey)?.colourSlot ?? "accent"}`)
+              ? entryLead(habitByKey.get(a.habitKey))
               : a.t === "screen"
                 ? (
                     <span className="pal-lead">
@@ -377,13 +519,16 @@ export function PaletteOverlay({
                   )
                 : verbLead(verbsById.get(a.v) as Verb);
         const disabled = a.t === "verb" && !a.live;
-        const verbMeta = a.t === "verb" ? verbsById.get(a.v)?.meta : undefined;
+        const verb = a.t === "verb" ? verbsById.get(a.v) : undefined;
         out.push(
           palRow(`${g.group}-${it.title}-${(a as { id?: string }).id ?? ""}`, lead, it.title, {
             sub: it.sub,
             meta: (
               <>
-                {a.t === "verb" && (disabled ? [verbMeta, "later"].filter(Boolean).join(" · ") : verbMeta)}
+                {a.t === "verb" &&
+                  (disabled
+                    ? [verb?.meta, verb?.group].filter(Boolean).join(" · ")
+                    : verb?.meta)}
                 <span className="pal-tier">{it.quality}</span>
               </>
             ),
@@ -405,7 +550,7 @@ export function PaletteOverlay({
       }
     }
     return out;
-  }, [picking, empty, query, projectHabits, entryCounts, groups, periods, data.habits, fireAction, firePlace]);
+  }, [picking, empty, query, projectHabits, entryCounts, groups, periods, data.habits, data.entries, recents, lastVerb, today, go, nav, fireAction, firePlace]);
 
   const selectable = useMemo(() => rows.filter((r) => r.selectable), [rows]);
 
@@ -445,34 +590,34 @@ export function PaletteOverlay({
   // ── The three faces ────────────────────────────────────────────────────────
 
   if (mode.m === "create") {
-    // The handoff target — the frozen creation modal, PRE-FILLED (cited, reused).
+    // The New-entry verb's target — the frozen creation modal (cited, reused).
     return (
       <EntryCreationModal
         habitKey={mode.habitKey}
-        initialTitle={mode.title === "" ? undefined : mode.title}
         onClose={close}
         onOpenEntry={(id) => go(() => nav.openEntry(id, mode.habitKey))}
       />
     );
   }
 
-  if (mode.m === "advanced") {
-    return (
-      <AdvancedSearch
-        data={data}
-        today={today}
-        nav={nav}
-        onBack={() => setMode({ m: "palette" })}
-        onClose={close}
-      />
-    );
-  }
-
   const selKey = selectable[sel]?.key;
-  const showCreateBody = (empty && query.trim() !== "") || picking;
 
+  // ONE scrim across both faces (2026-07-29 GUI-pass fix): when the palette
+  // and the morph each carried their own scrim, the swap remounted it and
+  // replayed the dim's fade-in from opacity 0 — a frame of undimmed app that
+  // read as a white flash. The scrim persists here; only the PANEL swaps (its
+  // pal-in fade is the morph's appear motion, over a stable dim).
   return (
     <div className="pal-scrim" onMouseDown={close} role="presentation">
+      {mode.m === "advanced" ? (
+        <AdvancedSearch
+          data={data}
+          today={today}
+          nav={nav}
+          onBack={() => setMode({ m: "palette" })}
+          onClose={close}
+        />
+      ) : (
       <div
         className="palette"
         role="dialog"
@@ -495,47 +640,59 @@ export function PaletteOverlay({
               }}
             />
           </div>
-          <kbd>Esc</kbd>
+          {/* the Advanced Search door — promoted out of the Actions list into
+              the well (user-ruled 2026-07-29: a search ESCALATION, not a verb).
+              It replaces the well's Esc kbd; the foot legend keeps Esc. */}
+          <button
+            className="pal-advs-door"
+            title="Advanced Search — filter this palette"
+            onClick={() => setMode({ m: "advanced" })}
+          >
+            {I.adv}
+            Advanced
+          </button>
         </div>
 
         <div className="pal-body">
-          {showCreateBody ? (
+          {picking ? (
+            // the New-entry VERB's habit-pick step (the quick-create-from-
+            // unmatched flow is REMOVED — user-ruled 2026-07-29)
             <>
-              {!picking && (
-                <>
-                  <div className="pal-none">
-                    No entry, habit, screen, or period matches <b>“{query.trim()}”</b>.
-                  </div>
-                  <div className="pal-list">
-                    {/* the drawn create door — the pick below is its next step */}
-                    <div className="pal-row static">
-                      <span className="pal-lead">{I.plus}</span>
-                      <span className="pal-txt">
-                        <span className="pal-title">Create entry “{query.trim()}”…</span>
-                      </span>
-                      <span className="pal-meta">pick a habit ›</span>
-                    </div>
-                  </div>
-                </>
-              )}
               <div className="pal-pickhead">
                 <span className="pal-eyebrow">New entry · which habit?</span>
                 <span className="pal-prompt">
                   A title needs a home. The palette has no default habit, so it asks — pick one
-                  and <b>↵</b> opens the new-entry form{!picking && ", pre-filled with the title"}.
+                  and <b>↵</b> opens the new-entry form.
                 </span>
               </div>
               <div className="pal-list">{rows.map((r) => r.node(r.key === selKey, () => setSel(selectable.findIndex((s) => s.key === r.key))))}</div>
             </>
+          ) : empty ? (
+            // an unmatched query states the miss and offers NOTHING — "if
+            // something doesn't exist, then it doesn't exist; it's not the
+            // search's job to make it" (user-ruled 2026-07-29, striking the
+            // drawn state 4)
+            <div className="pal-none">
+              No entry, habit, screen, or period matches <b>“{query.trim()}”</b>.
+            </div>
           ) : query.trim() === "" ? (
+            // The FINAL's prose hint is CUT (user-ruled 2026-07-29) — the
+            // period grammar is taught by Recent's period row alone.
             <>
-              <div className="pal-hint">
-                {I.cal}
-                Type to teleport — an entry, a habit, a screen, or a period (“June 2025” · “W27” ·
-                “Spring 2022”). Verbs run from here too.
-              </div>
+              {recents.length > 0 && <div className="pal-grp">Recent</div>}
+              {recents.length > 0 && (
+                <div className="pal-list">
+                  {rows
+                    .filter((r) => r.key.startsWith("recent-"))
+                    .map((r) => r.node(r.key === selKey, () => setSel(selectable.findIndex((s) => s.key === r.key))))}
+                </div>
+              )}
               <div className="pal-grp">Actions</div>
-              <div className="pal-list">{rows.map((r) => r.node(r.key === selKey, () => setSel(selectable.findIndex((s) => s.key === r.key))))}</div>
+              <div className="pal-list">
+                {rows
+                  .filter((r) => r.key.startsWith("verb-"))
+                  .map((r) => r.node(r.key === selKey, () => setSel(selectable.findIndex((s) => s.key === r.key))))}
+              </div>
             </>
           ) : (
             <GroupedBody
@@ -555,6 +712,7 @@ export function PaletteOverlay({
           <span className="pal-legend"><kbd>Esc</kbd> close</span>
         </div>
       </div>
+      )}
     </div>
   );
 }

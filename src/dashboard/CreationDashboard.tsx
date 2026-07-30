@@ -588,9 +588,10 @@ function CreationHeatmap({ heatmap }: { heatmap: CreationModel["heatmap"] }) {
 // ── Hero cards (kit-card-hero — the library) ──────────────────────────────────
 
 function HeroSpark({ s }: { s: HeroSpec["sparks"][number] }) {
-  const w = 100,
-    h = 40,
-    p = 3;
+  // Box-sized viewBox (the step-4 ruling) — the frozen face's fixed 100×40 +
+  // preserveAspectRatio="none" stretched the stroke at real panel widths.
+  const { ref, w, h } = useBox<SVGSVGElement>();
+  const p = 3;
   const mx = Math.max(...s.values, 0) || 1;
   const n = s.values.length;
   const X = (i: number) => p + ((w - 2 * p) * i) / (n - 1);
@@ -603,16 +604,20 @@ function HeroSpark({ s }: { s: HeroSpec["sparks"][number] }) {
         <span>{s.label}</span>
         <span>30 d</span>
       </div>
-      <svg viewBox="0 0 100 40" preserveAspectRatio="none">
-        <path d={da} style={{ fill: `color-mix(in oklch, var(${s.colorVar}), transparent var(--chart-area-mix))` }} />
-        <path
-          d={dl}
-          fill="none"
-          stroke={`var(${s.colorVar})`}
-          strokeWidth={1.6}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+      <svg ref={ref} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet">
+        {w > 0 && (
+          <>
+            <path d={da} style={{ fill: `color-mix(in oklch, var(${s.colorVar}), transparent var(--chart-area-mix))` }} />
+            <path
+              d={dl}
+              fill="none"
+              stroke={`var(${s.colorVar})`}
+              strokeWidth={1.6}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          </>
+        )}
       </svg>
     </div>
   );

@@ -52,6 +52,17 @@
 .pal-in{flex:1 1 auto; min-width:0; font-family:var(--font-ui); font-size:var(--size-heading); color:var(--text-strong);
         background:transparent; border:none; outline:none; padding:0; caret-color:var(--accent);}
 .pal-in::placeholder{color:var(--text-muted);}
+/* BUILD-SIDE ADDITION (user-ruled 2026-07-29, in-canvas) — the Advanced Search
+   door, promoted out of the Actions list into the well. It is a search
+   ESCALATION, not a verb, and as row 10 of a ten-verb list it sat below eight
+   unlanded ones. It replaces the well's Esc kbd (the foot legend keeps Esc). */
+.pal-advs-door{display:inline-flex; align-items:center; gap:var(--space-3); flex:0 0 auto;
+               padding:var(--space-3) var(--space-4); border-radius:var(--radius-small);
+               border:var(--border-hairline) solid var(--border); background:transparent; color:var(--text-secondary);
+               font-family:var(--font-ui); font-size:var(--size-caption); cursor:pointer; white-space:nowrap;
+               transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+.pal-advs-door:hover{background:var(--hover-wash); color:var(--text-strong);}
+.pal-advs-door .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
 
 /* result bodies */
 .pal-body{display:flex; flex-direction:column; overflow-y:auto; padding:var(--space-5) var(--space-4);}
@@ -69,15 +80,22 @@
    Tools precedent) — drawn, inert, "later" in the meta */
 .pal-row.off{cursor:default; opacity:.55;}
 .pal-row.off:hover{background:transparent;}
-/* build glue: the quick-create door row — a statement, not a control (the
-   habit pick below it is the live step) */
-.pal-row.static{cursor:default;}
-.pal-row.static:hover{background:transparent;}
+/* .pal-row.static RETIRED 2026-07-29 with the quick-create door itself
+   (user-ruled: "it's not the search's job to make it") — no tenant left. */
 .pal-lead{flex:0 0 auto; width:calc(var(--icon-size) + var(--space-5)); height:calc(var(--icon-size) + var(--space-5)); display:flex; align-items:center; justify-content:center; border-radius:var(--radius-small); color:var(--text-secondary);}
 .pal-lead.sw{color:var(--text-on-filled);}
 .pal-lead .ico{width:var(--icon-size); height:var(--icon-size);}
 .pal-lead.sw .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
 .pal-lead .pal-dot{width:var(--dot-size); height:var(--dot-size); border-radius:var(--radius-full);}
+/* LEAD RULING (2026-07-29, user-ruled): three leads, by what the row IS.
+   · HABIT   — icon-in-swatch (.sw): the habit's own badge, its colour as a FILL.
+   · ENTRY   — the owning habit's GLYPH, tinted with the habit colour inline
+               (style="color:var(--habit-N)"). Icons became data 2026-07-27, so a
+               bare colour dot was forfeiting information the row already held; the
+               unfilled glyph keeps an entry distinct from its habit at a glance.
+   · DAY / PERIOD — the colour dot, unchanged. A date owns a month hue and nothing
+               else; twelve identical calendar glyphs down a result list would be
+               decoration, not data. This is the one place the dot survives. */
 /* build glue: the ruled lettermark fallback inside a swatch lead */
 .pal-letter{font-size:var(--size-caption); font-weight:var(--weight-bold);}
 .pal-txt{flex:1 1 auto; min-width:0; display:flex; align-items:baseline; gap:var(--space-4);}
@@ -101,8 +119,13 @@
 
 /* == ADVANCED SEARCH — the morph (Build-side face; no FINAL) ================ */
 
+/* The workspace takes a CONSTANT height (user-ruled 2026-07-29: "comfortably
+   tall enough to accommodate conditions when the dropdown menu opens") — a
+   content-hugging max-height left a short panel whose overflow:hidden clipped
+   any menu dropping past its edge. Fixed 86% = stable air below the builder;
+   nothing reflows as conditions come and go. */
 .palette.advs{width:min(calc(var(--builder-w) * 2 + var(--space-8) * 6), calc(100% - var(--space-8) * 2));
-              top:7%; max-height:86%;}
+              top:7%; height:86%; max-height:86%;}
 .advs-head{display:flex; align-items:center; gap:var(--space-5); padding:var(--space-5) var(--space-6); border-bottom:var(--border-hairline) solid var(--divider);}
 .advs-back{display:flex; align-items:center; justify-content:center; flex:0 0 auto;
            width:calc(var(--icon-size) + var(--space-5)); height:calc(var(--icon-size) + var(--space-5));
@@ -120,7 +143,8 @@
 .advs-count{font-size:var(--size-body); color:var(--text-secondary);}
 .advs-count b{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); color:var(--text-strong); margin-right:var(--space-2);}
 .advs-capnote{font-size:var(--size-caption); color:var(--text-muted);}
-.advs-note{margin:var(--space-3) 0 0; font-size:var(--size-caption); color:var(--text-muted); line-height:var(--line-normal);}
+/* .advs-note RETIRED 2026-07-29 (user-ruled, in-canvas): the three explainer
+   paragraphs died with it — the no-explainer-prose law reasserting itself. */
 /* condition rows */
 .advs-cond{border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-small); padding:var(--space-4) var(--space-5); margin-bottom:var(--space-4);}
 .advs-cond-top{display:flex; align-items:center; gap:var(--space-3);}
@@ -135,3 +159,6 @@
 .advs-num:focus{border-color:var(--accent);}
 .advs-add{margin-top:var(--space-2);}
 .advs-match{display:flex; align-items:center; gap:var(--space-4); margin-top:var(--space-5); padding-top:var(--space-4); border-top:var(--border-hairline) solid var(--divider);}
+/* the RUN control (user-ruled 2026-07-29 — results wait for it): the kit
+   accent button, full-width at the builder's foot */
+.advs-run{width:100%; justify-content:center; margin-top:var(--space-2);}

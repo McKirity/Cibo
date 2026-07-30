@@ -297,12 +297,20 @@ button.doorlink:hover {
   justify-content: center;
   padding: var(--space-3);
 }
-.ambience .clock {
-  width: auto;
+/* Two stacked layers since 2026-07-29 (the hover-lag fix): the FACE svg and
+   the SWEEP svg overlay. The wrap owns the old sizing; the layers fill it. */
+.ambience .clockwrap {
   height: 100%;
   max-height: var(--clock-max);
   max-width: 100%;
   aspect-ratio: 1 / 1;
+  position: relative;
+}
+.clockwrap .clock {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   display: block;
 }
 
@@ -351,11 +359,29 @@ button.doorlink:hover {
    painted wash read as a grey box sticking out). The room is still reserved
    (the left padding); a theme with decoration paints into it at step 6a. */
 
-/* the vignette clock — numberless analog face (sweep is the one motion) */
-.clock .sweep {
-  transform-box: view-box;
-  transform-origin: 60px 60px;
+/* the vignette clock — numberless analog face (sweep is the one motion).
+   THE SWEEP ROTATES AS AN HTML-LEVEL ELEMENT (the whole overlay svg), not as
+   an SVG child: Chromium composites element transform animations but NOT
+   SVG-internal ones, so the old animated <line> repainted the clock every
+   frame, forever — the 2026-07-29 app-wide hover-lag catch (confirmed by the
+   reduce-effects A/B). The hub dots ride the rotating layer above the hand;
+   centered circles are rotation-invariant. */
+.clock-sweep-layer {
+  transform-origin: 50% 50%;
   animation: clock-sweep 60s linear infinite;
+  will-change: transform;
+}
+/* "reduce-effects sheds the sweep; the minute hand jumps" — the Default
+   clock's ruled contract ([[Default (neutral light)]]), unwired until
+   2026-07-29 (shell.css carried NO reduce rules at all; found at the
+   hover-lag A/B). HIDDEN, not frozen: a stopped second hand would lie about
+   the seconds — the motion display test. The hub dots stay. */
+.reduce-effects .clock-sweep-layer {
+  animation: none;
+  will-change: auto;
+}
+.reduce-effects .clock-sweep-layer .sweep {
+  visibility: hidden;
 }
 @keyframes clock-sweep {
   from {

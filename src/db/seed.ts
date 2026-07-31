@@ -365,6 +365,20 @@ async function seedBatch1(evolu: CiboEvolu): Promise<void> {
   // lesson — an unchecked drop must not be mistaken for a completed seed).
   let ok = true;
 
+  // Commit signals (the batch-4 pattern, retrofitted 2026-07-30): `onComplete`
+  // fires only after the worker commits, and every mutation issued in this
+  // synchronous pass rides ONE transaction — so any resolved signal means the
+  // whole batch reached the store. Without this, the re-read below would be
+  // satisfied by the optimistic layer even for a lost transaction (the batch-7
+  // lesson), and a fresh install hit by the loss would be permanently stranded
+  // with the gate latched over zero habits.
+  const commits: Array<Promise<void>> = [];
+  const commitSignal = (): (() => void) => {
+    let done!: () => void;
+    commits.push(new Promise<void>((res) => (done = res)));
+    return done;
+  };
+
   BATCH_1.forEach((habit, i) => {
     if (existingKeys.has(habit.key)) return;
 
@@ -397,7 +411,7 @@ async function seedBatch1(evolu: CiboEvolu): Promise<void> {
       keepsake_snippet: keepsakeFor(habit.key),
       archived: 1, // ALL built-ins arrive archived.
       sort_order: num(i + 1), // Registry order.
-    });
+    }, { onComplete: commitSignal() });
     if (!inserted.ok) {
       console.error(`Seed: habit "${habit.key}" failed`, inserted.error);
       ok = false;
@@ -432,13 +446,22 @@ async function seedBatch1(evolu: CiboEvolu): Promise<void> {
     }
   });
 
-  // The ONE global status list — definition_fk empty.
+  // The ONE global status list — definition_fk empty. Deduped against existing
+  // rows so a retried batch (thrown before its version recorded) never plants
+  // duplicate statuses — the habit-key guard's twin (added 2026-07-30).
+  const statusQuery = evolu.createQuery((db) =>
+    db.selectFrom("vocab_options").select(["value"]).where("definition_fk", "is", null),
+  );
+  const existingStatus = new Set<string>(
+    (await evolu.loadQuery(statusQuery)).map((r) => String(r.value)),
+  );
   GLOBAL_STATUS_VOCAB.forEach((value, i) => {
+    if (existingStatus.has(value)) return;
     const vr = evolu.insert("vocab_options", {
       definition_fk: null,
       value: s100(value),
       sort_order: num(i + 1),
-    });
+    }, { onComplete: commitSignal() });
     if (!vr.ok) {
       console.error(`Seed: status vocab "${value}" failed`, vr.error);
       ok = false;
@@ -448,6 +471,25 @@ async function seedBatch1(evolu: CiboEvolu): Promise<void> {
   // Hold the gate: a rejected write means the batch is incomplete, so throw and
   // let runSeed skip recording the version — the batch retries next launch.
   if (!ok) throw new Error("Seed batch 1: one or more writes were rejected");
+
+  // Wait for the worker commit, then re-read PAST the optimistic layer and
+  // verify every canonical key actually landed — a throw holds the gate.
+  await Promise.all(commits);
+  const after = await evolu.loadQuery(existingQuery);
+  const afterKeys = new Set<string>(after.map((r) => String(r.key)));
+  for (const habit of BATCH_1) {
+    if (!afterKeys.has(habit.key)) {
+      throw new Error(`Seed batch 1: habit "${habit.key}" missing after commit`);
+    }
+  }
+  const statusAfter = new Set<string>(
+    (await evolu.loadQuery(statusQuery)).map((r) => String(r.value)),
+  );
+  for (const value of GLOBAL_STATUS_VOCAB) {
+    if (!statusAfter.has(value)) {
+      throw new Error(`Seed batch 1: status "${value}" missing after commit`);
+    }
+  }
 }
 
 /**
@@ -477,13 +519,21 @@ async function seedBatch2(evolu: CiboEvolu): Promise<void> {
       .where("value", "=", s100("Anthology"))
       .where("isDeleted", "is not", 1),
   );
-  let ok = true;
+  // The batch-4 pattern (retrofitted 2026-07-30): check the Result, await
+  // `onComplete` (fires only after the worker commits), re-read past the
+  // optimistic layer, throw to hold the gate.
   for (const o of await evolu.loadQuery(optQuery)) {
-    const r = evolu.update("vocab_options", { id: o.id, value: s100("Fanfiction") });
-    if (!r.ok) {
-      console.error("Seed batch 2: vocab rename failed", r.error);
-      ok = false;
-    }
+    await new Promise<void>((resolve, reject) => {
+      const r = evolu.update(
+        "vocab_options",
+        { id: o.id, value: s100("Fanfiction") },
+        { onComplete: () => resolve() },
+      );
+      if (!r.ok) {
+        console.error("Seed batch 2: vocab rename failed", r.error);
+        reject(new Error("Seed batch 2: vocab rename failed validation"));
+      }
+    });
   }
 
   const entryQuery = evolu.createQuery((db) =>
@@ -494,15 +544,26 @@ async function seedBatch2(evolu: CiboEvolu): Promise<void> {
       .where("isDeleted", "is not", 1),
   );
   for (const e of await evolu.loadQuery(entryQuery)) {
-    const r = evolu.update("entries", { id: e.id, type: s100("Fanfiction") });
-    if (!r.ok) {
-      console.error("Seed batch 2: entry type rename failed", r.error);
-      ok = false;
-    }
+    await new Promise<void>((resolve, reject) => {
+      const r = evolu.update(
+        "entries",
+        { id: e.id, type: s100("Fanfiction") },
+        { onComplete: () => resolve() },
+      );
+      if (!r.ok) {
+        console.error("Seed batch 2: entry type rename failed", r.error);
+        reject(new Error("Seed batch 2: entry type rename failed validation"));
+      }
+    });
   }
 
-  // Hold the gate on a rejected rename (same principle as batch 1/4).
-  if (!ok) throw new Error("Seed batch 2: one or more renames were rejected");
+  // Re-read: any row still carrying the old value means the rename didn't land.
+  if ((await evolu.loadQuery(optQuery)).length > 0) {
+    throw new Error("Seed batch 2: Anthology vocab row still present after commit");
+  }
+  if ((await evolu.loadQuery(entryQuery)).length > 0) {
+    throw new Error("Seed batch 2: Anthology entries still present after commit");
+  }
 }
 
 /**

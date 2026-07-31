@@ -11,17 +11,19 @@ import { evolu } from "./db/evolu";
 import { ensureHabitIcons, runSeed } from "./db/seed";
 import { ensureAppStartDate } from "./db/appStart";
 import { mountFatalLaunch } from "./shell/FatalLaunch";
+import { showErrorToast } from "./shell/toast";
 
 // Failure tier ④ trigger — the BOOT WINDOW: an Evolu error before the seed
 // path completes means the store never opened (worker/OPFS init), which is the
 // fatal launch screen's one tenant. After boot, errors are validation drops /
-// worker rollbacks — logged (the 2026-07-23 coding-migration lesson), carried
-// by their own tiers (2/3) as those tenants land at steps 8/10/13.
+// worker rollbacks — logged (the 2026-07-23 coding-migration lesson) and
+// surfaced as tier 3 (the error toast); they must never unmount the shell.
 let booted = false;
 evolu.subscribeError(() => {
   const err = evolu.getError();
   console.error("Evolu error:", err);
   if (!booted) mountFatalLaunch(err);
+  else showErrorToast("A background data write failed — the last change may not have saved.");
 });
 
 // The version-gated seed append — runs at every launch, applies only newer batches.

@@ -1070,15 +1070,6 @@ function WaveBand({
           mIdx++;
         });
       }
-      // a "now" cap at the live edge of the last run (the arc's open end)
-      if (p.xlabelEnd === "now") {
-        const ne = document.createElement("span");
-        ne.className = "wxlab end yrlab";
-        ne.textContent = "now";
-        ne.style.left = `${x1}px`;
-        ne.style.top = `${labY}px`;
-        ov.appendChild(ne);
-      }
       cursor = x1;
     }
 
@@ -1246,7 +1237,6 @@ function WaveTable({
                         {r.kind === "era"
                           ? `Era ${r.eraN}${r.soloWave != null ? ` · Wave ${r.soloWave}` : ""}`
                           : `Wave ${r.n}`}
-                        {r.active && <span className="chip">active</span>}
                       </>
                     )}
                   </span>

@@ -22,11 +22,14 @@ import { dayStart } from "./sky";
 
 const DAY_MS = 86_400_000;
 
-/** Day of year, 1…366. The selector for every bundled dataset. */
+/** Day of year, 1…366. The selector for every bundled dataset. `round`, not
+ * `floor`: local-midnight diffs are N·24h ± 1h across a DST change, and a
+ * floored N−1 would break "the same date always yields the same entry" for
+ * every date between spring-forward and fall-back (the 2026-07-30 audit). */
 export const dayOfYear = (dayKey: string): number => {
   const d = dayStart(dayKey);
   const jan1 = new Date(d.getFullYear(), 0, 1);
-  return Math.floor((d.getTime() - jan1.getTime()) / DAY_MS) + 1;
+  return Math.round((d.getTime() - jan1.getTime()) / DAY_MS) + 1;
 };
 
 /**

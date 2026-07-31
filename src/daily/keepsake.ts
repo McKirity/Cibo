@@ -268,6 +268,14 @@ export function sanitizeTree(root: Element, doc: Document): SanitizeReport {
           child.removeAttribute(attr.name);
           continue;
         }
+        // srcset carries its own URL list past the src-only check — stripped
+        // outright rather than parsed: an internal snippet image never needs
+        // responsive sources, and encapsulation is not security.
+        if (name === "srcset") {
+          removed.push(`${tag}[srcset]`);
+          child.removeAttribute(attr.name);
+          continue;
+        }
         if (name === "style" && !cssIsSafe(attr.value)) {
           removed.push(`${tag}[style]`);
           child.removeAttribute(attr.name);

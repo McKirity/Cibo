@@ -557,7 +557,10 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
       const topOf = (m: Map<string, number>): string | null => {
         let best: string | null = null;
         let bestV = 0;
-        for (const [k, v] of m) if (v > bestV) ((bestV = v), (best = k));
+        // Ties break on entry id — map insertion order is not stable across
+        // derivations, and a flipping top would mint spurious rank changes (2026-07-30).
+        for (const [k, v] of m)
+          if (v > bestV || (v === bestV && best != null && k < best)) ((bestV = v), (best = k));
         return best;
       };
       const beforeTop = topOf(totalsTo(previousDay ?? "0000-01-01"));

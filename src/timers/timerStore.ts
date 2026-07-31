@@ -25,6 +25,7 @@ import {
 } from "./timerCore";
 import { fireSignal, unlockAudio } from "./signal";
 import { syncTray } from "./tray";
+import { stagedCount } from "./logHandoff";
 
 const STORAGE_KEY = "cibo-timer-state-v1";
 const HEARTBEAT_MS = 15_000;
@@ -56,9 +57,14 @@ const persist = () => {
     }
     const now = Date.now();
     // Snapshot with every span folded — last-persisted values, exactly what a
-    // crash recovers. The un-restored recovery queue rides along so a second
-    // crash mid-dialog loses nothing.
-    const folded = [...state.clocks.map((c) => fold(c, now)), ...state.recoveryQueue];
+    // crash recovers. The un-restored recovery queue rides along AS RUNNING —
+    // that is the honest state at the original crash, and it is what re-queues
+    // them after a second crash mid-dialog (written paused they would classify
+    // as deliberately paused and skip the ruled dialog, 2026-07-30).
+    const folded = [
+      ...state.clocks.map((c) => fold(c, now)),
+      ...state.recoveryQueue.map((c) => ({ ...c, running: true })),
+    ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ clocks: folded, savedAt: now }));
   } catch {
     /* storage unavailable — timers still run, recovery just has nothing */
@@ -74,16 +80,25 @@ const mutate = (fn: (s: TimerState) => TimerState) => {
 // ── launch: crash detection ──────────────────────────────────────────────────
 
 (() => {
+  // An HMR re-eval is not a crash: the dispose hook below persisted live state
+  // and set this flag, so the persisted clocks restore straight onto the board.
+  const hmr = (globalThis as { __ciboTimerHmr?: boolean }).__ciboTimerHmr === true;
+  (globalThis as { __ciboTimerHmr?: boolean }).__ciboTimerHmr = false;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw == null) return;
     const parsed = JSON.parse(raw) as { clocks?: Clock[] };
     const clocks = Array.isArray(parsed.clocks) ? parsed.clocks : [];
     if (clocks.length === 0) return;
-    for (const c of clocks) {
-      c.id = nextId++;
-      c.resumedAt = null; // the crash gap is never counted
+    for (const c of clocks) c.id = nextId++;
+    if (hmr) {
+      // Re-anchor — an un-restored queue member persists running with no
+      // resumedAt, and without one it would sit still despite `running`.
+      for (const c of clocks) if (c.running && c.resumedAt == null) c.resumedAt = Date.now();
+      state = { clocks, focusedId: clocks[0]?.id ?? null, manageId: null, recoveryQueue: [] };
+      return;
     }
+    for (const c of clocks) c.resumedAt = null; // the crash gap is never counted
     // A clock that was PAUSED at the crash holds nothing ambiguous — its fold
     // was deliberate — so it returns to the board silently. Running clocks get
     // the dialog.
@@ -131,6 +146,9 @@ const tick = () => {
   void syncTray(state.clocks, now);
   // display tick — subscribers repaint their readouts
   emit();
+  // A boundary can pause the LAST running clock (countdown-zero, work-end) —
+  // without this the 500 ms interval ran forever after one (2026-07-30).
+  if (changed) syncTicker();
 };
 
 const syncTicker = () => {
@@ -322,9 +340,14 @@ export const recoveryDiscard = (): void =>
 
 // ── quit ─────────────────────────────────────────────────────────────────────
 
-/** Any unlogged accumulators? — the quit warning's trigger. */
+/**
+ * Any unlogged accumulators? — the quit warning's trigger. STAGED hand-offs
+ * count (2026-07-30): per-row Log moves minutes out of the store into the
+ * in-memory handoff, and if that dissolved the last clock a quit would read
+ * "clean" while the staged minutes evaporate.
+ */
 export const hasLiveClocks = (): boolean =>
-  state.clocks.length > 0 || state.recoveryQueue.length > 0;
+  state.clocks.length > 0 || state.recoveryQueue.length > 0 || stagedCount() > 0;
 
 /** Proceed on the quit warning: discard everything so the close is clean. */
 export const discardAllForQuit = (): void => {
@@ -357,3 +380,13 @@ export const getTimerState = (): TimerState => state;
 // arm the ticker for crash-restored paused clocks (none run at launch, but the
 // call is the honest place to normalise)
 syncTicker();
+
+// Dev only — Vite HMR re-evals this module: without this the old ticker leaks
+// and the crash-detection IIFE reads the live clocks as a crash (2026-07-30).
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    persist();
+    (globalThis as { __ciboTimerHmr?: boolean }).__ciboTimerHmr = true;
+    if (tickHandle != null) clearInterval(tickHandle);
+  });
+}

@@ -247,7 +247,9 @@ function BedWakeChart({ charts, color }: { charts: RangeModel["charts"]; color: 
   const n = months.length;
   const X = (i: number) => pad + ((w - 2 * pad) * i) / (n - 1);
   // Night-centric y: hours since 18:00, 0..18 (evening on top, midday below).
-  const Y = (clockHours: number) => pad + (h - 2 * pad) * (h18(clockHours) / 18);
+  // Clamped — daytime bed/wake values (the 12:00–18:00 gap h18 maps past 18)
+  // are legal and pin to the axis edge rather than drawing off-canvas (2026-07-30).
+  const Y = (clockHours: number) => pad + (h - 2 * pad) * Math.min(1, h18(clockHours) / 18);
   const yTicks = [21, 24, 27, 30, 33]; // 21:00 · 00:00 · 03:00 · 06:00 · 09:00
 
   const band = (key: "bed" | "wake", opacity: number) =>
@@ -468,9 +470,11 @@ function EmptyState({ name }: { name: string }) {
           {name}'s stats appear here once it has nights logged — durations, bed &amp; wake ranges,
           flags, and the heatmap all build from what you log. One door fills this dashboard:
         </div>
+        {/* Honest doors (2026-07-30): logging lives on the Daily screen and no
+            navigation is threaded here; the icon picker is step 10's. */}
         <div className="edoors">
-          <button className="btn-accent" type="button">Log a night</button>
-          <button className="btn-plain" type="button">Set an icon</button>
+          <button className="btn-accent" type="button" disabled title="Log nights from the Daily screen (Ctrl+Home)">Log a night</button>
+          <button className="btn-plain" type="button" disabled title="The icon picker arrives with Settings (step 10)">Set an icon</button>
         </div>
       </div>
     </div>

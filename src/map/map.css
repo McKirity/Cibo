@@ -96,3 +96,10 @@
 .mapscreen .pgnum .ico { width: 14px; height: 14px; }
 .mapscreen .pgell { color: var(--text-muted); padding: 0 var(--space-2); font-family: var(--font-mono); }
 .mapscreen .pgcount { font-family: var(--font-mono); font-size: var(--size-caption); color: var(--text-muted); margin-left: var(--space-3); }
+
+/* the empty-expansion line — an expanded entry-less habit states it
+   (2026-07-30); the leaf dot hides like the pagerrow's, so the line never
+   reads as an entry */
+.mapscreen .row.emptyrow { cursor: default; }
+.mapscreen .emptyrow .leafcx::before { opacity: 0; }
+.mapscreen .emptyrow .noentries { font-size: var(--size-subheading); color: var(--text-muted); }

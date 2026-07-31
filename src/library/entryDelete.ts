@@ -12,6 +12,7 @@
  * confirm first and never offers undo.
  */
 import { evolu } from "../db/evolu";
+import { showErrorToast } from "../shell/toast";
 import type { EntryId, SessionId } from "../db/schema";
 
 export interface DeleteResult {
@@ -57,14 +58,25 @@ export async function deleteEntriesCascade(entryIds: string[]): Promise<DeleteRe
   return {
     ok,
     undo: () => {
+      // A rejected undo must REACH THE USER (tier 3): the toast has already
+      // dismissed itself, so a console-only failure reads as "restored" while
+      // the entry stays deleted (2026-07-30).
+      let undone = true;
       for (const id of ids) {
         const r = evolu.update("entries", { id, isDeleted: 0 });
-        if (!r.ok) console.error("Entry undo rejected", r.error);
+        if (!r.ok) {
+          console.error("Entry undo rejected", r.error);
+          undone = false;
+        }
       }
       for (const id of sessionIds) {
         const r = evolu.update("sessions", { id, isDeleted: 0 });
-        if (!r.ok) console.error("Session undo rejected", r.error);
+        if (!r.ok) {
+          console.error("Session undo rejected", r.error);
+          undone = false;
+        }
       }
+      if (!undone) showErrorToast("Undo failed — the deletion could not be fully restored.");
     },
   };
 }

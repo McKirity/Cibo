@@ -588,7 +588,10 @@ export function PaletteOverlay({
         close();
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSel((s) => Math.min(selectable.length - 1, s + 1));
+        // zero rows would compute min(-1, …) and strand sel negative (2026-07-30)
+        setSel((s) =>
+          selectable.length === 0 ? s : Math.max(0, Math.min(selectable.length - 1, s + 1)),
+        );
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setSel((s) => Math.max(0, s - 1));

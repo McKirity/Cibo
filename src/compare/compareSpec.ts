@@ -281,12 +281,17 @@ export const AVG_SCOPES: AvgScope[] = ["day", "week", "month", "quarter", "year"
  * 365 days — must average by year. The known edge: a custom range covering
  * exactly a SHORT month (February, 28 days) is refused for a monthly average;
  * an alignment test would admit it, at more complexity than the case earns.
+ *
+ * Each minimum is the SHORTEST REAL period of its scope — quarter is 90, not
+ * ~91.3: Q1 of a non-leap year is 90 days, and 91 refused an exact calendar
+ * Q1 (the 2026-07-30 audit's false-error case). Year is 365 for the same
+ * reason (non-leap years are real years).
  */
 export const AVG_SCOPE_MIN_DAYS: Record<AvgScope, number> = {
   day: 1,
   week: 7,
   month: 30.5,
-  quarter: 91,
+  quarter: 90,
   year: 365,
 };
 
@@ -509,6 +514,12 @@ export interface CmpSeries {
   scopeIdx: number;
   windowIdx: number;
   splitValue: string | null;
+  /** The hue's identity (habit name / split value) — carried structurally so
+   *  the legend never re-parses the display label (labels contain " · ";
+   *  fixed 2026-07-30). */
+  sourceLabel: string;
+  /** The window's full resolved label ("2024 · Jan – Dec"). */
+  windowLabel: string;
 }
 
 export interface CmpTile {
@@ -635,10 +646,18 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
       split == null
         ? null
         : (data.splitFields.get(habit.id) ?? []).find((f) => f.field === split.field) ?? null;
-    if (split == null || field == null || split.values.length === 0) {
+    // A stale preset can carry entry-split values whose entries were deleted —
+    // they must DROP, never render their raw row ids as series labels (the
+    // stale-preset rule, enforced for habits/measures, now split values too;
+    // 2026-07-30). A vocab-string value stays: the value IS its label.
+    const liveValues =
+      split != null && field != null && field.field === ENTRY_FIELD
+        ? split.values.filter((v) => field.valueLabel?.[v] != null)
+        : split?.values ?? [];
+    if (split == null || field == null || liveValues.length === 0) {
       sources.push({ label: scopeName, colourSlot: habit.colour, scopeIdx, splitValue: null, sessions: base });
     } else {
-      split.values.forEach((v, pos) => {
+      liveValues.forEach((v, pos) => {
         const sessions = base.filter((s) => {
           if (field.field === ENTRY_FIELD) return s.entryId === v;
           if (!field.entryLevel) return data.valueBySession.get(s.id)?.[field.field] === v;
@@ -690,8 +709,17 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
 
   // — chart allowance (the picker offers only what draws) —
   const spanDays = Math.max(...wins.map((w) => w.days));
-  const lineBuckets = Math.max(...wins.map((w) => windowBuckets(w, grainFor(w.days, "line")).length));
-  const barBuckets = Math.max(...wins.map((w) => windowBuckets(w, grainFor(w.days, "gbar")).length));
+  // An Average buckets at its OWN scope (the grain override below), so the
+  // allowance must count those buckets too — grainFor's would enable a line
+  // for one year-sized bucket, a single invisible point (fixed 2026-07-30).
+  const avgGrain: Grain | null =
+    pick.family === "average" && pick.scope != null ? pick.scope : null;
+  const lineBuckets = Math.max(
+    ...wins.map((w) => windowBuckets(w, avgGrain ?? grainFor(w.days, "line")).length),
+  );
+  const barBuckets = Math.max(
+    ...wins.map((w) => windowBuckets(w, avgGrain ?? grainFor(w.days, "gbar")).length),
+  );
   const seriesCount = sources.length * wins.length;
   // A share-of-a-whole shape needs the parts to BE a whole, so donut and
   // stacked area take one window only — stacking or slicing across separate
@@ -718,10 +746,7 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
   // they fall through to the bar grain and simply ignore the buckets.
   const grainFamily: ChartKind =
     chartKind === "area" ? "line" : chartKind === "hbar" || chartKind === "donut" ? "gbar" : chartKind ?? "gbar";
-  const grain: Grain =
-    pick.family === "average" && pick.scope != null
-      ? pick.scope
-      : grainFor(spanDays, grainFamily);
+  const grain: Grain = avgGrain ?? grainFor(spanDays, grainFamily);
   const bucketsPerWin = wins.map((w) => windowBuckets(w, grain));
   const longest = bucketsPerWin.reduce((a, b) => (b.length > a.length ? b : a), bucketsPerWin[0]);
 
@@ -755,6 +780,8 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
         scopeIdx: src.scopeIdx,
         windowIdx,
         splitValue: src.splitValue,
+        sourceLabel: src.label,
+        windowLabel: win.label,
       });
     });
   });

@@ -157,7 +157,7 @@ export function CreationDashboard({
             <Panel title={m.heroes.title}>
               <div className="herogrid">
                 {m.heroes.cards.map((h) => (
-                  <HeroCard key={h.title} h={h} onOpen={onOpenEntry} />
+                  <HeroCard key={h.entryId} h={h} onOpen={onOpenEntry} />
                 ))}
                 <div
                   className="hero door"

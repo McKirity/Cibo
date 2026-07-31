@@ -29,6 +29,7 @@ import { showErrorToast, showUndoToast } from "../shell/toast";
 import { useMilestoneDay } from "./useMilestoneDay";
 import {
   buildStripSpec,
+  dayRevision,
   derivedReadout,
   groupBouts,
   lettermark,
@@ -225,8 +226,8 @@ export function Spine({
   // Day-scoped and therefore tiny: what the banner needs to know is "did today's
   // rows change", not "did anything anywhere change".
   const revision = useMemo(
-    () => data.sessions.map((s) => `${s.id}:${s.value}:${s.start}:${s.end}`).join("|"),
-    [data.sessions],
+    () => dayRevision(data.sessions, data.cats),
+    [data.sessions, data.cats],
   );
   const specs = useMemo(
     () =>
@@ -317,7 +318,6 @@ export function Spine({
           <FinalizeButton
             dayKey={dayKey}
             finalized={data.dayRow?.finalized ?? false}
-            dayRow={data.dayRow}
             flushNow={flushNow}
             onFinalized={onFinalized ?? (() => {})}
           />
@@ -413,14 +413,12 @@ function ZeroActiveHabits() {
 function FinalizeButton({
   dayKey,
   finalized,
-  dayRow,
   flushNow,
   onFinalized,
 }: {
   dayKey: string;
   finalized: boolean;
-  dayRow: { id: string } | null;
-  flushNow: () => void;
+  flushNow: () => boolean;
   onFinalized: () => void;
 }) {
   return (
@@ -431,15 +429,21 @@ function FinalizeButton({
           ? "This day is already finalized — back to its cover wall."
           : "Finalize turns the day into its cover wall."
       }
-      onClick={() => {
+      onClick={async () => {
         // The buffer first, always. Everything typed today has to be in the
-        // store before the day is sealed.
-        flushNow();
+        // store before the day is sealed — and a FAILED flush blocks the seal
+        // (user-ruled 2026-07-30: "finalize should wait until save"). Sealing
+        // anyway would finalize a day whose edits were silently dropped.
+        const flushed = flushNow();
         if (finalized) {
           onFinalized();
           return;
         }
-        const res = finalizeDay(dayKey, dayRow, nowLocalDateTime());
+        if (!flushed) {
+          showErrorToast("A change failed to save — the day was NOT finalized.");
+          return;
+        }
+        const res = await finalizeDay(dayKey, nowLocalDateTime());
         if (!res.ok) showErrorToast(res.reason);
         else onFinalized();
       }}
@@ -707,6 +711,11 @@ function Strip({ spec, data, dayKey, flushNow, liveWritingWords, onWritingWords 
   }, [habit.id, dayKey]);
 
   const remove = (bout: Bout, label: string) => {
+    // The bout's buffered edits die with it (Clear-all's discipline): left in
+    // the queue they would write onto the tombstoned rows — or insert orphan
+    // subunit values — at the next flush, and an Undo would restore a bout
+    // carrying half-applied edits.
+    dropQueued(`sess|${bout.key}|`);
     const res = removeBout(bout, label, data.catRowIds);
     if (!res.ok) {
       setError(res.reason);

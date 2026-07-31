@@ -70,7 +70,8 @@ export interface TileSpec {
   /** Streak tiles: a date line above the value + a key/value subtitle table.
    *  Rows may carry an entryId (the merged-catalog hall's door — chunk 5). */
   list?: { dateLine: string; rows: { k: string; v: string; entryId?: string }[] };
-  /** Name-valued tiles (the categorical family's Current-value) read at --size-heading. */
+  /** Heading-size value — name-valued tiles (the categorical family's
+   *  Current-value) and the entry First/Last-day date tiles (`tv sm`). */
   big?: boolean;
 }
 
@@ -184,8 +185,11 @@ export function buildConsumptionDashboard(
   const fEntries = typeFilter ? entries.filter((e) => e.type === typeFilter) : entries;
 
   // Type-specific nomenclature: a YouTube entry is a channel, not a title.
-  const noun = typeFilter === "Youtube" ? "channels" : "titles";
-  const Noun = typeFilter === "Youtube" ? "Channels" : "Titles";
+  // Keyed to the seeded Medium value — case-insensitive so a casing rename
+  // ("Youtube" → "YouTube") doesn't silently revert the hall (2026-07-30).
+  const isYouTube = typeFilter?.toLowerCase() === "youtube";
+  const noun = isYouTube ? "channels" : "titles";
+  const Noun = isYouTube ? "Channels" : "Titles";
 
   const fullFirst = sessions.map((s) => s.day).sort()[0] ?? null;
   const allDays = fSessions.map((s) => s.day).sort();

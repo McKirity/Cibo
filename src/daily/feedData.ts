@@ -51,6 +51,14 @@ export const parseFeedSnapshot = (raw: string | null | undefined): FeedSnapshot 
       w != null &&
       typeof w.tempC === "number" &&
       typeof w.code === "number" &&
+      typeof w.hiC === "number" &&
+      Number.isFinite(w.hiC) &&
+      typeof w.loC === "number" &&
+      Number.isFinite(w.loC) &&
+      typeof w.hour === "number" &&
+      Number.isInteger(w.hour) &&
+      w.hour >= 0 &&
+      w.hour <= 24 &&
       Array.isArray(w.hourlyC) &&
       w.hourlyC.length >= 2 &&
       w.hourlyC.every((v) => typeof v === "number" && Number.isFinite(v))

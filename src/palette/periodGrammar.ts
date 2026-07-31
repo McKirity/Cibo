@@ -210,6 +210,12 @@ export function parsePeriods(rawQuery: string, today: string): PlaceMatch[] {
     if (day > today) return [];
     const m1 = Number(dateM[2]);
     if (m1 < 1 || m1 > 12) return [];
+    // real-calendar check (2026-07-30): "2025-02-31" parses but must not mint
+    // a live door to a phantom day — the date must round-trip
+    const dd = Number(dateM[3]);
+    const dt = new Date(Date.UTC(Number(dateM[1]), m1 - 1, dd));
+    if (dt.getUTCFullYear() !== Number(dateM[1]) || dt.getUTCMonth() !== m1 - 1 || dt.getUTCDate() !== dd)
+      return [];
     return [
       {
         kind: "day",
@@ -237,7 +243,12 @@ export function parsePeriods(rawQuery: string, today: string): PlaceMatch[] {
     const w = Number(weekM[1]);
     let y = weekM[2] != null ? Number(weekM[2]) : thisYear;
     if (w < 1 || w > isoWeeksInYear(y)) return [];
-    if (weekM[2] == null && isoWeekMonday(y, w) > today) y -= 1; // most recent begun
+    if (weekM[2] == null && isoWeekMonday(y, w) > today) {
+      y -= 1; // most recent begun
+      // the decremented year may hold only 52 weeks — re-check or a yearless
+      // "w53" early in a year mislabels (2026-07-30)
+      if (w > isoWeeksInYear(y)) return [];
+    }
     const direct = weekPlace(y, w, "exact period");
     if (direct.anchor > today) return [];
     return ladder(direct, today);

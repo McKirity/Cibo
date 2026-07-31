@@ -20,6 +20,8 @@ type TrayHandle = {
 
 let tray: TrayHandle | null = null;
 let building = false;
+/** The most recent call's verdict — what a finished build re-checks against. */
+let lastWanted = false;
 let openTimersNav: (() => void) | null = null;
 
 /** The shell registers how "click = reopen to Timers" navigates. */
@@ -44,6 +46,7 @@ export const syncTray = async (clocks: Clock[], now: number): Promise<void> => {
   } catch {
     wanted = false; // not in a Tauri webview
   }
+  lastWanted = wanted;
 
   if (!wanted) {
     if (tray != null) {
@@ -82,8 +85,16 @@ export const syncTray = async (clocks: Clock[], now: number): Promise<void> => {
         })();
       },
     });
-    // the minimize may already be over by the time the icon exists
-    tray = t;
+    // The minimize may already be over by the time the icon exists — and that
+    // "over" call saw tray == null with nothing to close. Re-check instead of
+    // trusting a next tick a stopped ticker never sends: an orphaned icon
+    // would linger until the next timer action (2026-07-30).
+    if (lastWanted) {
+      tray = t;
+    } else {
+      tray = null;
+      void t.close().catch(() => {});
+    }
   } catch {
     tray = null; // tray unavailable — a glance-less minimize, nothing broken
   } finally {

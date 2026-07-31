@@ -234,7 +234,36 @@ function amountPeriodDelta(
   const prevFrom = dayFromIndex(dayIndex(from) - 1 - len);
   if (scoped(sessions, { from: prevFrom, to: prevTo }).length === 0) return undefined;
   const d = rate(from, to) - rate(prevFrom, prevTo);
-  if (unit === "h") return deltaChip(d, "m"); // d is already minutes; show as minutes at these scales
+  // Hour-unit tiles read their delta in HOURS — the drawn "▲ 0.4h"
+  // (embroidery-stats' face; conformed 2026-07-30 — this rendered minutes).
+  if (unit === "h") return deltaChip(d / 60, "h");
+  return { text: `${d < 0 ? "▼" : "▲"} ${groupInt(Math.abs(d))}`, down: d < 0 };
+}
+
+/**
+ * Per-ACTIVE-DAY delta — the grain the "Avg / active day" tile states.
+ * Conformed 2026-07-30: the tile carried a weekly-rate delta while the FINAL
+ * draws a per-day "▲ 3m" and the consumption/creation siblings use
+ * specShared's activeDayDelta (duration-only, hence this count-capable twin).
+ */
+function amountActiveDayDelta(
+  sessions: SessionRow[],
+  amountOf: (s: SessionRow) => number,
+  from: string,
+  to: string,
+  unit: string,
+): DeltaChip | undefined {
+  const avg = (f: string, t: string) => {
+    const rows = scoped(sessions, { from: f, to: t });
+    const days = new Set(rows.map((s) => s.day)).size;
+    return days > 0 ? rows.reduce((a, s) => a + amountOf(s), 0) / days : 0;
+  };
+  const len = dayGap(from, to);
+  const prevTo = dayFromIndex(dayIndex(from) - 1);
+  const prevFrom = dayFromIndex(dayIndex(from) - 1 - len);
+  if (scoped(sessions, { from: prevFrom, to: prevTo }).length === 0) return undefined;
+  const d = avg(from, to) - avg(prevFrom, prevTo);
+  if (unit === "h") return deltaChip(d, "m"); // per-day minutes — the drawn "▲ 3m" scale
   return { text: `${d < 0 ? "▼" : "▲"} ${groupInt(Math.abs(d))}`, down: d < 0 };
 }
 
@@ -608,7 +637,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
       ? groupInt(daysActive > 0 ? totPrimary / daysActive : 0)
       : hoursMinutes(daysActive > 0 ? totPrimary / daysActive : 0),
     delta: vsYear(
-      amountPeriodDelta(sessions, primary.amountOf, dFrom, dTo, "week", isCount ? "" : "h"),
+      amountActiveDayDelta(sessions, primary.amountOf, dFrom, dTo, isCount ? "" : "h"),
       isYear,
       isYear ? sel.year : "",
     ),

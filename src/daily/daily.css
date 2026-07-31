@@ -261,15 +261,18 @@
   .otd .tl-ev.now::before { background:var(--accent);
                               box-shadow:0 0 0 3px color-mix(in oklch, var(--accent), var(--panel-background) 66%); }
   .otd .tl-ev.now .tl-yr { color:var(--text-strong); }
-  /* Holiday — date-forward; a thin marker in the owning month's slot */
+  /* Holiday — date-forward; a thin marker in the owning month's slot.
+     The FINAL pinned --month-jul: its sample holiday's month, frozen sample
+     data. User-ruled 2026-07-30 — the card's `--c` local carries the LIVE
+     month slot (the fact chip's treatment); the literal survives as fallback. */
     .holiday .art { display:block; }
   .hol { display:flex; align-items:center; gap:var(--space-6); }
   .hol-date { display:flex; flex-direction:column; align-items:center; line-height:1;
-                padding-left:var(--space-5); border-left:3px solid var(--month-jul); }
+                padding-left:var(--space-5); border-left:3px solid var(--c, var(--month-jul)); }
   .hol-day { font-family:var(--font-heading); font-size:var(--whimsy-size-stat); font-weight:var(--weight-bold);
                color:var(--text-strong); line-height:.85; }
   .hol-mon { font-family:var(--font-mono); font-size:var(--whimsy-size-caption); text-transform:uppercase; letter-spacing:.08em;
-               color:var(--month-jul); margin-top:var(--space-2); }
+               color:var(--c, var(--month-jul)); margin-top:var(--space-2); }
   .hol-name { font-family:var(--font-heading); font-size:var(--whimsy-size-subheading); font-weight:var(--weight-bold); color:var(--text-strong); }
   .hol-country { font-size:var(--whimsy-size-small); color:var(--text-muted); margin-top:var(--space-2); }
   /* ---- TIME PROGRESS — day → year, as donut rings ---- */
@@ -433,7 +436,7 @@
   .tarot .kw { font-size:var(--whimsy-size-small); color:var(--text-muted); margin-top:var(--space-2); }
   .tarot .up { font-size:var(--whimsy-size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-secondary); margin-top:var(--space-4); }
   /* rediscover — the door variant: a portal onto a past day */
-    .redisc { cursor:pointer; }
+    .redisc .go { cursor:pointer; }
   .redisc .portal { flex:1 1 auto; min-height:0; position:relative; overflow:hidden;
                       border:var(--border-standard) solid var(--border);
                       border-radius:46px 46px var(--radius-small) var(--radius-small);
@@ -1157,11 +1160,13 @@
                      border-radius:var(--radius-full); padding:var(--space-1) var(--space-4); }
   .whim-fact .tx { font-size:var(--size-caption); color:var(--text-secondary); line-height:var(--line-normal); text-wrap:pretty; }
 
+  /* The wall face's --month-jun was the FINAL's sample month too — same
+     2026-07-30 ruling as .hol-date: `--c` carries the live month slot. */
   .whim-holiday .body { flex:1 1 auto; display:flex; align-items:center; gap:var(--space-4); }
   .whim-holiday .dt { display:flex; flex-direction:column; align-items:center; line-height:1;
-                      padding-left:var(--space-4); border-left:3px solid var(--month-jun); }
+                      padding-left:var(--space-4); border-left:3px solid var(--c, var(--month-jun)); }
   .whim-holiday .d { font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); color:var(--text-strong); line-height:.85; }
-  .whim-holiday .mon { font-family:var(--font-mono); font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--month-jun); margin-top:var(--space-2); }
+  .whim-holiday .mon { font-family:var(--font-mono); font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--c, var(--month-jun)); margin-top:var(--space-2); }
   .whim-holiday .nm { font-size:var(--size-caption); color:var(--text-secondary); font-weight:var(--weight-medium); text-wrap:pretty; }
 
   /* strips (3–4 × 1) */

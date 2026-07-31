@@ -89,7 +89,11 @@ export function savePreset(name: string, cfg: unknown, prefix: string = KEY_PREF
 
 export function renamePreset(preset: Preset<unknown>, name: string): boolean {
   const json = JSON.stringify({ name, cfg: preset.cfg });
-  if (json.length > 1000) return false;
+  if (json.length > 1000) {
+    // the same surface savePreset's cap wears — a silent false read as success (2026-07-30)
+    showErrorToast("Preset too large to save — use a shorter name.");
+    return false;
+  }
   const res = evolu.update("app_meta", {
     id: preset.id as never,
     value: NonEmptyString1000.orThrow(json),

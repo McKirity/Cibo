@@ -37,6 +37,7 @@ import { DateOnly } from "../db/schema";
 import { String as EvoluString } from "@evolu/common";
 import { drawCard } from "./tarotDeck";
 import { sunSign } from "./almanac";
+import { withDayLedger } from "./spineWrites";
 import { parseFeedSnapshot, type FeedSnapshot, type HoroscopeSnap, type WeatherSnap } from "./feedData";
 import type { WhimsyConfig } from "./whimsyConfig";
 
@@ -130,20 +131,25 @@ const dayRowQuery = (day: string) =>
  */
 const writeSnapshot = async (day: string, additions: FeedSnapshot): Promise<void> => {
   try {
-    const rows = await evolu.loadQuery(dayRowQuery(day));
-    const row = rows[0] ?? null;
-    const merged: FeedSnapshot = {
-      ...parseFeedSnapshot(row?.feed_snapshot != null ? String(row.feed_snapshot) : null),
-      ...additions,
-    };
-    const json = EvoluString.orThrow(JSON.stringify(merged));
-    // Evolu mutations fail SILENTLY — check every Result (the 2026-07-23 lesson).
-    const res = row
-      ? evolu.update("days", { id: row.id as never, feed_snapshot: json })
-      : // "A row exists once a day has bookkeeping — finalized OR a snapshot":
-        // the snapshot alone legitimately births the row, unfinalized.
-        evolu.insert("days", { date: DateOnly.orThrow(day), finalized: 0, feed_snapshot: json });
-    if (!res.ok) console.warn("feeds: snapshot write failed", res.error);
+    // Inside the days-ledger chain: finalize and this are the two writers that
+    // birth a `days` row, and only serialized read→write links keep the
+    // app-enforced date uniqueness true (the 2026-07-30 double-insert race).
+    await withDayLedger(async () => {
+      const rows = await evolu.loadQuery(dayRowQuery(day));
+      const row = rows[0] ?? null;
+      const merged: FeedSnapshot = {
+        ...parseFeedSnapshot(row?.feed_snapshot != null ? String(row.feed_snapshot) : null),
+        ...additions,
+      };
+      const json = EvoluString.orThrow(JSON.stringify(merged));
+      // Evolu mutations fail SILENTLY — check every Result (the 2026-07-23 lesson).
+      const res = row
+        ? evolu.update("days", { id: row.id as never, feed_snapshot: json })
+        : // "A row exists once a day has bookkeeping — finalized OR a snapshot":
+          // the snapshot alone legitimately births the row, unfinalized.
+          evolu.insert("days", { date: DateOnly.orThrow(day), finalized: 0, feed_snapshot: json });
+      if (!res.ok) console.warn("feeds: snapshot write failed", res.error);
+    });
   } catch (e) {
     console.warn("feeds: snapshot write failed", e);
   }

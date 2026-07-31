@@ -17,7 +17,7 @@
  * quiet waiting face, never fabricated content; on a past day absence is
  * permanent and the copy says so.
  */
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import {
   buildWxCurve,
   displayTemp,
@@ -57,7 +57,12 @@ import {
 } from "./almanac";
 import type { WhimsyConfig } from "./whimsyConfig";
 
-const hm = (min: number): string => `${Math.floor(min / 60)}h ${String(Math.round(min % 60)).padStart(2, "0")}m`;
+// Not metrics/format.hoursMinutes: the sun face always carries the hour
+// ("0h 45m" beside "24h 00m"). Round BEFORE splitting or 119.6 min reads "1h 60m".
+const hm = (min: number): string => {
+  const mm = Math.round(min);
+  return `${Math.floor(mm / 60)}h ${String(mm % 60).padStart(2, "0")}m`;
+};
 
 // -- sky column: translated from Final/daily-state-1.html ---------------------
 
@@ -634,8 +639,8 @@ export function OnThisDayCard({
                 {anniversaries.map((a, i) => (
                   <span key={a.habitName}>
                     {i > 0 ? " \u00b7 " : ""}
-                    {a.years} {a.years === 1 ? "year" : "years"} since your first{" "}
-                    <a className="door">{a.habitName}</a> session
+                    {a.years} {a.years === 1 ? "year" : "years"} since your first {a.habitName}{" "}
+                    session
                   </span>
                 ))}
                 {trackingYears != null &&
@@ -663,13 +668,16 @@ export function HolidayCard({ dayKey }: { dayKey: string }) {
   const h = holidayFor(dayKey);
   if (!h) return null;
   const dd = Number(dayKey.slice(8, 10));
-  const mon = MON_SHORT[Number(dayKey.slice(5, 7)) - 1];
+  const mi = Number(dayKey.slice(5, 7)) - 1;
+  const mon = MON_SHORT[mi];
   return (
     <div className="card whimsy holiday" style={ALMANAC_FLEX}>
       <Ovl label="Holiday" d={I_HOL} />
       <div className="art" style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
         <div className="hol">
-          <div className="hol-date">
+          {/* Tinted by the holiday's ACTUAL month (user-ruled 2026-07-30) —
+              the frozen --month-jul was the FINAL's sample month, not a rule. */}
+          <div className="hol-date" style={{ "--c": `var(${MON_VAR[mi]})` } as CSSProperties}>
             <span className="hol-day">{dd}</span>
             <span className="hol-mon">{mon}</span>
           </div>
@@ -955,7 +963,18 @@ export function RediscoverCard({
         <div className="plate">
           <div className="dt2">{WEEKDAY_LONG.format(new Date(day + "T12:00:00"))}</div>
           {/* Door to that day's cover wall, via the shell's openDay. */}
-          <a className="go door" onClick={onOpenDay ? () => onOpenDay(day) : undefined}>
+          <a
+            className="go door"
+            role="button"
+            tabIndex={0}
+            onClick={onOpenDay ? () => onOpenDay(day) : undefined}
+            onKeyDown={(e) => {
+              if (onOpenDay && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                onOpenDay(day);
+              }
+            }}
+          >
             step back into that day
             <svg className="ico sm" viewBox="0 0 24 24">
               <path d="M7 7h10v10" />

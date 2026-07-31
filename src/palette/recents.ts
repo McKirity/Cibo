@@ -44,12 +44,32 @@ export const placeId = (p: RecentPlace): string => {
   return `day:${p.day}`;
 };
 
+/**
+ * Per-KIND field validation (2026-07-30): the palette slices a period's
+ * `anchor` and a day's `day` at render, so a corrupted row carrying the right
+ * kind but missing its fields would throw past the JSON.parse guard.
+ */
+const validPlace = (p: unknown): p is RecentPlace => {
+  if (typeof p !== "object" || p == null) return false;
+  const r = p as Record<string, unknown>;
+  if (r.kind === "entry") return typeof r.id === "string" && typeof r.habitKey === "string";
+  if (r.kind === "habit") return typeof r.key === "string";
+  if (r.kind === "library") return typeof r.habitKey === "string";
+  if (r.kind === "period")
+    return (
+      (r.scale === "week" || r.scale === "month" || r.scale === "quarter" || r.scale === "year") &&
+      typeof r.anchor === "string"
+    );
+  if (r.kind === "day") return typeof r.day === "string";
+  return false;
+};
+
 export function readRecents(): RecentVisit[] {
   try {
     const raw = localStorage.getItem(PLACES_KEY);
     if (raw == null) return [];
     const parsed = JSON.parse(raw) as RecentVisit[];
-    return Array.isArray(parsed) ? parsed.filter((v) => v?.place?.kind != null) : [];
+    return Array.isArray(parsed) ? parsed.filter((v) => validPlace(v?.place)) : [];
   } catch {
     return [];
   }

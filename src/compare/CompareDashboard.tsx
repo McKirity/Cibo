@@ -19,6 +19,7 @@ import {
   AVG_SCOPES,
   AVG_SCOPE_MIN_DAYS,
   CHART_LABEL,
+  ENTRY_FIELD,
   buildResult,
   countUnits,
   daySets,
@@ -349,7 +350,9 @@ function BarsChart({ chart }: { chart: CmpChart }) {
       });
     } else {
       const inner = groupW * 0.78;
-      const barW = Math.min(inner / Math.max(1, vals.length) - 6, 90);
+      // Floor at 1px — past ~32 series the per-bar share drops below the 6px
+      // gap and the width would go negative (2026-07-30).
+      const barW = Math.max(1, Math.min(inner / Math.max(1, vals.length) - 6, 90));
       const span = vals.length * (barW + 6) - 6;
       vals.forEach((v, si) => {
         const h = H - y(v);
@@ -652,12 +655,22 @@ export function CompareDashboard() {
   );
 
   const applyPreset = (p: PresetCfg) => {
+    // Entry-split values whose entries were deleted resolve INCOMPLETE like a
+    // stale habit or measure would (2026-07-30): dead values drop, and an
+    // all-dead split drops whole rather than yielding raw-id series.
+    const entryIds = new Set(data.entries.map((e) => e.id));
+    const liveSplit = (s: NonNullable<PresetCfg["scopes"]>[number]["split"]) => {
+      if (s == null) return null;
+      if (s.field !== ENTRY_FIELD) return s;
+      const values = s.values.filter((v) => entryIds.has(v));
+      return values.length > 0 ? { ...s, values } : null;
+    };
     setCfg((c) => ({
       scopes:
         p.scopes != null && p.scopes.length > 0
           ? p.scopes.map((s) => ({
               habitId: data.habits.find((h) => h.key === s.habitKey)?.id ?? null,
-              split: s.split ?? null,
+              split: liveSplit(s.split ?? null),
             }))
           : c.scopes,
       measure: p.measure !== undefined ? p.measure : c.measure,
@@ -880,7 +893,13 @@ export function CompareDashboard() {
                         label="Types"
                         options={units}
                         value={pick.unit ?? null}
-                        onPick={(id) => setCfg((c) => ({ ...c, measure: { ...pick, unit: id } }))}
+                        onPick={(id) =>
+                          // derive from c.measure, never the render-scope pick —
+                          // a queued update would resurrect the stale measure (2026-07-30)
+                          setCfg((c) =>
+                            c.measure == null ? c : { ...c, measure: { ...c.measure, unit: id } },
+                          )
+                        }
                       />
                     )}
                     {pick.column === "day" && pick.family === "total" && sets.length > 1 && (
@@ -888,7 +907,11 @@ export function CompareDashboard() {
                         label="Day set"
                         options={sets}
                         value={pick.daySet ?? "active"}
-                        onPick={(id) => setCfg((c) => ({ ...c, measure: { ...pick, daySet: id } }))}
+                        onPick={(id) =>
+                          setCfg((c) =>
+                            c.measure == null ? c : { ...c, measure: { ...c.measure, daySet: id } },
+                          )
+                        }
                       />
                     )}
                     {pick.family === "average" && (
@@ -897,7 +920,11 @@ export function CompareDashboard() {
                         options={AVG_SCOPES.map((s) => ({ id: s, label: s[0].toUpperCase() + s.slice(1) }))}
                         value={pick.scope ?? null}
                         onPick={(id) =>
-                          setCfg((c) => ({ ...c, measure: { ...pick, scope: id as AvgScope } }))
+                          setCfg((c) =>
+                            c.measure == null
+                              ? c
+                              : { ...c, measure: { ...c.measure, scope: id as AvgScope } },
+                          )
                         }
                       />
                     )}
@@ -1090,17 +1117,19 @@ export function CompareDashboard() {
 
 /** Hue = identity (habit slot / categorical), window = line STYLE — never colour alone. */
 function Legend({ chart }: { chart: CmpChart }) {
+  // Structural fields, never re-parsed display labels: a window label carries
+  // " · " itself ("2024 · Jan – Dec"), so splitting on it showed two identical
+  // "Jan – Dec" entries for a year self-comparison (fixed 2026-07-30).
   const hues: { slot: string; label: string }[] = [];
   for (const s of chart.series) {
     if (hues.some((h) => h.slot === s.colourSlot)) continue;
-    hues.push({ slot: s.colourSlot, label: s.splitValue ?? s.label.split(" · ")[0] });
+    hues.push({ slot: s.colourSlot, label: s.splitValue ?? s.sourceLabel });
   }
   const windows: { idx: number; label: string }[] = [];
   if (chart.sharedAxis) {
     for (const s of chart.series) {
       if (windows.some((w) => w.idx === s.windowIdx)) continue;
-      const parts = s.label.split(" · ");
-      windows.push({ idx: s.windowIdx, label: parts[parts.length - 1] });
+      windows.push({ idx: s.windowIdx, label: s.windowLabel });
     }
   }
   const STYLES = ["solid", "dashed", "dotted"] as const;

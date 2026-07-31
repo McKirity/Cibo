@@ -110,6 +110,11 @@
 .cadash .ncell.i3{background:var(--heat-ink, var(--finalize-mark)); box-shadow:none;}
 .cadash .ncell.unf{background:var(--panel-background); box-shadow:none; border:var(--border-standard) dashed var(--finalize-outline);}
 .cadash .ncell.ghost{background:var(--window-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); opacity:.4;}
+/* Ruled 2026-07-30: gap days (finalized, nothing logged) take the monthly
+   calendar's treatment — the plain cell face, distinct from the lowest wash —
+   and future cells go faceless like the calendar's blank. */
+.cadash .ncell.gap{background:var(--panel-background);}
+.cadash .ncell.blank{background:none; box-shadow:none;}
 .cadash .ncell.blank{background:transparent; box-shadow:none;}
 
 /* --- 2 · the six stat tiles (kit-tile-stat, the cadence face) ------------- */

@@ -142,7 +142,21 @@ function HeadRow({
   onOpen: () => void;
 }) {
   return (
-    <div className={`row head ${variant}`} onClick={onToggle}>
+    // The row is the keyboard toggle (2026-07-30): the twist stays out of the
+    // tab order so the level costs one stop, not two — the door beside it is
+    // already a real button.
+    <div
+      className={`row head ${variant}`}
+      role="button"
+      tabIndex={0}
+      onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+    >
       <button className="twist" aria-label="Expand / collapse" tabIndex={-1}>
         <svg className="ico" viewBox="0 0 24 24">
           <path d="m9 18 6-6-6-6" />
@@ -315,6 +329,14 @@ function HabitNode({
           onOpen={() => nav.openEntry(e.id, habit.key)}
         />
       ))}
+      {/* an expanded habit with no entries says so (2026-07-30) — an empty
+          region reads as a render failure */}
+      {pg.total === 0 && (
+        <div className="row emptyrow">
+          <span className="leafcx" />
+          <span className="noentries">No entries yet</span>
+        </div>
+      )}
       {/* entry lists PAGINATE, NUMBERED (user-ruled 2026-07-30 ×2) — the
           library's pager face at outline scale, its pagerCells window reused
           (1-based there, 0-based here); the drawn "+ N more" disclosure row

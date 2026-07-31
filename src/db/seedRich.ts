@@ -744,6 +744,7 @@ export async function seedRich(
     const d = dayAt(off);
     const r = evolu.insert("days", { date: DateOnly.orThrow(d), finalized: 1, finalized_at: DateTimeLocal.orThrow(`${d}T23:59`), feed_snapshot: null });
     if (r.ok) ctx.counts.days++;
+    else console.error("seedRich: day insert failed", d, r.error);
   }
 
   return { ...ctx.counts, clearedFirst, spanYears, spanDays: TOTAL };

@@ -66,16 +66,20 @@ export function StatTile({ t }: { t: TileSpec }) {
       {t.unit && <span className="u">{t.unit}</span>}
     </>
   );
+  // `big` on a plain tile wears the drawn `tv sm` class (the frozen entry
+  // FINAL's First/Last-day face — heading-size, smaller than the stat value);
+  // list tiles style the same size inline above (2026-07-30).
+  const tvClass = `tv${t.big ? " sm" : ""}`;
   return (
     <div className="tile">
       <span className="tl">{t.label}</span>
       {t.delta ? (
         <div className="tvrow">
-          <span className="tv">{value}</span>
+          <span className={tvClass}>{value}</span>
           <span className={`deltachip${t.delta.down ? " down" : ""}`}>{t.delta.text}</span>
         </div>
       ) : (
-        <span className="tv">{value}</span>
+        <span className={tvClass}>{value}</span>
       )}
       {t.subtitle && <span className="ts">{t.subtitle}</span>}
     </div>
@@ -214,11 +218,13 @@ function TrendChart({
   const { ref, w, h } = useBox<SVGSVGElement>();
   const pad = 8;
   const n = line.length;
-  const X = (i: number) => pad + ((w - 2 * pad) * i) / (n - 1);
+  // A 1-bucket window has no line to draw: guard the n−1 denominator (the
+  // single point centres) and skip the paths — CreationTrend's pattern (2026-07-30).
+  const X = (i: number) => (n > 1 ? pad + ((w - 2 * pad) * i) / (n - 1) : w / 2);
   const Y = (v: number) => pad + (h - 2 * pad) * (1 - v / vmax);
   const pts = line.map((v, i) => `${X(i)},${Y(v)}`);
-  const dLine = w > 0 ? `M${pts.join("L")}` : "";
-  const dArea = w > 0 ? `${dLine}L${X(n - 1)},${h - pad}L${X(0)},${h - pad}Z` : "";
+  const dLine = w > 0 && n > 1 ? `M${pts.join("L")}` : "";
+  const dArea = w > 0 && n > 1 ? `${dLine}L${X(n - 1)},${h - pad}L${X(0)},${h - pad}Z` : "";
   const yVals = [4, 3, 2, 1, 0].map((k) => (vmax * k) / 4);
 
   return (
@@ -313,6 +319,8 @@ export function TrendPanel({
 
 // ── kit-grid-heatmap ──────────────────────────────────────────────────────────
 
+// The duration words are shared; the zero-level word is per-habit (the
+// `zeroWord` prop) — "no play" is only the Gaming/default face.
 const HEAT_WORDS = ["no play", "~45 min", "1 h 30", "3 h 10", "5 h+"];
 // By-Type cell fill: the dominant type's cat colour over the canvas at the
 // --cat-ramp complement (background share) per level (the FINAL's stops).
@@ -331,12 +339,15 @@ export function Heatmap({
   trio,
   hasTypes = false,
   legend = [],
+  zeroWord = HEAT_WORDS[0],
 }: {
   cells: HeatCell[];
   months: { col: number; label: string }[];
   trio: TileSpec[];
   hasTypes?: boolean;
   legend?: { label: string; colorVar: string }[];
+  /** The level-0 tooltip word ("no play" · "no reading" · "no watching"). */
+  zeroWord?: string;
 }) {
   const [mode, setMode] = useState<"intensity" | "bytype">("intensity");
   const byType = hasTypes && mode === "bytype";
@@ -415,7 +426,7 @@ export function Heatmap({
                   key={i}
                   className={cls}
                   style={style}
-                  title={c.day ? `${c.day} · ${HEAT_WORDS[c.level]}${typeSuffix}` : undefined}
+                  title={c.day ? `${c.day} · ${c.level > 0 ? HEAT_WORDS[c.level] : zeroWord}${typeSuffix}` : undefined}
                 />
               );
             })}

@@ -92,18 +92,37 @@ export function EntryCreationModal({
     const w = words.trim() === "" ? null : Number(words);
     if (w != null && (!Number.isInteger(w) || w < 0))
       return setErr("Words must be a non-negative integer.");
+    // A real calendar check, not shape-only: the DateOnly brand is regex-only,
+    // so "2026-02-31" would persist and poison the wave/arc derivations
+    // downstream (2026-07-30).
+    const realDate = (v: string): boolean => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+      const [y, m, d] = v.split("-").map(Number);
+      const dt = new Date(y, m - 1, d);
+      return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+    };
     for (const [label, v] of [
       ["Started", started],
       ["Completed", completed],
     ] as const) {
-      if (v !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(v))
-        return setErr(`${label} must be a date (YYYY-MM-DD).`);
+      if (v !== "" && !realDate(v)) return setErr(`${label} must be a real date (YYYY-MM-DD).`);
     }
+    if (started !== "" && completed !== "" && completed < started)
+      return setErr("Completed cannot precede Started.");
     try {
       const creators = creatorsRaw
         .split(",")
         .map((x) => x.trim())
         .filter(Boolean);
+      // Normalize the creation-field value to the vocab's own casing so the
+      // entry never stores a case-divergent twin that later reads as a
+      // phantom "· retired" value in the filters (2026-07-30).
+      const creationTrim = creationValue.trim();
+      const creationCanon =
+        data.creationField != null && creationTrim !== ""
+          ? data.creationField.vocab.find((g) => g.toLowerCase() === creationTrim.toLowerCase()) ??
+            creationTrim
+          : null;
       const res = evolu.insert("entries", {
         habit_fk: data.habitId,
         title: NonEmptyString1000.orThrow(t),
@@ -112,8 +131,8 @@ export function EntryCreationModal({
         description: synopsis.trim() === "" ? null : synopsis.trim(),
         ...(creation
           ? {
-              ...(data.creationField != null && creationValue.trim() !== ""
-                ? { [data.creationField.column]: NonEmptyString100.orThrow(creationValue.trim()) }
+              ...(data.creationField != null && creationCanon != null
+                ? { [data.creationField.column]: NonEmptyString100.orThrow(creationCanon) }
                 : {}),
               started: started === "" ? null : DateOnly.orThrow(started),
               completed: completed === "" ? null : DateOnly.orThrow(completed),
@@ -141,10 +160,16 @@ export function EntryCreationModal({
         console.error("Entry create rejected", res.error);
         return setErr("The entry could not be created — the write was rejected.");
       }
-      // Quick-add: a fandom/engine value the vocab does not carry yet joins it
-      // (the seeder's addVocab behavior — the picklists stay honest).
-      if (creation && data.creationField != null && creationValue.trim() !== "") {
-        quickAddVocab(data.creationField.definitionId, data.creationField.vocab, creationValue.trim());
+      // Quick-add: a fandom/engine/genre value the vocab does not carry yet
+      // joins it (the seeder's addVocab behavior — the picklists stay honest).
+      // ONLY after a successful create — committing at chip-add time left a
+      // permanent phantom picklist value when the modal closed without
+      // creating (2026-07-30; genre had that bug, the creation field never did).
+      if (creation && data.creationField != null && creationCanon != null) {
+        quickAddVocab(data.creationField.definitionId, data.creationField.vocab, creationCanon);
+      }
+      if (data.bundle.has("genre") && data.genreDefinitionId != null) {
+        for (const g of genres) quickAddVocab(data.genreDefinitionId, data.genreVocab, g);
       }
       onClose();
     } catch (ex) {
@@ -155,11 +180,13 @@ export function EntryCreationModal({
 
   const addGenre = (value: string) => {
     const v = value.trim();
-    if (v === "" || genres.includes(v)) return;
-    setGenres((g) => [...g, v]);
-    if (!data.genreVocab.includes(v) && data.genreDefinitionId != null) {
-      quickAddVocab(data.genreDefinitionId, data.genreVocab, v);
-    }
+    if (v === "") return;
+    // Normalize to the vocab's own casing ("puzzle" → "Puzzle") so the entry
+    // never stores a case-divergent twin; the vocab write itself waits for a
+    // successful create (see the submit path — 2026-07-30).
+    const canon = data.genreVocab.find((g) => g.toLowerCase() === v.toLowerCase()) ?? v;
+    if (genres.includes(canon)) return;
+    setGenres((g) => [...g, canon]);
   };
 
   if (!data.ready) return null;
@@ -400,7 +427,7 @@ export function EntryCreationModal({
                               .filter((v) => !genres.includes(v))
                               .map((v) => ({ key: v, label: v, onPick: () => addGenre(v) })),
                             {
-                              key: " new",
+                              key: "\u0000new",
                               label: "＋ New genre…",
                               onPick: () => setGenreNew(""),
                             },

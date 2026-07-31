@@ -317,7 +317,11 @@ export function buildCadenceModel(
         if (!d) return { cls: "ghost", tip: null, day: null }; // spilled (rides the neighbour period)
         if (d.future) return { cls: "blank", tip: null, day: null };
         if (!d.finalized) return { cls: "unf", tip: dayTips.get(day) || null, day };
-        return { cls: `i${Math.max(0, d.stage - 1)}`, tip: dayTips.get(day) || null, day };
+        // Stage 0 (finalized, nothing logged) wears the calendar's gap face,
+        // never the lowest wash — user-ruled 2026-07-30: "the ribbons should
+        // distinguish gap days".
+        if (d.stage === 0) return { cls: "gap", tip: dayTips.get(day) || null, day };
+        return { cls: `i${d.stage - 1}`, tip: dayTips.get(day) || null, day };
       });
       const next = weeks[i + 1];
       return {
@@ -798,20 +802,25 @@ function buildExpansion(
     if (rangeSessions.length > 0) {
       const beds = rangeSessions.map((s) => minOfDay(s.start!));
       const wakes = rangeSessions.map((s) => minOfDay(s.end!));
-      // The night-centric axis: 20:00 → 12:00 (16 h window)
+      // The night-centric axis: 20:00 → 12:00 (16 h window). Daytime bed/wake
+      // times (12:00–20:00) are legal — they pin to the axis edge rather than
+      // escaping the canvas (2026-07-30).
       const AXIS_START = 20 * 60, AXIS_LEN = 16 * 60;
-      const pos = (m: number) => ((((m - AXIS_START + 1440) % 1440) / AXIS_LEN) * 100);
+      const clampPct = (p: number) => Math.min(100, Math.max(0, p));
+      const pos = (m: number) => clampPct((((m - AXIS_START + 1440) % 1440) / AXIS_LEN) * 100);
       const bedAvg = circularMeanMin(beds)!;
       const wakeAvg = circularMeanMin(wakes)!;
       const bedLo = Math.min(...beds.map((b) => (b - AXIS_START + 1440) % 1440));
       const bedHi = Math.max(...beds.map((b) => (b - AXIS_START + 1440) % 1440));
       const wakeLo = Math.min(...wakes.map((b) => (b - AXIS_START + 1440) % 1440));
       const wakeHi = Math.max(...wakes.map((b) => (b - AXIS_START + 1440) % 1440));
+      const bedLeft = clampPct((bedLo / AXIS_LEN) * 100);
+      const wakeLeft = clampPct((wakeLo / AXIS_LEN) * 100);
       sleepLine = {
         bedLabel: `BED · ${fmtClock(bedLo + AXIS_START)} – ${fmtClock(bedHi + AXIS_START)} · avg ${fmtClock(bedAvg)}`,
         wakeLabel: `WAKE · ${fmtClock(wakeLo + AXIS_START)} – ${fmtClock(wakeHi + AXIS_START)} · avg ${fmtClock(wakeAvg)}`,
-        bed: { left: (bedLo / AXIS_LEN) * 100, width: Math.max(2, ((bedHi - bedLo) / AXIS_LEN) * 100), avg: pos(bedAvg) },
-        wake: { left: (wakeLo / AXIS_LEN) * 100, width: Math.max(2, ((wakeHi - wakeLo) / AXIS_LEN) * 100), avg: pos(wakeAvg) },
+        bed: { left: bedLeft, width: Math.min(100 - bedLeft, Math.max(2, ((bedHi - bedLo) / AXIS_LEN) * 100)), avg: pos(bedAvg) },
+        wake: { left: wakeLeft, width: Math.min(100 - wakeLeft, Math.max(2, ((wakeHi - wakeLo) / AXIS_LEN) * 100)), avg: pos(wakeAvg) },
         ticks: Array.from({ length: 9 }, (_, i) => ({
           left: (i / 8) * 100,
           label: fmtClock(AXIS_START + (i * AXIS_LEN) / 8),
@@ -968,6 +977,15 @@ function deriveRecords(
   return out.slice(0, 4);
 }
 
+/** The anniversary of `day` in `year` — Feb 29 clamps to Feb 28 in non-leap
+ *  years (the nearest real day; plain string surgery mints an impossible date
+ *  3 years in 4, so a leap-day wave start would never fire) (2026-07-30). */
+const anniversaryOf = (day: string, year: number): string => {
+  if (day.slice(5) !== "02-29") return `${year}${day.slice(4)}`;
+  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  return leap ? `${year}-02-29` : `${year}-02-28`;
+};
+
 function deriveAnniversaries(
   roster: CadHabit[],
   allByHabit: Map<string, CadSession[]>,
@@ -984,11 +1002,11 @@ function deriveAnniversaries(
           id: s.id, entry_fk: s.entryId, day: s.day, measure_kind: s.kind, value: s.value,
         });
     for (const [id, ss] of byEntry) {
-      const waves = wavesForEntry(ss);
+      const waves = wavesForEntry(ss, h.waveGapDays ?? 30);
       if (waves.length === 0) continue;
       const start = waves[0].start;
       for (let years = 1; years <= 10; years++) {
-        const ann = `${Number(start.slice(0, 4)) + years}${start.slice(4)}`;
+        const ann = anniversaryOf(start, Number(start.slice(0, 4)) + years);
         if (ann >= bounds.from && ann <= bounds.to) {
           out.push({
             html: `${years === 1 ? "One year" : `${years} years`} since <b>${escapeHtml(entryTitle.get(id) ?? "—")}</b> wave 1.`,
@@ -1043,11 +1061,15 @@ function deriveChurn(
           id: s.id, entry_fk: s.entryId, day: s.day, measure_kind: s.kind, value: s.value,
         });
     for (const [id, ss] of byEntry) {
-      const waves = wavesForEntry(ss).filter((w) => w.start.slice(0, 4) === y && w.days >= 20);
-      for (const [i, w] of waves.entries()) {
+      // Number waves BEFORE filtering so the label names the entry's real wave
+      // number, not its index in the in-year ≥20-day subset (2026-07-30).
+      const waves = wavesForEntry(ss, h.waveGapDays ?? 30)
+        .map((w, i) => ({ w, n: i + 1 }))
+        .filter(({ w }) => w.start.slice(0, 4) === y && w.days >= 20);
+      for (const { w, n } of waves) {
         const title = data.entries.find((e) => e.id === id)?.title ?? "—";
         out.push({
-          html: `<b>${escapeHtml(title)}</b> wave ${i + 1} — <b>${MONTH_ABBR[Number(w.start.slice(5, 7)) - 1]} – ${MONTH_ABBR[Number(w.end.slice(5, 7)) - 1]}</b>.`,
+          html: `<b>${escapeHtml(title)}</b> wave ${n} — <b>${MONTH_ABBR[Number(w.start.slice(5, 7)) - 1]} – ${MONTH_ABBR[Number(w.end.slice(5, 7)) - 1]}</b>.`,
         });
         break; // one per entry
       }

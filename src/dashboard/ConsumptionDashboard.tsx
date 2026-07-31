@@ -21,6 +21,7 @@ import {
   StatGroup,
   TrendPanel,
 } from "./kit";
+import { EntryCreationModal } from "../library/EntryCreationModal";
 import "../dashboard.css";
 import "./screen.css";
 
@@ -31,6 +32,14 @@ const todayLocal = (): string => {
 };
 
 const HEAT_CLASS: Record<string, string> = { HOT: "hot", WARM: "warm", COOLING: "warm", COLD: "cold" };
+
+// Zero-level heat word is per-habit — Reading reads, Media watches, the rest
+// play (the entrySpec wave-verb mapping, mirrored 2026-07-30). The duration
+// words stay shared.
+const HEAT_ZERO_WORD: Record<string, string> = {
+  reading: "no reading",
+  media: "no watching",
+};
 
 export function ConsumptionDashboard({
   habitKey,
@@ -47,6 +56,9 @@ export function ConsumptionDashboard({
   const [today] = useState(todayLocal);
   const [scope, setScope] = useState<ScopeSel>({ kind: "all" });
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  // The empty state's "Add entries" door — the creation modal summoned from
+  // this dashboard, the CreationDashboard pattern (2026-07-30).
+  const [creationOpen, setCreationOpen] = useState(false);
 
   const { model, ms } = useMemo(() => {
     const t0 = performance.now();
@@ -81,7 +93,7 @@ export function ConsumptionDashboard({
       </div>
 
       {m.masthead.empty ? (
-        <EmptyState name={m.masthead.name} />
+        <EmptyState name={m.masthead.name} onAddEntries={() => setCreationOpen(true)} />
       ) : (
         <div className="gs">
           {/* ── Masthead ── */}
@@ -249,15 +261,27 @@ export function ConsumptionDashboard({
               trio={m.heatmap.trio}
               hasTypes={m.heatmap.hasTypes}
               legend={m.heatmap.legend}
+              zeroWord={HEAT_ZERO_WORD[habitKey]}
             />
           </div>
         </div>
+      )}
+
+      {creationOpen && (
+        <EntryCreationModal
+          habitKey={habitKey}
+          onClose={() => setCreationOpen(false)}
+          onOpenEntry={(id) => {
+            setCreationOpen(false);
+            onOpenEntry?.(id);
+          }}
+        />
       )}
     </div>
   );
 }
 
-function EmptyState({ name }: { name: string }) {
+function EmptyState({ name, onAddEntries }: { name: string; onAddEntries?: () => void }) {
   return (
     <div className="gs-empty" style={{ display: "block" }}>
       <div className="emptybox gen">
@@ -266,10 +290,12 @@ function EmptyState({ name }: { name: string }) {
           {name} has no sessions yet — log one, run an import, or set an icon to bring this
           dashboard to life.
         </div>
+        {/* Honest doors (2026-07-30): only entry creation exists yet — the
+            importers are step 8's, the icon picker step 10's. */}
         <div className="edoors">
-          <button className="btn-accent" type="button">Add entries</button>
-          <button className="btn-plain" type="button">Run an import</button>
-          <button className="btn-plain" type="button">Set an icon</button>
+          <button className="btn-accent" type="button" onClick={onAddEntries}>Add entries</button>
+          <button className="btn-plain" type="button" disabled title="The importers arrive at step 8">Run an import</button>
+          <button className="btn-plain" type="button" disabled title="The icon picker arrives with Settings (step 10)">Set an icon</button>
         </div>
       </div>
     </div>

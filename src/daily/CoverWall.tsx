@@ -23,7 +23,8 @@
  * applied to a text card — and the exhibit recorded that hand-assigning the
  * spans was wrong twice in two attempts, so they are computed here.
  */
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { dayRevision } from "./spineSpec";
 import {
   buildWall,
   toPackInputs,
@@ -48,6 +49,7 @@ import { displayTemp, weatherWords } from "./feedData";
 import { holidayFor, factFor, onThisDay, quoteFor, signGlyph, timeProgress, wordFor } from "./almanac";
 import { moonDiscPaths, moonInfo, seasonBand, seasonInfo, sunInfo } from "./sky";
 import { loadWhimsyConfig } from "./whimsyConfig";
+import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { hoursMinutes } from "../metrics/format";
 import "./daily.css";
 
@@ -77,8 +79,8 @@ export function CoverWall({
 }) {
   const data = useWallData(dayKey);
   const revision = useMemo(
-    () => data.sessions.map((s) => `${s.id}:${s.value}:${s.start}:${s.end}`).join("|"),
-    [data.sessions],
+    () => dayRevision(data.sessions, data.cats),
+    [data.sessions, data.cats],
   );
   const milestones = useMilestoneDay(dayKey, revision);
   const [config] = useState(loadWhimsyConfig);
@@ -401,22 +403,6 @@ function TileBody({
 
 // ── Habit tiles ──────────────────────────────────────────────────────────────
 
-const GLYPH_PATHS: Record<string, string[]> = {
-  gaming: [
-    "M6 11h4", "M8 9v4", "M15 12h.01", "M18 10h.01",
-    "M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.544-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z",
-  ],
-  reading: [
-    "M12 7v14",
-    "M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z",
-  ],
-  media: [
-    "M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z",
-    "m6.2 5.3 3.1 3.9", "m12.4 3.4 3.1 4",
-    "M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z",
-  ],
-};
-
 function Cover({ t }: { t: CoverTile }) {
   // Square-source entries render square — shape follows content.
   if (t.square)
@@ -445,13 +431,9 @@ function Cover({ t }: { t: CoverTile }) {
         />
       )}
       <span className="kind">{t.eyebrow}</span>
-      {t.glyph != null && (
+      {hasIcon(t.icon) && (
         <span className="glyph">
-          <svg className="ico" viewBox="0 0 24 24">
-            {GLYPH_PATHS[t.glyph].map((d, i) => (
-              <path key={i} d={d} />
-            ))}
-          </svg>
+          <HabitIcon icon={t.icon} />
         </span>
       )}
       <div className="ttl">{t.title}</div>
@@ -691,11 +673,14 @@ function Whimsy({
       const month = new Intl.DateTimeFormat(undefined, { month: "short" }).format(
         new Date(`${dayKey}T12:00:00`),
       );
+      // Tinted by the holiday's ACTUAL month (user-ruled 2026-07-30) — the
+      // frozen --month-jun was the FINAL's sample month, not a rule.
+      const monthVar = MONTH_VARS[Number(dayKey.slice(5, 7)) - 1];
       return (
         <>
           <span className="wl">Holiday</span>
           <div className="body">
-            <div className="dt">
+            <div className="dt" style={{ "--c": `var(${monthVar})` } as CSSProperties}>
               <span className="d">{Number(dayKey.slice(8, 10))}</span>
               <span className="mon">{month}</span>
             </div>

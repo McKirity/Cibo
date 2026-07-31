@@ -63,7 +63,8 @@ export interface CoverTile {
   rating: number | null;
   entryId: string;
   habitKey: string | null;
-  glyph: "gaming" | "reading" | "media" | null;
+  /** The habit's stored lucide name (`habits.icon`) — the cover's corner glyph. */
+  icon: string | null;
 }
 
 export interface BannerTile {
@@ -259,6 +260,7 @@ export interface WallHabit {
   kind: "project" | "simple" | "range";
   sub_type: "consumption" | "creation" | null;
   colour_slot: string;
+  icon: string | null;
   measures_time: boolean;
   measures_count: boolean;
   count_unit: string | null;
@@ -312,12 +314,6 @@ const minutesOf = (s: WallSession): number => {
   if (s.measure_kind === "range" && s.start != null && s.end != null)
     return Math.max(0, Math.round((Date.parse(s.end) - Date.parse(s.start)) / 60_000));
   return 0;
-};
-
-const GLYPH_BY_KEY: Record<string, CoverTile["glyph"]> = {
-  gaming: "gaming",
-  reading: "reading",
-  media: "media",
 };
 
 /** Family names, in the order the day's cards are built. */
@@ -445,7 +441,7 @@ export function buildWall(input: WallInput): WallTile[] {
             rating: entry.rating,
             entryId,
             habitKey: habit.key,
-            glyph: habit.key != null ? (GLYPH_BY_KEY[habit.key] ?? null) : null,
+            icon: habit.icon,
           },
         });
       }

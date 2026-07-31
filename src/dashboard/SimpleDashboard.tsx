@@ -331,9 +331,11 @@ function EmptyState({ name }: { name: string }) {
           {name}'s stats appear here once it has sessions — streaks, days, and the heatmap all build
           from what you log. One door fills this dashboard:
         </div>
+        {/* Honest doors (2026-07-30): logging lives on the Daily screen and no
+            navigation is threaded here; the icon picker is step 10's. */}
         <div className="edoors">
-          <button className="btn-accent" type="button">Log a session</button>
-          <button className="btn-plain" type="button">Set an icon</button>
+          <button className="btn-accent" type="button" disabled title="Log sessions from the Daily screen (Ctrl+Home)">Log a session</button>
+          <button className="btn-plain" type="button" disabled title="The icon picker arrives with Settings (step 10)">Set an icon</button>
         </div>
       </div>
     </div>

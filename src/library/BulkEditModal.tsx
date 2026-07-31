@@ -119,8 +119,7 @@ export function BulkEditModal({ habitKey, onClose }: { habitKey: string; onClose
             ? applyGenreLanes(e.genre, fields.genreAdd, fields.genreRemove)
             : null;
         const patch: Record<string, unknown> = {};
-        if (fields.status !== undefined && fields.status != null)
-          patch.status = NonEmptyString100.orThrow(fields.status);
+        if (fields.status !== undefined) patch.status = NonEmptyString100.orThrow(fields.status);
         if (fields.priority !== undefined) patch.priority = NonNegativeInt.orThrow(fields.priority);
         if (fields.type !== undefined) patch.type = NonEmptyString100.orThrow(fields.type);
         if (fields.purchased !== undefined) patch.purchased = fields.purchased ? 1 : 0;
@@ -388,26 +387,33 @@ export function BulkEditModal({ habitKey, onClose }: { habitKey: string; onClose
             </div>
           </div>
 
-          {/* the compact field rail — every field defaults "no change" */}
+          {/* the compact field rail — every field defaults "no change"; each
+              block gates on the habit's entry_attributes bundle, the creation
+              modal's pattern (2026-07-30) — a field the habit doesn't carry
+              can't be bulk-written either */}
           <div className="rail2">
-            <FieldBlock
-              name="Status"
-              value={fields.status ?? undefined}
-              options={data.statusVocab.map((v) => ({ label: v, value: v }))}
-              onPick={(v) => setFields((f) => ({ ...f, status: v as string | undefined }))}
-            />
-            <FieldBlock
-              name="Priority"
-              value={
-                fields.priority === undefined
-                  ? undefined
-                  : fields.priority === 0
-                    ? "None (0)"
-                    : String(fields.priority)
-              }
-              options={[0, 1, 2, 3].map((p) => ({ label: p === 0 ? "None (0)" : String(p), value: p }))}
-              onPick={(v) => setFields((f) => ({ ...f, priority: v as number | undefined }))}
-            />
+            {data.bundle.has("status") && (
+              <FieldBlock
+                name="Status"
+                value={fields.status}
+                options={data.statusVocab.map((v) => ({ label: v, value: v }))}
+                onPick={(v) => setFields((f) => ({ ...f, status: v as string | undefined }))}
+              />
+            )}
+            {data.bundle.has("priority") && (
+              <FieldBlock
+                name="Priority"
+                value={
+                  fields.priority === undefined
+                    ? undefined
+                    : fields.priority === 0
+                      ? "None (0)"
+                      : String(fields.priority)
+                }
+                options={[0, 1, 2, 3].map((p) => ({ label: p === 0 ? "None (0)" : String(p), value: p }))}
+                onPick={(v) => setFields((f) => ({ ...f, priority: v as number | undefined }))}
+              />
+            )}
             {/* Type ABSENT (not dashed) where no type is declared — user-ruled 2026-07-27 */}
             {hasType && (
               <FieldBlock
@@ -417,38 +423,44 @@ export function BulkEditModal({ habitKey, onClose }: { habitKey: string; onClose
                 onPick={(v) => setFields((f) => ({ ...f, type: v as string | undefined }))}
               />
             )}
-            <GenreLanes
-              vocab={data.genreVocab}
-              add={fields.genreAdd}
-              remove={fields.genreRemove}
-              onChange={(add, remove) => setFields((f) => ({ ...f, genreAdd: add, genreRemove: remove }))}
-            />
-            <FieldBlock
-              name="Purchased"
-              value={
-                fields.purchased === undefined ? undefined : fields.purchased ? "Owned ✓" : "Not owned"
-              }
-              options={[
-                { label: "Owned ✓", value: true },
-                { label: "Not owned", value: false },
-              ]}
-              onPick={(v) => setFields((f) => ({ ...f, purchased: v as boolean | undefined }))}
-            />
-            <FieldBlock
-              name="Rating"
-              value={
-                fields.rating === undefined
-                  ? undefined
-                  : fields.rating == null
-                    ? "Clear rating"
-                    : stars(fields.rating)
-              }
-              options={[
-                ...[5, 4, 3, 2, 1].map((r) => ({ label: stars(r), value: r })),
-                { label: "Clear rating", value: null },
-              ]}
-              onPick={(v) => setFields((f) => ({ ...f, rating: v as number | null | undefined }))}
-            />
+            {data.bundle.has("genre") && (
+              <GenreLanes
+                vocab={data.genreVocab}
+                add={fields.genreAdd}
+                remove={fields.genreRemove}
+                onChange={(add, remove) => setFields((f) => ({ ...f, genreAdd: add, genreRemove: remove }))}
+              />
+            )}
+            {data.bundle.has("purchased") && (
+              <FieldBlock
+                name="Purchased"
+                value={
+                  fields.purchased === undefined ? undefined : fields.purchased ? "Owned ✓" : "Not owned"
+                }
+                options={[
+                  { label: "Owned ✓", value: true },
+                  { label: "Not owned", value: false },
+                ]}
+                onPick={(v) => setFields((f) => ({ ...f, purchased: v as boolean | undefined }))}
+              />
+            )}
+            {data.bundle.has("rating") && (
+              <FieldBlock
+                name="Rating"
+                value={
+                  fields.rating === undefined
+                    ? undefined
+                    : fields.rating == null
+                      ? "Clear rating"
+                      : stars(fields.rating)
+                }
+                options={[
+                  ...[5, 4, 3, 2, 1].map((r) => ({ label: stars(r), value: r })),
+                  { label: "Clear rating", value: null },
+                ]}
+                onPick={(v) => setFields((f) => ({ ...f, rating: v as number | null | undefined }))}
+              />
+            )}
 
             <div className="applyrow">
               <button className="btn-accent" disabled={!canApply} onClick={apply}>

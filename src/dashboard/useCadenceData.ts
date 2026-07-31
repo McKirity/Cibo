@@ -17,6 +17,7 @@ const habitsQuery = evolu.createQuery((db) =>
     .select([
       "id", "key", "name", "kind", "sub_type", "colour_slot", "archived",
       "measures_time", "measures_count", "count_unit", "derived_rules", "sort_order",
+      "wave_gap_days",
     ])
     .where("isDeleted", "is not", 1)
     .orderBy("sort_order"),
@@ -72,6 +73,9 @@ export interface CadHabit {
   countUnit: string | null;
   derivedRules: string | null; // raw JSON (range rules-as-data)
   sortOrder: number;
+  /** Per-habit wave-gap override (null = the 30-day default) — the review's
+   *  anniversaries/churn must cluster the same waves the entry dashboard does. */
+  waveGapDays: number | null;
 }
 
 export interface CadSession {
@@ -133,6 +137,7 @@ export function useCadenceData(): CadenceData {
           countUnit: (h.count_unit as string | null) ?? null,
           derivedRules: (h.derived_rules as string | null) ?? null,
           sortOrder: (h.sort_order as number) ?? 0,
+          waveGapDays: (h.wave_gap_days as number | null) ?? null,
         })),
     [habitRows],
   );

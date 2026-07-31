@@ -193,7 +193,32 @@ const catSignature = (m: SubunitMap): string =>
   Object.keys(m)
     .sort()
     .map((k) => `${k}=${m[k]}`)
-    .join("");
+    .join("\u0001");
+
+/**
+ * Day-revision hash — "did today's rows change" for the milestone snapshot
+ * (useMilestoneDay). ONE builder for both tenants (Spine banner · CoverWall).
+ * Widened 2026-07-30: the original id:value:start:end hash was blind to edits
+ * that change only a row's categoricals or entry — exactly the finer-subject
+ * set (Sleep's Med flag · Keyboard's board · a bout's entry re-point), so the
+ * banner stayed stale on precisely the milestones those subjects feed.
+ */
+export const dayRevision = (
+  sessions: ReadonlyArray<{
+    id: string;
+    value: number | null;
+    start: string | null;
+    end: string | null;
+    entry_fk: string | null;
+  }>,
+  cats: ReadonlyMap<string, SubunitMap>,
+): string =>
+  sessions
+    .map(
+      (s) =>
+        `${s.id}:${s.value}:${s.start}:${s.end}:${s.entry_fk ?? ""}:${catSignature(cats.get(s.id) ?? {})}`,
+    )
+    .join("|");
 
 /**
  * Regroup a habit's rows for one day into BOUTS. Rows pair up when they share
@@ -214,7 +239,7 @@ export const groupBouts = (
 
   for (const r of ordered) {
     const cats = catsBySession.get(r.id) ?? {};
-    const sig = `${r.entry_fk ?? ""} ${catSignature(cats)}`;
+    const sig = `${r.entry_fk ?? ""}\u0000${catSignature(cats)}`;
     const slot: keyof Pick<Bout, "time" | "count" | "range" | "none"> =
       r.measure_kind === "time"
         ? "time"

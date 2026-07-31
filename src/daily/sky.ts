@@ -311,7 +311,9 @@ export function seasonInfo(dayKey: string, lat: number): SeasonInfo {
     progress: span > 0 ? Math.min(1, Math.max(0, through / span)) : 0,
     nextName: southern ? flip[nextNorth] : nextNorth,
     daysToNext: Math.max(0, Math.ceil((endMark.at.getTime() - d.getTime()) / DAY_MS)),
-    dayIndex: Math.floor(through / DAY_MS) + 1,
+    // round, not floor: the span crosses DST changes, so the diff is ±1h off
+    // a whole day for part of the year (almanac.dayOfYear's fix, same class).
+    dayIndex: Math.round(through / DAY_MS) + 1,
     length,
     northern: north,
   };

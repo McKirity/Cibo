@@ -155,22 +155,25 @@ export const filterEntries = (entries: LibEntry[], f: LibraryFilterInput): LibEn
 
 const byTitle = (a: LibEntry, b: LibEntry) => a.title.localeCompare(b.title);
 
-/** Each key's NATURAL direction (recent/rating/hours/priority read best-first). */
-const comparators: Record<SortKey, (a: LibEntry, b: LibEntry) => number> = {
-  recent: (a, b) => (b.lastDay ?? "").localeCompare(a.lastDay ?? "") || byTitle(a, b),
+/** Each key's PRIMARY comparison in its NATURAL direction (recent/rating/
+ * hours/priority read best-first). Title tiebreaks live in `sortEntries`. */
+const primaryComparators: Record<SortKey, (a: LibEntry, b: LibEntry) => number> = {
+  recent: (a, b) => (b.lastDay ?? "").localeCompare(a.lastDay ?? ""),
   title: byTitle,
   creator: (a, b) =>
-    (a.creators[0] ?? a.studios[0] ?? "~").localeCompare(b.creators[0] ?? b.studios[0] ?? "~") ||
-    byTitle(a, b),
-  rating: (a, b) => (b.rating ?? 0) - (a.rating ?? 0) || byTitle(a, b),
-  hours: (a, b) => b.hours - a.hours || byTitle(a, b),
-  priority: (a, b) => (b.priority ?? 0) - (a.priority ?? 0) || byTitle(a, b),
-  status: (a, b) => (a.status ?? "~").localeCompare(b.status ?? "~") || byTitle(a, b),
+    (a.creators[0] ?? a.studios[0] ?? "~").localeCompare(b.creators[0] ?? b.studios[0] ?? "~"),
+  rating: (a, b) => (b.rating ?? 0) - (a.rating ?? 0),
+  hours: (a, b) => b.hours - a.hours,
+  priority: (a, b) => (b.priority ?? 0) - (a.priority ?? 0),
+  status: (a, b) => (a.status ?? "~").localeCompare(b.status ?? "~"),
 };
 
 export const sortEntries = (entries: LibEntry[], sort: SortKey, flipped: boolean): LibEntry[] => {
-  const sorted = [...entries].sort(comparators[sort]);
-  return flipped ? sorted.reverse() : sorted;
+  // The flip applies to the PRIMARY key only — the title tiebreak stays
+  // ascending (a whole-array reverse read titles Z→A within equal ratings;
+  // 2026-07-30).
+  const dir = flipped ? -1 : 1;
+  return [...entries].sort((a, b) => dir * primaryComparators[sort](a, b) || byTitle(a, b));
 };
 
 // ── Pagination (9×2 bounds RENDERING VOLUME, not height) ─────────────────────
@@ -218,22 +221,29 @@ export const pagerCells = (page: number, pageCount: number): (number | "…")[] 
 // ── Status pills — the categorical palette, always carrying the word ─────────
 
 /**
- * The five anchors wear the FINAL's drawn assignment; user-added statuses take
- * the remaining palette in vocab order, cycling. Returns the `--cat-N` dial
- * name — use-sites color-mix it per the tint rule, never a literal.
+ * The five anchors wear the DASHBOARDS' assignment (specShared.STATUS_CAT) —
+ * user-ruled 2026-07-30, "follow what the dashboards say": this file's drawn
+ * library map (Current 1 · Finished 2 · Planned 3 · Hiatus 4 · Dropped 8)
+ * disagreed with the dashboards' drawn map, both citing FINAL fidelity, and
+ * the same status pill wore two colours across screens. User-added statuses
+ * take the remaining palette in vocab order, cycling. Returns the `--cat-N`
+ * dial name — use-sites color-mix it per the tint rule, never a literal.
  */
 export const statusCatVar = (status: string, statusVocab: string[]): string => {
-  const anchored: Record<string, number> = {
-    Current: 1,
-    Finished: 2,
-    Planned: 3,
-    Hiatus: 4,
-    Dropped: 8,
-  };
-  const a = anchored[status];
+  // A Map, not a bare object — a user-added status named "constructor" must
+  // not resolve to an inherited prototype member (2026-07-30).
+  const anchored = new Map<string, number>([
+    ["Current", 2],
+    ["Finished", 4],
+    ["Dropped", 6],
+    ["Planned", 3],
+    ["Hiatus", 8],
+  ]);
+  const a = anchored.get(status);
   if (a != null) return `--cat-${a}`;
-  const extras = statusVocab.filter((v) => anchored[v] == null);
-  const free = [5, 6, 7, 1, 2, 3, 4, 8];
+  const extras = statusVocab.filter((v) => !anchored.has(v));
+  // The slots the anchors leave free, then the full cycle.
+  const free = [1, 5, 7, 2, 3, 4, 6, 8];
   const i = Math.max(0, extras.indexOf(status));
   return `--cat-${free[i % free.length]}`;
 };
@@ -257,6 +267,23 @@ export const genreFilterOptions = (
   return [
     ...vocab.map((g) => ({ label: g, value: g })),
     ...retired.map((g) => ({ label: `${g} · retired`, value: g })),
+  ];
+};
+
+/**
+ * Type filter options — genre's data-minus-vocab retired derivation, applied
+ * to the entry-level Medium (2026-07-30): a type only the data still carries
+ * stays filterable, "· retired"-marked.
+ */
+export const typeFilterOptions = (
+  entries: LibEntry[],
+  vocab: string[],
+): { label: string; value: string }[] => {
+  const used = new Set(entries.flatMap((e) => (e.type != null ? [e.type] : [])));
+  const retired = [...used].filter((t) => !vocab.includes(t)).sort();
+  return [
+    ...vocab.map((t) => ({ label: t, value: t })),
+    ...retired.map((t) => ({ label: `${t} · retired`, value: t })),
   ];
 };
 
@@ -311,9 +338,11 @@ export const coverAbbr = (title: string): string =>
 
 // ── Bulk edit — the six-field payload + the genre lanes ──────────────────────
 
-/** Every field defaults "no change" (undefined = leave the column untouched). */
+/** Every field defaults "no change" (undefined = leave the column untouched).
+ * Only rating carries a null arm (its one drawn Clear) — status has no Clear,
+ * so its type stops advertising one (2026-07-30). */
 export interface BulkFieldState {
-  status?: string | null;
+  status?: string;
   priority?: number;
   type?: string;
   genreAdd: string[];
@@ -358,16 +387,18 @@ export type PickerSortKey = "title" | "status" | "rating" | "priority" | "type" 
 
 /** The exhibit's lifecycle order; user-added statuses land after the anchors,
  * alphabetically among themselves. */
-const STATUS_LIFECYCLE: Record<string, number> = {
-  Current: 0,
-  Hiatus: 1,
-  Planned: 2,
-  Finished: 3,
-  Dropped: 4,
-};
+// A Map, not a bare object — a user-added status named "constructor" must
+// not resolve to an inherited prototype member (2026-07-30).
+const STATUS_LIFECYCLE = new Map<string, number>([
+  ["Current", 0],
+  ["Hiatus", 1],
+  ["Planned", 2],
+  ["Finished", 3],
+  ["Dropped", 4],
+]);
 
 export const statusLifecycleRank = (status: string | null): number =>
-  status == null ? 99 : STATUS_LIFECYCLE[status] ?? 50;
+  status == null ? 99 : STATUS_LIFECYCLE.get(status) ?? 50;
 
 const pickerKey = (e: LibEntry, k: PickerSortKey): number | string => {
   switch (k) {
@@ -399,10 +430,12 @@ export const sortPickerRows = (
   return [...entries].sort((x, y) => {
     const a = pickerKey(x, key);
     const b = pickerKey(y, key);
-    let c = a < b ? -1 : a > b ? 1 : 0;
+    // `dir` applies to the PRIMARY comparison only — the tiebreaks stay
+    // ascending regardless of the flip (2026-07-30).
+    let c = (a < b ? -1 : a > b ? 1 : 0) * dir;
     if (c === 0 && key === "status") c = (x.status ?? "").localeCompare(y.status ?? "");
     if (c === 0) c = x.title.localeCompare(y.title);
-    return c * dir;
+    return c;
   });
 };
 

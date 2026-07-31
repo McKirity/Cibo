@@ -72,7 +72,11 @@ export function DangerConfirm({
           </div>
           <p>{body}</p>
           <div className="confirm-actions">
-            <button className="btn-danger filled" onClick={onConfirm} autoFocus>
+            {/* Cancel holds the default focus (2026-07-30): with autoFocus on
+                the destructive button, Alt+F4 followed by a reflexive Enter
+                discarded every accumulator. Build-side markup, not drawn —
+                the convention for irreversible actions is safe-by-default. */}
+            <button className="btn-danger filled" onClick={onConfirm}>
               <svg className="ico" viewBox="0 0 24 24">
                 <path d="M3 6h18" />
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
@@ -80,7 +84,7 @@ export function DangerConfirm({
               </svg>
               {confirmLabel}
             </button>
-            <button className="btn-plain" onClick={onCancel}>
+            <button className="btn-plain" onClick={onCancel} autoFocus>
               Cancel
             </button>
             <span className="escnote">Esc closes the top overlay only</span>

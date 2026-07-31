@@ -76,6 +76,20 @@ const doy = (day: string): number => {
  *  week-year variant lives in `dates.isoWeek`; this is its number half. */
 export const isoWeekNum = (day: string): number => isoWeek(day).week;
 
+/**
+ * Majority-owned ISO week numbers for [from, to] — a week belongs to the
+ * period holding its THURSDAY (the ratified week-majority geometry). Fixed
+ * 2026-07-30: the headers used the endpoints' own ISO weeks, which at year
+ * edges read "weeks 1–1" (Dec 31 2024 is week 1 of 2025) and claimed weeks a
+ * month does not own.
+ */
+const ownedWeekNums = (from: string, to: string): { first: number; last: number } => {
+  const thuOfWeek = (day: string): string => dayFromIndex(dayIndex(weekStart(day)) + 3);
+  const firstThu = thuOfWeek(from) >= from ? thuOfWeek(from) : dayFromIndex(dayIndex(thuOfWeek(from)) + 7);
+  const lastThu = thuOfWeek(to) <= to ? thuOfWeek(to) : dayFromIndex(dayIndex(thuOfWeek(to)) - 7);
+  return { first: isoWeekNum(firstThu), last: isoWeekNum(lastThu) };
+};
+
 export const quarterOf = (day: string): number =>
   Math.floor((Number(day.slice(5, 7)) - 1) / 3) + 1;
 
@@ -90,7 +104,9 @@ export function periodBounds(scale: CadenceScale, anchor: string): PeriodBounds 
   if (scale === "week") {
     from = weekStart(anchor);
     to = dayFromIndex(dayIndex(from) + 6);
-    label = `Week ${isoWeekNum(anchor)} · ${from.slice(0, 4)}`;
+    // The ISO week-YEAR, not the week-start's calendar year — the week of Mon
+    // 2024-12-30 is "Week 1 · 2025", never "Week 1 · 2024" (fixed 2026-07-30).
+    label = `Week ${isoWeekNum(anchor)} · ${isoWeek(anchor).year}`;
     prevAnchor = dayFromIndex(dayIndex(from) - 7);
     nextAnchor = dayFromIndex(dayIndex(from) + 7);
     up.push(
@@ -121,12 +137,15 @@ export function periodBounds(scale: CadenceScale, anchor: string): PeriodBounds 
     to = `${y}-12-31`;
     label = String(y);
     prevAnchor = `${y - 1}-06-15`;
-    nextAnchor = `${y + 1}-06-15`;
+    // The neighbour's FIRST day, not its middle: `nextDead` compares this
+    // anchor against today, and a mid-year anchor deadened the door to the
+    // current year until June (fixed 2026-07-30).
+    nextAnchor = `${y + 1}-01-01`;
   }
 
   return {
     scale, from, to, label,
-    weekNums: { first: isoWeekNum(from), last: isoWeekNum(to) },
+    weekNums: ownedWeekNums(from, to),
     dayOfYear: { first: doy(from), last: doy(to) },
     prevAnchor, nextAnchor, upAnchors: up,
   };

@@ -161,18 +161,21 @@ export function useAutosave(
    * inside a queued write.
    */
   afterFlush?: () => void,
-): { flushNow: () => void; pending: number } {
+): { flushNow: () => boolean; pending: number } {
   const [pending, setPending] = useState(pendingCount());
 
   useEffect(() => subscribePending(setPending), []);
 
-  const flushNow = useCallback(() => {
+  // Returns whether every buffered write landed — Finalize gates on it
+  // (user-ruled 2026-07-30: a failed flush blocks the seal).
+  const flushNow = useCallback((): boolean => {
     const had = pendingCount() > 0;
     const res = flushWrites();
     if (!res.ok) onError(res.reason);
     // A tick, on purpose: Evolu batches mutations in a microtask, so a query
     // sent inside this one would be sent BEFORE the batch reached the worker.
     if (had && afterFlush) setTimeout(afterFlush, 0);
+    return res.ok;
   }, [onError, afterFlush]);
 
   useEffect(() => {
@@ -191,8 +194,11 @@ export function useAutosave(
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("beforeunload", onUnload);
       // Unmounting the form is leaving it: navigating away from Daily must not
-      // be a way to lose the day's work.
-      flushWrites();
+      // be a way to lose the day's work. Through flushNow (not bare
+      // flushWrites) so a failure still reaches the error toast and the
+      // Keyboard→Writing derive sync still runs — both are store-level, so
+      // firing after unmount is safe.
+      flushNow();
     };
   }, [minutes, flushNow]);
 

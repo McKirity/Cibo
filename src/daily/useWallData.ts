@@ -22,7 +22,7 @@ const habitsQuery = evolu.createQuery((db) =>
   db
     .selectFrom("habits")
     .select([
-      "id", "key", "name", "kind", "sub_type", "colour_slot",
+      "id", "key", "name", "kind", "sub_type", "colour_slot", "icon",
       "measures_time", "measures_count", "count_unit",
       "keepsake_snippet", "derived_rules", "sort_order",
     ])
@@ -124,6 +124,7 @@ export function useWallData(dayKey: string): WallData {
             kind: h.kind as WallHabit["kind"],
             sub_type: (h.sub_type as WallHabit["sub_type"]) ?? null,
             colour_slot: (h.colour_slot as string) ?? "habit-1",
+            icon: (h.icon as string | null) ?? null,
             measures_time: h.measures_time === 1,
             measures_count: h.measures_count === 1,
             count_unit: (h.count_unit as string | null) ?? null,

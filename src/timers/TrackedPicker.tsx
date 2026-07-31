@@ -25,7 +25,7 @@ import { NonEmptyString100, NonEmptyString1000 } from "@evolu/common";
 import { evolu } from "../db/evolu";
 import { entryAttributesFromJson } from "../db/schema";
 import { takenUnits, type TrackedItem } from "./timerCore";
-import { getTimerState } from "./timerStore";
+import { useTimers } from "./timerStore";
 
 const habitsQuery = evolu.createQuery((db) =>
   db
@@ -158,7 +158,9 @@ export function TrackedPicker({
     return m;
   }, [entries]);
 
-  const taken = takenUnits(getTimerState().clocks);
+  // Subscribed, not a snapshot — the rows must re-close when clocks change.
+  const { clocks } = useTimers();
+  const taken = takenUnits(clocks);
 
   const toggleRow = (habitId: string, isProject: boolean) => {
     const cur = selection[habitId];

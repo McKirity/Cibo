@@ -52,9 +52,15 @@ export function TooltipLayer() {
 
     document.addEventListener("mouseover", onOver);
     document.addEventListener("mouseout", onOut);
+    // A tipped element removed from the DOM while hovered (the Map's pager
+    // rows) fires no matching mouseout — any click or scroll clears the tip.
+    window.addEventListener("click", hide, true);
+    window.addEventListener("scroll", hide, true);
     return () => {
       document.removeEventListener("mouseover", onOver);
       document.removeEventListener("mouseout", onOut);
+      window.removeEventListener("click", hide, true);
+      window.removeEventListener("scroll", hide, true);
     };
   }, []);
 

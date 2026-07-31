@@ -94,6 +94,24 @@ const ENTRY_KINDS: { kind: EntryCond["kind"]; label: string; make: () => EntryCo
   { kind: "totalTime", label: "Total time", make: () => ({ kind: "totalTime", op: ">=", hours: 10 }) },
 ];
 
+// ── Row identity ─────────────────────────────────────────────────────────────
+
+/**
+ * Condition rows KEY by a stable per-row id — index keys migrate a removed
+ * row's open-popover state onto its neighbour (2026-07-30). UI-only: presets
+ * store the verbatim form, so the id is stripped at save and re-minted at
+ * apply (a stored counter would collide with the live one).
+ */
+type IdCond<C> = C & { id: number };
+let nextCondId = 1;
+const withId = <C extends DayCond | EntryCond>(c: C): IdCond<C> =>
+  ({ ...c, id: nextCondId++ }) as IdCond<C>;
+const stripId = <C extends DayCond | EntryCond>(c: IdCond<C>): C => {
+  const copy = { ...c };
+  delete (copy as { id?: number }).id;
+  return copy as C;
+};
+
 export function AdvancedSearch({
   data,
   today,
@@ -110,8 +128,8 @@ export function AdvancedSearch({
   const [target, setTarget] = useState<SearchTarget>("days");
   const [window_, setWindow] = useState<WindowCfg>({ mode: "none" });
   const [match, setMatch] = useState<MatchMode>("all");
-  const [dayConds, setDayConds] = useState<DayCond[]>([]);
-  const [entryConds, setEntryConds] = useState<EntryCond[]>([]);
+  const [dayConds, setDayConds] = useState<IdCond<DayCond>[]>([]);
+  const [entryConds, setEntryConds] = useState<IdCond<EntryCond>[]>([]);
 
   // Esc closes the OVERLAY (the top layer); the popovers' capture-phase
   // handlers win first, exactly the app-wide discipline.
@@ -156,7 +174,13 @@ export function AdvancedSearch({
 
   // ── Presets — the CS mirror, its own roster ────────────────────────────────
   const currentCfg = useMemo<ASCfg>(
-    () => ({ target, window: window_, match, dayConds, entryConds }),
+    () => ({
+      target,
+      window: window_,
+      match,
+      dayConds: dayConds.map(stripId),
+      entryConds: entryConds.map(stripId),
+    }),
     [target, window_, match, dayConds, entryConds],
   );
   const hasCurrent =
@@ -172,19 +196,23 @@ export function AdvancedSearch({
     if (cfg.dayConds !== undefined)
       setDayConds(
         cfg.dayConds.map((c) =>
-          "habitKey" in c && c.habitKey != null && !keys.has(c.habitKey)
-            ? { ...c, habitKey: null }
-            : c.kind === "entryLogged" && c.entryId != null && !entryIds.has(c.entryId)
-              ? { ...c, entryId: null }
-              : c,
+          withId(
+            "habitKey" in c && c.habitKey != null && !keys.has(c.habitKey)
+              ? { ...c, habitKey: null }
+              : c.kind === "entryLogged" && c.entryId != null && !entryIds.has(c.entryId)
+                ? { ...c, entryId: null }
+                : c,
+          ),
         ),
       );
     if (cfg.entryConds !== undefined)
       setEntryConds(
         cfg.entryConds.map((c) =>
-          c.kind === "habit" && c.habitKey != null && !keys.has(c.habitKey)
-            ? { ...c, habitKey: null }
-            : c,
+          withId(
+            c.kind === "habit" && c.habitKey != null && !keys.has(c.habitKey)
+              ? { ...c, habitKey: null }
+              : c,
+          ),
         ),
       );
   };
@@ -298,8 +326,8 @@ export function AdvancedSearch({
                 />
               )}
               <AddCondition target={target} onAdd={(c) => {
-                if (target === "days") setDayConds((l) => [...l, c as DayCond]);
-                else setEntryConds((l) => [...l, c as EntryCond]);
+                if (target === "days") setDayConds((l) => [...l, withId(c as DayCond)]);
+                else setEntryConds((l) => [...l, withId(c as EntryCond)]);
               }} />
               {conds.length > 1 && (
                 <div className="advs-match">
@@ -671,22 +699,22 @@ function DayCondRows({
   today,
   onChange,
 }: {
-  conds: DayCond[];
+  conds: IdCond<DayCond>[];
   data: SearchData;
   habitByKey: Map<string, ASHabit>;
   habitById: Map<string, ASHabit>;
   today: string;
-  onChange: (c: DayCond[]) => void;
+  onChange: (c: IdCond<DayCond>[]) => void;
 }) {
   void today;
-  const patch = (i: number, c: DayCond) => onChange(conds.map((x, j) => (j === i ? c : x)));
+  const patch = (i: number, c: IdCond<DayCond>) => onChange(conds.map((x, j) => (j === i ? c : x)));
   const remove = (i: number) => onChange(conds.filter((_, j) => j !== i));
   const label = (c: DayCond) => DAY_KINDS.find((k) => k.kind === c.kind)?.label ?? c.kind;
 
   return (
     <>
       {conds.map((c, i) => (
-        <CondShell key={i} label={label(c)} incomplete={!dayCondComplete(c)} onRemove={() => remove(i)}>
+        <CondShell key={c.id} label={label(c)} incomplete={!dayCondComplete(c)} onRemove={() => remove(i)}>
           {(c.kind === "habitDone" || c.kind === "habitMissed") && (
             <HabitField
               habitKey={c.habitKey}
@@ -771,13 +799,13 @@ function EntryCondRows({
   today,
   onChange,
 }: {
-  conds: EntryCond[];
+  conds: IdCond<EntryCond>[];
   data: SearchData;
   habitByKey: Map<string, ASHabit>;
   today: string;
-  onChange: (c: EntryCond[]) => void;
+  onChange: (c: IdCond<EntryCond>[]) => void;
 }) {
-  const patch = (i: number, c: EntryCond) => onChange(conds.map((x, j) => (j === i ? c : x)));
+  const patch = (i: number, c: IdCond<EntryCond>) => onChange(conds.map((x, j) => (j === i ? c : x)));
   const remove = (i: number) => onChange(conds.filter((_, j) => j !== i));
   const label = (c: EntryCond) => ENTRY_KINDS.find((k) => k.kind === c.kind)?.label ?? c.kind;
   const projects = data.habits.filter((h) => h.kind === "project");
@@ -785,7 +813,7 @@ function EntryCondRows({
   return (
     <>
       {conds.map((c, i) => (
-        <CondShell key={i} label={label(c)} incomplete={!entryCondComplete(c)} onRemove={() => remove(i)}>
+        <CondShell key={c.id} label={label(c)} incomplete={!entryCondComplete(c)} onRemove={() => remove(i)}>
           {c.kind === "habit" && (
             <HabitField
               habitKey={c.habitKey}

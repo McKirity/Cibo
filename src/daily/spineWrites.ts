@@ -444,6 +444,28 @@ export const overrideDerived = (id: string, value: number): WriteResult => {
   return checked(res, "derived override") ? good : bad("Write failed — see console.");
 };
 
+// ── The days-ledger serializer ───────────────────────────────────────────────
+
+/**
+ * TWO writers birth a `days` row when none exists — finalize (below) and the
+ * feed snapshot (feeds.ts) — and the date's uniqueness is app-enforced with no
+ * DB constraint behind it. Their read→insert windows must therefore never
+ * interleave: every days-row write runs through this chain, and re-reads
+ * INSIDE its link (the optimistic layer makes a chained read see the previous
+ * link's insert immediately), so a Finalize landing during a snapshot capture
+ * can no longer mint a second row for the same date — a permanent catch-up
+ * ghost with no repair path (the 2026-07-30 audit).
+ */
+let dayChain: Promise<unknown> = Promise.resolve();
+export const withDayLedger = <T,>(fn: () => Promise<T>): Promise<T> => {
+  const next = dayChain.then(fn);
+  dayChain = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+};
+
 // ── Finalize (ruling 1: the state change into state 2, not a submit) ─────────
 
 /**
@@ -451,31 +473,38 @@ export const overrideDerived = (id: string, value: number): WriteResult => {
  * ledger's `finalized` flag and nothing else — no session is touched, because
  * finalize is a state change, not a submit.
  *
- * THE CALLER MUST FLUSH THE AUTO-SAVE BUFFER FIRST. Writes buffer since
- * 2026-07-27, so finalizing an unflushed day would seal a day whose sessions
- * are still in memory. `FinalizeButton` does it; anything else that finalizes
- * has to as well.
+ * THE CALLER MUST FLUSH THE AUTO-SAVE BUFFER FIRST — and refuse to finalize
+ * when the flush fails (user-ruled 2026-07-30: "finalize should wait until
+ * save"). `FinalizeButton` does both; anything else that finalizes has to as
+ * well.
  *
  * Finalizing an EMPTY day is valid, and the sparse ledger is why this inserts
  * when there is no row: a genuine rest day reads as "did none of these", not
- * "unlogged".
+ * "unlogged". The row is re-read inside the ledger chain rather than trusted
+ * from the caller's live query — the live row can lag a snapshot insert by a
+ * repaint, which is exactly the double-insert window.
  */
-export const finalizeDay = (
-  day: string,
-  existingRow: { id: string } | null,
-  at: string,
-): WriteResult => {
-  const res = existingRow
-    ? evolu.update("days", {
-        id: existingRow.id as never,
-        finalized: 1,
-        finalized_at: DateTimeLocal.orThrow(at),
-      })
-    : evolu.insert("days", {
-        date: DateOnly.orThrow(day),
-        finalized: 1,
-        finalized_at: DateTimeLocal.orThrow(at),
-        feed_snapshot: null,
-      });
-  return checked(res, "finalize") ? good : bad("Write failed — see console.");
-};
+export const finalizeDay = (day: string, at: string): Promise<WriteResult> =>
+  withDayLedger(async () => {
+    const rowQuery = evolu.createQuery((db) =>
+      db
+        .selectFrom("days")
+        .select(["id"])
+        .where("isDeleted", "is not", 1)
+        .where("date", "=", DateOnly.orThrow(day)),
+    );
+    const row = (await evolu.loadQuery(rowQuery))[0] ?? null;
+    const res = row
+      ? evolu.update("days", {
+          id: row.id as never,
+          finalized: 1,
+          finalized_at: DateTimeLocal.orThrow(at),
+        })
+      : evolu.insert("days", {
+          date: DateOnly.orThrow(day),
+          finalized: 1,
+          finalized_at: DateTimeLocal.orThrow(at),
+          feed_snapshot: null,
+        });
+    return checked(res, "finalize") ? good : bad("Write failed — see console.");
+  });

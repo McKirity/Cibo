@@ -35,6 +35,7 @@ import {
   pinBandLabel,
   recentSortLabel,
   sortEntries,
+  typeFilterOptions,
 } from "./librarySpec";
 import { stars } from "../metrics/format";
 import { useLibraryData } from "./useLibraryData";
@@ -61,7 +62,27 @@ const loadViewState = (habitKey: string): LibraryViewState => {
   try {
     const raw = localStorage.getItem(storageKey(habitKey));
     if (raw == null) return DEFAULT_VIEW_STATE;
-    return { ...DEFAULT_VIEW_STATE, ...(JSON.parse(raw) as Partial<LibraryViewState>) };
+    // Validated field-by-field, never spread in whole (2026-07-30): a stale
+    // `sort` value rendered "sorted by undefined" and silently broke the
+    // comparator, and the removed `view` key survived the spread forever.
+    const p = JSON.parse(raw) as Record<string, unknown>;
+    return {
+      sort:
+        typeof p.sort === "string" && p.sort in SORT_LABELS
+          ? (p.sort as LibraryViewState["sort"])
+          : DEFAULT_VIEW_STATE.sort,
+      flipped: p.flipped === true,
+      status: typeof p.status === "string" ? p.status : null,
+      type: typeof p.type === "string" ? p.type : null,
+      genre: typeof p.genre === "string" ? p.genre : null,
+      priority:
+        typeof p.priority === "number" && Number.isInteger(p.priority) ? p.priority : null,
+      rating:
+        p.rating === "none" || (typeof p.rating === "number" && Number.isInteger(p.rating))
+          ? (p.rating as LibraryViewState["rating"])
+          : null,
+      owned: p.owned === true,
+    };
   } catch {
     return DEFAULT_VIEW_STATE;
   }
@@ -114,6 +135,13 @@ export function Library({
   const genreOptions = useMemo(
     () => genreFilterOptions(data.entries, data.genreVocab),
     [data.entries, data.genreVocab],
+  );
+  // Retired types stay filterable — genre's data-minus-vocab derivation
+  // (2026-07-30). The chip itself still keys off the DECLARED vocab: Type is
+  // ABSENT for typeless habits, and retired residue alone doesn't resurrect it.
+  const typeOptions = useMemo(
+    () => typeFilterOptions(data.entries, data.typeVocab),
+    [data.entries, data.typeVocab],
   );
 
   const hasType = data.typeVocab.length > 0;
@@ -226,11 +254,11 @@ export function Library({
                 active={state.type != null}
                 items={[
                   { key: "", label: "All", selected: state.type == null, onPick: () => patch({ type: null }) },
-                  ...data.typeVocab.map((v) => ({
-                    key: v,
-                    label: v,
-                    selected: state.type === v,
-                    onPick: () => patch({ type: v }),
+                  ...typeOptions.map((t) => ({
+                    key: t.value,
+                    label: t.label,
+                    selected: state.type === t.value,
+                    onPick: () => patch({ type: t.value }),
                   })),
                 ]}
               />
@@ -400,7 +428,9 @@ export function Library({
                 ))}
               </div>
 
-              {/* numbered pager */}
+              {/* numbered pager — hidden entirely when nothing matches (a lone
+                  "Page 1 of 1" under "No titles match" is noise; 2026-07-30) */}
+              {pageData.total > 0 && (
               <div className="pager">
                 <span className="pgcount">
                   Page {pageData.page} of {pageData.pageCount}
@@ -439,6 +469,7 @@ export function Library({
                   </button>
                 </div>
               </div>
+              )}
             </div>
           </>
         )}

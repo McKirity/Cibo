@@ -139,8 +139,14 @@ export function Shell() {
       if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
         setPaletteOpen((open) => {
-          if (open) return false;
-          return document.querySelector(".dimlayer") == null;
+          // The .dimlayer probe guards BOTH directions (fixed 2026-07-30):
+          // opening over a modal was always refused, but closing while a
+          // palette-launched modal is up (the New-entry creation modal mounts
+          // .dimlayer above the palette) would unmount it with the user's
+          // half-typed form inside.
+          const modalOpen = document.querySelector(".dimlayer") != null;
+          if (open) return modalOpen ? open : false;
+          return !modalOpen;
         });
       }
     };
@@ -216,10 +222,14 @@ export function Shell() {
    */
   const openDay = useCallback(
     (day: string) => {
-      if (day > today) return;
+      // todayStr() at CLICK time, never the render-captured `today`: a Shell
+      // that hasn't re-rendered since midnight would otherwise refuse the new
+      // day's door — silently, and without triggering the re-render that
+      // would fix it (2026-07-30).
+      if (day > todayStr()) return;
       setView({ kind: "daily", day });
     },
-    [setView, today],
+    [setView],
   );
 
   // The palette's Recent group leads the at-rest face (user-ruled 2026-07-29):

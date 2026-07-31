@@ -144,7 +144,7 @@ export interface LaneWave {
 }
 
 export type WavePart =
-  | { kind: "wave"; buckets: WaveBucket[]; waves: LaneWave[]; xlabelEnd?: "now" }
+  | { kind: "wave"; buckets: WaveBucket[]; waves: LaneWave[] }
   | { kind: "break"; label: string };
 
 /** A chapter-track era span. Captions list eras PLAINLY — "Era N", no span or
@@ -174,8 +174,8 @@ export interface TableFigs {
  *  every wave gets a row, eras group + subtotal, interludes collapse into one
  *  expandable group row). */
 export type WaveTableRow =
-  | { kind: "era"; eraN: number; soloWave: number | null; active: boolean; waveNums: number[]; span: string; figs: TableFigs; comp: WaveComp | null }
-  | { kind: "wave"; n: number; active: boolean; groupId: string | null; span: string; figs: TableFigs; comp: WaveComp | null }
+  | { kind: "era"; eraN: number; soloWave: number | null; waveNums: number[]; span: string; figs: TableFigs; comp: WaveComp | null }
+  | { kind: "wave"; n: number; groupId: string | null; span: string; figs: TableFigs; comp: WaveComp | null }
   | { kind: "interludes"; groupId: string; count: number; waveNums: number[]; span: string; figs: TableFigs; comp: WaveComp | null };
 
 export interface WavesSpec {
@@ -442,7 +442,7 @@ export function buildEntryDashboard(input: EntryBuildInput): EntryModel {
 
   // ── Creation-only zones ──
   const growth = twoMeasure
-    ? buildGrowth(entry, dayCnt, firstDay, lastDay, today, unitAbbr, gapDays)
+    ? buildGrowth(entry, dayCnt, firstDay, lastDay, today, unitAbbr, waveList)
     : null;
   const split = twoMeasure ? buildSplit(sessions, defs, valOf, colorVar, unitAbbr) : null;
   const distModel =
@@ -749,7 +749,11 @@ function buildWaves(
   const primary = twoMeasure ? dayCnt : dayMin;
   const primaryDiv = twoMeasure ? 1 : 60; // hours on the band for time habits
   const amountOf = (w: Wave): number => (twoMeasure ? sumRange(dayCnt, w) : w.minutes);
-  const ongoing = template === "creation" && entry.completed == null;
+  // The active/"now" reading was STRUCK app-wide 2026-07-30 (user-ruled: "No.
+  // Actually remove that from writing and other creation entries as well" —
+  // asked whether consumption should gain the then-creation-only chip). No
+  // Active chip, no "now" foot, no band now-cap; a span dates to its last
+  // session month on both templates.
 
   // ── The era metric (ruled 2026-07-24) + the interlude count ──
   const eraList = erasForWaves(waves, amountOf, gapDays);
@@ -802,7 +806,6 @@ function buildWaves(
     }
     const start = run.waves[0].start;
     const end = run.waves[run.waves.length - 1].end;
-    const span = dayGap(start, end) + 1;
     // WEEK grain at every span (user-ruled 2026-07-24, third live batch —
     // "zoom in": month buckets at the 26px floor read as distant noise; weekly
     // ≈ 4× the axis density and the scroll carries the length, which is what
@@ -828,15 +831,12 @@ function buildWaves(
         tip: `Wave ${n} · ${fmtWaveSpan(w)} · ${w.days} day${w.days === 1 ? "" : "s"} · ${amtStr(amountOf(w))}`,
       };
     });
-    const isLast = ri === runs.length - 1;
-    // Only the "now" cap renders — the band draws its own month/year axis, so
-    // dated end labels have no consumer. The span guard is the label-collision
-    // fix: no cap on a run too short to hold it.
+    // The band's "now" cap died with the active reading (the 2026-07-30
+    // strike) — the band's own month/year axis is the only end labelling.
     parts.push({
       kind: "wave",
       buckets: buckets.length > 0 ? buckets : [{ v: 0, s: start, len: 1 }],
       waves: lane,
-      xlabelEnd: isLast && span >= 60 && ongoing ? "now" : undefined,
     });
   });
 
@@ -896,7 +896,6 @@ function buildWaves(
 
   // ── The wave table (ruled 2026-07-24 — no blip fold; eras group, interludes
   //    collapse into one expandable row) ──
-  const activeOf = (n: number): boolean => ongoing && n === waves.length;
   type Group = { type: "era" | "int"; era: (typeof eraList)[number] | null; items: { w: Wave; n: number }[] };
   const groups: Group[] = [];
   {
@@ -932,7 +931,6 @@ function buildWaves(
         kind: "era",
         eraN: g.era!.n,
         soloWave: solo ? g.items[0].n : null,
-        active: solo && activeOf(g.items[0].n),
         waveNums,
         span: groupSpan,
         figs,
@@ -943,7 +941,6 @@ function buildWaves(
           rows.push({
             kind: "wave",
             n: it.n,
-            active: activeOf(it.n),
             groupId: null,
             span: fmtWaveSpan(it.w),
             figs: figsFor(it.w.days, amountOf(it.w), bestIn(it.w.start, it.w.end)),
@@ -964,7 +961,6 @@ function buildWaves(
         rows.push({
           kind: "wave",
           n: it.n,
-          active: activeOf(it.n),
           groupId: id,
           span: fmtWaveSpan(it.w),
           figs: figsFor(it.w.days, amountOf(it.w), bestIn(it.w.start, it.w.end)),
@@ -1005,7 +1001,7 @@ function buildWaves(
       foot: {
         left: `${plur(waves.length, "wave")}${eraList.length > 0 ? ` · ${plur(eraList.length, "era")}` : ""}`,
         span: first
-          ? `${fmtMonY(monthKey(first.start))} – ${ongoing ? "now" : fmtMonY(monthKey(last.end))} · last ${verbPast} ${fmtDMY(last.end)}`
+          ? `${fmtMonY(monthKey(first.start))} – ${fmtMonY(monthKey(last.end))} · last ${verbPast} ${fmtDMY(last.end)}`
           : "—",
         figs: figsFor(totalDays, totalAmount, bestIn(first?.start ?? "0000", last?.end ?? "9999")),
       },
@@ -1035,7 +1031,7 @@ function buildGrowth(
   lastDay: string | null,
   today: string,
   unitAbbr: string,
-  gapDays: number,
+  waves: Wave[],
 ): GrowthSpec | null {
   if (firstDay == null || lastDay == null) return null;
   const x0 = entry.started != null && entry.started < firstDay ? entry.started : firstDay;
@@ -1083,8 +1079,10 @@ function buildGrowth(
     }
   }
 
-  // Wave shades + gap hatches over the same x domain (same gap as the band).
-  const waves = wavesForEntryDays([...dayCnt.keys()].sort(), gapDays);
+  // Wave shades + gap hatches over the same x domain — the BAND's own wave
+  // spans (2026-07-30): re-clustering count-session days here produced a
+  // different day set than the band's all-session waves, so the two zones
+  // could visibly disagree.
   const shades = waves.map((w) => ({ x0: X(w.start), x1: X(w.end) }));
   const hatches = waves.slice(1).map((w, i) => ({ x0: X(waves[i].end), x1: X(w.start) }));
 
@@ -1108,22 +1106,6 @@ function niceStep(max: number, target: number): number {
   const norm = raw / mag; // 1 … 10
   const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10;
   return nice * mag;
-}
-
-/** Day-list clustering at the default gap (the growth curve's shading only —
- *  the band's waves come from wavesForEntry on the real sessions). */
-function wavesForEntryDays(days: string[], gapDays = 30): { start: string; end: string }[] {
-  if (days.length === 0) return [];
-  const out: { start: string; end: string }[] = [];
-  let cur = { start: days[0], end: days[0] };
-  for (let i = 1; i < days.length; i++) {
-    if (dayGap(cur.end, days[i]) > gapDays) {
-      out.push(cur);
-      cur = { start: days[i], end: days[i] };
-    } else cur.end = days[i];
-  }
-  out.push(cur);
-  return out;
 }
 
 function buildSplit(

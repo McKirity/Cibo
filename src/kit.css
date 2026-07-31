@@ -36,7 +36,38 @@
      Bodies are verbatim; only the home changed. `.timepop`'s internals stay
      in daily.css (single tenant) and read the surface rule from here.
      The RE-DESIGN OWED on this picker (ruled 2026-07-26) rides with it, and
-     now has a second consumer to satisfy. */
+     now has a second consumer to satisfy.
+
+   Claimed at Build step 6's catch-up (the Map), 2026-07-30:
+   - kit-tooltip (.tooltip + .long + the reduce-effects fallback) — the hover
+     whisper, BOTH blessed faces (Overlays sheet, movement 05): the data chip
+     (size-small, nowrap) and the long-form face (size-caption, wraps,
+     max-width 340px — the sheet's flagged dial candidate, corpus-verbatim).
+     Mounted ONCE by the shell (shell/tooltip.tsx's TooltipLayer); any element
+     opts in via data-tip / data-tip-long. First app tenant: the Map's doors.
+     All six staged .tooltip rules are served by this claim — the per-screen
+     copies differed only in z-index and face. */
+
+/* ------- The z-tier ladder (Overlays sheet, movement 08) -------
+   The corpus's ad-hoc z-index values normalize to this NAMED ladder at Build —
+   layering is kit-level, never a theme dial. Every fixed-position tenant cites
+   its tier; content-LOCAL stacking (0/1/2 inside a screen) stays local and
+   unnamed. Documented 2026-07-30 (the step-6 failure batch):
+     6    z-popover-inline — a popover inside a form context (.calpop/.timepop
+                             under .dt-live, daily.css)
+     12   z-raised         — raised chrome that dims nothing: the toast slot
+     30   z-tray           — the running-clock reminder tray (.timertray)
+     40   z-dim            — the overlay dim + the modal it carries (.dimlayer)
+     45   z-menu           — an anchored menu that must open over a modal
+                             (.libmenu — the bulk-edit tenant sets the floor)
+     60   z-confirm        — the ONE sanctioned overlay-atop-a-modal
+                             (.dimlayer.stack)
+     80   z-palette        — the command layer's scrim (never summoned over a
+                             modal — the .dimlayer probe; above the tray by
+                             design)
+     100  z-tooltip        — always top of the in-app ladder
+     200  z-fatal          — failure tier ④, the fatal launch screen: covers
+                             everything because the app cannot run */
 
 /* ------- The box model -------
    `*{box-sizing:border-box}` — claimed 2026-07-26, and it should have been the
@@ -138,6 +169,29 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
   .toastslot{animation:toast-in var(--motion-standard) var(--ease-entering);}
 }
 @keyframes toast-in{from{opacity:0; transform:translate(-50%, var(--space-6));} to{opacity:1; transform:translate(-50%, 0);}}
+
+/* ------- kit-state-error — failure tier ②, inline where-caused -------
+   Verbatim from staging (the empty-and-failure-states sheet's founding
+   specimen). The danger-tinted well + pip + the fix in place; Retry rides
+   .btn-danger (danger-ghost — outlined, destroys nothing). Component:
+   shell/ErrorState.tsx; drawn tenants arrive at steps 8 (importer rows) and
+   10/13 (health probes). */
+.errstate{display:flex; gap:var(--space-5); text-align:left; align-items:flex-start; border:var(--border-hairline) solid var(--danger); background:color-mix(in oklch, var(--danger), var(--window-background) var(--tint-mix)); border-radius:var(--radius-medium); padding:var(--space-6);}
+.errstate .epip{width:20px; height:20px; border-radius:var(--radius-full); background:var(--danger); color:var(--text-on-filled); font-size:var(--size-small); font-weight:var(--weight-bold); display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+.errstate .et2{font-size:var(--size-body); font-weight:var(--weight-medium); color:var(--text-strong); margin:0 0 var(--space-2);}
+.errstate .em{font-size:var(--size-small); color:var(--text-secondary); margin:0 0 var(--space-4);}
+
+/* ------- kit-tooltip — the hover whisper, two blessed faces -------
+   Verbatim from staging (the overlays sheet's chip face; .long = the
+   habit-creator family's long-form face — size-caption, wraps, max-width
+   340px, the sheet's flagged dial candidate kept corpus-verbatim). Hover-only,
+   never persistent; pointer-events none by rule. z-tooltip — the ladder's
+   TOP layer (see the z-tier ladder below). */
+.tooltip{position:fixed; z-index:100; pointer-events:none; opacity:0; transform:translateY(2px); font-family:var(--font-ui); background:var(--raised-background); -webkit-backdrop-filter:var(--backdrop-blur); backdrop-filter:var(--backdrop-blur); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); box-shadow:var(--shadow-high); padding:var(--space-3) var(--space-4); font-size:var(--size-small); color:var(--text-strong); white-space:nowrap; transition:opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);}
+.tooltip.show{opacity:1; transform:none;}
+.tooltip.long{font-size:var(--size-caption); max-width:340px; white-space:normal; transform:translateY(4px);}
+.tooltip.long.show{transform:none;}
+.reduce-effects .tooltip{-webkit-backdrop-filter:none; backdrop-filter:none; background:var(--panel-background); box-shadow:var(--shadow-low);}
 
 /* ------- kit-dialog-confirm-danger — the count-carrying confirm -------
    Verbatim from staging. The DIM is Build's: the corpus draws it

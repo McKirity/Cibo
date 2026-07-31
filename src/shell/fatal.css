@@ -1,0 +1,35 @@
+/* ============================================================================
+   Failure tier ④ — the fatal launch screen.
+   Claimed from `Final/empty-and-failure-states.html` (frozen 2026-07-14,
+   re-frozen 2026-07-18) via kit-staging.css — the `.launch` family, values
+   verbatim, single-tenant so the bare name stands (collision-checked).
+   Build adaptations, marked inline:
+     - the drawn `.launch` was a bounded sheet stage (min-height 520, border,
+       radius) standing in for the window; the app's is the WINDOW — fixed
+       full-viewport, no stage chrome (the toast-slot positioning precedent);
+     - `.ldrag`/`.lclose` — the minimum OS affordance (native decorations are
+       off; without them the window is undraggable and mouse-unclosable).
+   The 60/30px circled identity mark = the sheet's FLAGGED dial candidates,
+   kept corpus-verbatim (deliberately not the bare 56px empty-glyph idiom —
+   an identity mark, not an empty state).
+   ========================================================================== */
+
+/* build adaptation: the window, not a stage — fixed, chrome-free, top of all */
+.launch { position: fixed; inset: 0; z-index: 200; background: var(--window-background); display: flex; align-items: center; justify-content: center; padding: var(--space-8); }
+.launch .lwm { position: absolute; top: var(--space-7); left: var(--space-7); display: flex; align-items: center; gap: var(--space-4); font-family: var(--font-heading); font-size: var(--size-subheading); font-weight: var(--weight-bold); color: var(--text-muted); }
+.launch .lwm .lmk { width: 22px; height: 22px; border-radius: var(--radius-small); background: var(--text-muted); }
+.launch .lcard { width: var(--modal-confirm-w); max-width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-6); }
+.launch .lglyph { width: 60px; height: 60px; border-radius: var(--radius-full); background: color-mix(in oklch, var(--danger), var(--window-background) var(--tint-mix)); display: flex; align-items: center; justify-content: center; color: var(--danger); }
+.launch .lglyph .ico { width: 30px; height: 30px; stroke-width: 1.5px; }
+.launch .lh { font-family: var(--font-heading); font-size: var(--size-display); font-weight: var(--weight-bold); line-height: var(--line-tight); color: var(--text-strong); margin: 0; letter-spacing: -.01em; }
+.launch .lp { font-size: var(--size-body); color: var(--text-secondary); line-height: var(--line-normal); margin: 0; max-width: 56ch; }
+.launch .lp b { color: var(--text-strong); font-weight: var(--weight-medium); }
+.launch .lpath { font-family: var(--font-mono); font-size: var(--size-small); color: var(--text-secondary); background: var(--inset-background); border-radius: var(--radius-small); padding: var(--space-4) var(--space-5); box-shadow: var(--shadow-inset); word-break: break-all; }
+.launch .ldoors { display: flex; gap: var(--space-4); flex-wrap: wrap; justify-content: center; }
+.launch .lfoot { font-size: var(--size-caption); color: var(--text-muted); margin: 0; }
+
+/* build adaptation: the minimum OS affordance (decorations off) */
+.launch .ldrag { position: absolute; top: 0; left: 0; right: 0; height: var(--titlebar-height); }
+.launch .lclose { position: absolute; top: 0; right: 0; height: var(--titlebar-height); padding: 0 var(--space-5); display: flex; align-items: center; justify-content: center; background: transparent; border: none; cursor: pointer; color: var(--text-secondary); transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.launch .lclose:hover { background: var(--danger); color: var(--text-on-filled); }
+.launch .lclose .ico { width: var(--icon-size); height: var(--icon-size); }

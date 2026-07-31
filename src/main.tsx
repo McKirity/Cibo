@@ -10,12 +10,18 @@ import App from "./App";
 import { evolu } from "./db/evolu";
 import { ensureHabitIcons, runSeed } from "./db/seed";
 import { ensureAppStartDate } from "./db/appStart";
+import { mountFatalLaunch } from "./shell/FatalLaunch";
 
-// Surface Evolu's error store — validation drops and worker-side rollbacks are
-// otherwise silent (the 2026-07-23 coding-migration lesson). Failure & Error UX
-// (step 11) replaces this with the real four-tier surface.
+// Failure tier ④ trigger — the BOOT WINDOW: an Evolu error before the seed
+// path completes means the store never opened (worker/OPFS init), which is the
+// fatal launch screen's one tenant. After boot, errors are validation drops /
+// worker rollbacks — logged (the 2026-07-23 coding-migration lesson), carried
+// by their own tiers (2/3) as those tenants land at steps 8/10/13.
+let booted = false;
 evolu.subscribeError(() => {
-  console.error("Evolu error:", evolu.getError());
+  const err = evolu.getError();
+  console.error("Evolu error:", err);
+  if (!booted) mountFatalLaunch(err);
 });
 
 // The version-gated seed append — runs at every launch, applies only newer batches.
@@ -24,6 +30,7 @@ evolu.subscribeError(() => {
 // it exists; until then this is where it lands.
 runSeed(evolu).then(
   (r) => {
+    booted = true;
     console.info(
       `Seed: found version ${r.foundVersion}, ${r.applied ? "applied batch(es)" : "nothing to apply"}`,
     );
@@ -33,7 +40,11 @@ runSeed(evolu).then(
     // 7 and 9). Idempotent null-fill → a lost write heals next launch.
     void ensureHabitIcons(evolu);
   },
-  (e) => console.error("Seed failed:", e),
+  (e) => {
+    console.error("Seed failed:", e);
+    // a launch that cannot seed cannot trust the store — tier ④
+    mountFatalLaunch(e);
+  },
 );
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

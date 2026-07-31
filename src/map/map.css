@@ -1,0 +1,98 @@
+/* ============================================================================
+   Build step 6 catch-up — the Map (table of contents).
+   Claimed from `Final/map.html` (frozen 2026-07-12) via kit-staging.css —
+   values verbatim, selectors RE-SCOPED under `.mapscreen` (the FINAL's `.map`
+   root renamed; `.row`, `.door`, `.twist` are generic names the staging sheet
+   holds for other tenants, so nothing claims them bare).
+   Multi-tenant heads claimed SCOPED, bases left staged: `.door` (the cadence
+   estrips + CS + palette still read the staged base) · `.hdot` (seven other
+   FINALs carry it).
+   Build adaptations, marked inline:
+     - doors are real <button>s (keyboard access) — reset to the drawn inline
+       face;
+     - the FINAL's `[data-screen="map"] .content{overflow:hidden}` override is
+       NOT ported: the shared pane keeps its scroll; `.mapscreen{height:100%}`
+       pins the screen so the trunk bodies own all scrolling, same effect.
+   ========================================================================== */
+
+.mapscreen { height: 100%; display: flex; flex-direction: column; gap: var(--space-6); min-height: 0; }
+
+/* head — title only (the sweep: no explainer prose in-window) */
+.mapscreen .maphead { flex: 0 0 auto; }
+.mapscreen .maphead .mt { font-family: var(--font-heading); font-size: var(--size-display); font-weight: var(--weight-bold); line-height: var(--line-tight); letter-spacing: -.01em; }
+
+/* the two trunks — kit-panel tenants, side by side; the panel clearance rides
+   the trunk box (head/body paddings unchanged inside it) */
+.mapscreen .trunks { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
+.mapscreen .trunk { min-height: 0; display: flex; flex-direction: column; background: var(--panel-background); border: var(--border-hairline) solid var(--border); border-radius: var(--radius-medium); box-shadow: var(--shadow-low); padding: calc(var(--frame-clear-grand) + var(--space-4)); overflow: hidden; }
+/* kit-header-section — title + a chrome glyph (header icons user-ruled
+   2026-07-30 at the GUI pass; align baseline → center rides with them,
+   an icon has no baseline) */
+.mapscreen .trunk-head { flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-5); padding: var(--space-6) var(--space-7); border-bottom: var(--border-hairline) solid var(--divider); }
+/* header glyphs ride the HEADING tier (user-ruled 2026-07-30: "make the
+   header icons bigger") — the confirm-header precedent (.ch .ico) */
+.mapscreen .trunk-head .ico { width: var(--size-heading); height: var(--size-heading); color: var(--text-secondary); flex: 0 0 auto; }
+/* header tier LIFTED subheading → heading (user-ruled 2026-07-30 at the GUI
+   pass: "make those headers bigger") — overrides the drawn value */
+.mapscreen .trunk-head .th { font-family: var(--font-heading); font-size: var(--size-heading); font-weight: var(--weight-bold); color: var(--text-strong); }
+.mapscreen .trunk-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--space-5) var(--space-6) var(--space-7); }
+
+/* --- the outline (screen-specific composition, NOT a kit block) ---
+   indent per level reads the space scale (--space-7) — a calc relation, no
+   dial minted */
+.mapscreen .node > .children { display: none; padding-left: var(--space-7); }
+.mapscreen .node[data-open="true"] > .children { display: block; }
+
+.mapscreen .row { display: flex; align-items: center; gap: var(--space-4); min-height: 40px; padding: var(--space-3) var(--space-3); border-radius: var(--radius-small); transition: background var(--motion-fast) var(--ease-standard); }
+.mapscreen .row.head { cursor: pointer; }
+.mapscreen .row.head:hover, .mapscreen .row.leaf:hover { background: var(--hover-wash); }
+
+/* the twist (chevron) — present only where a level is expandable */
+.mapscreen .twist { width: 22px; height: 22px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: var(--radius-small); }
+.mapscreen .twist .ico { width: var(--icon-size); height: var(--icon-size); transition: transform var(--motion-fast) var(--ease-standard); }
+.mapscreen .node[data-open="true"] > .row > .twist .ico { transform: rotate(90deg); }
+.mapscreen .row.head:hover .twist { color: var(--text-strong); }
+
+/* the leaf marker (·) — a level with no children; aligns under the twist column */
+.mapscreen .leafcx { width: 22px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; }
+.mapscreen .leafcx::before { content: ""; width: 5px; height: 5px; border-radius: var(--radius-full); background: var(--text-muted); opacity: .6; }
+
+/* the habit identity lead — the TINTED GLYPH (user-ruled 2026-07-30 at the
+   GUI pass, in two steps: "use icons in the contents" superseded the drawn
+   12px .hdot with icon-in-swatch, then "I want the icons themselves to be
+   colored" struck the box — the palette's tinted-entry-glyph idiom, now this
+   screen's habit face). The glyph SHAPE carries identity, colour is additive
+   (never-colour-alone holds); the tinted lettermark stays the icon-less
+   fallback. 22px column = the twist width, so the lead sits flush. */
+.mapscreen .hglyph { width: 22px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: var(--size-small); font-weight: var(--weight-bold); }
+.mapscreen .hglyph .ico { width: var(--icon-size); height: var(--icon-size); }
+
+/* every label is a door — the frozen dotted-underline door idiom */
+.mapscreen .door { color: var(--text-strong); text-decoration: underline dotted var(--border); text-underline-offset: 3px; text-decoration-thickness: from-font; cursor: pointer; font-size: var(--size-subheading); transition: color var(--motion-fast) var(--ease-standard), text-decoration-color var(--motion-fast) var(--ease-standard); }
+.mapscreen .row:hover .door { color: var(--accent); text-decoration-color: var(--accent); }
+.mapscreen .row.head > .door { font-weight: var(--weight-medium); }
+.mapscreen .row.year > .door { font-size: var(--size-heading); font-weight: var(--weight-bold); }
+.mapscreen .row.habit > .door { font-size: var(--size-heading); font-weight: var(--weight-bold); }
+.mapscreen .row.leaf > .door { color: var(--text-secondary); }
+.mapscreen .row.leaf:hover > .door { color: var(--accent); }
+.mapscreen .row.day > .door { font-family: var(--font-mono); font-size: var(--size-body); }
+.mapscreen .row.entry-row > .door { font-size: var(--size-subheading); }
+/* build adaptation: the doors are <button>s — reset to the drawn inline face */
+.mapscreen button.door { background: transparent; border: none; padding: 0; font-family: inherit; text-align: left; }
+
+/* entry-list PAGINATION, NUMBERED (user-ruled 2026-07-30 at the GUI pass, in
+   two steps: "use pagination for the collapsed entries" — REVERSING the drawn
+   "+ N more" disclosure clause, the claimed .lazy trio dying with it — then
+   "numbered pagination"). The face is THE LIBRARY'S PAGER (library.css's
+   .pgnums/.pgnum/.pgell anatomy, values mirrored) at outline scale; the
+   pagerCells window helper is imported, not copied. */
+.mapscreen .row.pagerrow { cursor: default; }
+.mapscreen .pagerrow .leafcx::before { opacity: 0; }
+.mapscreen .pgnums { display: flex; align-items: center; gap: var(--space-2); }
+.mapscreen .pgnum { min-width: var(--pager-btn-size); height: var(--pager-btn-size); display: inline-flex; align-items: center; justify-content: center; padding: 0 var(--space-3); border: var(--border-hairline) solid var(--border); background: var(--panel-background); border-radius: var(--radius-small); font-family: var(--font-mono); font-size: var(--size-small); color: var(--text-secondary); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.mapscreen .pgnum:hover { background: var(--hover-wash); color: var(--text-strong); }
+.mapscreen .pgnum.on { border-color: var(--accent); background: var(--selected-wash); color: var(--accent); font-weight: var(--weight-bold); cursor: default; }
+.mapscreen .pgnum:disabled { color: var(--text-muted); pointer-events: none; opacity: .55; }
+.mapscreen .pgnum .ico { width: 14px; height: 14px; }
+.mapscreen .pgell { color: var(--text-muted); padding: 0 var(--space-2); font-family: var(--font-mono); }
+.mapscreen .pgcount { font-family: var(--font-mono); font-size: var(--size-caption); color: var(--text-muted); margin-left: var(--space-3); }

@@ -34,7 +34,8 @@
  * ruling a HIDDEN verb is absent, but curation itself is step 10's Settings
  * section; until it exists the drawn inventory renders whole. The Settings-
  * sections and manual-pages teleport groups are absent for the same reason —
- * their screens don't exist yet. The Map row joins when the Map lands.
+ * their screens don't exist yet. (The Map row joined 2026-07-30 when the Map
+ * landed.)
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { EntryCreationModal } from "../library/EntryCreationModal";
@@ -61,6 +62,7 @@ export interface PaletteNav {
   openCadence(scale: PeriodScale, anchor: string): void;
   openCompare(): void;
   openTimers(): void;
+  openMap(): void;
 }
 
 // ── The pinned ten-verb inventory (CLOSED — [[Palette]]; never re-litigate) ──
@@ -88,7 +90,7 @@ type PalAction =
   | { t: "habit"; key: string }
   | { t: "library"; key: string }
   | { t: "entry"; id: string; habitKey: string }
-  | { t: "screen"; s: "daily" | "timers" | "compare" }
+  | { t: "screen"; s: "daily" | "timers" | "compare" | "map" }
   | { t: "verb"; v: VerbId; live: boolean };
 
 // Icons transcribed from the frozen FINAL's rows (lucide, 24×24 stroke).
@@ -133,6 +135,9 @@ const I = {
   ),
   chart: (
     <svg className="ico" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>
+  ),
+  map: (
+    <svg className="ico" viewBox="0 0 24 24"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 21.381V8.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" /><path d="M15 5.764v15" /><path d="M9 3.236v15" /></svg>
   ),
   book: (
     <svg className="ico" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg>
@@ -225,6 +230,14 @@ export function PaletteOverlay({
         aliases: ["statistics", "compare"],
         action: { t: "screen", s: "compare" },
       },
+      // joined 2026-07-30 when the Map landed (the flagged stand-in closed)
+      {
+        group: "screens",
+        title: "Map",
+        sub: "screen",
+        aliases: ["table of contents", "browse"],
+        action: { t: "screen", s: "map" },
+      },
     );
     for (const v of VERBS) {
       items.push({
@@ -264,6 +277,7 @@ export function PaletteOverlay({
       if (a.t === "screen") {
         if (a.s === "daily") return go(() => nav.openDay(today));
         if (a.s === "timers") return go(() => nav.openTimers());
+        if (a.s === "map") return go(() => nav.openMap());
         return go(() => nav.openCompare());
       }
       // verbs — a fired verb becomes the alphabetical list's one lifted row
@@ -514,7 +528,7 @@ export function PaletteOverlay({
               : a.t === "screen"
                 ? (
                     <span className="pal-lead">
-                      {a.s === "timers" ? I.timer : a.s === "compare" ? I.chart : I.sun}
+                      {a.s === "timers" ? I.timer : a.s === "compare" ? I.chart : a.s === "map" ? I.map : I.sun}
                     </span>
                   )
                 : verbLead(verbsById.get(a.v) as Verb);

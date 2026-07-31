@@ -32,6 +32,8 @@ import "../compare/compare.css";
 import { PaletteOverlay } from "../palette/Palette";
 import { recordRecent } from "../palette/recents";
 import { TimersScreen } from "../timers/TimersScreen";
+import { MapScreen } from "../map/MapScreen";
+import { TooltipLayer } from "./tooltip";
 import { GlobalTimerTray, TimerOverlays } from "../timers/TimerOverlays";
 import { focusClock } from "../timers/timerStore";
 import { armCloseGuard, proceedQuit, registerQuitWarning } from "../timers/closeGuard";
@@ -71,7 +73,9 @@ type View =
   /** Comparing Statistics — the Tools-rail query workspace (step 6 catch-up). */
   | { kind: "compare" }
   /** Timers — the Tools-rail board of independent clocks (step 7). */
-  | { kind: "timers" };
+  | { kind: "timers" }
+  /** The Map — the Tools-rail table of contents (the catch-up's last screen). */
+  | { kind: "map" };
 
 const todayStr = (): string => {
   const d = new Date();
@@ -253,6 +257,8 @@ export function Shell() {
           ? "Comparing Statistics"
         : view.kind === "timers"
           ? "Timers"
+        : view.kind === "map"
+          ? "Map"
           : view.kind === "cadence"
           ? { week: "Weekly", month: "Monthly", quarter: "Quarterly", year: "Yearly" }[view.scale]
           : view.kind === "daily" && view.day != null && view.day !== today
@@ -381,7 +387,10 @@ export function Shell() {
               <Ico d={["M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16z", "m21 21-4.3-4.3"]} />
               Search
             </button>
-            <button className="tool" disabled title="Later">
+            <button
+              className={`tool${view.kind === "map" ? " active" : ""}`}
+              onClick={() => setView({ kind: "map" })}
+            >
               <Ico d={["M14 5.6a2 2 0 0 0 1.8 0l3.6-1.8A1 1 0 0 1 21 4.6v12.8a1 1 0 0 1-.6.9l-4.5 2.3a2 2 0 0 1-1.8 0l-4.2-2.1a2 2 0 0 0-1.8 0L4.4 20.4A1 1 0 0 1 3 19.4V6.6a1 1 0 0 1 .6-.9L8 3.4a2 2 0 0 1 1.8 0z"]} />
               Map
             </button>
@@ -458,6 +467,15 @@ export function Shell() {
             onOpenHabit={(key) => setView({ kind: "habit", key })}
             onOpenEntry={(id, habitKey) => setView({ kind: "entry", id, habitKey })}
           />
+        ) : view.kind === "map" ? (
+          <MapScreen
+            nav={{
+              openCadence: (scale, anchor) => setView({ kind: "cadence", scale, anchor }),
+              openDay,
+              openHabit: (key) => setView({ kind: "habit", key }),
+              openEntry: (id, habitKey) => setView({ kind: "entry", id, habitKey }),
+            }}
+          />
         ) : view.kind === "daily" ? (
           <Daily
             key={view.day ?? today}
@@ -487,6 +505,7 @@ export function Shell() {
             openCadence: (scale, anchor) => setView({ kind: "cadence", scale, anchor }),
             openCompare: () => setView({ kind: "compare" }),
             openTimers: () => setView({ kind: "timers" }),
+            openMap: () => setView({ kind: "map" }),
           }}
         />
       )}
@@ -495,6 +514,10 @@ export function Shell() {
           any surface can raise it. First tenant: the form spine's session-remove
           undo. */}
       <ToastSlot />
+
+      {/* kit-tooltip — the hover whisper, mounted once; any element opts in
+          via data-tip / data-tip-long. First tenant: the Map's doors. */}
+      <TooltipLayer />
 
       {/* step 7 — the machinery-invoked timer overlays (a pomodoro interval-end
           opens the management window from ANY screen; recovery is launch-moment).

@@ -5,10 +5,20 @@
  * (a row populates the saved fields, blanks stay manual; inline rename +
  * delete on hover) · the Manage door (Settings → Presets — built at step 10,
  * INERT until then, the placeheld-by-design pattern).
+ *
+ * HOISTED compare/ → kit/ 2026-07-30 (the dedup pass, wave 2) with the shared
+ * CSS families; the storage half (presets.ts) stays compare-side — the
+ * `app_meta` roster is CS's, Advanced Search addresses it by prefix.
  */
-import { useEffect, useRef, useState } from "react";
-import { deletePreset, renamePreset, savePreset, usePresets, type Preset, type PresetCfg } from "./presets";
+import { useRef, useState } from "react";
+import { deletePreset, renamePreset, savePreset, usePresets, type Preset, type PresetCfg } from "../compare/presets";
+import { Ico, ICONS } from "../shell/icons";
+import { useDismiss } from "../shell/overlayHooks";
 
+/* The bookmark/chart/pen/gear glyphs are this menu's own (not in the shared
+ * roster); the trash keeps its drawn two-path form (shell's `trash` draws the
+ * lid as a third path — visually identical, path data not). The + and caret
+ * matched the shared roster exactly and were swapped onto it. */
 const IBookmark = () => (
   <svg className="ico" viewBox="0 0 24 24">
     <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
@@ -32,21 +42,10 @@ const ITrash = () => (
     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 );
-const IPlus = () => (
-  <svg className="ico" viewBox="0 0 24 24">
-    <path d="M5 12h14" />
-    <path d="M12 5v14" />
-  </svg>
-);
 const IGear = () => (
   <svg className="ico" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="3" />
     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-  </svg>
-);
-const ICaret = () => (
-  <svg className="ico" viewBox="0 0 24 24">
-    <path d="m6 9 6 6 6-6" />
   </svg>
 );
 
@@ -75,34 +74,16 @@ export function PresetControl<C = PresetCfg>({
   const [draft, setDraft] = useState("");
   const boxRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const shut = () => {
-      setOpen(false);
-      setNaming(false);
-      setRenaming(null);
-    };
-    // Capture phase, the shared Menu's discipline — a bubble listener goes
-    // deaf inside any surface that stops propagation.
-    const onDown = (e: MouseEvent) => {
-      if (boxRef.current != null && !boxRef.current.contains(e.target as Node)) shut();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      // An Escape inside the naming/rename input cancels the INPUT (its own
-      // handler), not the whole menu.
-      const t = e.target;
-      if (boxRef.current != null && t instanceof HTMLInputElement && boxRef.current.contains(t)) return;
-      e.stopImmediatePropagation();
-      shut();
-    };
-    window.addEventListener("mousedown", onDown, true);
-    window.addEventListener("keydown", onKey, true);
-    return () => {
-      window.removeEventListener("mousedown", onDown, true);
-      window.removeEventListener("keydown", onKey, true);
-    };
-  }, [open]);
+  const shut = () => {
+    setOpen(false);
+    setNaming(false);
+    setRenaming(null);
+  };
+  // Capture phase, the shared dismiss discipline — a bubble listener goes
+  // deaf inside any surface that stops propagation. `escInInputs`: an Escape
+  // inside the naming/rename input cancels the INPUT (its own handler), not
+  // the whole menu.
+  useDismiss(boxRef, shut, { enabled: open, escInInputs: true });
 
   const commitSave = () => {
     const name = draft.trim();
@@ -125,7 +106,7 @@ export function PresetControl<C = PresetCfg>({
         <IBookmark />
         Presets
         <span className="caret">
-          <ICaret />
+          <Ico d={ICONS.chevron} />
         </span>
       </button>
       <div className={`preset-menu${open ? " open" : ""}`}>
@@ -134,7 +115,7 @@ export function PresetControl<C = PresetCfg>({
             <div className="mh">This comparison</div>
             {naming ? (
               <div className="prow namer">
-                <IPlus />
+                <Ico d={ICONS.plus} />
                 <input
                   className="pnamein"
                   autoFocus
@@ -159,7 +140,7 @@ export function PresetControl<C = PresetCfg>({
                   setDraft("");
                 }}
               >
-                <IPlus />
+                <Ico d={ICONS.plus} />
                 <span className="pn">Save current as preset…</span>
               </button>
             )}

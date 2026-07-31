@@ -11,19 +11,21 @@
  * a closed level renders nothing (React conditional = the drawn lazy fill).
  * Collapse state is component state — view-only, never persisted.
  *
- * Doors wear the chip-face tooltip (kit-tooltip's first app tenant).
+ * (The door tooltips were removed 2026-07-30, user-ruled — the labels already
+ * say where a door goes; kit-tooltip keeps its shell layer for future tenants.)
  */
 import { useMemo, useState, type ReactNode } from "react";
 import {
   buildTimeTrunk,
   monthDayRows,
   pageEntries,
-  MONTHS,
   type TimeYear,
 } from "./mapSpec";
 import { useMapData, type MapHabit } from "./useMapData";
-import { pagerCells } from "../library/librarySpec";
+import { Pager } from "../kit/Pager";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
+import { Ico, ICONS } from "../shell/icons";
+import { todayLocal } from "../metrics/clock";
 import type { CadenceScale } from "../metrics/cadence";
 import "./map.css";
 
@@ -33,13 +35,6 @@ export interface MapNav {
   openHabit(key: string): void;
   openEntry(id: string, habitKey: string): void;
 }
-
-// Clean Up queue A: todayLocal() joins the app-wide dedupe when the hold lifts.
-const todayLocal = (): string => {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
 
 export function MapScreen({ nav }: { nav: MapNav }) {
   const today = todayLocal();
@@ -71,12 +66,7 @@ export function MapScreen({ nav }: { nav: MapNav }) {
                 matches the app's period vocabulary; the notes' "Time trunk"
                 stays the internal name. Header icons user-ruled the same day
                 (calendar · library — chrome glyphs, never data). */}
-            <svg className="ico" viewBox="0 0 24 24">
-              <rect width="18" height="18" x="3" y="4" rx="2" />
-              <path d="M16 2v4" />
-              <path d="M8 2v4" />
-              <path d="M3 10h18" />
-            </svg>
+            <Ico d={ICONS.calendar} />
             <span className="th">Period</span>
           </div>
           <div className="trunk-body">
@@ -87,6 +77,8 @@ export function MapScreen({ nav }: { nav: MapNav }) {
         </section>
         <section className="trunk">
           <div className="trunk-head">
+            {/* the lucide "library" glyph — this screen's only tenant, so it
+                stays local rather than joining the shell roster */}
             <svg className="ico" viewBox="0 0 24 24">
               <path d="m16 6 4 14" />
               <path d="M12 6v14" />
@@ -129,14 +121,12 @@ function Node({ open, row, children }: { open: boolean; row: ReactNode; children
 function HeadRow({
   label,
   variant,
-  tip,
   lead,
   onToggle,
   onOpen,
 }: {
   label: string;
   variant: string;
-  tip: string;
   lead?: ReactNode;
   onToggle: () => void;
   onOpen: () => void;
@@ -158,14 +148,11 @@ function HeadRow({
       }}
     >
       <button className="twist" aria-label="Expand / collapse" tabIndex={-1}>
-        <svg className="ico" viewBox="0 0 24 24">
-          <path d="m9 18 6-6-6-6" />
-        </svg>
+        <Ico d={ICONS.chevronRight} />
       </button>
       {lead}
       <button
         className="door"
-        data-tip={tip}
         onClick={(e) => {
           e.stopPropagation();
           onOpen();
@@ -177,21 +164,22 @@ function HeadRow({
   );
 }
 
+// The door tooltips were REMOVED 2026-07-30 (user-ruled at the dedup smoke
+// pass) — the labels already say where a door goes; kit-tooltip keeps its
+// shell layer for future tenants.
 function LeafRow({
   label,
   variant,
-  tip,
   onOpen,
 }: {
   label: string;
   variant: string;
-  tip: string;
   onOpen: () => void;
 }) {
   return (
     <div className={`row leaf ${variant}`} onClick={onOpen}>
       <span className="leafcx" />
-      <button className="door" data-tip={tip}>
+      <button className="door">
         {label}
       </button>
     </div>
@@ -221,7 +209,6 @@ function YearNode({
         <HeadRow
           label={`${yr.year}`}
           variant="year"
-          tip={`${yr.year} → year dashboard`}
           onToggle={() => onToggle(yid)}
           onOpen={() => nav.openCadence("year", yr.anchor)}
         />
@@ -237,7 +224,6 @@ function YearNode({
               <HeadRow
                 label={q.label}
                 variant="quarter"
-                tip={`Q${q.q} ${yr.year} → quarter dashboard`}
                 onToggle={() => onToggle(qid)}
                 onOpen={() => nav.openCadence("quarter", q.anchor)}
               />
@@ -253,7 +239,6 @@ function YearNode({
                     <HeadRow
                       label={m.label}
                       variant="month"
-                      tip={`${m.label} ${m.y} → month dashboard`}
                       onToggle={() => onToggle(mid)}
                       onOpen={() => nav.openCadence("month", m.anchor)}
                     />
@@ -265,7 +250,6 @@ function YearNode({
                         key={d.iso}
                         label={d.label}
                         variant="day"
-                        tip={`${d.label.slice(0, 3)} ${Number(d.iso.slice(8, 10))} ${MONTHS[m.m - 1]} ${m.y} → that day's Daily`}
                         onOpen={() => nav.openDay(d.iso)}
                       />
                     ))}
@@ -306,7 +290,6 @@ function HabitNode({
         <HeadRow
           label={habit.name}
           variant="habit"
-          tip={`${habit.name} → stats dashboard`}
           // the TINTED GLYPH (user-ruled 2026-07-30, second step — the box
           // struck): the icon itself wears the habit colour; tinted
           // lettermark = the icon-less fallback
@@ -325,7 +308,6 @@ function HabitNode({
           key={e.id}
           label={e.title}
           variant="entry-row"
-          tip={`${e.title} → entry dashboard`}
           onOpen={() => nav.openEntry(e.id, habit.key)}
         />
       ))}
@@ -338,49 +320,17 @@ function HabitNode({
         </div>
       )}
       {/* entry lists PAGINATE, NUMBERED (user-ruled 2026-07-30 ×2) — the
-          library's pager face at outline scale, its pagerCells window reused
-          (1-based there, 0-based here); the drawn "+ N more" disclosure row
-          died with the first ruling */}
+          library's pager face at outline scale, the shared kit Pager reused
+          (1-based there, 0-based here — adapted at this call site); the drawn
+          "+ N more" disclosure row died with the first ruling */}
       {pg.pages > 1 && (
         <div className="row pagerrow">
           <span className="leafcx" />
-          <div className="pgnums">
-            <button
-              className="pgnum arrow"
-              title="Previous page"
-              disabled={pg.page === 0}
-              onClick={() => onPage(pg.page - 1)}
-            >
-              <svg className="ico" viewBox="0 0 24 24">
-                <path d="m15 18-6-6 6-6" />
-              </svg>
-            </button>
-            {pagerCells(pg.page + 1, pg.pages).map((c, i) =>
-              c === "…" ? (
-                <span key={`e${i}`} className="pgell">
-                  …
-                </span>
-              ) : (
-                <button
-                  key={c}
-                  className={`pgnum${c === pg.page + 1 ? " on" : ""}`}
-                  onClick={() => onPage(c - 1)}
-                >
-                  {c}
-                </button>
-              ),
-            )}
-            <button
-              className="pgnum arrow"
-              title="Next page"
-              disabled={pg.page === pg.pages - 1}
-              onClick={() => onPage(pg.page + 1)}
-            >
-              <svg className="ico" viewBox="0 0 24 24">
-                <path d="m9 18 6-6-6-6" />
-              </svg>
-            </button>
-          </div>
+          <Pager
+            page={pg.page + 1}
+            pageCount={pg.pages}
+            onPage={(n) => onPage(n - 1)}
+          />
           <span className="pgcount">
             {pg.from}–{pg.to} of {pg.total}
           </span>

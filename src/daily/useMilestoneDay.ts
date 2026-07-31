@@ -19,7 +19,7 @@
  */
 import { useEffect, useState } from "react";
 import { evolu } from "../db/evolu";
-import { milestoneLaddersFromJson, derivedRulesFromJson, type DerivedRule } from "../db/schema";
+import { milestoneLaddersFromJson, parseDerivedRules } from "../db/schema";
 import {
   deriveMilestoneDay,
   swapDefKeys,
@@ -75,15 +75,6 @@ const appStartQuery = evolu.createQuery((db) =>
     .where("isDeleted", "is not", 1),
 );
 
-const parseRules = (raw: string | null): DerivedRule[] => {
-  if (raw == null) return [];
-  try {
-    return derivedRulesFromJson(raw as never) as unknown as DerivedRule[];
-  } catch {
-    return [];
-  }
-};
-
 const parseLadders = (raw: string | null): LadderOverrides | null => {
   if (raw == null) return null;
   try {
@@ -122,7 +113,7 @@ export function useMilestoneDay(dayKey: string, revision: string): MilestoneDay 
           kind: h.kind as MHabit["kind"],
           count_unit: (h.count_unit as string | null) ?? null,
           ladders: parseLadders(h.milestone_ladders as string | null),
-          derived_rules: parseRules(h.derived_rules as string | null),
+          derived_rules: parseDerivedRules(h.derived_rules),
           wave_gap_days: (h.wave_gap_days as number | null) ?? null,
         }));
 

@@ -75,11 +75,7 @@ const valuesQuery = evolu.createQuery((db) =>
     .where("subunit_values.isDeleted", "is not", 1),
 );
 
-export interface CompareData extends CmpData {
-  ready: boolean;
-}
-
-export function useCompareData(): CompareData {
+export function useCompareData(): CmpData {
   const habitRows = useQuery(habitsQuery);
   const sessionRows = useQuery(sessionsQuery);
   const entryRows = useQuery(entriesQuery);
@@ -116,7 +112,7 @@ export function useCompareData(): CompareData {
           habitId: r.habit_fk as string,
           entryId: r.entry_fk,
           day: r.day as string,
-          kind: r.measure_kind as CmpSession["kind"],
+          measure_kind: r.measure_kind as CmpSession["measure_kind"],
           value: r.value,
           start: r.start,
           end: r.end,
@@ -251,9 +247,8 @@ export function useCompareData(): CompareData {
     return { splitFields: fields, flagDefs: flags };
   }, [defRows, vocabRows, valueRows, entries]);
 
-  return useMemo<CompareData>(
+  return useMemo<CmpData>(
     () => ({
-      ready: habitRows.length > 0,
       habits,
       sessions,
       entries,
@@ -261,6 +256,6 @@ export function useCompareData(): CompareData {
       splitFields,
       flagDefs,
     }),
-    [habitRows.length, habits, sessions, entries, valueBySession, splitFields, flagDefs],
+    [habits, sessions, entries, valueBySession, splitFields, flagDefs],
   );
 }

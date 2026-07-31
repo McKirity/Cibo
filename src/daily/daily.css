@@ -493,9 +493,9 @@
   .milestone .emblem .ico { width:calc(var(--seal) * .6); height:calc(var(--seal) * .6);
                               vector-effect:non-scaling-stroke; }
   .milestone .mh { font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); line-height:var(--line-tight); }
-  /* empty form state (kit-state-empty) */
-    .emptybox { border:var(--border-standard) dashed var(--border); border-radius:var(--radius-medium);
-                padding:var(--space-8); text-align:center; }
+  /* empty form state — the .emptybox BASE is the claimed kit-state-empty block
+     (radius-large); this local radius-medium copy was deleted 2026-07-30 (dedup).
+     Only the form's own text tiers remain here. */
   .emptybox .eh { font-size:var(--size-subheading); font-weight:var(--weight-medium); margin-bottom:var(--space-2); }
   .emptybox .es { font-size:var(--size-small); color:var(--text-secondary); margin-bottom:var(--space-5); }
   .btn-accent { font-family:var(--font-ui); font-size:var(--size-body); font-weight:var(--weight-medium);

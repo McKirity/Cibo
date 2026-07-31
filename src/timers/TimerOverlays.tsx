@@ -13,16 +13,14 @@
  * verbs stage a hand-off (logHandoff.ts) that Daily's spine consumes into
  * prefilled drafts.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@evolu/react";
 import {
   clockMs,
   fmtMs,
-  fmtTarget,
   handoffMinutes,
   itemMs,
   parseTarget,
-  remainingMs,
   type Clock,
   type TimerMode,
   type TrackedItem,
@@ -49,25 +47,31 @@ import {
   TrackedPicker,
   type PickerSelection,
 } from "./TrackedPicker";
+import { Ico, ICONS } from "../shell/icons";
+import { useOverlayEsc } from "../shell/overlayHooks";
 import "./timers.css";
 
-const Ico = ({ d, className = "ico" }: { d: string[]; className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24">
-    {d.map((p) => (
-      <path key={p} d={p} />
-    ))}
-  </svg>
-);
-const IClose = () => <Ico d={["M18 6 6 18", "m6 6 12 12"]} />;
-const IPlay = () => <Ico d={["M7 4l13 8-13 8z"]} />;
-const IPlus = () => <Ico d={["M12 5v14", "M5 12h14"]} />;
-const IPencil = () => <Ico d={["M12 20h9", "M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"]} />;
-const IWarn = () => (
-  <Ico d={["M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z", "M12 9v4", "M12 17h.01"]} />
-);
-const ITrash = () => (
-  <Ico d={["M3 6h18", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"]} />
-);
+// Glyphs from the shell roster (dedup pass 2026-07-30) — paths verified
+// identical per glyph before adopting.
+const IClose = () => <Ico d={ICONS.close} />;
+const IPlay = () => <Ico d={ICONS.play} />;
+const IPlus = () => <Ico d={ICONS.plus} />;
+const IPencil = () => <Ico d={ICONS.edit} />;
+const IWarn = () => <Ico d={ICONS.warning} />;
+const ITrash = () => <Ico d={ICONS.trash} />;
+
+/** The picker's two queries + the id→title map — the create + manage windows
+ * ran this verbatim twice (dedup pass 2026-07-30). */
+const usePickerData = () => {
+  const habits = useQuery(timerHabitsQuery);
+  const entries = useQuery(timerEntriesQuery);
+  const entryTitles = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const e of entries) if (e.title != null) m.set(e.id, e.title);
+    return m;
+  }, [entries]);
+  return { habits, entryTitles };
+};
 
 /** Every hand-off is one summed session per tracked item, source "timer". */
 const toHandoff = (items: TrackedItem[], clock: Clock) =>
@@ -85,27 +89,15 @@ const DEFAULT_BREAK = "5:00";
 const DEFAULT_TARGET = "25:00";
 
 export function CreateClockModal({ onClose }: { onClose: () => void }) {
-  const habits = useQuery(timerHabitsQuery);
-  const entries = useQuery(timerEntriesQuery);
+  const { habits, entryTitles } = usePickerData();
   const [mode, setMode] = useState<TimerMode>("stopwatch");
   const [selection, setSelection] = useState<PickerSelection>({});
   const [target, setTarget] = useState(DEFAULT_TARGET);
   const [work, setWork] = useState(DEFAULT_WORK);
   const [brk, setBrk] = useState(DEFAULT_BREAK);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  const entryTitles = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const e of entries) if (e.title != null) m.set(e.id, e.title);
-    return m;
-  }, [entries]);
+  // Esc closes — the shared overlay stack (top overlay only).
+  useOverlayEsc(onClose);
 
   const items = selectionToItems(selection, habits, entryTitles);
   const targetMs = parseTarget(target);
@@ -153,7 +145,8 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
                 numbering; the step label is the corpus's one section idiom */}
             <div className="cstep">
               <span className="steplbl">Mode</span>
-              <div className="modeseg" role="tablist">
+              {/* .segctl (kit) + .modeseg (the local flex-fill/padding delta) */}
+              <div className="segctl modeseg" role="tablist">
                 {(["stopwatch", "countdown", "pomodoro"] as const).map((m) => (
                   <button key={m} aria-pressed={mode === m} onClick={() => setMode(m)}>
                     {m === "stopwatch" ? "Stopwatch" : m === "countdown" ? "Countdown" : "Pomodoro"}
@@ -230,23 +223,11 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
 function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => void }) {
   const [adding, setAdding] = useState(false);
   const [selection, setSelection] = useState<PickerSelection>({});
-  const habits = useQuery(timerHabitsQuery);
-  const entries = useQuery(timerEntriesQuery);
+  const { habits, entryTitles } = usePickerData();
   const now = Date.now();
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeManage();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  const entryTitles = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const e of entries) if (e.title != null) m.set(e.id, e.title);
-    return m;
-  }, [entries]);
+  // Esc closes — the shared overlay stack (top overlay only).
+  useOverlayEsc(closeManage);
 
 
   // Emptying the set closes BOTH the window and the clock (user-ruled
@@ -452,46 +433,3 @@ export function TimerOverlays({ onGoToForm }: { onGoToForm: () => void }) {
     </>
   );
 }
-
-/**
- * The GLOBAL switcher tray (user-ruled 2026-07-28, at the GUI pass): while any
- * clock is RUNNING, the board's switcher anatomy rides every other screen as
- * the "a timer is running" reminder — fixed over the content pane, chips
- * navigate back to the board with that clock focused. The shell mounts it and
- * hides it on the Timers screen itself (the board carries its own).
- */
-export function GlobalTimerTray({ onOpen }: { onOpen: (id: number) => void }) {
-  const state = useTimers();
-  const now = Date.now();
-  const running = state.clocks.filter((c) => c.running);
-  if (running.length === 0) return null;
-  return (
-    <div className="timertray">
-      {running.map((c) => (
-        <button key={c.id} className="swchip" onClick={() => onOpen(c.id)}>
-          <span
-            className="dot"
-            style={{ background: `var(--${c.tracked[0]?.colourSlot ?? "habit-1"})` }}
-          />
-          <span className="swm">
-            {c.mode === "stopwatch" ? "Stopwatch" : c.mode === "countdown" ? "Countdown" : "Pomodoro"}
-          </span>
-          <span className="swt">{clockChipReadout(c, now)}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/** The clock's config chip text, shared with the board. */
-export const clockConfigLabel = (c: Clock): string | null => {
-  if (c.mode === "countdown" && c.targetMs != null) return `target ${fmtTarget(c.targetMs)}`;
-  if (c.mode === "pomodoro" && c.workMs != null && c.breakMs != null)
-    return `${fmtTarget(c.workMs)} / ${fmtTarget(c.breakMs)}`;
-  return null;
-};
-
-/** The switcher chip's live readout, per face — elapsed for the stopwatch,
- *  remaining for the depleting faces (the drawn chips: 1:23:45 · 8:42 · 12:30). */
-export const clockChipReadout = (c: Clock, now: number): string =>
-  c.mode === "stopwatch" ? fmtMs(clockMs(c, now)) : fmtMs(remainingMs(c, now));

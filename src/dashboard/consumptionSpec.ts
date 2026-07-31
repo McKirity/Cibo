@@ -28,7 +28,7 @@ import {
   type HeatmapCell,
   type SessionRow,
 } from "../metrics/shapes";
-import { dayFromIndex, dayGap, dayIndex, monthKey, yearKey } from "../metrics/dates";
+import { dayFromIndex, dayGap, dayIndex, yearKey } from "../metrics/dates";
 import {
   decimal1,
   fmtDMY,
@@ -50,13 +50,14 @@ import {
   lastRunOf,
   longestRunOf,
   maxStr,
-  minStr,
-  MON,
+  monthlySpark,
   monthOverMonth,
+  resolveScopeWindow,
   STATUS_CAT,
   streakTile,
   vsYear,
   yearOverYearDelta,
+  yearTabs,
 } from "./specShared";
 
 // ── Model types (the spec the renderer walks) ─────────────────────────────────
@@ -198,9 +199,7 @@ export function buildConsumptionDashboard(
 
   // Scope window bounds (clamped to the tracked span and to today).
   const isYear = sel.kind === "year";
-  const base = firstDay ?? today;
-  const scopeFrom = empty ? today : isYear ? maxStr(`${sel.year}-01-01`, base) : base;
-  const scopeTo = isYear ? minStr(`${sel.year}-12-31`, today) : today;
+  const { scopeFrom, scopeTo } = resolveScopeWindow(sel, firstDay, today, empty);
 
   const sessScoped = scoped(fSessions, { from: scopeFrom, to: scopeTo });
   // Entries in scope: all (All Time) or those touched in the scoped window (year).
@@ -419,12 +418,11 @@ export function buildConsumptionDashboard(
   const vmax = Math.ceil(lineMax / 2) * 2;
 
   const sparkYear = isYear ? sel.year : yearKey(today);
-  const spark = MON.map((mo, i) => {
-    const mk = `${sparkYear}-${String(i + 1).padStart(2, "0")}`;
-    const hrs = ([...dm.entries()].filter(([d]) => monthKey(d) === mk).reduce((a, [, v]) => a + v, 0)) / 60;
-    // Month slots are NAMED dials (--month-jan … --month-dec), not numbered.
-    return { label: mo[0], hours: hrs, monthVar: `--month-${mo.toLowerCase()}` };
-  });
+  const spark = monthlySpark(dm, sparkYear, 60).map((s) => ({
+    label: s.label,
+    hours: s.value,
+    monthVar: s.monthVar,
+  }));
   const sparkMax = Math.max(1, ...spark.map((s) => s.hours));
   // spark delta: current vs previous month (percentage), within the spark year.
   const nowMonthIdx = isYear ? lastMonthWithData(spark.map((s) => s.hours)) : Number(today.slice(5, 7)) - 1;
@@ -456,14 +454,13 @@ export function buildConsumptionDashboard(
       if (bestType) dayDominantCat.set(day, typeSlot.get(bestType) ?? "--cat-1");
     }
   }
-  const rawCells = heatmapCells(dm, trendEnd, 53, (day) => dayDominantCat.get(day) ?? null);
-  const yearFloor = isYear ? `${sel.year}-01-01` : null;
-  const cells =
-    yearFloor == null
-      ? rawCells
-      : rawCells.map((c) =>
-          c.day != null && c.day < yearFloor ? { day: null, minutes: 0, level: -1 } : c,
-        );
+  const cells = heatmapCells(
+    dm,
+    trendEnd,
+    53,
+    (day) => dayDominantCat.get(day) ?? null,
+    isYear ? `${sel.year}-01-01` : null,
+  );
   const monthsHdr = heatmapMonths(trendEnd);
   const legendTypes = typeFilter ? [typeFilter] : input.typeVocab;
   const heatLegend = legendTypes.map((t) => ({ label: t, colorVar: typeSlot.get(t) ?? "--cat-1" }));
@@ -477,10 +474,7 @@ export function buildConsumptionDashboard(
   ];
 
   // ── Masthead + scope tabs ──
-  const years: string[] = [];
-  if (!empty)
-    for (let y = Number(yearKey(fullFirst!)); y <= Number(yearKey(today)); y++) years.push(String(y));
-  const tabs = [{ key: "all", label: "All Time" }, ...[...years].reverse().map((y) => ({ key: y, label: y }))];
+  const { tabs } = yearTabs(fullFirst, today);
   const typeTabs =
     input.typeVocab.length > 0
       ? [{ key: null as string | null, label: "All types" }, ...input.typeVocab.map((t) => ({ key: t as string | null, label: t }))]

@@ -20,6 +20,7 @@
 // default import resolves to undefined under a plain esbuild bundle (Vite's
 // interop hides this — the verification harness is what caught it).
 import * as SunCalc from "suncalc";
+import { pad2 } from "../metrics/clock";
 
 const DAY_MS = 86_400_000;
 
@@ -50,10 +51,6 @@ export interface SunInfo {
   dayLengthMin: number;
   /** Signed change against the previous day, in minutes. */
   deltaMin: number;
-  /** Sun altitude right now, in degrees (negative = below the horizon). */
-  altitudeDeg: number;
-  /** 0 at solar midnight … 1 at solar noon — drives the sky gradient. */
-  arcProgress: number;
 }
 
 const dayLengthMinutes = (date: Date, lat: number, lon: number): { min: number; state: SunState } => {
@@ -71,17 +68,14 @@ const dayLengthMinutes = (date: Date, lat: number, lon: number): { min: number; 
   return alt > 0 ? { min: 1440, state: "midnight-sun" } : { min: 0, state: "polar-night" };
 };
 
-export function sunInfo(dayKey: string, lat: number, lon: number, now: Date): SunInfo {
+// Purely date-shaped since the skyGradient orphans died (2026-07-30 dedup):
+// the ticking disc reads `sunArcPoint(sun, now)`, so nothing here needs a clock.
+export function sunInfo(dayKey: string, lat: number, lon: number): SunInfo {
   const start = dayStart(dayKey);
   const times = SunCalc.getTimes(start, lat, lon);
   const today = dayLengthMinutes(start, lat, lon);
   const yesterday = dayLengthMinutes(new Date(start.getTime() - DAY_MS), lat, lon);
   const solarNoon = isValid(times.solarNoon) ? times.solarNoon : new Date(start.getTime() + DAY_MS / 2);
-
-  // Progress around the solar day, peaking at noon — a triangle, not a clock
-  // reading, so the gradient is symmetric about solar noon at any longitude.
-  const fromNoon = Math.abs(now.getTime() - solarNoon.getTime());
-  const arcProgress = Math.max(0, 1 - fromNoon / (DAY_MS / 2));
 
   return {
     state: today.state,
@@ -90,8 +84,6 @@ export function sunInfo(dayKey: string, lat: number, lon: number, now: Date): Su
     solarNoon,
     dayLengthMin: today.min,
     deltaMin: today.min - yesterday.min,
-    altitudeDeg: (SunCalc.getPosition(now, lat, lon).altitude * 180) / Math.PI,
-    arcProgress,
   };
 }
 
@@ -111,8 +103,7 @@ export function sunInfo(dayKey: string, lat: number, lon: number, now: Date): Su
  */
 export const atLocation = (d: Date, lon: number): string => {
   const shifted = new Date(d.getTime() + lon * 240_000); // 4 min per degree
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${p(shifted.getUTCHours())}:${p(shifted.getUTCMinutes())}`;
+  return `${pad2(shifted.getUTCHours())}:${pad2(shifted.getUTCMinutes())}`;
 };
 
 /**
@@ -213,8 +204,6 @@ export interface MoonInfo {
   name: string;
   /** True in the southern hemisphere, where the lit limb appears mirrored. */
   mirrored: boolean;
-  rise: Date | null;
-  set: Date | null;
   /** The moon can stay up (or down) all day at high latitudes. */
   alwaysUp: boolean;
   alwaysDown: boolean;
@@ -248,8 +237,6 @@ export function moonInfo(dayKey: string, lat: number, lon: number): MoonInfo {
     illumination: illum.fraction,
     name: phaseName(illum.phase),
     mirrored: lat < 0,
-    rise: times.rise && isValid(times.rise) ? times.rise : null,
-    set: times.set && isValid(times.set) ? times.set : null,
     alwaysUp: Boolean(times.alwaysUp),
     alwaysDown: Boolean(times.alwaysDown),
   };
@@ -259,9 +246,6 @@ export type Season = "Spring" | "Summer" | "Autumn" | "Winter";
 
 export interface SeasonInfo {
   season: Season;
-  /** 0…1 through the current season. */
-  progress: number;
-  nextName: Season;
   daysToNext: number;
   /** 1-based day within the season — the FINAL reads "day 14 of 93". */
   dayIndex: number;
@@ -303,13 +287,10 @@ export function seasonInfo(dayKey: string, lat: number): SeasonInfo {
   const span = endMark.at.getTime() - startMark.at.getTime();
   const through = d.getTime() - startMark.at.getTime();
   const north = startMark.north;
-  const nextNorth = endMark.north;
 
   const length = Math.round(span / DAY_MS);
   return {
     season: southern ? flip[north] : north,
-    progress: span > 0 ? Math.min(1, Math.max(0, through / span)) : 0,
-    nextName: southern ? flip[nextNorth] : nextNorth,
     daysToNext: Math.max(0, Math.ceil((endMark.at.getTime() - d.getTime()) / DAY_MS)),
     // round, not floor: the span crosses DST changes, so the diff is ±1h off
     // a whole day for part of the year (almanac.dayOfYear's fix, same class).
@@ -332,7 +313,10 @@ export interface SeasonBand {
   ticks: Array<{ label: string; pct: number }>;
 }
 
-export function seasonBand(dayKey: string, lat: number): SeasonBand {
+/** `northern` lets a caller that already holds `seasonInfo(...)` pass its
+ * `.northern` reading instead of paying a second derivation (2026-07-30 dedup);
+ * the field is hemisphere-independent, so either call yields the same value. */
+export function seasonBand(dayKey: string, lat: number, northern?: Season): SeasonBand {
   const d = dayStart(dayKey);
   const year = d.getFullYear();
   const jan1 = new Date(year, 0, 1);
@@ -345,7 +329,7 @@ export function seasonBand(dayKey: string, lat: number): SeasonBand {
     new Date(year, 11, 21),
   ];
   const dayCount = (a: Date, b: Date) => Math.round((b.getTime() - a.getTime()) / DAY_MS);
-  const nowNorth = seasonInfo(dayKey, Math.abs(lat)).northern; // northern reading drives colour
+  const nowNorth = northern ?? seasonInfo(dayKey, Math.abs(lat)).northern; // northern reading drives colour
   const segs: Array<{ days: number; monthVar: string; season: Season }> = [
     { days: dayCount(jan1, bounds[0]), monthVar: "--month-jan", season: "Winter" },
     { days: dayCount(bounds[0], bounds[1]), monthVar: "--month-apr", season: "Spring" },

@@ -20,13 +20,11 @@ export interface HandoffItem {
 }
 
 let box: HandoffItem[] = [];
-let version = 0;
 const listeners = new Set<() => void>();
 
 export const stageHandoff = (items: HandoffItem[]): void => {
   if (items.length === 0) return;
   box = [...box, ...items];
-  version++;
   for (const l of listeners) l();
 };
 
@@ -36,8 +34,6 @@ export const takeHandoffFor = (habitId: string): HandoffItem[] => {
   if (mine.length > 0) box = box.filter((i) => i.habitId !== habitId);
   return mine;
 };
-
-export const handoffVersion = (): number => version;
 
 export const subscribeHandoff = (fn: () => void): (() => void) => {
   listeners.add(fn);

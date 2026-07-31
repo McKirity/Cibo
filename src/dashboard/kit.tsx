@@ -322,9 +322,10 @@ export function TrendPanel({
 // The duration words are shared; the zero-level word is per-habit (the
 // `zeroWord` prop) — "no play" is only the Gaming/default face.
 const HEAT_WORDS = ["no play", "~45 min", "1 h 30", "3 h 10", "5 h+"];
-// By-Type cell fill: the dominant type's cat colour over the canvas at the
-// --cat-ramp complement (background share) per level (the FINAL's stops).
-const BYTYPE_BG: Record<number, number> = { 1: 78, 2: 52, 3: 26, 4: 0 };
+/** By-Type/categorical cell fill: the dominant slot's cat colour over the
+ *  canvas at the --cat-ramp complement (background share) per level (the
+ *  FINAL's stops). ONE table — CreationDashboard's heatmap imports it too. */
+export const CAT_RAMP_BG: Record<number, number> = { 1: 78, 2: 52, 3: 26, 4: 0 };
 
 interface HeatCell {
   day: string | null;
@@ -351,6 +352,8 @@ export function Heatmap({
 }) {
   const [mode, setMode] = useState<"intensity" | "bytype">("intensity");
   const byType = hasTypes && mode === "bytype";
+  // Tooltip legend lookup by slot — a Map, not a per-cell Array.find.
+  const legendByVar = new Map(legend.map((l) => [l.colorVar, l.label]));
 
   const intensityRamp = (
     <span className="ramp">
@@ -411,7 +414,7 @@ export function Heatmap({
               // color-mix of the dominant type's cat slot (level 0 stays bare).
               const bg =
                 byType && c.level >= 1 && c.catVar
-                  ? `color-mix(in oklch, var(${c.catVar}), var(--window-background) ${BYTYPE_BG[c.level]}%)`
+                  ? `color-mix(in oklch, var(${c.catVar}), var(--window-background) ${CAT_RAMP_BG[c.level]}%)`
                   : undefined;
               const style: CSSProperties =
                 c.level < 0
@@ -420,7 +423,7 @@ export function Heatmap({
                     ? { background: bg, boxShadow: "none" }
                     : {};
               const cls = byType ? "hcell" : `hcell${c.level >= 1 ? ` l${c.level}` : ""}`;
-              const typeSuffix = byType && c.catVar ? ` · ${legend.find((l) => l.colorVar === c.catVar)?.label ?? ""}` : "";
+              const typeSuffix = byType && c.catVar ? ` · ${legendByVar.get(c.catVar) ?? ""}` : "";
               return (
                 <div
                   key={i}

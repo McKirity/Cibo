@@ -19,11 +19,16 @@
  * state).
  */
 
-export const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-export const MABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+import { MONTHS_LONG, MONTHS_SHORT } from "../metrics/format";
+
+// The month faces are the app-wide shared arrays (dedup pass 2026-07-30);
+// the exports keep their Map-local names so consumers don't churn.
+export const MONTHS = MONTHS_LONG;
+export const MABBR = MONTHS_SHORT;
+/** Day-of-week faces, SUNDAY-FIRST — indexed by `Date.getDay()`. Deliberately
+ * NOT consolidated: the app's calendar helpers are Monday-first (dates.ts),
+ * so a shared array would invite an off-by-one; this one exists only to label
+ * getDay() results. */
 export const DABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 /** The drawn quarter labels — month spans read inline, no tooltip needed. */
 export const Q_LABELS = ["Q1 · Jan – Mar", "Q2 · Apr – Jun", "Q3 · Jul – Sep", "Q4 · Oct – Dec"];

@@ -32,13 +32,13 @@ import {
   isoWeek,
   weekStart,
 } from "./dates";
+import { MONTHS_LONG, MONTHS_SHORT } from "./format";
 
 export type CadenceScale = "week" | "month" | "quarter" | "year";
 
-export const MONTH_ABBR = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-] as const;
+/** Alias of the format module's MONTHS_SHORT (kept exported — external
+ *  consumers address months through this name). */
+export const MONTH_ABBR: readonly string[] = MONTHS_SHORT;
 
 /** The month slot dial for a "YYYY-MM-DD"/"YYYY-MM" key ("--month-jun"). */
 export const monthSlot = (dayOrMonth: string): string =>
@@ -116,7 +116,7 @@ export function periodBounds(scale: CadenceScale, anchor: string): PeriodBounds 
   } else if (scale === "month") {
     from = `${anchor.slice(0, 7)}-01`;
     to = `${anchor.slice(0, 7)}-${String(daysInMonth(y, m)).padStart(2, "0")}`;
-    label = `${["January","February","March","April","May","June","July","August","September","October","November","December"][m - 1]} ${y}`;
+    label = `${MONTHS_LONG[m - 1]} ${y}`;
     prevAnchor = dayFromIndex(dayIndex(from) - 1);
     nextAnchor = dayFromIndex(dayIndex(to) + 1);
     up.push(

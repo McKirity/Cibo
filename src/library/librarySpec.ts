@@ -10,6 +10,7 @@
  * (Manual Entry)]]. The frozen face is `Final/library.html` (re-frozen
  * 2026-07-19); this file implements its behavior, never redraws it.
  */
+import { stars } from "../metrics/format";
 
 /** One catalog row — an entry joined with its session-derived aggregates. */
 export interface LibEntry {
@@ -23,7 +24,9 @@ export interface LibEntry {
   purchased: boolean;
   creators: string[];
   studios: string[];
-  series: string | null;
+  /* `series` was DROPPED 2026-07-30 (the dedup pass): populated since the
+     first build but read by no library surface — the entry dashboard owns
+     series display, off its own fetch. */
   cover: string | null;
   banner: string | null;
   /** Total logged duration, in hours (already ÷60). */
@@ -197,26 +200,10 @@ export const paginate = (entries: LibEntry[], page: number, perPage: number): Pa
   return { rows: entries.slice(from - 1, to), page: p, pageCount, from, to, total };
 };
 
-/**
- * The numbered pager's cells: ‹ 1 2 3 4 5 … 13 › — first pages, an ellipsis,
- * the last page; when the current page runs ahead, the window follows it
- * (1 … 5 6 7 … 13). "…" cells are the drawn `.pgell`.
- */
-export const pagerCells = (page: number, pageCount: number): (number | "…")[] => {
-  if (pageCount <= 7) return Array.from({ length: pageCount }, (_, i) => i + 1);
-  const cells: (number | "…")[] = [];
-  const around = [1, 2, page - 1, page, page + 1, pageCount - 1, pageCount]
-    .filter((n) => n >= 1 && n <= pageCount)
-    .sort((a, b) => a - b);
-  let prev = 0;
-  for (const n of around) {
-    if (n === prev) continue;
-    if (n > prev + 1) cells.push("…");
-    cells.push(n);
-    prev = n;
-  }
-  return cells;
-};
+// pagerCells HOISTED to kit/Pager.tsx 2026-07-30 (the dedup pass — the Map
+// was its second consumer); re-exported here so existing import paths and the
+// harness pattern keep working.
+export { pagerCells } from "../kit/Pager";
 
 // ── Status pills — the categorical palette, always carrying the word ─────────
 
@@ -306,7 +293,7 @@ export const catalogHeadline = (
   if (state.genre != null) parts.push(state.genre);
   if (state.priority != null) parts.push(`priority ${state.priority}`);
   if (state.rating != null)
-    parts.push(state.rating === "none" ? "unrated" : "★".repeat(state.rating));
+    parts.push(state.rating === "none" ? "unrated" : stars(state.rating));
   if (state.owned) parts.push("owned");
   const q = search.trim();
   if (q !== "") parts.push(`matching “${q}”`);
@@ -325,7 +312,9 @@ export const findDuplicate = (title: string, entries: LibEntry[]): LibEntry | nu
 
 // ── The cover-card lettermark (the no-cover fallback face) ───────────────────
 
-/** The FINAL's mono abbreviation: initials of up to 4 words, uppercased. */
+/** The FINAL's mono abbreviation: initials of up to 4 words, uppercased.
+ * Deliberately NOT metrics/format territory: the 4-char cover-lettermark
+ * contract differs from a plain initialism, so it stays with its tenant. */
 export const coverAbbr = (title: string): string =>
   title
     .replace(/[^A-Za-z0-9 ]/g, "")

@@ -118,6 +118,11 @@ export function CoverWall({
   // entire text") at its FIXED drawn width — 4 columns, height measured.
   const probeRef = useRef<HTMLDivElement | null>(null);
   const [measured, setMeasured] = useState<Map<string, Span>>(new Map());
+  // The probe UNMOUNTS once its tiles are measured (2026-07-30 efficiency
+  // pass) — it used to stay in the DOM for the wall's whole life. The key
+  // carries the tiles' CONTENT, not just their ids, so a same-id card whose
+  // text changed re-mounts the probe and re-measures.
+  const [measuredKey, setMeasuredKey] = useState<string | null>(null);
   const textTiles = useMemo(
     () =>
       tiles.filter(
@@ -126,14 +131,20 @@ export function CoverWall({
     [tiles],
   );
   const probeWidths = (t: WallTile): number[] => (t.body.kind === "horo" ? [4] : [2, 3, 4]);
-  const probeKey = textTiles.map((t) => t.id).join("|");
+  const probeKey = useMemo(
+    () => textTiles.map((t) => `${t.id}:${JSON.stringify(t.body)}`).join("|"),
+    [textTiles],
+  );
+  const probeLive = textTiles.length > 0 && measuredKey !== probeKey;
 
   useLayoutEffect(() => {
-    const probe = probeRef.current;
-    if (probe == null || textTiles.length === 0) {
+    if (textTiles.length === 0) {
       if (measured.size > 0) setMeasured(new Map());
+      setMeasuredKey(probeKey);
       return;
     }
+    const probe = probeRef.current;
+    if (probe == null) return; // already measured for this content — probe unmounted
     const cs = getComputedStyle(document.documentElement);
     const unit = parseFloat(cs.getPropertyValue("--wall-unit")) || 128;
     const gap = parseFloat(cs.getPropertyValue("--wall-gap")) || 12;
@@ -163,8 +174,9 @@ export function CoverWall({
         return old != null && old.cols === v.cols && old.halfRows === v.halfRows;
       });
     if (!same) setMeasured(next);
+    setMeasuredKey(probeKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [probeKey, tiles]);
+  }, [probeKey]);
 
   const seedKey = useMemo(
     () => data.habits.find((h) => h.kind === "range")?.key ?? null,
@@ -207,11 +219,12 @@ export function CoverWall({
     // The unlogged remainder — whatever did not land in a hole inside the
     // island — collects into ONE neat labelled cluster block, which is then
     // packed like any other tile.
+    const overflow = new Set(packed.overflowUnlogged);
     const names = packed.overflowUnlogged
       .map((t) => (t.body.kind === "unlogged" ? t.body.name : ""))
       .filter((n) => n !== "");
     const cluster: WallTile = { id: "cluster", body: { kind: "cluster", names } };
-    const keep = tiles.filter((t) => !packed.overflowUnlogged.includes(t));
+    const keep = tiles.filter((t) => !overflow.has(t));
     return packWall(toPackInputs([...keep, cluster], seedKey, measured), opts);
   }, [tiles, seedKey, measured, budget]);
 
@@ -280,23 +293,26 @@ export function CoverWall({
         </div>
       </div>
 
-      {/* The measuring pass. Inside `.wall` on purpose: the plate rules are
-          `.ms-tile.plate ...`, and a probe parked outside its own wall measures
-          the wrong height — the exhibit paid for that once already. */}
-      <div className="wall wall-probe" aria-hidden="true" ref={probeRef}>
-        {textTiles.map((t) =>
-          probeWidths(t).map((cols) => (
-            <div
-              key={`${t.id}:${cols}`}
-              data-probe={`${t.id}:${cols}`}
-              className={`tile ${tileClass(t)}`}
-              style={{ width: `calc(${cols} * var(--wall-unit) + ${cols - 1} * var(--wall-gap))` }}
-            >
-              <TileBody tile={t} dayKey={dayKey} config={config} />
-            </div>
-          )),
-        )}
-      </div>
+      {/* The measuring pass — mounted only until this content is measured.
+          Inside `.wall` on purpose: the plate rules are `.ms-tile.plate ...`,
+          and a probe parked outside its own wall measures the wrong height —
+          the exhibit paid for that once already. */}
+      {probeLive && (
+        <div className="wall wall-probe" aria-hidden="true" ref={probeRef}>
+          {textTiles.map((t) =>
+            probeWidths(t).map((cols) => (
+              <div
+                key={`${t.id}:${cols}`}
+                data-probe={`${t.id}:${cols}`}
+                className={`tile ${tileClass(t)}`}
+                style={{ width: `calc(${cols} * var(--wall-unit) + ${cols - 1} * var(--wall-gap))` }}
+              >
+                <TileBody tile={t} dayKey={dayKey} config={config} />
+              </div>
+            )),
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -517,9 +533,8 @@ function Whimsy({
   switch (which) {
     case "sun": {
       // "The sun tile renders at SOLAR NOON on a past day" — a fact about the
-      // day, not about when it was finalized.
-      const noon = new Date(`${dayKey}T12:00:00`);
-      const sun = sunInfo(dayKey, config.lat, config.lon, noon);
+      // day, not about when it was finalized (the tile's own copy says so).
+      const sun = sunInfo(dayKey, config.lat, config.lon);
       return (
         <>
           <span className="wl">Sun</span>
@@ -532,7 +547,7 @@ function Whimsy({
     }
     case "season": {
       const info = seasonInfo(dayKey, config.lat);
-      const band = seasonBand(dayKey, config.lat);
+      const band = seasonBand(dayKey, config.lat, info.northern);
       return (
         <>
           <span className="wl">Season</span>

@@ -6,10 +6,19 @@
  * Duration values are MINUTES throughout (the sessions spine stores minutes).
  */
 
-const MONTHS = [
+/** "Jan"…"Dec" — the app's three-letter month faces. */
+export const MONTHS_SHORT = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
+
+/** "January"…"December" — the full faces (calendar heads, period titles). */
+export const MONTHS_LONG = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+const MONTHS = MONTHS_SHORT; // internal alias — the formatters below don't churn
 
 /** Thousands-grouped integer: 1980 → "1,980". Locale-independent. */
 export const groupInt = (n: number): string =>
@@ -55,6 +64,21 @@ export const fmtRange = (from: string, to: string): string => {
 
 /** N stars as glyphs: 5 → "★★★★★". */
 export const stars = (n: number): string => "★".repeat(n);
+
+/**
+ * HTML-escape for derived strings that land in innerHTML (review lines,
+ * keepsake substitution). The FIVE-entity contract — & < > " ' — because an
+ * escaped value sits in text AND attribute positions; a 3-entity escape
+ * (& < > only, cadenceSpec's old copy) is unsafe inside attributes, where an
+ * unescaped quote re-opens the markup.
+ */
+export const escapeHtml = (s: string): string =>
+  s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 /** A delta chip's payload: the arrow+magnitude text and its direction. */
 export interface DeltaChip {

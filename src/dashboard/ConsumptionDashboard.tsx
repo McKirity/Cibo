@@ -11,8 +11,10 @@
  * the habit's declared type vocab, both absent for Gaming (empty vocab).
  */
 import { useMemo, useState, type CSSProperties } from "react";
+import { todayLocal } from "../metrics/clock";
 import { useConsumptionData } from "./useConsumptionData";
-import { buildConsumptionDashboard, type ScopeSel } from "./consumptionSpec";
+import { buildConsumptionDashboard, type DashboardModel, type ScopeSel } from "./consumptionSpec";
+import { HEAT_CLASS } from "./specShared";
 import {
   DistributionColumns,
   Heatmap,
@@ -24,14 +26,6 @@ import {
 import { EntryCreationModal } from "../library/EntryCreationModal";
 import "../dashboard.css";
 import "./screen.css";
-
-const todayLocal = (): string => {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
-
-const HEAT_CLASS: Record<string, string> = { HOT: "hot", WARM: "warm", COOLING: "warm", COLD: "cold" };
 
 // Zero-level heat word is per-habit — Reading reads, Media watches, the rest
 // play (the entrySpec wave-verb mapping, mirrored 2026-07-30). The duration
@@ -61,6 +55,9 @@ export function ConsumptionDashboard({
   const [creationOpen, setCreationOpen] = useState(false);
 
   const { model, ms } = useMemo(() => {
+    // Cheap early return before ready — never derive a model from a half-loaded
+    // store (EntryDashboard's pattern, conformed 2026-07-30).
+    if (!data.ready) return { model: null as DashboardModel | null, ms: 0 };
     const t0 = performance.now();
     const model = buildConsumptionDashboard(
       {
@@ -79,7 +76,7 @@ export function ConsumptionDashboard({
     return { model, ms: performance.now() - t0 };
   }, [data, scope, today, typeFilter]);
 
-  if (!data.ready) return <div className="gsdash">Loading {habitKey}…</div>;
+  if (!data.ready || model == null) return <div className="gsdash">Loading {habitKey}…</div>;
 
   const m = model;
   const color = m.colorVar;

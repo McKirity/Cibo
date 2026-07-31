@@ -11,6 +11,7 @@
  * true. Elapsed rides the tooltip (Windows) / title (macOS menu bar).
  */
 import { clockMs, fmtMs, type Clock } from "./timerCore";
+import { withAppWindow } from "../shell/safeWindow";
 
 type TrayHandle = {
   setTooltip: (t: string) => Promise<void>;
@@ -35,17 +36,34 @@ const label = (running: Clock[], now: number): string => {
   return running.length > 1 ? `${elapsed} · ${running.length} clocks` : elapsed;
 };
 
+/**
+ * The `isMinimized` probe is CACHED (2026-07-30 — the 500 ms ticker was
+ * paying a full IPC round-trip every tick): a probed verdict holds for one
+ * heartbeat (~15 s), and `visibilitychange` invalidates it on the actual
+ * minimize/restore transitions (WebView2 flips document visibility on both),
+ * so in practice the tray still appears/disappears on the NEXT tick — the
+ * TTL is only the fallback ceiling, itself within the heartbeat bound.
+ */
+const PROBE_TTL_MS = 15_000;
+let minimizedProbe: { value: boolean; at: number } | null = null;
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    minimizedProbe = null;
+  });
+}
+
+const probeMinimized = async (now: number): Promise<boolean> => {
+  if (minimizedProbe != null && now - minimizedProbe.at < PROBE_TTL_MS)
+    return minimizedProbe.value;
+  // withAppWindow: undefined outside a Tauri webview → false (no tray).
+  const value = (await withAppWindow((w) => w.isMinimized())) ?? false;
+  minimizedProbe = { value, at: now };
+  return value;
+};
+
 export const syncTray = async (clocks: Clock[], now: number): Promise<void> => {
   const running = clocks.filter((c) => c.running);
-  let wanted = false;
-  try {
-    if (running.length > 0) {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      wanted = await getCurrentWindow().isMinimized();
-    }
-  } catch {
-    wanted = false; // not in a Tauri webview
-  }
+  const wanted = running.length > 0 ? await probeMinimized(now) : false;
   lastWanted = wanted;
 
   if (!wanted) {
@@ -77,10 +95,13 @@ export const syncTray = async (clocks: Clock[], now: number): Promise<void> => {
       action: (event) => {
         if (event.type !== "Click" || event.buttonState !== "Down") return;
         void (async () => {
-          const { getCurrentWindow } = await import("@tauri-apps/api/window");
-          const w = getCurrentWindow();
-          await w.unminimize().catch(() => {});
-          await w.setFocus().catch(() => {});
+          await withAppWindow(async (w) => {
+            await w.unminimize().catch(() => {});
+            await w.setFocus().catch(() => {});
+          });
+          // The window is restoring — drop the cached "minimized" verdict so
+          // the next tick's probe closes the icon promptly.
+          minimizedProbe = null;
           openTimersNav?.();
         })();
       },

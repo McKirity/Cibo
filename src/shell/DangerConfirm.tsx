@@ -19,7 +19,7 @@
  *
  * Esc closes the top overlay only.
  */
-import { useEffect } from "react";
+import { useOverlayEsc } from "./overlayHooks";
 
 export function DangerConfirm({
   title,
@@ -42,16 +42,9 @@ export function DangerConfirm({
    */
   stacked?: boolean;
 }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onCancel();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel]);
+  // The shared overlay stack: mounted last (it stacks over its opener), so it
+  // sits on top and one Esc pops this confirm alone.
+  useOverlayEsc(onCancel);
 
   return (
     <div className={`dimlayer${stacked ? " stack" : ""}`} onMouseDown={onCancel} role="presentation">

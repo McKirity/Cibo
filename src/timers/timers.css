@@ -62,7 +62,6 @@
 
 /* the count-up hero readout — the DEDICATED dial, not a stretched stat value */
 .timerscreen .fbig { font-family: var(--font-mono); font-size: var(--clock-face-size); font-weight: var(--weight-bold); line-height: 1; letter-spacing: .01em; color: var(--text-strong); font-variant-numeric: tabular-nums; }
-.timerscreen .fsub { font-size: var(--size-small); color: var(--text-muted); }
 .timerscreen .fphase { font-size: var(--size-small); text-transform: uppercase; letter-spacing: .06em; font-weight: var(--weight-bold); color: var(--text-secondary); }
 
 /* progress ring (countdown + pomodoro) — a SIBLING of the donut tiers, neutral
@@ -185,22 +184,16 @@
 .timer-mo .mrow .mnwrap { min-width: 0; }
 .timer-mo .mrow .mn { font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong); white-space: nowrap; }
 .timer-mo .mrow .mn .ent { color: var(--text-secondary); font-weight: var(--weight-regular); }
-/* .msub — the row's second line. STRUCK from the management face 2026-07-28 (user: cluttered);
-   the row is identity + its accumulator + its two verbs, nothing else. The rule survives for
-   the recovery face, which may still want it. */
-.timer-mo .mrow .msub { font-size: var(--size-caption); color: var(--text-muted); margin-top: var(--space-1); white-space: nowrap; }
+/* .msub — the row's second line — was STRUCK from the management face 2026-07-28 (user:
+   cluttered) and its rule DELETED at the 2026-07-30 dedup pass: the recovery face never
+   took it up, so it had no tenant left. */
 .timer-mo .mrow .macc { justify-self: end; text-align: right; font-family: var(--font-mono); font-size: var(--size-heading); font-weight: var(--weight-bold); line-height: var(--line-tight); letter-spacing: -.01em; color: var(--text-strong); font-variant-numeric: tabular-nums; }
 .timer-mo .mrow .macts { display: flex; gap: var(--space-2); flex: 0 0 auto; }
-.timer-mo .foothint { margin-left: auto; white-space: nowrap; font-size: var(--size-caption); color: var(--text-muted); }
 
 /* the dashed add row */
 .timer-mo .maddrow { white-space: nowrap; display: inline-flex; align-items: center; gap: var(--space-3); align-self: flex-start; font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary); background: transparent; border: var(--border-standard) dashed var(--border); border-radius: var(--radius-small); padding: var(--space-4) var(--space-5); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
 .timer-mo .maddrow:hover { background: var(--hover-wash); color: var(--text-strong); border-color: var(--accent); }
 .timer-mo .maddrow svg { width: var(--icon-size-small); height: var(--icon-size-small); display: block; }
-
-.timer-mo .mo-msg { font-size: var(--size-body); color: var(--text-secondary); line-height: var(--line-normal); }
-.timer-mo .mo-msg b { color: var(--text-strong); font-weight: var(--weight-medium); }
-.timer-mo .recnote { font-size: var(--size-caption); color: var(--text-muted); }
 
 /* ── the create flow (the create modal reuses the create-card steps, unwrapped) ── */
 /* APPEARANCE PASS 2026-07-28 — LABEL TIERS CUT FROM FOUR TO TWO. The step label was mono +
@@ -218,12 +211,13 @@
 /* mode segmented pick (kit-toggle-segmented) */
 /* APPEARANCE PASS 2026-07-28 (3rd) — the mode pick is a PILL: --radius-full on the track and
    on each segment. RULED THE APP'S SEGMENTED IDIOM at the pull (user, same day): kit's .segctl
-   moved to the same radii, so the two never diverge. This rule keeps only what is local to the
-   mode pick (flex-fill segments · the roomier padding). */
-.timer-mo .modeseg { display: flex; background: var(--inset-background); border-radius: var(--radius-full); padding: var(--space-1); gap: var(--space-1); }
-.timer-mo .modeseg button { flex: 1 1 0; font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary); background: transparent; border: none; border-radius: var(--radius-full); padding: var(--space-4) var(--space-6); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+   moved to the same radii, so the two never diverge. Since the 2026-07-30 dedup pass the
+   markup wears `.segctl.modeseg` and this rule IS only the delta over kit's .segctl:
+   the track flex-FILLS its column, segments fill it evenly at roomier vertical padding,
+   plus the hover ink-lift the kit rule doesn't declare. Everything else is .segctl's. */
+.timer-mo .modeseg { display: flex; }
+.timer-mo .modeseg button { flex: 1 1 0; padding: var(--space-4) var(--space-6); }
 .timer-mo .modeseg button:hover { color: var(--text-strong); }
-.timer-mo .modeseg button[aria-pressed="true"] { background: var(--panel-background); color: var(--text-strong); box-shadow: var(--shadow-low); }
 
 /* tracked-set picker — exclusivity READS THROUGH the disabled rows (no prose) */
 .timer-mo .picklist { display: flex; flex-direction: column; border: var(--border-hairline) solid var(--divider); border-radius: var(--radius-small); overflow: hidden; }
@@ -241,7 +235,6 @@
 .timer-mo .prow2.on .box svg { opacity: 1; }
 .timer-mo .prow2 .dot { width: 12px; height: 12px; border-radius: var(--radius-small); flex: 0 0 auto; }
 .timer-mo .prow2 .pn { font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong); }
-.timer-mo .prow2 .pn .ent { color: var(--text-secondary); font-weight: var(--weight-regular); }
 .timer-mo .prow2 .pe { margin-left: auto; }
 /* APPEARANCE PASS 2026-07-28 (2nd) — the chevron was a bare glyph that read as a select while
    the row itself did the checking: two verbs, one target. It is now a real DISCLOSURE button
@@ -314,4 +307,3 @@
 .timer-mo .minifield { display: inline-flex; align-items: center; gap: var(--space-4); background: var(--inset-background); border: var(--border-hairline) solid transparent; border-radius: var(--radius-small); padding: var(--space-3) var(--space-5); font-family: var(--font-mono); font-size: var(--size-body); color: var(--text-strong); transition: border-color var(--motion-fast) var(--ease-standard); }
 .timer-mo .minifield:hover, .timer-mo .minifield:focus-within { border-color: var(--border); }
 .timer-mo .minifield input { background: transparent; border: none; outline: none; font: inherit; color: inherit; width: var(--input-inline-w); }
-.timer-mo .noset { font-size: var(--size-small); color: var(--text-muted); background: var(--inset-background); border-radius: var(--radius-small); padding: var(--space-5); }

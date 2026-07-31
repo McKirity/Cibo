@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
 import { stringListFromJson } from "../db/schema";
+import { sessionMinutes } from "../metrics/shapes";
 import type { ASData, ASEntry, ASHabit, ASSession } from "./advancedSpec";
 
 const habitsQuery = evolu.createQuery((db) =>
@@ -80,14 +81,7 @@ const decodeList = (raw: unknown): string[] => {
   }
 };
 
-/** "YYYY-MM-DDTHH:MM" local → epoch minutes (rangeSpec's arithmetic, inlined). */
-const localMinutes = (dt: string): number => {
-  const t = new Date(dt).getTime();
-  return Number.isFinite(t) ? t / 60000 : 0;
-};
-
 export interface SearchData extends ASData {
-  ready: boolean;
   /** Recency-of-activity per habit id / entry id — the ranker's last tiebreak. */
   habitRecency: Map<string, string>;
   entryRecency: Map<string, string>;
@@ -113,7 +107,8 @@ export function useSearchData(): SearchData {
           id: h.id,
           key: h.key as string | null,
           name: (h.name as string | null) ?? "—",
-          colourSlot: (h.colour_slot as string | null) ?? "habit-2",
+          // habit-1: the app-wide null-slot fallback (unified 2026-07-30).
+          colourSlot: (h.colour_slot as string | null) ?? "habit-1",
           icon: h.icon as string | null,
           kind: (h.kind as string | null) ?? "simple",
           subType: h.sub_type as string | null,
@@ -151,11 +146,17 @@ export function useSearchData(): SearchData {
     () =>
       sessionRows.flatMap((s) => {
         if (s.day == null || s.habit_fk == null) return [];
-        // A range session stores value:null — derive its minutes here so the
-        // pure layer reads one shape (see ASSession.value).
+        // A range session stores value:null — derive its minutes here (the
+        // canonical shapes.sessionMinutes) so the pure layer reads one shape
+        // (see ASSession.value). Count rows keep their own unit value.
         const value =
-          s.measure_kind === "range" && s.start != null && s.end != null
-            ? Math.max(0, localMinutes(s.end as string) - localMinutes(s.start as string))
+          s.measure_kind === "range"
+            ? sessionMinutes({
+                measure_kind: "range",
+                value: null,
+                start: s.start as string | null,
+                end: s.end as string | null,
+              })
             : (s.value as number | null);
         return [
           {
@@ -214,7 +215,6 @@ export function useSearchData(): SearchData {
 
   return useMemo<SearchData>(
     () => ({
-      ready: habitRows.length > 0,
       habits,
       entries,
       sessions,
@@ -225,6 +225,6 @@ export function useSearchData(): SearchData {
       typeVocab,
       genreVocab,
     }),
-    [habitRows, habits, entries, sessions, finalizedDays, habitRecency, entryRecency, statusVocab, typeVocab, genreVocab],
+    [habits, entries, sessions, finalizedDays, habitRecency, entryRecency, statusVocab, typeVocab, genreVocab],
   );
 }

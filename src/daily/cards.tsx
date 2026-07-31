@@ -44,7 +44,6 @@ import {
 } from "./sky";
 import {
   countdowns,
-  dayOfYear,
   type Anniversary,
   factFor,
   holidayFor,
@@ -55,6 +54,7 @@ import {
   timeProgress,
   wordFor,
 } from "./almanac";
+import { MONTHS_LONG, MONTHS_SHORT } from "../metrics/format";
 import type { WhimsyConfig } from "./whimsyConfig";
 
 // Not metrics/format.hoursMinutes: the sun face always carries the hour
@@ -359,7 +359,7 @@ export function WeatherCard({
 
 export function SeasonCard({ dayKey, lat }: { dayKey: string; lat: number }) {
   const s = seasonInfo(dayKey, lat);
-  const band = seasonBand(dayKey, lat);
+  const band = seasonBand(dayKey, lat, s.northern);
   return (
     <div className="card whimsy season-card" style={{ flex: "1.15 0 149px" }}>
       <Ovl label="Season" d={I_SEASON} />
@@ -581,9 +581,6 @@ export function FactCard({ dayKey }: { dayKey: string }) {
   );
 }
 
-const MON_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const MON_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
 export function OnThisDayCard({
   dayKey,
   anniversaries = [],
@@ -599,7 +596,7 @@ export function OnThisDayCard({
 }) {
   const events = onThisDay(dayKey);
   const dd = Number(dayKey.slice(8, 10));
-  const monLong = MON_LONG[Number(dayKey.slice(5, 7)) - 1];
+  const monLong = MONTHS_LONG[Number(dayKey.slice(5, 7)) - 1];
   const thisYear = dayKey.slice(0, 4);
   const hasPersonal =
     anniversaries.length > 0 || trackingYears != null || appYears != null;
@@ -669,7 +666,7 @@ export function HolidayCard({ dayKey }: { dayKey: string }) {
   if (!h) return null;
   const dd = Number(dayKey.slice(8, 10));
   const mi = Number(dayKey.slice(5, 7)) - 1;
-  const mon = MON_SHORT[mi];
+  const mon = MONTHS_SHORT[mi];
   return (
     <div className="card whimsy holiday" style={ALMANAC_FLEX}>
       <Ovl label="Holiday" d={I_HOL} />
@@ -732,6 +729,8 @@ const WEEKDAY_FMT = new Intl.DateTimeFormat(undefined, { weekday: "long" });
 const MON_VAR = ["--month-jan", "--month-feb", "--month-mar", "--month-apr", "--month-may", "--month-jun", "--month-jul", "--month-aug", "--month-sep", "--month-oct", "--month-nov", "--month-dec"];
 
 export function TimeProgressCard({ dayKey, now }: { dayKey: string; now: Date }) {
+  // The week/quarter/year figures all live in `timeProgress` (2026-07-30
+  // dedup) — this card only picks colours and renders.
   const t = timeProgress(dayKey, now);
   const mi = Number(dayKey.slice(5, 7)) - 1;
   const monthVar = "var(" + MON_VAR[mi] + ")";
@@ -739,16 +738,7 @@ export function TimeProgressCard({ dayKey, now }: { dayKey: string; now: Date })
   // period colours the registry calls for; the year is the theme accent.
   const qMid = "var(" + MON_VAR[Math.floor(mi / 3) * 3 + 1] + ")";
   const weekVar = "color-mix(in oklch, " + monthVar + ", var(--window-background) var(--week-shade-mix))";
-  const doy = dayOfYear(dayKey);
   const d = new Date(dayKey + "T12:00:00");
-  const jan1 = new Date(d.getFullYear(), 0, 1);
-  const week = Math.floor((doy + ((jan1.getDay() + 6) % 7) - 1) / 7) + 1;
-  const daysInYear = (new Date(d.getFullYear() + 1, 0, 1).getTime() - jan1.getTime()) / 86400000;
-  const qPct = (() => {
-    const qStart = new Date(d.getFullYear(), Math.floor(mi / 3) * 3, 1);
-    const qEnd = new Date(d.getFullYear(), Math.floor(mi / 3) * 3 + 3, 1);
-    return (d.getTime() - qStart.getTime()) / (qEnd.getTime() - qStart.getTime());
-  })();
   return (
     <div className="card whimsy timeprog" style={ALMANAC_FLEX}>
       <div className="ovl">
@@ -767,11 +757,11 @@ export function TimeProgressCard({ dayKey, now }: { dayKey: string; now: Date })
           <Ring pct={t.dayPct} stroke={monthVar} label="Day" />
           <Ring pct={t.weekPct} stroke={weekVar} label="Week" />
           <Ring pct={t.monthPct} stroke={monthVar} label="Month" />
-          <Ring pct={qPct} stroke={qMid} label="Quarter" />
+          <Ring pct={t.quarterPct} stroke={qMid} label="Quarter" />
           <Ring pct={t.yearPct} stroke="var(--accent)" label="Year" />
         </div>
         <div className="tp-note">
-          {"Day " + doy + " of " + daysInYear + " \u00b7 week " + week + " \u00b7 Q" + (Math.floor(mi / 3) + 1) + " \u00b7 " + WEEKDAY_FMT.format(d) + " " + String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0")}
+          {"Day " + t.doy + " of " + t.daysInYear + " \u00b7 week " + t.week + " \u00b7 Q" + t.quarter + " \u00b7 " + WEEKDAY_FMT.format(d) + " " + String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0")}
         </div>
       </div>
     </div>
@@ -1108,8 +1098,10 @@ export function LifetimeCard({
   );
 }
 
-/** Convenience for the chassis: the sky column's computed inputs. */
-export const skyInputs = (dayKey: string, config: WhimsyConfig, now: Date) => ({
-  sun: sunInfo(dayKey, config.lat, config.lon, now),
+/** Convenience for the chassis: the sky column's computed inputs — pure
+ * functions of the date, so the caller memoizes on (dayKey, config) alone;
+ * the ticking disc reads `sunArcPoint(sun, now)` at render. */
+export const skyInputs = (dayKey: string, config: WhimsyConfig) => ({
+  sun: sunInfo(dayKey, config.lat, config.lon),
   moon: moonInfo(dayKey, config.lat, config.lon),
 });

@@ -26,6 +26,7 @@ import { evolu } from "../db/evolu";
 import { entryAttributesFromJson } from "../db/schema";
 import { takenUnits, type TrackedItem } from "./timerCore";
 import { useTimers } from "./timerStore";
+import { Ico, ICONS } from "../shell/icons";
 
 const habitsQuery = evolu.createQuery((db) =>
   db
@@ -45,11 +46,25 @@ const habitsQuery = evolu.createQuery((db) =>
     .orderBy("sort_order"),
 );
 
+// Entries of duration-declaring PROJECT habits only (2026-07-30 — was a
+// whole-store entries subscription): the eligible roster is `measures_time`
+// habits and only project rows open an entry sub-pick, so no other entry can
+// ever be rendered or titled from here. Archived habits are deliberately NOT
+// excluded in SQL — the TS roster filter hides them, and a tracked item may
+// still need its title if its habit archives mid-clock.
 const entriesQuery = evolu.createQuery((db) =>
   db
     .selectFrom("entries")
     .select(["id", "habit_fk", "title", "status", "updatedAt"])
-    .where("isDeleted", "is not", 1),
+    .where("isDeleted", "is not", 1)
+    .where("habit_fk", "in", (eb) =>
+      eb
+        .selectFrom("habits")
+        .select("habits.id")
+        .where("kind", "=", "project")
+        .where("measures_time", "=", 1)
+        .where("isDeleted", "is not", 1),
+    ),
 );
 
 /** The consumption search face shows this many rows at once. */
@@ -91,22 +106,15 @@ export const selectionToItems = (
   return items;
 };
 
+// Glyphs from the shell roster (dedup pass 2026-07-30) — paths verified per
+// glyph before adopting.
 const ICheck = ({ className = "ico" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24">
-    <path d="M20 6 9 17l-5-5" />
-  </svg>
+  <Ico d={ICONS.check} className={className} />
 );
-const IChevron = () => (
-  <svg className="ico" viewBox="0 0 24 24">
-    <path d="m6 9 6 6 6-6" />
-  </svg>
-);
-const IPlus = () => (
-  <svg className="ico" viewBox="0 0 24 24">
-    <path d="M12 5v14" />
-    <path d="M5 12h14" />
-  </svg>
-);
+const IChevron = () => <Ico d={ICONS.chevron} />;
+const IPlus = () => <Ico d={ICONS.plus} />;
+// DIVERGENT from ICONS.search (r=7 circle + shorter handle — the sub-pick's
+// smaller field); kept local rather than forcing the roster glyph.
 const ISearch = () => (
   <svg className="ico" viewBox="0 0 24 24">
     <circle cx="11" cy="11" r="7" />

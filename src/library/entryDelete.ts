@@ -25,14 +25,16 @@ export interface DeleteResult {
 export async function deleteEntriesCascade(entryIds: string[]): Promise<DeleteResult> {
   const ids = entryIds as EntryId[];
   // Resolve the LIVE session rows first so undo restores exactly what died
-  // (an already-deleted session must not resurrect).
+  // (an already-deleted session must not resurrect). ONE `in` query for the
+  // whole selection (2026-07-30 — was one loadQuery per entry, sequentially);
+  // the empty guard keeps SQLite from seeing an empty `IN ()`.
   const sessionIds: SessionId[] = [];
-  for (const entryId of ids) {
+  if (ids.length > 0) {
     const q = evolu.createQuery((db) =>
       db
         .selectFrom("sessions")
         .select(["id"])
-        .where("entry_fk", "=", entryId)
+        .where("entry_fk", "in", ids)
         .where("isDeleted", "is not", 1),
     );
     const rows = await evolu.loadQuery(q);

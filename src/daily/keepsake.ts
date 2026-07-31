@@ -25,7 +25,8 @@
  * Everything here is pure so the harness can drive it without a DOM; the React
  * host lives in `KeepsakeTile.tsx`.
  */
-import { groupInt, hoursMinutes } from "../metrics/format";
+import { escapeHtml, groupInt, hoursMinutes } from "../metrics/format";
+import { sessionMinutes } from "../metrics/shapes";
 
 // ── The values a snippet can ask for ─────────────────────────────────────────
 
@@ -81,13 +82,6 @@ export interface KeepsakeInput {
   flags: ReadonlyArray<string>;
 }
 
-const minutesOf = (r: KeepsakeInput["rows"][number]): number => {
-  if (r.measure_kind === "time") return r.value ?? 0;
-  if (r.measure_kind === "range" && r.start != null && r.end != null)
-    return Math.max(0, Math.round((Date.parse(r.end) - Date.parse(r.start)) / 60_000));
-  return 0;
-};
-
 /** "23:40" out of a stored local "2026-07-26T23:40". */
 const clock = (dt: string | null): string => (dt == null ? "" : dt.slice(11, 16));
 
@@ -105,7 +99,7 @@ export const nightPct = (dt: string | null): number => {
 };
 
 export function keepsakeValues(input: KeepsakeInput): KeepsakeValues {
-  const timeMins = input.rows.reduce((a, r) => a + minutesOf(r), 0);
+  const timeMins = input.rows.reduce((a, r) => a + sessionMinutes(r), 0);
   const counts = input.rows
     .filter((r) => r.measure_kind === "count")
     .reduce((a, r) => a + (r.value ?? 0), 0);
@@ -146,19 +140,12 @@ export function keepsakeValues(input: KeepsakeInput): KeepsakeValues {
 // ── Substitution ─────────────────────────────────────────────────────────────
 
 /**
- * The one place a placeholder is spelled. Substituted values are HTML-ESCAPED:
- * a snippet's placeholder sits in text and attribute positions, and an entry
- * title or a hand-typed board carrying `<` or `"` would otherwise re-open the
- * markup the sanitizer just closed.
+ * The one place a placeholder is spelled. Substituted values are HTML-ESCAPED
+ * (metrics/format.escapeHtml, the 5-entity contract this file's copy fathered —
+ * 2026-07-30 dedup): a snippet's placeholder sits in text and attribute
+ * positions, and an entry title or a hand-typed board carrying `<` or `"` would
+ * otherwise re-open the markup the sanitizer just closed.
  */
-const escapeHtml = (s: string): string =>
-  s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-
 const PLACEHOLDER = /\{\{\s*([a-z-]+(?::[A-Za-z0-9_-]+)?)\s*\}\}/g;
 
 export function substitute(snippet: string, v: KeepsakeValues): string {

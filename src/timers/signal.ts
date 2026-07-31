@@ -12,7 +12,8 @@
  * on the docket to glow") — taskbar flash on Windows, dock bounce on macOS.
  * Same fence: it fires only at a boundary the user scheduled.
  */
-import { getCurrentWindow, UserAttentionType } from "@tauri-apps/api/window";
+import { UserAttentionType } from "@tauri-apps/api/window";
+import { withAppWindow } from "../shell/safeWindow";
 import type { Boundary } from "./timerCore";
 
 let ctx: AudioContext | null = null;
@@ -66,14 +67,9 @@ const chime = () => {
 };
 
 const flagAttention = () => {
-  try {
-    if (document.hasFocus()) return;
-    void getCurrentWindow()
-      .requestUserAttention(UserAttentionType.Informational)
-      .catch(() => {});
-  } catch {
-    /* not in a Tauri webview */
-  }
+  if (document.hasFocus()) return;
+  // safeWindow's shared stanza — outside a Tauri webview this is a no-op.
+  void withAppWindow((w) => w.requestUserAttention(UserAttentionType.Informational));
 };
 
 export const fireSignal = (boundary: Exclude<Boundary, null>): void => {

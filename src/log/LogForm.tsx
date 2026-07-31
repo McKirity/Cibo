@@ -17,33 +17,18 @@
  */
 import { useMemo, useState } from "react";
 import { useQuery } from "@evolu/react";
-import { FiniteNumber, NonEmptyString100, NonEmptyString1000 } from "@evolu/common";
 import { evolu } from "../db/evolu";
-import {
-  DateOnly,
-  DateTimeLocal,
-  entryAttributesFromJson,
-  type EntryId,
-  type HabitId,
-  type MeasureKind,
-} from "../db/schema";
-import {
-  validateRangeSpan,
-  validateSessionAgainstHabit,
-  validateSessionMeasure,
-} from "../db/validate";
+import { DateOnly, type EntryId, type HabitId, type MeasureKind } from "../db/schema";
+import { insertSession, quickCreateEntry } from "../daily/spineWrites";
+import type { SpineHabit } from "../daily/spineSpec";
 import { syncDerivedKeyboardForDay, WRITING_KEY } from "../db/derivedKeyboard";
-
-/** Local calendar today. Logical today = calendar today until the cutoff Setting exists. */
-const todayLocal = (): string => {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
+import { todayLocal } from "../metrics/clock";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
 
+// Near-twin of metrics/format.hoursMinutes, deliberately NOT adopted: this
+// dev-era face writes "1h 3m" where the shared one zero-pads ("1h 03m").
 const fmtMinutes = (m: number): string =>
   m >= 60 ? `${Math.floor(m / 60)}h ${Math.round(m % 60)}m` : `${Math.round(m)}m`;
 
@@ -63,6 +48,44 @@ const defaultMeasure = (h: {
   measures_count: number | null;
 }): MeasureKind =>
   h.kind === "range" ? "range" : h.measures_time ? "time" : h.measures_count ? "count" : "none";
+
+/**
+ * Adapt a habits row to the spine's habit shape — since the 2026-07-30 fold
+ * the write assembly (validate + brand + insert) lives ONLY in
+ * daily/spineWrites; this form keeps its own UI and one-measure-per-save
+ * behavior and just borrows the writes. `derived_rules` is not read by any
+ * write path, so the empty list is safe.
+ */
+const toSpineHabit = (h: {
+  id: string;
+  key: unknown;
+  name: unknown;
+  kind: unknown;
+  sub_type: unknown;
+  colour_slot: unknown;
+  icon: unknown;
+  measures_time: unknown;
+  measures_count: unknown;
+  count_unit: unknown;
+  range_max_midnights: unknown;
+  entry_attributes: unknown;
+  sort_order: unknown;
+}): SpineHabit => ({
+  id: h.id,
+  key: (h.key as string | null) ?? null,
+  name: (h.name as string | null) ?? "—",
+  kind: h.kind as SpineHabit["kind"],
+  sub_type: h.sub_type as SpineHabit["sub_type"],
+  colour_slot: (h.colour_slot as string | null) ?? "habit-1",
+  icon: (h.icon as string | null) ?? null,
+  measures_time: h.measures_time === 1,
+  measures_count: h.measures_count === 1,
+  count_unit: (h.count_unit as string | null) ?? null,
+  range_max_midnights: (h.range_max_midnights as number | null) ?? null,
+  entry_attributes: (h.entry_attributes as string | null) ?? null,
+  derived_rules: [],
+  sort_order: (h.sort_order as number | null) ?? null,
+});
 
 export function LogForm() {
   const habits = useQuery(activeHabitsQuery);
@@ -123,30 +146,21 @@ export function LogForm() {
     setFlash(null);
   };
 
-  /** Inline quick-create: title-only stub; status "Current" iff the habit's bundle has status. */
+  /** Inline quick-create — the spine's shared write (title-only stub; status
+   * "Current" iff the habit's bundle has status). */
   const quickCreate = () => {
     if (!habit) return;
-    const title = entrySearch.trim();
-    if (title.length === 0) return;
-    let hasStatus = false;
-    try {
-      hasStatus = habit.entry_attributes
-        ? entryAttributesFromJson(habit.entry_attributes).includes("status")
-        : false;
-    } catch {
-      hasStatus = false;
-    }
-    const res = evolu.insert("entries", {
-      habit_fk: habit.id,
-      title: NonEmptyString1000.orThrow(title),
-      status: hasStatus ? NonEmptyString100.orThrow("Current") : null,
-    });
+    if (entrySearch.trim().length === 0) return; // silent, as before the fold
+    const res = quickCreateEntry(
+      toSpineHabit(habit),
+      (habit.entry_attributes as string | null) ?? null,
+      entrySearch,
+    );
     if (res.ok) {
-      setEntryId(res.value.id);
+      setEntryId(res.id);
       setError(null);
     } else {
-      setError("Entry creation failed — see console.");
-      console.error("quick-create failed", res.error);
+      setError(res.reason);
     }
   };
 
@@ -156,7 +170,6 @@ export function LogForm() {
       setError("Pick a habit first.");
       return;
     }
-    const habitKind = habit.kind;
 
     // Range sessions: the owning day is the END date (keystone).
     const owningDay =
@@ -185,45 +198,21 @@ export function LogForm() {
       return;
     }
 
-    // The app-enforced rules — validate.ts, never re-invented here.
-    const checks = [
-      validateSessionAgainstHabit(
-        {
-          kind: habitKind,
-          measures_time: !!habit.measures_time,
-          measures_count: !!habit.measures_count,
-        },
-        { entry_fk: entryId, measure_kind: measureKind },
-      ),
-      validateSessionMeasure({ measure_kind: measureKind, value, start, end }),
-      ...(measureKind === "range" && start != null && end != null
-        ? [validateRangeSpan(start, end, habit.range_max_midnights ?? 0)]
-        : []),
-    ];
-    const failed = checks.find((c) => !c.ok);
-    if (failed && !failed.ok) {
-      setError(failed.reason);
-      return;
-    }
-
-    try {
-      const res = evolu.insert("sessions", {
-        habit_fk: habit.id,
-        entry_fk: entryId,
-        day: DateOnly.orThrow(owningDay),
-        measure_kind: measureKind,
-        value: value != null ? FiniteNumber.orThrow(value) : null,
-        start: start != null ? DateTimeLocal.orThrow(start) : null,
-        end: end != null ? DateTimeLocal.orThrow(end) : null,
-        source: "manual",
-      });
-      if (!res.ok) {
-        setError("Write failed — see console.");
-        console.error("session insert failed", res.error);
-        return;
-      }
-    } catch (e) {
-      setError(String(e));
+    // The spine's shared write assembly (validate.ts checks + brands + insert)
+    // — folded onto daily/spineWrites.insertSession 2026-07-30; behavior
+    // unchanged: one session, exactly one measure, source "manual".
+    const res = insertSession({
+      habit: toSpineHabit(habit),
+      day: owningDay,
+      entryId,
+      measure: measureKind,
+      value,
+      start,
+      end,
+      source: "manual",
+    });
+    if (!res.ok) {
+      setError(res.reason);
       return;
     }
 

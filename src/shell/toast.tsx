@@ -52,8 +52,6 @@ export const showErrorToast = (message: string, ms = 6_000): number => {
   return id;
 };
 
-export const dismissToast = () => publish(null);
-
 /** The slot itself — mounted once, by the shell. */
 export function ToastSlot() {
   const [toast, setToast] = useState<ToastMessage | null>(current);

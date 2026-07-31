@@ -26,11 +26,14 @@
  * different steps, different container (screen panel vs. morphing overlay).
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { WindowCfg } from "../compare/compareSpec";
-import { DayField, PeriodPicker } from "../compare/PeriodPicker";
-import { PresetControl } from "../compare/PresetMenu";
-import { Menu, type MenuItem } from "../library/bits";
+import type { WindowCfg } from "../kit/periodWindow";
+import { DayField, PeriodPicker } from "../kit/PeriodPicker";
+import { PresetControl } from "../kit/PresetMenu";
+import { Menu, type MenuItem } from "../kit/Menu";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
+import { Ico, ICONS } from "../shell/icons";
+import { useOverlayEsc } from "../shell/overlayHooks";
+import { monthVar } from "./periodGrammar";
 import type { PaletteNav } from "./Palette";
 import {
   dayCondComplete,
@@ -49,18 +52,7 @@ import type { SearchData } from "./useSearchData";
 const AS_PREFIX = "as_preset:";
 const CAP = 60;
 
-const IX = () => (
-  <svg className="ico" viewBox="0 0 24 24"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-);
-const IBack = () => (
-  <svg className="ico" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></svg>
-);
-const IPlus = () => (
-  <svg className="ico" viewBox="0 0 24 24"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
-);
-const ICaret = () => (
-  <svg className="ico" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg>
-);
+// Glyphs come from shell/icons (close/back/plus/chevron — drawn paths match).
 
 // ── Condition vocab (labels for the add menu + the row eyebrows) ─────────────
 
@@ -131,15 +123,9 @@ export function AdvancedSearch({
   const [dayConds, setDayConds] = useState<IdCond<DayCond>[]>([]);
   const [entryConds, setEntryConds] = useState<IdCond<EntryCond>[]>([]);
 
-  // Esc closes the OVERLAY (the top layer); the popovers' capture-phase
-  // handlers win first, exactly the app-wide discipline.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // Esc closes the OVERLAY (the top layer, via the shared overlay stack); the
+  // popovers' capture-phase handlers win first, exactly the app-wide discipline.
+  useOverlayEsc(onClose);
 
   const win = window_.mode === "none" ? undefined : window_;
   // RESULTS RUN ON DEMAND (user-ruled 2026-07-29, REVERSING the ruled "live
@@ -238,7 +224,7 @@ export function AdvancedSearch({
         {/* head — back to the simple palette · title · presets */}
         <div className="advs-head">
           <button className="advs-back" onClick={onBack} title="Back to the palette">
-            <IBack />
+            <Ico d={ICONS.back} />
           </button>
           <div className="advs-titlewrap">
             <span className="advs-title">Advanced Search</span>
@@ -373,7 +359,7 @@ export function AdvancedSearch({
                       <span className="pal-lead">
                         <span
                           className="pal-dot"
-                          style={{ background: `var(--month-${["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"][Number(h.day.slice(5, 7)) - 1]})` }}
+                          style={{ background: `var(${monthVar(Number(h.day.slice(5, 7)))})` }}
                         />
                       </span>
                       <span className="pal-txt">
@@ -492,7 +478,7 @@ function HabitField({
           <span className="dot" style={{ background: `var(--${h.colourSlot})` }} />
         ))}
         <span className="fname">{h?.name ?? placeholder}</span>
-        <span className="caret"><ICaret /></span>
+        <span className="caret"><Ico d={ICONS.chevron} /></span>
       </button>
       {open && <Menu items={items} onClose={() => setOpen(false)} />}
     </div>
@@ -515,7 +501,7 @@ function ValueField({
     <div className="fieldwrap">
       <button className={`field${value == null ? " placeholder" : ""}`} onClick={() => setOpen((o) => !o)}>
         <span className="fname">{value ?? placeholder}</span>
-        <span className="caret"><ICaret /></span>
+        <span className="caret"><Ico d={ICONS.chevron} /></span>
       </button>
       {open && (
         <Menu
@@ -577,7 +563,7 @@ function EntryField({
     <div className="fieldwrap" ref={boxRef}>
       <button className={`field${picked == null ? " placeholder" : ""}`} onClick={() => setOpen((o) => !o)}>
         <span className="fname">{picked?.title ?? "pick an entry"}</span>
-        <span className="caret"><ICaret /></span>
+        <span className="caret"><Ico d={ICONS.chevron} /></span>
       </button>
       {open && (
         <div className="libmenu" role="menu">
@@ -662,7 +648,7 @@ function CondShell({
         <span className="mlabel">{label}</span>
         {incomplete && <span className="advs-incomplete">unanswered — contributes nothing</span>}
         <button className="wclose" title="Remove condition" onClick={onRemove}>
-          <IX />
+          <Ico d={ICONS.close} />
         </button>
       </div>
       <div className="advs-cond-body">{children}</div>
@@ -676,7 +662,7 @@ function AddCondition({ target, onAdd }: { target: SearchTarget; onAdd: (c: DayC
   return (
     <div className="fieldwrap advs-add">
       <button className="addrow" onClick={() => setOpen((o) => !o)}>
-        <IPlus />
+        <Ico d={ICONS.plus} />
         Add condition
       </button>
       {open && (

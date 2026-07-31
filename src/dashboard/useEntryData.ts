@@ -151,23 +151,27 @@ export function useEntryData(entryId: string): EntryData {
       ),
     [habitId],
   );
+  // Joined through sessions so only THIS entry's tagged values load (was the
+  // whole habit's, filtered later in TS — 2026-07-30).
   const valuesQuery = useMemo(
     () =>
       evolu.createQuery((db) =>
         db
           .selectFrom("subunit_values")
           .innerJoin("subunit_definitions", "subunit_definitions.id", "subunit_values.definition_fk")
+          .innerJoin("sessions", "sessions.id", "subunit_values.session_fk")
           .select([
             "subunit_values.session_fk as session_fk",
             "subunit_definitions.key as def_key",
             "subunit_values.value as value",
           ])
-          .where("subunit_definitions.habit_fk", "=", habitId)
+          .where("sessions.entry_fk", "=", eid)
+          .where("sessions.isDeleted", "is not", 1)
           .where("subunit_definitions.scope", "=", "session")
           .where("subunit_definitions.isDeleted", "is not", 1)
           .where("subunit_values.isDeleted", "is not", 1),
       ),
-    [habitId],
+    [eid],
   );
 
   const sessionRows = useQuery(sessionsQuery);

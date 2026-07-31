@@ -40,14 +40,9 @@ import { sunSign } from "./almanac";
 import { withDayLedger } from "./spineWrites";
 import { parseFeedSnapshot, type FeedSnapshot, type HoroscopeSnap, type WeatherSnap } from "./feedData";
 import type { WhimsyConfig } from "./whimsyConfig";
+import { todayLocal } from "../metrics/clock";
 
 // ── The fetchers ─────────────────────────────────────────────────────────────
-
-const todayLocal = (): string => {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
 
 /**
  * The Rust-side fetch, resolved lazily: importing `@tauri-apps/plugin-http` at

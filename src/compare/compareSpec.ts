@@ -25,7 +25,15 @@
  * difference is the plain magnitude (kit-chip-delta NEUTRAL).
  */
 import { dayFromIndex, dayIndex, monthKey, weekStart, yearKey } from "../metrics/dates";
-import { decimal1, groupInt } from "../metrics/format";
+import { MONTHS_SHORT, decimal1, groupInt } from "../metrics/format";
+import { sessionMinutes } from "../metrics/shapes";
+import { resolveWindow, type ResolvedWindow, type WindowCfg } from "../kit/periodWindow";
+
+// The period-window vocabulary MOVED to kit/periodWindow.ts 2026-07-30 (the
+// dedup pass — it belongs beside kit/PeriodPicker, its editor). Re-exported
+// here so this module's public API is unchanged.
+export { RELATIVE_DAYS, resolveWindow } from "../kit/periodWindow";
+export type { ResolvedWindow, WindowCfg };
 
 // ── Data shapes (what useCompareData delivers) ───────────────────────────────
 
@@ -49,7 +57,8 @@ export interface CmpSession {
   habitId: string;
   entryId: string | null;
   day: string;
-  kind: "time" | "count" | "range" | "none";
+  /** Named as the app-wide SessionRow convention, so shapes helpers fit structurally. */
+  measure_kind: "time" | "count" | "range" | "none";
   value: number | null;
   start: string | null;
   end: string | null;
@@ -126,14 +135,6 @@ export interface ScopeCfg {
   split: { field: string; values: string[] } | null;
 }
 
-export type WindowCfg =
-  | { mode: "none" }
-  | { mode: "today" }
-  | { mode: "rel"; days: number }
-  | { mode: "daterange"; from: string | null; to: string | null }
-  | { mode: "month"; from: string | null; to: string | null } // "YYYY-MM"
-  | { mode: "year"; from: number; to: number };
-
 /**
  * The CHART is now only the drawn kinds — stat tiles left this union
  * 2026-07-27 (user-ruled) to become their own independently toggled section,
@@ -176,54 +177,6 @@ export const emptyCfg = (): CompareCfg => ({
   chart: null,
   tiles: true,
 });
-
-export const RELATIVE_DAYS = [7, 30, 90, 365];
-
-// ── Windows ──────────────────────────────────────────────────────────────────
-
-export interface ResolvedWindow {
-  from: string;
-  to: string;
-  label: string;
-  days: number;
-}
-
-const MON3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-const monLabel = (mk: string): string => `${MON3[Number(mk.slice(5, 7)) - 1]} ${mk.slice(0, 4)}`;
-
-/** Month/year shorthand expands to full day spans — every window downstream is one shape. */
-export function resolveWindow(w: WindowCfg, today: string): ResolvedWindow | null {
-  if (w.mode === "none") return null;
-  if (w.mode === "today") return { from: today, to: today, label: "Today", days: 1 };
-  if (w.mode === "rel") {
-    const from = dayFromIndex(dayIndex(today) - (w.days - 1));
-    return { from, to: today, label: `Last ${w.days} days`, days: w.days };
-  }
-  if (w.mode === "daterange") {
-    if (w.from == null || w.to == null || w.from > w.to) return null;
-    return {
-      from: w.from,
-      to: w.to,
-      label: `${w.from} → ${w.to}`,
-      days: dayIndex(w.to) - dayIndex(w.from) + 1,
-    };
-  }
-  if (w.mode === "month") {
-    if (w.from == null || w.to == null || w.from > w.to) return null;
-    const from = `${w.from}-01`;
-    const [y, m] = [Number(w.to.slice(0, 4)), Number(w.to.slice(5, 7))];
-    const to = `${w.to}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
-    const label = w.from === w.to ? monLabel(w.from) : `${monLabel(w.from)} – ${monLabel(w.to)}`;
-    return { from, to, label, days: dayIndex(to) - dayIndex(from) + 1 };
-  }
-  // year
-  if (w.from > w.to) return null;
-  const from = `${w.from}-01-01`;
-  const to = `${w.to}-12-31`;
-  const label = w.from === w.to ? `${w.from} · Jan – Dec` : `${w.from} – ${w.to}`;
-  return { from, to, label, days: dayIndex(to) - dayIndex(from) + 1 };
-}
 
 // ── The measure gate ─────────────────────────────────────────────────────────
 
@@ -307,28 +260,21 @@ export const pickedScopes = (cfg: CompareCfg, data: CmpData): { scope: ScopeCfg;
   });
 
 /**
- * The shared numeric bases of a scope set — BOTH may exist (Writing declares
- * duration and a count), and each carries its own derivations: a habit with
- * both has an hours-per-day AND a words-per-day, and offering only one
- * silently hides the other (user-reported 2026-07-27: "the count column
- * should also include averages"). Gated by the same intersection rule as the
- * primary measures.
+ * The shared numeric bases of a scope set — the gate's ONE intersection rule
+ * (duration comparable where every scope has it; a count only on a matching
+ * unit label across every scope). BOTH may exist (Writing declares duration
+ * and a count). `countUnits` and `measureColumns` both read THIS, so the two
+ * halves of the gate can never drift apart (they briefly re-encoded the
+ * intersection separately — converged at the 2026-07-30 dedup pass; the
+ * Best-day-era `sharedBases`/`sharedBasis` exports died there too, callerless).
  */
-export function sharedBases(habits: CmpHabit[]): { time: boolean; count: string | null } {
+function sharedNumericBases(habits: CmpHabit[]): { time: boolean; countUnit: string | null } {
   const unit = habits[0]?.countUnit ?? null;
   return {
     time: habits.length > 0 && habits.every(hasDuration),
-    count:
+    countUnit:
       unit != null && habits.every((h) => h.measuresCount && h.countUnit === unit) ? unit : null,
   };
-}
-
-/** The single preferred basis (duration first) — Best day's subject. */
-export function sharedBasis(habits: CmpHabit[]): { kind: "time" | "count"; unit: string } | null {
-  const b = sharedBases(habits);
-  if (b.time) return { kind: "time", unit: "h" };
-  if (b.count != null) return { kind: "count", unit: b.count };
-  return null;
 }
 
 /**
@@ -340,14 +286,16 @@ export function sharedBasis(habits: CmpHabit[]): { kind: "time" | "count"; unit:
  * NOT offered anywhere, by the scope fence: efficiency (count ÷ duration) is
  * cross-measure — the same law that ruled out scatter.
  */
-export function countUnits(cfg: CompareCfg, data: CmpData): { id: string; label: string }[] {
-  const picked = pickedScopes(cfg, data);
+export function countUnits(
+  cfg: CompareCfg,
+  data: CmpData,
+  picked: { scope: ScopeCfg; habit: CmpHabit }[] = pickedScopes(cfg, data),
+): { id: string; label: string }[] {
   if (picked.length === 0) return [];
   const habits = picked.map((p) => p.habit);
   const out: { id: string; label: string }[] = [];
-  const unit = habits[0].countUnit;
-  if (unit != null && habits.every((h) => h.measuresCount && h.countUnit === unit))
-    out.push({ id: unit, label: cap(unit) });
+  const unit = sharedNumericBases(habits).countUnit;
+  if (unit != null) out.push({ id: unit, label: cap(unit) });
   if (picked.length === 1) out.push({ id: "sessions", label: "Sessions" });
   // Counting entries while splitting BY entry is degenerate (every series
   // would read 1), so the unit drops out exactly then.
@@ -364,8 +312,11 @@ export function countUnits(cfg: CompareCfg, data: CmpData): { id: string; label:
  * scope declares joins it (Sleep's Meds days) — the day-flag tier the
  * comparability gate calls the universal currency. One option = no picker.
  */
-export function daySets(cfg: CompareCfg, data: CmpData): { id: string; label: string }[] {
-  const picked = pickedScopes(cfg, data);
+export function daySets(
+  cfg: CompareCfg,
+  data: CmpData,
+  picked: { scope: ScopeCfg; habit: CmpHabit }[] = pickedScopes(cfg, data),
+): { id: string; label: string }[] {
   if (picked.length === 0) return [];
   const habits = picked.map((p) => p.habit);
   const out = [{ id: "active", label: "Active days" }];
@@ -381,15 +332,18 @@ export function daySets(cfg: CompareCfg, data: CmpData): { id: string; label: st
  * everywhere; Day is always available (its currency is the universal one);
  * Count needs at least one counted thing.
  */
-export function measureColumns(cfg: CompareCfg, data: CmpData): ColumnSpec[] {
-  const picked = pickedScopes(cfg, data);
+export function measureColumns(
+  cfg: CompareCfg,
+  data: CmpData,
+  picked: { scope: ScopeCfg; habit: CmpHabit }[] = pickedScopes(cfg, data),
+): ColumnSpec[] {
   if (picked.length === 0) return [];
   const habits = picked.map((p) => p.habit);
   const cols: ColumnSpec[] = [];
-  if (habits.every(hasDuration))
+  if (sharedNumericBases(habits).time)
     cols.push({ key: "time", label: "Time", families: ["total", "average"] });
   cols.push({ key: "day", label: "Day", families: ["total", "average"] });
-  if (countUnits(cfg, data).length > 0)
+  if (countUnits(cfg, data, picked).length > 0)
     cols.push({ key: "count", label: "Count", families: ["total", "average"] });
   return cols;
 }
@@ -410,12 +364,17 @@ export function pickComplete(pick: MeasurePick | null): boolean {
  * unfinished rather than computed from a vocabulary that no longer exists
  * (this also catches a preset written against different scopes).
  */
-export function pickOffered(pick: MeasurePick | null, cfg: CompareCfg, data: CmpData): boolean {
+export function pickOffered(
+  pick: MeasurePick | null,
+  cfg: CompareCfg,
+  data: CmpData,
+  picked: { scope: ScopeCfg; habit: CmpHabit }[] = pickedScopes(cfg, data),
+): boolean {
   if (!pickComplete(pick) || pick == null) return false;
-  if (!measureColumns(cfg, data).some((c) => c.key === pick.column)) return false;
-  if (pick.column === "count" && !countUnits(cfg, data).some((u) => u.id === pick.unit)) return false;
+  if (!measureColumns(cfg, data, picked).some((c) => c.key === pick.column)) return false;
+  if (pick.column === "count" && !countUnits(cfg, data, picked).some((u) => u.id === pick.unit)) return false;
   if (pick.column === "day" && pick.family === "total" && pick.daySet != null) {
-    if (!daySets(cfg, data).some((d) => d.id === pick.daySet)) return false;
+    if (!daySets(cfg, data, picked).some((d) => d.id === pick.daySet)) return false;
   }
   return true;
 }
@@ -425,6 +384,7 @@ export function measureMeta(
   pick: MeasurePick,
   cfg: CompareCfg,
   data: CmpData,
+  picked: { scope: ScopeCfg; habit: CmpHabit }[] = pickedScopes(cfg, data),
 ): { label: string; unit: string } {
   const scope = pick.scope ?? "day";
   if (pick.column === "time")
@@ -433,7 +393,7 @@ export function measureMeta(
       : { label: `Hours per ${scope}`, unit: "h" };
 
   if (pick.column === "count") {
-    const u = countUnits(cfg, data).find((x) => x.id === pick.unit);
+    const u = countUnits(cfg, data, picked).find((x) => x.id === pick.unit);
     const name = u?.label ?? cap(pick.unit ?? "");
     // Sessions/Entries are their own noun — no unit suffix on the tile.
     const suffix = pick.unit === "sessions" || pick.unit === "entries" ? "" : pick.unit ?? "";
@@ -443,7 +403,7 @@ export function measureMeta(
   }
 
   const setLabel =
-    daySets(cfg, data).find((d) => d.id === (pick.daySet ?? "active"))?.label ?? "Active days";
+    daySets(cfg, data, picked).find((d) => d.id === (pick.daySet ?? "active"))?.label ?? "Active days";
   return pick.family === "total"
     ? { label: setLabel, unit: "d" }
     : { label: `${setLabel.replace(/ days$/i, "")} days per ${scope}`, unit: "d" };
@@ -479,8 +439,8 @@ const bucketKey = (day: string, grain: Grain): string =>
 
 const bucketLabel = (key: string, grain: Grain): string =>
   grain === "day" ? String(Number(key.slice(8)))
-  : grain === "week" ? `${key.slice(8)} ${MON3[Number(key.slice(5, 7)) - 1]}`
-  : grain === "month" ? MON3[Number(key.slice(5, 7)) - 1]
+  : grain === "week" ? `${key.slice(8)} ${MONTHS_SHORT[Number(key.slice(5, 7)) - 1]}`
+  : grain === "month" ? MONTHS_SHORT[Number(key.slice(5, 7)) - 1]
   : grain === "quarter" ? key.slice(5)
   : key;
 
@@ -535,7 +495,6 @@ export interface CmpDelta {
   value: string;
   unit: string;
   winner: string;
-  subtitle: string;
 }
 
 export interface CmpChart {
@@ -567,15 +526,8 @@ export interface CmpResult {
 }
 
 const CAT_SLOTS = 8;
-
-const minutesOf = (s: CmpSession): number => {
-  if (s.kind === "time") return s.value ?? 0;
-  if (s.kind === "range" && s.start != null && s.end != null) {
-    const ms = Date.parse(s.end) - Date.parse(s.start);
-    return Number.isFinite(ms) && ms > 0 ? ms / 60000 : 0;
-  }
-  return 0;
-};
+// Minutes-of-a-session = the canonical shapes.sessionMinutes (the local float
+// copy converged there 2026-07-30 — a sub-minute display shift is accepted).
 
 /** Even ~4-tick axis reaching past the max (the chunk-5 computed-axis precedent). */
 export function niceAxis(max: number): { yMax: number; ticks: number[] } {
@@ -603,7 +555,7 @@ interface SeriesSource {
 }
 
 export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpResult {
-  const picked = pickedScopes(cfg, data);
+  const picked = pickedScopes(cfg, data); // computed ONCE and threaded through the gate calls
   const windows = cfg.windows
     .map((w) => resolveWindow(w, today))
     .filter((w): w is ResolvedWindow => w != null);
@@ -619,7 +571,7 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
     allowed: { line: false, gbar: false, sbar: false, area: false, hbar: false, donut: false },
     error: null,
   };
-  if (picked.length === 0 || pick == null || !pickOffered(pick, cfg, data) || wins.length === 0)
+  if (picked.length === 0 || pick == null || !pickOffered(pick, cfg, data, picked) || wins.length === 0)
     return incomplete;
   // A pick can be legal but uncomputable: averaging by month over a fortnight.
   // The relative chips are gated in the picker, so only a custom range lands
@@ -632,7 +584,7 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
         error: `${short.label} is shorter than one ${pick.scope} — pick a longer range, or average by something smaller.`,
       };
   }
-  const measure = measureMeta(pick, cfg, data);
+  const measure = measureMeta(pick, cfg, data, picked);
 
   const entryById = new Map(data.entries.map((e) => [e.id, e]));
 
@@ -688,12 +640,12 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
       : null;
 
   const rawValue = (sessions: CmpSession[]): number => {
-    if (pick.column === "time") return sessions.reduce((a, s) => a + minutesOf(s), 0) / 60;
+    if (pick.column === "time") return sessions.reduce((a, s) => a + sessionMinutes(s), 0) / 60;
     if (pick.column === "count") {
       if (pick.unit === "sessions") return sessions.length;
       if (pick.unit === "entries")
         return new Set(sessions.flatMap((s) => (s.entryId != null ? [s.entryId] : []))).size;
-      return sessions.reduce((a, s) => a + (s.kind === "count" ? s.value ?? 0 : 0), 0);
+      return sessions.reduce((a, s) => a + (s.measure_kind === "count" ? s.value ?? 0 : 0), 0);
     }
     // day column
     if (flagKey != null) {
@@ -714,12 +666,18 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
   // for one year-sized bucket, a single invisible point (fixed 2026-07-30).
   const avgGrain: Grain | null =
     pick.family === "average" && pick.scope != null ? pick.scope : null;
-  const lineBuckets = Math.max(
-    ...wins.map((w) => windowBuckets(w, avgGrain ?? grainFor(w.days, "line")).length),
-  );
-  const barBuckets = Math.max(
-    ...wins.map((w) => windowBuckets(w, avgGrain ?? grainFor(w.days, "gbar")).length),
-  );
+  // With avgGrain set, line and bar bucket at the SAME grain — count once
+  // instead of walking the windows twice (2026-07-30).
+  const avgBuckets =
+    avgGrain != null
+      ? Math.max(...wins.map((w) => windowBuckets(w, avgGrain).length))
+      : null;
+  const lineBuckets =
+    avgBuckets ??
+    Math.max(...wins.map((w) => windowBuckets(w, grainFor(w.days, "line")).length));
+  const barBuckets =
+    avgBuckets ??
+    Math.max(...wins.map((w) => windowBuckets(w, grainFor(w.days, "gbar")).length));
   const seriesCount = sources.length * wins.length;
   // A share-of-a-whole shape needs the parts to BE a whole, so donut and
   // stacked area take one window only — stacking or slicing across separate
@@ -795,14 +753,13 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
   /** THE ONE PLACE AVERAGING HAPPENS: raw ÷ periods spanned by the window. */
   const per = (raw: number, win: ResolvedWindow): number =>
     pick.family === "average" && pick.scope != null ? raw / periodsInWindow(win, pick.scope) : raw;
-  /**
+  /*
    * NO SUBTITLE ECHOING THE WINDOW (user-ruled 2026-07-27): the Period step
    * already states it, and in self mode the tile's own LABEL is the window,
-   * so "2025 · Jan – Dec total" said it three times. A subtitle now appears
-   * only where it carries something the tile doesn't — a split value's share,
-   * or a multi-window split's breakdown.
+   * so "2025 · Jan – Dec total" said it three times. A subtitle appears only
+   * where it carries something the tile doesn't — a split value's share, or a
+   * multi-window split's breakdown — so the non-split faces below carry "".
    */
-  const subtitleFor = (_win: ResolvedWindow): string => "";
   /** The scope's own total, unsplit — the honest denominator for a split. */
   const scopeTotal = (habitId: string, win: ResolvedWindow): number =>
     rawValue(
@@ -837,7 +794,7 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
       dotSlot: null,
       value: round1(per(scopeTotal(picked[0].habit.id, win), win)),
       unit: measure.unit,
-      subtitle: subtitleFor(win),
+      subtitle: "",
     });
   } else if (!cross && sources.length >= 1) {
     // self: one tile per window; a split's breakdown rides the subtitle
@@ -850,7 +807,7 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
       const subtitle =
         group.length > 1 && group[0].splitValue != null
           ? group.map((s) => `${s.splitValue} ${round1(per(s.total, win))}`).join(" · ")
-          : subtitleFor(win);
+          : "";
       tiles.push({
         label: win.label,
         dotSlot: null,
@@ -868,7 +825,7 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
       const subtitle =
         group.length > 1 && group[0].splitValue != null
           ? group.map((s) => `${s.splitValue} ${round1(per(s.total, wins[0]))}`).join(" · ")
-          : subtitleFor(wins[0]);
+          : "";
       tiles.push({
         label: scopeName,
         dotSlot: habit.colour,
@@ -893,7 +850,7 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
       // both sides again and asserting "unjudged" was the tile talking about
       // itself (user-ruled 2026-07-27). Neutrality stays in the FORM — no
       // verdict colour — which is where the charter put it.
-      delta = { value: round1(diff), unit: measure.unit, winner, subtitle: "" };
+      delta = { value: round1(diff), unit: measure.unit, winner };
     }
   }
 

@@ -16,16 +16,10 @@ import { useSimpleData } from "./useSimpleData";
 import { buildSimpleDashboard, type SimpleModel, type ScopeSel } from "./simpleSpec";
 import { Panel, StatGroup, StatTile } from "./kit";
 import { CreationTrend, DistPanel } from "./CreationDashboard";
+import { todayLocal } from "../metrics/clock";
+import { HEAT_CLASS } from "./specShared";
 import "../dashboard.css";
 import "./screen.css";
-
-const todayLocal = (): string => {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
-
-const HEAT_CLASS: Record<string, string> = { HOT: "hot", WARM: "warm", COOLING: "warm", COLD: "cold" };
 
 export function SimpleDashboard({ habitKey }: { habitKey: string }) {
   const data = useSimpleData(habitKey);
@@ -33,6 +27,7 @@ export function SimpleDashboard({ habitKey }: { habitKey: string }) {
   const [scope, setScope] = useState<ScopeSel>({ kind: "all" });
 
   const { model, ms } = useMemo(() => {
+    if (!data.ready) return { model: null as SimpleModel | null, ms: 0 };
     const t0 = performance.now();
     const model = buildSimpleDashboard(
       {
@@ -54,7 +49,7 @@ export function SimpleDashboard({ habitKey }: { habitKey: string }) {
     return { model, ms: performance.now() - t0 };
   }, [data, habitKey, scope, today]);
 
-  if (!data.ready) return <div className="gsdash">Loading {habitKey}…</div>;
+  if (!data.ready || model == null) return <div className="gsdash">Loading {habitKey}…</div>;
 
   const m = model;
   const color = m.colorVar;

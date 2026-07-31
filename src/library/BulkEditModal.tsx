@@ -18,7 +18,7 @@
  * counts follow the live selection (entries · summed sessions · image files).
  * No type-to-confirm, no hold, no armed delay (user-ruled).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { NonEmptyString100, NonEmptyString1000, NonNegativeInt, PositiveInt } from "@evolu/common";
 import { evolu } from "../db/evolu";
 import { stringListToJson, type EntryId } from "../db/schema";
@@ -37,7 +37,8 @@ import {
 } from "./librarySpec";
 import { isFilterActive } from "./librarySpec";
 import { stars } from "../metrics/format";
-import { useLibraryData } from "./useLibraryData";
+import { useLibraryData, type LibraryData } from "./useLibraryData";
+import { useOverlayEsc } from "../shell/overlayHooks";
 import { Capsule, Ico, ICON, Menu, PrioGlyph, StatusPill, type MenuItem } from "./bits";
 import { deleteEntriesCascade } from "./entryDelete";
 
@@ -51,8 +52,21 @@ const PICKER_SORT_LABELS: Record<PickerSortKey, string> = {
   own: "Owned",
 };
 
-export function BulkEditModal({ habitKey, onClose }: { habitKey: string; onClose: () => void }) {
-  const data = useLibraryData(habitKey);
+export function BulkEditModal({
+  habitKey,
+  onClose,
+  data: dataProp,
+}: {
+  habitKey: string;
+  onClose: () => void;
+  /** The Library passes its hook result down (no second fetch+aggregation
+   * beside the screen's); optional so a standalone mount still works. */
+  data?: LibraryData;
+}) {
+  // Hook rules: the fallback hook is called UNCONDITIONALLY and the prop's
+  // value wins when present (Evolu dedupes the identical underlying queries).
+  const ownData = useLibraryData(habitKey);
+  const data = dataProp ?? ownData;
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -67,15 +81,11 @@ export function BulkEditModal({ habitKey, onClose }: { habitKey: string; onClose
   const [fields, setFields] = useState<BulkFieldState>(EMPTY_BULK_STATE);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // Esc closes the modal — but ONLY when the stacked confirm is not up (it
-  // owns the top of the stack and pops alone).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !confirmOpen) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, confirmOpen]);
+  // Esc closes the modal via the shared overlay stack. No `!confirmOpen`
+  // guard needed anymore: the stacked DangerConfirm registers LATER (it
+  // mounts while this modal is up), so it is the top of the stack and one
+  // Esc pops the confirm alone; the next Esc reaches this entry.
+  useOverlayEsc(onClose);
 
   const visible = useMemo(
     () => sortPickerRows(filterEntries(data.entries, { search, state: pf }), sortKey, sortDir),

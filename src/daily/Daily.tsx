@@ -21,11 +21,19 @@
  * stays editable behind the light affordance and "remains finalized through the
  * edit — no unlock → edit → re-finalize dance" ([[Day Finalize & Catch-Up]]),
  * so `editing` is view state and nothing else.
+ *
+ * STATE 1 IS A CHILD COMPONENT (2026-07-30 dedup/efficiency pass): the wall
+ * used to render below the working day's hooks, which kept the whole form tier,
+ * the 60 s minute tick and the almanac queries mounted behind every finalized
+ * day. `Daily` itself now holds only what BOTH states need — the finalize
+ * question, the whimsy config, and today's feed capture (the capture must fire
+ * on a finalized today too: the wall's ephemeral tiles read the snapshot).
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
 import { DateOnly } from "../db/schema";
+import { todayLocal } from "../metrics/clock";
 import { Spine } from "./Spine";
 import { CoverWall } from "./CoverWall";
 import { DevWhimsyPanel } from "./DevWhimsyPanel";
@@ -54,12 +62,6 @@ import { loadWhimsyConfig, saveWhimsyConfig, type WhimsyConfig } from "./whimsyC
 import { parseFeedSnapshot } from "./feedData";
 import { ensureTodayFeeds } from "./feeds";
 import "./daily.css";
-
-const todayLocal = (): string => {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
 
 /** Days that already carry bookkeeping — the pool Rediscover draws from. */
 const loggedDaysQuery = evolu.createQuery((db) =>
@@ -113,6 +115,16 @@ const unfinalizedQuery = evolu.createQuery((db) =>
     .orderBy("date", "desc"),
 );
 
+/**
+ * The app's own start date — written once at launch (main.tsx) and never
+ * changed while the app runs, so ONE module-level read serves every Daily
+ * mount instead of re-running the ensure round-trip per navigation
+ * (2026-07-30 dedup).
+ */
+let appStartOnce: Promise<string | null> | null = null;
+const loadAppStart = (): Promise<string | null> =>
+  (appStartOnce ??= ensureAppStartDate(evolu));
+
 export function Daily({
   dayKey = todayLocal(),
   onOpenDay,
@@ -141,86 +153,22 @@ export function Daily({
   const dayState = useQuery(dayStateQuery);
   const finalized = dayState[0]?.finalized === 1;
 
-  // The day's ephemeral content — whatever was snapshotted at its own fetch
-  // moment. A live read: today's capture lands seconds after mount and the
-  // three cards fill in as it does.
-  const snapshot = useMemo(
-    () =>
-      parseFeedSnapshot(
-        dayState[0]?.feed_snapshot != null ? String(dayState[0].feed_snapshot) : null,
-      ),
-    [dayState],
-  );
-
   const isToday = dayKey === todayLocal();
 
   // THE CAPTURE MOMENT — fetch-on-open, for the current day only ("Calendar &
   // Whimsy" § network behaviour). Past days never fetch: their snapshot is
   // whatever was captured then, and absence is honest and permanent. Re-runs
   // when the config changes (the dev panel / future Settings); feeds.ts
-  // throttles retries internally, so this can never poll.
+  // throttles retries internally, so this can never poll. Lives HERE, not in
+  // the working-day child: a finalized today still captures for its wall.
   useEffect(() => {
     if (isToday) void ensureTodayFeeds(config);
   }, [isToday, config]);
-  // A ticking clock: the sun's position, the sky gradient and the day meter are
-  // all live values. A minute is plenty — nothing here moves faster.
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(t);
-  }, []);
 
   const updateConfig = (next: WhimsyConfig) => {
     setConfig(next);
     saveWhimsyConfig(next);
   };
-
-  const dayRows = useQuery(loggedDaysQuery);
-  const pastDays = useMemo(
-    () => dayRows.map((r) => String(r.date)).filter((d) => d < dayKey),
-    [dayRows, dayKey],
-  );
-
-  // Recomputed when the config or the minute changes — every card in this tier
-  // is a pure function of (dayKey, config, now).
-  const { sun, moon } = useMemo(() => skyInputs(dayKey, config, now), [dayKey, config, now]);
-
-  // The on-this-day timeline's personal row, derived from the store.
-  const firstSessions = useQuery(firstSessionsQuery);
-  const habitRows = useQuery(habitNamesQuery);
-  const { anniversaries, trackingYears } = useMemo(() => {
-    const names = new Map(habitRows.map((h) => [String(h.id), String(h.name)]));
-    const firsts = firstSessions
-      .filter((r) => r.first_day != null)
-      .map((r) => ({ name: names.get(String(r.habit_fk)) ?? "", day: String(r.first_day) }))
-      .filter((f) => f.name !== "");
-    const earliest = firsts.reduce<string | null>(
-      (min, f) => (min === null || f.day < min ? f.day : min),
-      null,
-    );
-    return {
-      anniversaries: anniversariesFor(firsts, dayKey),
-      trackingYears: trackingAnniversary(earliest, dayKey),
-    };
-  }, [firstSessions, habitRows, dayKey]);
-
-  const sessionCount = Number(useQuery(sessionCountQuery)[0]?.n ?? 0);
-  const entryCount = Number(useQuery(entryCountQuery)[0]?.n ?? 0);
-
-  // The app's own start date — a plain `app_meta` read, not a live query: it is
-  // written once at launch and never changes while the app runs.
-  const [appStart, setAppStart] = useState<string | null>(null);
-  useEffect(() => {
-    void ensureAppStartDate(evolu).then(setAppStart);
-  }, []);
-  const appYears = useMemo(() => appAnniversary(appStart, dayKey), [appStart, dayKey]);
-
-  // Recent unfinalized days, today excluded — today is not "behind".
-  const unfinalizedRows = useQuery(unfinalizedQuery);
-  const catchUp = useMemo(
-    () => unfinalizedRows.map((r) => String(r.date)).filter((d) => d < dayKey).slice(0, 4),
-    [unfinalizedRows, dayKey],
-  );
 
   if (finalized && !editing)
     return (
@@ -230,6 +178,159 @@ export function Daily({
         onOpenEntry={onOpenEntry}
       />
     );
+
+  return (
+    <WorkingDay
+      dayKey={dayKey}
+      isToday={isToday}
+      config={config}
+      onConfigChange={updateConfig}
+      feedSnapshotRaw={dayState[0]?.feed_snapshot != null ? String(dayState[0].feed_snapshot) : null}
+      onOpenDay={onOpenDay}
+      onFinalized={() => setEditing(false)}
+    />
+  );
+}
+
+/**
+ * The Lifetime/OnThisDay cards' store-wide figures, as a DEBOUNCED SNAPSHOT
+ * rather than three live whole-`sessions` subscriptions (`useMilestoneDay`'s
+ * pattern and rationale — Daily is where you type, and a live whole-store
+ * query on the front door re-runs on every mutation). `revision` is any cheap
+ * string that changes when the day's rows change; a change schedules a re-read,
+ * the first read runs immediately.
+ */
+interface LifetimeSnapshot {
+  firstSessions: Array<{ habitId: string; firstDay: string }>;
+  sessionCount: number;
+  entryCount: number;
+}
+
+function useLifetimeSnapshot(dayKey: string, revision: string): LifetimeSnapshot | null {
+  const [snap, setSnap] = useState<LifetimeSnapshot | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const [firsts, sess, ents] = await Promise.all([
+        evolu.loadQuery(firstSessionsQuery),
+        evolu.loadQuery(sessionCountQuery),
+        evolu.loadQuery(entryCountQuery),
+      ]);
+      if (cancelled) return;
+      setSnap({
+        firstSessions: firsts
+          .filter((r) => r.first_day != null && r.habit_fk != null)
+          .map((r) => ({ habitId: String(r.habit_fk), firstDay: String(r.first_day) })),
+        sessionCount: Number(sess[0]?.n ?? 0),
+        entryCount: Number(ents[0]?.n ?? 0),
+      });
+    };
+    // First read is immediate; a change to the day's rows schedules the next
+    // one far enough out that a burst of field commits reads the store once.
+    const delay = snap == null ? 0 : 600;
+    const t = setTimeout(() => void run(), delay);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayKey, revision]);
+
+  return snap;
+}
+
+/** STATE 1 — the working day. Mounted only while the day is open (or edited). */
+function WorkingDay({
+  dayKey,
+  isToday,
+  config,
+  onConfigChange,
+  feedSnapshotRaw,
+  onOpenDay,
+  onFinalized,
+}: {
+  dayKey: string;
+  isToday: boolean;
+  config: WhimsyConfig;
+  onConfigChange: (next: WhimsyConfig) => void;
+  feedSnapshotRaw: string | null;
+  onOpenDay?: (day: string) => void;
+  onFinalized: () => void;
+}) {
+  // The day's ephemeral content — whatever was snapshotted at its own fetch
+  // moment. A live read: today's capture lands seconds after mount and the
+  // three cards fill in as it does.
+  const snapshot = useMemo(() => parseFeedSnapshot(feedSnapshotRaw), [feedSnapshotRaw]);
+
+  // A ticking clock: the sun's position and the day meter are live values. A
+  // minute is plenty — nothing here moves faster.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const dayRows = useQuery(loggedDaysQuery);
+  const pastDays = useMemo(
+    () => dayRows.map((r) => String(r.date)).filter((d) => d < dayKey),
+    [dayRows, dayKey],
+  );
+
+  // Pure functions of (dayKey, config) — the ticking disc reads `now` at render.
+  const { sun, moon } = useMemo(() => skyInputs(dayKey, config), [dayKey, config]);
+
+  // The snapshot's revision source: a day-scoped live query is cheap (the
+  // useMilestoneDay pattern — day-scoped signal, debounced whole-store read).
+  const dayRevQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("sessions")
+          .select(["id", "updatedAt"])
+          .where("isDeleted", "is not", 1)
+          .where("day", "=", DateOnly.orThrow(dayKey)),
+      ),
+    [dayKey],
+  );
+  const dayRevRows = useQuery(dayRevQuery);
+  const revision = useMemo(
+    () => dayRevRows.map((r) => `${r.id}:${String(r.updatedAt)}`).join("|"),
+    [dayRevRows],
+  );
+  const lifetime = useLifetimeSnapshot(dayKey, revision);
+
+  // The on-this-day timeline's personal row, derived from the store.
+  const habitRows = useQuery(habitNamesQuery);
+  const { anniversaries, trackingYears } = useMemo(() => {
+    const names = new Map(habitRows.map((h) => [String(h.id), String(h.name)]));
+    const firsts = (lifetime?.firstSessions ?? [])
+      .map((r) => ({ name: names.get(r.habitId) ?? "", day: r.firstDay }))
+      .filter((f) => f.name !== "");
+    const earliest = firsts.reduce<string | null>(
+      (min, f) => (min === null || f.day < min ? f.day : min),
+      null,
+    );
+    return {
+      anniversaries: anniversariesFor(firsts, dayKey),
+      trackingYears: trackingAnniversary(earliest, dayKey),
+    };
+  }, [lifetime, habitRows, dayKey]);
+
+  // The app's own start date — a plain `app_meta` read (module-cached), not a
+  // live query: it is written once at launch and never changes while the app runs.
+  const [appStart, setAppStart] = useState<string | null>(null);
+  useEffect(() => {
+    void loadAppStart().then(setAppStart);
+  }, []);
+  const appYears = useMemo(() => appAnniversary(appStart, dayKey), [appStart, dayKey]);
+
+  // Recent unfinalized days, today excluded — today is not "behind".
+  const unfinalizedRows = useQuery(unfinalizedQuery);
+  const catchUp = useMemo(
+    () => unfinalizedRows.map((r) => String(r.date)).filter((d) => d < dayKey).slice(0, 4),
+    [unfinalizedRows, dayKey],
+  );
 
   return (
     <div className="daily">
@@ -252,7 +353,7 @@ export function Daily({
         </div>
 
         <div className="col spine">
-          <Spine dayKey={dayKey} onFinalized={() => setEditing(false)} />
+          <Spine dayKey={dayKey} onFinalized={onFinalized} />
         </div>
 
         <div className="col almanac">
@@ -278,10 +379,14 @@ export function Daily({
             since the wall exists. */}
         <RediscoverCard dayKey={dayKey} pastDays={pastDays} onOpenDay={onOpenDay} />
         <CountdownsCard config={config} dayKey={dayKey} />
-        <LifetimeCard daysTracked={dayRows.length} sessions={sessionCount} entries={entryCount} />
+        <LifetimeCard
+          daysTracked={dayRows.length}
+          sessions={lifetime?.sessionCount ?? 0}
+          entries={lifetime?.entryCount ?? 0}
+        />
       </div>
 
-      {import.meta.env.DEV && <DevWhimsyPanel config={config} onChange={updateConfig} />}
+      {import.meta.env.DEV && <DevWhimsyPanel config={config} onChange={onConfigChange} />}
     </div>
   );
 }

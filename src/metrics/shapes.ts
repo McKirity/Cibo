@@ -18,7 +18,7 @@ import {
   weekStart,
   yearKey,
 } from "./dates";
-import { deltaChip, type DeltaChip } from "./format";
+import { deltaChip, MONTHS_SHORT, type DeltaChip } from "./format";
 
 // ── Input row shapes (nullable, as loaded from the CRDT store) ────────────────
 
@@ -48,9 +48,35 @@ export interface Scope {
 
 // ── Primitive helpers ─────────────────────────────────────────────────────────
 
-/** Minutes carried by a session (time only; other kinds contribute nothing). */
-export const sessionMinutes = (s: SessionRow): number =>
-  s.measure_kind === "time" ? s.value ?? 0 : 0;
+/**
+ * The minimal row subset `sessionMinutes` reads — structural, so every
+ * surface's own session shape passes without adapters. Rows loaded without
+ * their bounds (the dashboard queries) simply carry no range minutes, which
+ * was their behavior before ranges joined here.
+ */
+export interface SessionMinutesRow {
+  measure_kind: "time" | "count" | "range" | "none" | null;
+  value: number | null;
+  start?: string | null;
+  end?: string | null;
+}
+
+/**
+ * The canonical minutes-of-a-session: time rows carry their value, range rows
+ * with both bounds carry their WHOLE-MINUTE span (`Math.max(0, Math.round(…))`
+ * — the daily surfaces' shared semantics), everything else 0. compareSpec's
+ * float copy converges here — a sub-minute display shift in CS totals is
+ * accepted; the unparseable-datetime guard is compare's, kept (NaN would
+ * otherwise poison a sum).
+ */
+export const sessionMinutes = (s: SessionMinutesRow): number => {
+  if (s.measure_kind === "time") return s.value ?? 0;
+  if (s.measure_kind === "range" && s.start != null && s.end != null) {
+    const ms = Date.parse(s.end) - Date.parse(s.start);
+    return Number.isFinite(ms) ? Math.max(0, Math.round(ms / 60_000)) : 0;
+  }
+  return 0;
+};
 
 export const inScope = (day: string, scope: Scope): boolean =>
   (scope.from == null || day >= scope.from) && (scope.to == null || day <= scope.to);
@@ -122,6 +148,44 @@ function pickMax(m: Map<string, number>): BestBucket | null {
   let best: BestBucket | null = null;
   for (const [key, value] of m) if (!best || value > best.value) best = { key, value };
   return best;
+}
+
+/**
+ * The richest bucket by an arbitrary per-session amount (the generalized `best`
+ * — supersedes the specs' local `bestCount`/`bestAmount` siblings). Zero-amount
+ * sessions are skipped, so an all-zero window yields null (an omitted subtitle)
+ * rather than a zero-valued bucket.
+ */
+export function bestAmount(
+  sessions: SessionRow[],
+  grain: Grain,
+  amountOf: (s: SessionRow) => number,
+): BestBucket | null {
+  const by = new Map<string, number>();
+  for (const s of sessions) {
+    const a = amountOf(s);
+    if (a === 0) continue;
+    const k = grainKey(s.day, grain);
+    by.set(k, (by.get(k) ?? 0) + a);
+  }
+  return pickMax(by);
+}
+
+/**
+ * The richest bucket of a per-day amount map under an arbitrary keyer (weeks,
+ * months, quarters, years — entrySpec's grain lists). The map-keyed sibling of
+ * `bestAmount` for callers that already hold day-summed amounts.
+ */
+export function bestBucketBy(
+  src: Map<string, number>,
+  keyOf: (day: string) => string,
+): BestBucket | null {
+  const by = new Map<string, number>();
+  for (const [d, v] of src) {
+    const k = keyOf(d);
+    by.set(k, (by.get(k) ?? 0) + v);
+  }
+  return pickMax(by);
 }
 
 // ── Shape 4 · Day verdict ─────────────────────────────────────────────────────
@@ -212,6 +276,17 @@ export function heatChip(sessions: SessionRow[], today: string): HeatChip {
   return perDay >= 120 ? "HOT" : perDay >= 45 ? "WARM" : perDay >= 15 ? "COOLING" : "COLD";
 }
 
+/**
+ * The days-based masthead chip for habits whose sessions carry no minutes
+ * (measureless / count-only / range) — trailing-14-day DISTINCT active days.
+ * Was written twice (simpleSpec + rangeSpec inline); folded here.
+ */
+export function daysHeatChip(sessions: SessionRow[], today: string): HeatChip {
+  const from = dayFromIndex(dayIndex(today) - 13);
+  const d14 = distinctDays(scoped(sessions, { from, to: today }));
+  return d14 >= 9 ? "HOT" : d14 >= 4 ? "WARM" : d14 >= 1 ? "COOLING" : "COLD";
+}
+
 // ── Shape 7 · Distribution / leaderboard ──────────────────────────────────────
 
 export interface DistRow {
@@ -285,20 +360,42 @@ export function leaderboard(
 
 // ── Shape 8 · Period delta ────────────────────────────────────────────────────
 
-/** total (hours if minutes, else distinct days) ÷ calendar buckets in [from,to]. */
-function windowRate(
+/** The equal-length window immediately preceding [from, to] (the shared
+ *  len/prevTo/prevFrom stanza — was copied into every delta sibling). */
+export function priorWindow(from: string, to: string): { from: string; to: string } {
+  const len = dayGap(from, to);
+  return {
+    from: dayFromIndex(dayIndex(from) - 1 - len),
+    to: dayFromIndex(dayIndex(from) - 1),
+  };
+}
+
+const bucketsPer = (grain: Grain): number =>
+  grain === "week" ? 7 : grain === "month" ? 30.4375 : 365.25;
+
+/**
+ * The generalized period delta — the rate of an arbitrary per-session amount
+ * over [from,to] vs the immediately-preceding equal-length window, formatted by
+ * the caller's chip builder. Supersedes the specs' local `countPeriodDelta` /
+ * `amountPeriodDelta` siblings. Null when the prior window has no sessions
+ * (the no-prior-period law).
+ */
+export function periodDeltaBy(
   sessions: SessionRow[],
   from: string,
   to: string,
   grain: Grain,
-  metric: Metric,
-): number {
-  const rows = scoped(sessions, { from, to });
-  const amount = metric === "minutes" ? total(rows).minutes / 60 : distinctDays(rows);
-  const span = dayGap(from, to) + 1;
-  const per = grain === "week" ? 7 : grain === "month" ? 30.4375 : 365.25;
-  const buckets = span / per;
-  return buckets > 0 ? amount / buckets : 0;
+  amountOf: (s: SessionRow) => number,
+  chipOf: (delta: number) => DeltaChip,
+): DeltaChip | null {
+  const prev = priorWindow(from, to);
+  if (scoped(sessions, prev).length === 0) return null;
+  const rate = (f: string, t: string): number => {
+    const amount = scoped(sessions, { from: f, to: t }).reduce((a, s) => a + amountOf(s), 0);
+    const span = dayGap(f, t) + 1;
+    return span > 0 ? amount / (span / bucketsPer(grain)) : 0;
+  };
+  return chipOf(rate(from, to) - rate(prev.from, prev.to));
 }
 
 /**
@@ -314,13 +411,18 @@ export function periodDelta(
   grain: Grain,
   metric: Metric,
 ): DeltaChip | null {
-  const len = dayGap(from, to);
-  const prevTo = dayFromIndex(dayIndex(from) - 1);
-  const prevFrom = dayFromIndex(dayIndex(from) - 1 - len);
-  if (scoped(sessions, { from: prevFrom, to: prevTo }).length === 0) return null;
-  const curr = windowRate(sessions, from, to, grain, metric);
-  const prev = windowRate(sessions, prevFrom, prevTo, grain, metric);
-  return deltaChip(curr - prev, metric === "minutes" ? "h" : "");
+  if (metric === "minutes")
+    return periodDeltaBy(sessions, from, to, grain, sessionMinutes, (d) => deltaChip(d / 60, "h"));
+  // distinct days per window — not a summable per-session amount, so this path
+  // keeps its own rate.
+  const prev = priorWindow(from, to);
+  if (scoped(sessions, prev).length === 0) return null;
+  const rate = (f: string, t: string): number => {
+    const days = distinctDays(scoped(sessions, { from: f, to: t }));
+    const span = dayGap(f, t) + 1;
+    return span > 0 ? days / (span / bucketsPer(grain)) : 0;
+  };
+  return deltaChip(rate(from, to) - rate(prev.from, prev.to), "");
 }
 
 // ── Shape 9 · Heatmap cells ───────────────────────────────────────────────────
@@ -334,32 +436,54 @@ export interface HeatmapCell {
 }
 
 /**
- * A trailing `weeks`×7 grid ending at `today`, row-major (Mon row across all
- * weeks, then Tue…) to match the CSS grid's fill order. `catOf` (optional) maps
- * a day to its dominant-type categorical slot for the By-Type heatmap face.
+ * The 53×7 grid WALK, written once (the "each shape written once" law — this
+ * loop had been locally rewritten by the creation/simple/range specs): a
+ * trailing `weeks`×7 grid ending at `end`, row-major (Mon row across all weeks,
+ * then Tue…) to match the CSS grid's fill order. `cellOf` builds each visible
+ * cell's payload; `hidden` builds the filler for cells past `end` OR before the
+ * optional `from` clamp (a pinned year's Jan 1).
+ */
+export function heatmapGrid<T>(
+  end: string,
+  cellOf: (day: string) => T,
+  hidden: () => T,
+  opts: { weeks?: number; from?: string | null } = {},
+): T[] {
+  const weeks = opts.weeks ?? 53;
+  const startIdx = dayIndex(weekStart(end)) - (weeks - 1) * 7;
+  const endIdx = dayIndex(end);
+  const fromIdx = opts.from != null ? dayIndex(opts.from) : -Infinity;
+  const cells: T[] = [];
+  for (let row = 0; row < 7; row++) {
+    for (let col = 0; col < weeks; col++) {
+      const idx = startIdx + col * 7 + row;
+      cells.push(idx > endIdx || idx < fromIdx ? hidden() : cellOf(dayFromIndex(idx)));
+    }
+  }
+  return cells;
+}
+
+/**
+ * The minutes-intensity cell family over the shared grid walk. `catOf`
+ * (optional) maps a day to its dominant-type categorical slot for the By-Type
+ * heatmap face; `from` hides cells before a pinned year's Jan 1.
  */
 export function heatmapCells(
   dayMin: Map<string, number>,
   today: string,
   weeks = 53,
   catOf?: (day: string) => string | null,
+  from: string | null = null,
 ): HeatmapCell[] {
-  const startIdx = dayIndex(weekStart(today)) - (weeks - 1) * 7;
-  const todayIdx = dayIndex(today);
-  const cells: HeatmapCell[] = [];
-  for (let row = 0; row < 7; row++) {
-    for (let col = 0; col < weeks; col++) {
-      const idx = startIdx + col * 7 + row;
-      if (idx > todayIdx) {
-        cells.push({ day: null, minutes: 0, level: -1 });
-        continue;
-      }
-      const day = dayFromIndex(idx);
+  return heatmapGrid<HeatmapCell>(
+    today,
+    (day) => {
       const minutes = dayMin.get(day) ?? 0;
-      cells.push({ day, minutes, level: heatLevel(minutes), catVar: catOf ? catOf(day) : null });
-    }
-  }
-  return cells;
+      return { day, minutes, level: heatLevel(minutes), catVar: catOf ? catOf(day) : null };
+    },
+    () => ({ day: null, minutes: 0, level: -1 }),
+    { weeks, from },
+  );
 }
 
 /** Month labels for the heatmap header: {col, label} where a new month begins. */
@@ -367,11 +491,10 @@ export function heatmapMonths(today: string, weeks = 53): { col: number; label: 
   const startIdx = dayIndex(weekStart(today)) - (weeks - 1) * 7;
   const out: { col: number; label: string }[] = [];
   let lastMonth = "";
-  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   for (let col = 0; col < weeks; col++) {
     const mk = monthKey(dayFromIndex(startIdx + col * 7));
     if (mk !== lastMonth) {
-      out.push({ col, label: MON[Number(mk.slice(5)) - 1] });
+      out.push({ col, label: MONTHS_SHORT[Number(mk.slice(5)) - 1] });
       lastMonth = mk;
     }
   }

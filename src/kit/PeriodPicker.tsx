@@ -10,48 +10,31 @@
  *
  * The date popover reuses the `.calpop` anatomy (kit-picker-datetime family,
  * claimed at the form spine; the classes are bare-scoped in daily.css by that
- * claim) — positioning glue lives in compare.css under `.csdash`.
+ * claim) — positioning glue lives in kit.css under `:is(.csdash, .advs)`.
+ *
+ * HOISTED compare/ → kit/ 2026-07-30 (the dedup pass, wave 2) with the shared
+ * CSS families; the window vocabulary rides beside it in kit/periodWindow.ts.
  */
-import { useEffect, useRef, useState } from "react";
-import { dayFromIndex, dayIndex } from "../metrics/dates";
-import { RELATIVE_DAYS, type WindowCfg } from "./compareSpec";
+import { useRef, useState } from "react";
+import { pad2 } from "../metrics/clock";
+import { monthGridCells } from "../metrics/dates";
+import { MONTHS_LONG, MONTHS_SHORT } from "../metrics/format";
+import { Ico, ICONS } from "../shell/icons";
+import { useDismiss } from "../shell/overlayHooks";
+import { RELATIVE_DAYS, type WindowCfg } from "./periodWindow";
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-const MON3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DOW = ["M", "T", "W", "T", "F", "S", "S"];
-const pad = (n: number) => String(n).padStart(2, "0");
 
-const IX = () => (
-  <svg className="ico" viewBox="0 0 24 24">
-    <path d="M18 6 6 18" />
-    <path d="m6 6 12 12" />
-  </svg>
-);
+/* The calendar glyph KEEPS its own drawn path — it starts the rect at the
+ * opposite corner to shell/icons' `calendar` (visually identical, path data
+ * not), and the hoist preserves rendered bytes. The chevrons/✕/+ matched the
+ * shared roster exactly and were swapped onto it. */
 const ICal = () => (
   <svg className="ico" viewBox="0 0 24 24">
     <path d="M21 12V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z" />
     <path d="M16 2v4" />
     <path d="M8 2v4" />
     <path d="M3 10h18" />
-  </svg>
-);
-const IPrev = () => (
-  <svg className="ico" viewBox="0 0 24 24">
-    <path d="m15 18-6-6 6-6" />
-  </svg>
-);
-const INext = () => (
-  <svg className="ico" viewBox="0 0 24 24">
-    <path d="m9 18 6-6-6-6" />
-  </svg>
-);
-const IPlus = () => (
-  <svg className="ico" viewBox="0 0 24 24">
-    <path d="M5 12h14" />
-    <path d="M12 5v14" />
   </svg>
 );
 
@@ -74,36 +57,12 @@ export function DayField({
   const [cursor, setCursor] = useState<{ y: number; m: number } | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    // Capture phase + Escape — the shared Menu's discipline.
-    const onDown = (e: MouseEvent) => {
-      if (boxRef.current != null && !boxRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopImmediatePropagation();
-        setOpen(false);
-      }
-    };
-    window.addEventListener("mousedown", onDown, true);
-    window.addEventListener("keydown", onKey, true);
-    return () => {
-      window.removeEventListener("mousedown", onDown, true);
-      window.removeEventListener("keydown", onKey, true);
-    };
-  }, [open]);
+  // Capture phase + Escape — the shared dismiss discipline.
+  useDismiss(boxRef, () => setOpen(false), { enabled: open });
 
   const anchor = value ?? today;
   const view = cursor ?? { y: Number(anchor.slice(0, 4)), m: Number(anchor.slice(5, 7)) - 1 };
-  const first = `${view.y}-${pad(view.m + 1)}-01`;
-  const lead = (new Date(`${first}T12:00:00`).getDay() + 6) % 7;
-  const total = new Date(view.y, view.m + 1, 0).getDate();
-  const cells: Array<{ day: string; out: boolean }> = [];
-  for (let i = lead; i > 0; i--) cells.push({ day: dayFromIndex(dayIndex(first) - i), out: true });
-  for (let d = 1; d <= total; d++) cells.push({ day: `${view.y}-${pad(view.m + 1)}-${pad(d)}`, out: false });
-  while (cells.length % 7 !== 0)
-    cells.push({ day: dayFromIndex(dayIndex(cells[cells.length - 1].day) + 1), out: true });
+  const cells = monthGridCells(view.y, view.m);
 
   const stepMonth = (delta: number) => {
     const m = view.m + delta;
@@ -121,14 +80,14 @@ export function DayField({
         <div className="calpop">
           <div className="caltop">
             <span className="m">
-              {MONTHS[view.m]} {view.y}
+              {MONTHS_LONG[view.m]} {view.y}
             </span>
             <span className="nav">
               <span className="b" onMouseDown={(e) => (e.preventDefault(), stepMonth(-1))}>
-                <IPrev />
+                <Ico d={ICONS.chevronLeft} />
               </span>
               <span className="b" onMouseDown={(e) => (e.preventDefault(), stepMonth(1))}>
-                <INext />
+                <Ico d={ICONS.chevronRight} />
               </span>
             </span>
           </div>
@@ -187,24 +146,7 @@ function MonthField({
   const [year, setYear] = useState<number | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (boxRef.current != null && !boxRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopImmediatePropagation();
-        setOpen(false);
-      }
-    };
-    window.addEventListener("mousedown", onDown, true);
-    window.addEventListener("keydown", onKey, true);
-    return () => {
-      window.removeEventListener("mousedown", onDown, true);
-      window.removeEventListener("keydown", onKey, true);
-    };
-  }, [open]);
+  useDismiss(boxRef, () => setOpen(false), { enabled: open });
 
   const y = year ?? Number((value ?? today).slice(0, 4));
   const thisMonth = today.slice(0, 7);
@@ -213,10 +155,10 @@ function MonthField({
     <div className="cpfield" ref={boxRef}>
       <span className="cplbl">{label}</span>
       <span className="cpval" onClick={() => setOpen((o) => !o)}>
-        {value != null ? `${MON3[Number(value.slice(5, 7)) - 1]} ${value.slice(0, 4)}` : "pick a month"}
-        <svg className="ico" viewBox="0 0 24 24">
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+        {value != null
+          ? `${MONTHS_SHORT[Number(value.slice(5, 7)) - 1]} ${value.slice(0, 4)}`
+          : "pick a month"}
+        <Ico d={ICONS.chevron} />
       </span>
       {open && (
         <div className="calpop monthpop">
@@ -224,16 +166,16 @@ function MonthField({
             <span className="m">{y}</span>
             <span className="nav">
               <span className="b" onMouseDown={(e) => (e.preventDefault(), setYear(y - 1))}>
-                <IPrev />
+                <Ico d={ICONS.chevronLeft} />
               </span>
               <span className="b" onMouseDown={(e) => (e.preventDefault(), setYear(y + 1))}>
-                <INext />
+                <Ico d={ICONS.chevronRight} />
               </span>
             </span>
           </div>
           <div className="mgrid">
-            {MON3.map((m, i) => {
-              const mk = `${y}-${pad(i + 1)}`;
+            {MONTHS_SHORT.map((m, i) => {
+              const mk = `${y}-${pad2(i + 1)}`;
               const dead = mk > thisMonth;
               return (
                 <span
@@ -273,11 +215,11 @@ function YearStep({
       <span className="cplbl">{label}</span>
       <span className="stepper">
         <button aria-label="Previous year" onClick={() => onChange(value - 1)}>
-          <IPrev />
+          <Ico d={ICONS.chevronLeft} />
         </button>
         <span className="sv">{value}</span>
         <button aria-label="Next year" onClick={() => onChange(Math.min(maxYear, value + 1))}>
-          <INext />
+          <Ico d={ICONS.chevronRight} />
         </button>
       </span>
     </div>
@@ -345,7 +287,7 @@ export function PeriodPicker({
                   window's own corner. */}
               {removable && (
                 <button className="wclose float" title="Remove window" onClick={() => remove(i)}>
-                  <IX />
+                  <Ico d={ICONS.close} />
                 </button>
               )}
               <div className="wmodes">
@@ -479,7 +421,7 @@ export function PeriodPicker({
       </div>
       {!single && (
         <button className="addrow" onClick={() => onChange([...windows, { mode: "none" }])}>
-          <IPlus />
+          <Ico d={ICONS.plus} />
           Add window
         </button>
       )}

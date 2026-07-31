@@ -23,6 +23,9 @@
  * A match FANS OUT to its owning ladder, exactly as drawn: June 2025 also
  * offers Q2 · 2025 (owning quarter) and 2025 (owning year).
  */
+import { pad2 } from "../metrics/clock";
+import { isoWeekMonday, isoWeeksInYear } from "../metrics/dates";
+import { MONTHS_LONG, MONTHS_SHORT } from "../metrics/format";
 
 export type PeriodScale = "week" | "month" | "quarter" | "year";
 
@@ -50,52 +53,27 @@ export interface DayPlace {
 
 export type PlaceMatch = PeriodPlace | DayPlace;
 
-const MONTHS = [
-  "january", "february", "march", "april", "may", "june",
-  "july", "august", "september", "october", "november", "december",
-];
-const MON3 = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-const MONTH_LABEL = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-const SLOT = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+// Month faces + ISO-week math come from the shared metrics modules (the
+// local copies died at the 2026-07-30 dedup pass). The grammar MATCHES on
+// lowercase, so the two match rosters derive from the shared faces; the
+// lowercase short names double as the month-slot dial suffixes ("--month-jun").
+const MONTHS = MONTHS_LONG.map((m) => m.toLowerCase());
+const MON3 = MONTHS_SHORT.map((m) => m.toLowerCase());
 
 const SEASONS: Record<string, number> = { winter: 1, spring: 2, summer: 3, autumn: 4, fall: 4 };
 
-const pad = (n: number) => String(n).padStart(2, "0");
-
 /** The month-slot dial for a 1-based month ("--month-jun"). */
-export const monthVar = (m1: number): string => `--month-${SLOT[m1 - 1]}`;
+export const monthVar = (m1: number): string => `--month-${MON3[m1 - 1]}`;
 
 /** A quarter wears its compact MIDDLE month's colour (the drawn convention). */
 const quarterVar = (q: number): string => monthVar(q * 3 - 1);
-
-/** ISO week: the Monday of week `w` of ISO year `y` (local-safe arithmetic). */
-function isoWeekMonday(y: number, w: number): string {
-  // Jan 4 is always in ISO week 1; walk back to its Monday, then step weeks.
-  const jan4 = new Date(Date.UTC(y, 0, 4));
-  const dow = (jan4.getUTCDay() + 6) % 7; // Mon=0
-  const week1Mon = Date.UTC(y, 0, 4 - dow);
-  const t = week1Mon + (w - 1) * 7 * 86400000;
-  const d = new Date(t);
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
-}
-
-/** ISO weeks in a year (52 or 53). */
-function isoWeeksInYear(y: number): number {
-  // A year has 53 ISO weeks iff Jan 1 is Thursday, or it's a leap year and Jan 1 is Wednesday.
-  const jan1 = new Date(Date.UTC(y, 0, 1)).getUTCDay();
-  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
-  return jan1 === 4 || (leap && jan1 === 3) ? 53 : 52;
-}
 
 function monthPlace(y: number, m1: number, tierLabel: string): PeriodPlace {
   return {
     kind: "period",
     scale: "month",
-    anchor: `${y}-${pad(m1)}-01`,
-    title: `${MONTH_LABEL[m1 - 1]} ${y}`,
+    anchor: `${y}-${pad2(m1)}-01`,
+    title: `${MONTHS_LONG[m1 - 1]} ${y}`,
     sub: "monthly cadence",
     colourVar: monthVar(m1),
     tierLabel,
@@ -108,10 +86,10 @@ function quarterPlace(y: number, q: number, tierLabel: string, seasonWord?: stri
   return {
     kind: "period",
     scale: "quarter",
-    anchor: `${y}-${pad(startM)}-01`,
+    anchor: `${y}-${pad2(startM)}-01`,
     title: `Q${q} · ${y}`,
-    sub: `quarterly cadence · ${MON3[startM - 1][0].toUpperCase()}${MON3[startM - 1].slice(1)}–${
-      MON3[endM - 1][0].toUpperCase()}${MON3[endM - 1].slice(1)}${seasonWord != null ? ` · ${seasonWord}` : ""}`,
+    sub: `quarterly cadence · ${MONTHS_SHORT[startM - 1]}–${MONTHS_SHORT[endM - 1]}${
+      seasonWord != null ? ` · ${seasonWord}` : ""}`,
     colourVar: quarterVar(q),
     tierLabel,
   };

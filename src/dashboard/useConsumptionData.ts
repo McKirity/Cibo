@@ -26,10 +26,12 @@ const finalizedDaysQuery = evolu.createQuery((db) =>
     .where("isDeleted", "is not", 1),
 );
 
-// App-wide activity: the day of every session across ALL habits (deduped in TS)
-// — the "Total days active · All types" reading (days the app itself was used).
+// App-wide activity: DISTINCT session days across ALL habits — the "Total days
+// active · All types" reading (days the app itself was used). Grouped SQL-side
+// (still a slice, no aggregation of amounts) so the renderer never loads every
+// session row app-wide just to dedupe days (2026-07-30).
 const appActiveDaysQuery = evolu.createQuery((db) =>
-  db.selectFrom("sessions").select(["day"]).where("isDeleted", "is not", 1),
+  db.selectFrom("sessions").select(["day"]).where("isDeleted", "is not", 1).groupBy("day"),
 );
 
 export interface ConsumptionData {
@@ -147,8 +149,9 @@ export function useConsumptionData(habitKey: string): ConsumptionData {
     [typeVocabRows],
   );
 
+  // Already distinct (the query groups by day); just drop the impossible nulls.
   const appActiveDays = useMemo(
-    () => [...new Set(appDayRows.flatMap((r) => (r.day != null ? [r.day as string] : [])))],
+    () => appDayRows.flatMap((r) => (r.day != null ? [r.day as string] : [])),
     [appDayRows],
   );
 

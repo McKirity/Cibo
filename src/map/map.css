@@ -83,18 +83,12 @@
 /* entry-list PAGINATION, NUMBERED (user-ruled 2026-07-30 at the GUI pass, in
    two steps: "use pagination for the collapsed entries" — REVERSING the drawn
    "+ N more" disclosure clause, the claimed .lazy trio dying with it — then
-   "numbered pagination"). The face is THE LIBRARY'S PAGER (library.css's
-   .pgnums/.pgnum/.pgell anatomy, values mirrored) at outline scale; the
-   pagerCells window helper is imported, not copied. */
+   "numbered pagination"). The face is the shared kit Pager — the mirrored
+   .pgnums/.pgnum/.pgell copy left for kit.css 2026-07-30 (the dedup pass);
+   only the Map's outline-scale deviations stay here. */
 .mapscreen .row.pagerrow { cursor: default; }
 .mapscreen .pagerrow .leafcx::before { opacity: 0; }
-.mapscreen .pgnums { display: flex; align-items: center; gap: var(--space-2); }
-.mapscreen .pgnum { min-width: var(--pager-btn-size); height: var(--pager-btn-size); display: inline-flex; align-items: center; justify-content: center; padding: 0 var(--space-3); border: var(--border-hairline) solid var(--border); background: var(--panel-background); border-radius: var(--radius-small); font-family: var(--font-mono); font-size: var(--size-small); color: var(--text-secondary); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
-.mapscreen .pgnum:hover { background: var(--hover-wash); color: var(--text-strong); }
-.mapscreen .pgnum.on { border-color: var(--accent); background: var(--selected-wash); color: var(--accent); font-weight: var(--weight-bold); cursor: default; }
-.mapscreen .pgnum:disabled { color: var(--text-muted); pointer-events: none; opacity: .55; }
 .mapscreen .pgnum .ico { width: 14px; height: 14px; }
-.mapscreen .pgell { color: var(--text-muted); padding: 0 var(--space-2); font-family: var(--font-mono); }
 .mapscreen .pgcount { font-family: var(--font-mono); font-size: var(--size-caption); color: var(--text-muted); margin-left: var(--space-3); }
 
 /* the empty-expansion line — an expanded entry-less habit states it

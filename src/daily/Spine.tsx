@@ -21,7 +21,7 @@
  * Keyboard's word count is Writing's — is imported from `db/derivedKeyboard.ts`,
  * which has been its code-side home since it was ruled.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
 import { syncDerivedKeyboardForDay, WRITING_KEY } from "../db/derivedKeyboard";
@@ -42,6 +42,7 @@ import {
 } from "./spineSpec";
 import { useDayData, type DayData, type DayEntry } from "./useDayData";
 import { dayFromIndex, dayIndex } from "../metrics/dates";
+import { nowLocalDateTime, todayLocal } from "../metrics/clock";
 import {
   clearDay,
   createBout,
@@ -180,13 +181,38 @@ const onActivate = (fn: () => void) => (e: React.KeyboardEvent) => {
   }
 };
 
-const nowLocalDateTime = (): string => {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-};
-
 // ── The spine ────────────────────────────────────────────────────────────────
+
+/**
+ * Writing's live day total, as a tiny per-mount EXTERNAL STORE (2026-07-30
+ * efficiency pass). It changes on every Writing keystroke, and as parent state
+ * it re-rendered every strip; only the Keyboard strip reads it, so that strip
+ * subscribes directly (`useSyncExternalStore`) and typing repaints nothing else.
+ */
+interface WordTotalStore {
+  get: () => number | null;
+  set: (v: number) => void;
+  subscribe: (cb: () => void) => () => void;
+}
+
+const createWordTotalStore = (): WordTotalStore => {
+  let value: number | null = null;
+  const listeners = new Set<() => void>();
+  return {
+    get: () => value,
+    set: (v) => {
+      if (v === value) return;
+      value = v;
+      for (const l of listeners) l();
+    },
+    subscribe: (cb) => {
+      listeners.add(cb);
+      return () => {
+        listeners.delete(cb);
+      };
+    },
+  };
+};
 
 export function Spine({
   dayKey,
@@ -218,8 +244,11 @@ export function Spine({
   // whenever I change word count in writing." Waiting for the flush meant the
   // tie only caught up every ten minutes, which is what made Refresh look like
   // the only way to move it. The Writing strip publishes its running total
-  // (committed rows plus anything still buffered); the Keyboard strip shows it.
-  const [liveWritingWords, setLiveWritingWords] = useState<number | null>(null);
+  // (committed rows plus anything still buffered) into the per-mount word
+  // store; the Keyboard strip alone subscribes.
+  const wordsRef = useRef<WordTotalStore | null>(null);
+  if (wordsRef.current == null) wordsRef.current = createWordTotalStore();
+  const words = wordsRef.current;
   // Bumped by Clear all so every strip remounts: their drafts are local state,
   // and a cleared day should open each habit on a fresh empty session again.
   const [formEpoch, setFormEpoch] = useState(0);
@@ -272,8 +301,7 @@ export function Spine({
                 data={data}
                 dayKey={dayKey}
                 flushNow={flushNow}
-                liveWritingWords={liveWritingWords}
-                onWritingWords={setLiveWritingWords}
+                words={words}
               />
             ))
           )}
@@ -487,8 +515,7 @@ interface StripProps {
   dayKey: string;
   flushNow: () => void;
   /** Writing's running word total for the day, buffered edits included. */
-  liveWritingWords: number | null;
-  onWritingWords: (total: number) => void;
+  words: WordTotalStore;
 }
 
 interface Draft {
@@ -507,7 +534,7 @@ interface Draft {
   fromTimer?: boolean;
 }
 
-function Strip({ spec, data, dayKey, flushNow, liveWritingWords, onWritingWords }: StripProps) {
+function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
   const { habit } = spec;
   const rows = useMemo(
     () => data.sessions.filter((s) => s.habit_fk === habit.id),
@@ -555,8 +582,9 @@ function Strip({ spec, data, dayKey, flushNow, liveWritingWords, onWritingWords 
   /**
    * Writing's day total, as the form currently reads: every committed count row
    * with any buffered edit laid over it, plus the counts sitting in drafts.
-   * Published on every change so the Keyboard strip can mirror it immediately —
-   * the DB write still happens at the flush, and the two agree by then.
+   * Published into the word store on every change so the Keyboard strip can
+   * mirror it immediately — the DB write still happens at the flush, and the
+   * two agree by then.
    */
   const publishWordsIfWriting = (overrides: Record<string, number> = {}) => {
     if (habit.key !== WRITING_KEY) return;
@@ -567,7 +595,7 @@ function Strip({ spec, data, dayKey, flushNow, liveWritingWords, onWritingWords 
       const v = Number(d.count);
       if (d.count.trim() !== "" && Number.isFinite(v)) total += v;
     }
-    onWritingWords(total);
+    words.set(total);
   };
   useEffect(() => {
     publishWordsIfWriting();
@@ -688,9 +716,7 @@ function Strip({ spec, data, dayKey, flushNow, liveWritingWords, onWritingWords 
   // TODAY only: a staged item must never land on a browsed past day.
   useEffect(() => {
     const consume = () => {
-      const p = (n: number) => String(n).padStart(2, "0");
-      const d = new Date();
-      if (dayKey !== `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`) return;
+      if (dayKey !== todayLocal()) return;
       const items = takeHandoffFor(habit.id);
       if (items.length === 0) return;
       // suppress the empty-session auto-seed — it REPLACES drafts when it fires
@@ -755,7 +781,7 @@ function Strip({ spec, data, dayKey, flushNow, liveWritingWords, onWritingWords 
             data={data}
             dayKey={dayKey}
             bouts={bouts}
-            liveWritingWords={liveWritingWords}
+            words={words}
             queue={(field, run) => queueWrite(`board|${habit.id}|${field}`, run)}
             flushNow={flushNow}
             onError={setError}
@@ -937,7 +963,7 @@ function BoardOnly({
   data,
   dayKey,
   bouts,
-  liveWritingWords,
+  words: wordStore,
   queue,
   flushNow,
   onError,
@@ -947,11 +973,13 @@ function BoardOnly({
   dayKey: string;
   bouts: Bout[];
   /** Writing's running total for the day — what a `derived` count mirrors. */
-  liveWritingWords: number | null;
+  words: WordTotalStore;
   queue: (field: string, run: () => { ok: boolean; reason?: string }) => void;
   flushNow: () => void;
   onError: (m: string | null) => void;
 }) {
+  // The one subscriber — Writing keystrokes repaint exactly this component.
+  const liveWritingWords = useSyncExternalStore(wordStore.subscribe, wordStore.get);
   const def = spec.categoricals[0];
   const bout = bouts.find((b) => b.count != null) ?? null;
   const stored_ = def ? (bout ? (bout.cats[def.key] ?? null) : null) : null;

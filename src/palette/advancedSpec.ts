@@ -14,8 +14,7 @@
  * With no complete rows, the result is the whole universe in the window —
  * honest, and it makes the live count move from the first keystroke.
  */
-import type { WindowCfg } from "../compare/compareSpec";
-import { resolveWindow } from "../compare/compareSpec";
+import { resolveWindow, type WindowCfg } from "../kit/periodWindow";
 
 export type SearchTarget = "days" | "entries";
 export type MatchMode = "all" | "any";
@@ -48,8 +47,6 @@ export type EntryCond =
   | { kind: "series"; text: string } // contains
   | { kind: "lastSession"; dir: "before" | "after"; day: string | null } // "untouched for 6 months"
   | { kind: "totalTime"; op: ">=" | "<="; hours: number };
-
-export type AnyCond = DayCond | EntryCond;
 
 /** The stored (verbatim, partial) preset form — `as_preset:` rows mirror CS. */
 export interface ASCfg {
@@ -241,7 +238,6 @@ export interface EntryHit {
   entry: ASEntry;
   habit: ASHabit | null;
   lastDay: string | null;
-  totalMinutes: number;
 }
 
 export function searchEntries(
@@ -305,7 +301,6 @@ export function searchEntries(
         entry: e,
         habit: habitById.get(e.habitId) ?? null,
         lastDay: lastDay.get(e.id) ?? null,
-        totalMinutes: minutes.get(e.id) ?? 0,
       });
     }
   }

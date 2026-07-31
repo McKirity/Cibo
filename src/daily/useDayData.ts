@@ -9,11 +9,23 @@
  * Scoped to the day on purpose. The milestone banner needs the whole store, and
  * it gets it from `useMilestoneDay`'s debounced snapshot loader rather than a
  * live subscription here (a live whole-store query on a form is the lag bug).
+ *
+ * The day-scoped queries + row mappers are shared with the cover wall's fetch
+ * layer — `daySlice.ts` (2026-07-30 dedup); this hook keeps only its own
+ * output shape (habits with their declarations, the entry pool, catRowIds).
  */
 import { useMemo } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
-import { DateOnly, derivedRulesFromJson, type DerivedRule } from "../db/schema";
+import { parseDerivedRules } from "../db/schema";
+import {
+  dayCatsQuery,
+  dayLedgerQuery,
+  daySessionsQuery,
+  mapDayCats,
+  mapDayLedger,
+  mapDaySessions,
+} from "./daySlice";
 import type { SpineDefinition, SpineHabit, SpineSession, SubunitMap } from "./spineSpec";
 
 const habitsQuery = evolu.createQuery((db) =>
@@ -51,7 +63,7 @@ const vocabQuery = evolu.createQuery((db) =>
 const entriesQuery = evolu.createQuery((db) =>
   db
     .selectFrom("entries")
-    .select(["id", "habit_fk", "title", "type", "status"])
+    .select(["id", "habit_fk", "title", "type"])
     .where("isDeleted", "is not", 1)
     .orderBy("title"),
 );
@@ -86,91 +98,35 @@ export function useDayData(dayKey: string): DayData {
   const vocabRows = useQuery(vocabQuery);
   const entryRows = useQuery(entriesQuery);
 
-  const sessionsQuery = useMemo(
-    () =>
-      evolu.createQuery((db) =>
-        db
-          .selectFrom("sessions")
-          .select([
-            "id", "habit_fk", "entry_fk", "measure_kind", "value",
-            "start", "end", "source", "createdAt",
-          ])
-          .where("isDeleted", "is not", 1)
-          .where("day", "=", DateOnly.orThrow(dayKey))
-          .orderBy("createdAt"),
-      ),
-    [dayKey],
-  );
+  const sessionsQuery = useMemo(() => daySessionsQuery(dayKey), [dayKey]);
   const sessionRows = useQuery(sessionsQuery);
 
-  const catsQuery = useMemo(
-    () =>
-      evolu.createQuery((db) =>
-        db
-          .selectFrom("subunit_values")
-          .innerJoin("sessions", "sessions.id", "subunit_values.session_fk")
-          .innerJoin(
-            "subunit_definitions",
-            "subunit_definitions.id",
-            "subunit_values.definition_fk",
-          )
-          .select([
-            "subunit_values.id as value_id",
-            "subunit_values.session_fk as session_fk",
-            "subunit_definitions.key as def_key",
-            "subunit_values.value as value",
-          ])
-          .where("sessions.day", "=", DateOnly.orThrow(dayKey))
-          .where("sessions.isDeleted", "is not", 1)
-          .where("subunit_values.isDeleted", "is not", 1),
-      ),
-    [dayKey],
-  );
+  const catsQuery = useMemo(() => dayCatsQuery(dayKey), [dayKey]);
   const catRows = useQuery(catsQuery);
 
-  const dayQuery = useMemo(
-    () =>
-      evolu.createQuery((db) =>
-        db
-          .selectFrom("days")
-          .select(["id", "finalized"])
-          .where("isDeleted", "is not", 1)
-          .where("date", "=", DateOnly.orThrow(dayKey)),
-      ),
-    [dayKey],
-  );
+  const dayQuery = useMemo(() => dayLedgerQuery(dayKey), [dayKey]);
   const dayRows = useQuery(dayQuery);
 
   const habits = useMemo<SpineHabit[]>(
     () =>
       habitRows
         .filter((h) => h.kind != null && h.name != null)
-        .map((h) => {
-          let rules: DerivedRule[] = [];
-          if (h.derived_rules != null) {
-            try {
-              rules = derivedRulesFromJson(h.derived_rules) as unknown as DerivedRule[];
-            } catch {
-              rules = [];
-            }
-          }
-          return {
-            id: h.id,
-            key: (h.key as string | null) ?? null,
-            name: h.name as string,
-            kind: h.kind as SpineHabit["kind"],
-            sub_type: (h.sub_type as SpineHabit["sub_type"]) ?? null,
-            colour_slot: (h.colour_slot as string) ?? "habit-1",
-            icon: (h.icon as string | null) ?? null,
-            measures_time: h.measures_time === 1,
-            measures_count: h.measures_count === 1,
-            count_unit: (h.count_unit as string | null) ?? null,
-            range_max_midnights: (h.range_max_midnights as number | null) ?? null,
-            entry_attributes: (h.entry_attributes as string | null) ?? null,
-            derived_rules: rules,
-            sort_order: (h.sort_order as number | null) ?? null,
-          };
-        }),
+        .map((h) => ({
+          id: h.id,
+          key: (h.key as string | null) ?? null,
+          name: h.name as string,
+          kind: h.kind as SpineHabit["kind"],
+          sub_type: (h.sub_type as SpineHabit["sub_type"]) ?? null,
+          colour_slot: (h.colour_slot as string) ?? "habit-1",
+          icon: (h.icon as string | null) ?? null,
+          measures_time: h.measures_time === 1,
+          measures_count: h.measures_count === 1,
+          count_unit: (h.count_unit as string | null) ?? null,
+          range_max_midnights: (h.range_max_midnights as number | null) ?? null,
+          entry_attributes: (h.entry_attributes as string | null) ?? null,
+          derived_rules: parseDerivedRules(h.derived_rules),
+          sort_order: (h.sort_order as number | null) ?? null,
+        })),
     [habitRows],
   );
 
@@ -198,39 +154,9 @@ export function useDayData(dayKey: string): DayData {
     return out;
   }, [defRows, vocabRows]);
 
-  const sessions = useMemo<SpineSession[]>(
-    () =>
-      sessionRows
-        .filter((s) => s.habit_fk != null && s.measure_kind != null)
-        .map((s) => ({
-          id: s.id,
-          habit_fk: s.habit_fk as string,
-          entry_fk: (s.entry_fk as string | null) ?? null,
-          measure_kind: s.measure_kind as SpineSession["measure_kind"],
-          value: s.value,
-          start: s.start,
-          end: s.end,
-          source: (s.source as string) ?? "manual",
-          createdAt: String(s.createdAt),
-        })),
-    [sessionRows],
-  );
+  const sessions = useMemo<SpineSession[]>(() => mapDaySessions(sessionRows), [sessionRows]);
 
-  const { cats, catRowIds } = useMemo(() => {
-    const m = new Map<string, SubunitMap>();
-    // (session, definition key) → the subunit_values row id, so an edit UPDATES
-    // the answer rather than stacking a second one, and a bout removal can take
-    // its answers with it.
-    const ids = new Map<string, string>();
-    for (const r of catRows) {
-      if (r.session_fk == null || r.def_key == null) continue;
-      const rec = { ...(m.get(r.session_fk as string) ?? {}) };
-      rec[r.def_key as string] = (r.value as string) ?? "";
-      m.set(r.session_fk as string, rec);
-      ids.set(`${r.session_fk as string}|${r.def_key as string}`, r.value_id as string);
-    }
-    return { cats: m, catRowIds: ids };
-  }, [catRows]);
+  const { cats, catRowIds } = useMemo(() => mapDayCats(catRows), [catRows]);
 
   const entriesByHabit = useMemo(() => {
     const m = new Map<string, DayEntry[]>();
@@ -248,10 +174,7 @@ export function useDayData(dayKey: string): DayData {
     return m;
   }, [entryRows]);
 
-  const dayRow = useMemo(() => {
-    const r = dayRows[0];
-    return r ? { id: r.id as string, finalized: r.finalized === 1 } : null;
-  }, [dayRows]);
+  const dayRow = useMemo(() => mapDayLedger(dayRows), [dayRows]);
 
   return useMemo<DayData>(
     () => ({

@@ -165,7 +165,6 @@ export function useLibraryData(habitKey: string): LibraryData {
         purchased: r.purchased === 1,
         creators: decodeList(r.creators),
         studios: decodeList(r.studios),
-        series: r.series as string | null,
         cover: r.cover as string | null,
         banner: r.banner as string | null,
         hours: a.hours,
@@ -233,7 +232,9 @@ export function useLibraryData(habitKey: string): LibraryData {
       ready: habit != null,
       habitId: habit != null ? (habit.id as HabitId) : null,
       name: habit?.name ?? habitKey,
-      colourSlot: habit?.colour_slot ?? "habit-2",
+      // habit-1: the app-wide null-slot fallback (unified 2026-07-30 — this
+      // read habit-2 while five other screens read habit-1).
+      colourSlot: habit?.colour_slot ?? "habit-1",
       subType: (habit?.sub_type as string | null) ?? null,
       entries,
       typeVocab,

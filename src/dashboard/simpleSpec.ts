@@ -17,11 +17,15 @@
  */
 import {
   best,
+  bestAmount,
+  daysHeatChip,
   dayMinutes,
   distinctDays,
   heatChip,
+  heatmapGrid,
   heatmapMonths,
   periodDelta,
+  periodDeltaBy,
   playedDaySet,
   scoped,
   streaks,
@@ -30,14 +34,7 @@ import {
   type Run,
   type SessionRow,
 } from "../metrics/shapes";
-import {
-  dayFromIndex,
-  dayGap,
-  dayIndex,
-  monthKey,
-  weekStart,
-  yearKey,
-} from "../metrics/dates";
+import { dayFromIndex, dayGap, dayIndex, monthKey, yearKey } from "../metrics/dates";
 import {
   decimal1,
   deltaChip,
@@ -59,22 +56,28 @@ import type {
   TrendSeries,
 } from "./creationSpec";
 import {
+  amountActiveDayDelta,
+  archivedEmptyMessage,
   bestWeekLabel,
   buildTrendWindow,
   CAT_SLOTS,
+  countAmountOf,
   dayCounts,
-  grainKey,
+  intDeltaChip,
   kFmt,
   lastMonthWithData,
   lastRunOf,
   longestRunOf,
-  maxStr,
-  minStr,
   MON,
+  MON_1,
+  monthlySpark,
   monthOverMonth,
+  resolveScopeWindow,
+  statDelta,
   streakTile,
   vsYear,
   yearOverYearDelta,
+  yearTabs,
 } from "./specShared";
 
 export type { ScopeSel } from "./creationSpec";
@@ -142,16 +145,13 @@ export interface SimpleModel {
   } | null;
 }
 
-// ── Local literals (CAT_SLOTS/MON/maxStr/minStr/kFmt/bestWeekLabel/grainKey/
-//    dayCounts + the streak/delta helpers live in ./specShared) ───────────────
-
-const MON_1 = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+// ── Local literals (CAT_SLOTS/MON/MON_1/kFmt/bestWeekLabel/dayCounts + the
+//    streak/delta/scope helpers live in ./specShared; the best/delta/heatmap
+//    shapes in ../metrics/shapes) ───────────────────────────────────────────
 
 /** Big totals: ≥1M reads "1.20" + unit "M" (the drawn Keyboard/steps idiom). */
 const mSplit = (v: number): { v: string; u?: string } =>
   v >= 1e6 ? { v: (v / 1e6).toFixed(2), u: "M" } : { v: groupInt(v) };
-
-type Grain = "day" | "week" | "month";
 
 // ── Primary-measure plumbing ──────────────────────────────────────────────────
 // The primary measure = count when declared, else time (the locked rule). All
@@ -179,7 +179,7 @@ function makeMeasure(kind: MeasureKindKey, countUnit: string | null): Measure {
       noun,
       abbr: noun.slice(0, 1),
       dayAmounts: dayCounts,
-      amountOf: (s) => (s.measure_kind === "count" ? s.value ?? 0 : 0),
+      amountOf: countAmountOf,
       fmt: (v) => groupInt(v),
       fmtLong: (v) => `${groupInt(v)} ${noun}`,
     };
@@ -195,104 +195,17 @@ function makeMeasure(kind: MeasureKindKey, countUnit: string | null): Measure {
   };
 }
 
-/** Best bucket by summed primary amounts. */
-function bestAmount(
-  sessions: SessionRow[],
-  grain: Grain,
-  amountOf: (s: SessionRow) => number,
-): { key: string; value: number } | null {
-  const by = new Map<string, number>();
-  for (const s of sessions) {
-    const a = amountOf(s);
-    if (a === 0) continue;
-    const k = grainKey(s.day, grain);
-    by.set(k, (by.get(k) ?? 0) + a);
-  }
-  let out: { key: string; value: number } | null = null;
-  for (const [key, value] of by) if (!out || value > out.value) out = { key, value };
-  return out;
-}
+// The hour-unit delta faces (conformed 2026-07-30, preserved through the
+// catalog migration): a period-rate delta on an hours tile reads in HOURS —
+// deltaChip(d/60, "h"), the drawn "▲ 0.4h" — while the per-active-day delta
+// reads in per-day MINUTES — deltaChip(d, "m"), the drawn "▲ 3m" scale.
+const hourRateChip = (d: number): DeltaChip => deltaChip(d / 60, "h");
+const perDayMinChip = (d: number): DeltaChip => deltaChip(d, "m");
 
-/** Amount-rate delta over [from,to] vs the preceding equal window. */
-function amountPeriodDelta(
-  sessions: SessionRow[],
-  amountOf: (s: SessionRow) => number,
-  from: string,
-  to: string,
-  grain: "week" | "month",
-  unit: string,
-): DeltaChip | undefined {
-  const rate = (f: string, t: string) => {
-    const rows = scoped(sessions, { from: f, to: t });
-    const amount = rows.reduce((a, s) => a + amountOf(s), 0);
-    const span = dayGap(f, t) + 1;
-    const per = grain === "week" ? 7 : 30.4375;
-    return span > 0 ? amount / (span / per) : 0;
-  };
-  const len = dayGap(from, to);
-  const prevTo = dayFromIndex(dayIndex(from) - 1);
-  const prevFrom = dayFromIndex(dayIndex(from) - 1 - len);
-  if (scoped(sessions, { from: prevFrom, to: prevTo }).length === 0) return undefined;
-  const d = rate(from, to) - rate(prevFrom, prevTo);
-  // Hour-unit tiles read their delta in HOURS — the drawn "▲ 0.4h"
-  // (embroidery-stats' face; conformed 2026-07-30 — this rendered minutes).
-  if (unit === "h") return deltaChip(d / 60, "h");
-  return { text: `${d < 0 ? "▼" : "▲"} ${groupInt(Math.abs(d))}`, down: d < 0 };
-}
-
-/**
- * Per-ACTIVE-DAY delta — the grain the "Avg / active day" tile states.
- * Conformed 2026-07-30: the tile carried a weekly-rate delta while the FINAL
- * draws a per-day "▲ 3m" and the consumption/creation siblings use
- * specShared's activeDayDelta (duration-only, hence this count-capable twin).
- */
-function amountActiveDayDelta(
-  sessions: SessionRow[],
-  amountOf: (s: SessionRow) => number,
-  from: string,
-  to: string,
-  unit: string,
-): DeltaChip | undefined {
-  const avg = (f: string, t: string) => {
-    const rows = scoped(sessions, { from: f, to: t });
-    const days = new Set(rows.map((s) => s.day)).size;
-    return days > 0 ? rows.reduce((a, s) => a + amountOf(s), 0) / days : 0;
-  };
-  const len = dayGap(from, to);
-  const prevTo = dayFromIndex(dayIndex(from) - 1);
-  const prevFrom = dayFromIndex(dayIndex(from) - 1 - len);
-  if (scoped(sessions, { from: prevFrom, to: prevTo }).length === 0) return undefined;
-  const d = avg(from, to) - avg(prevFrom, prevTo);
-  if (unit === "h") return deltaChip(d, "m"); // per-day minutes — the drawn "▲ 3m" scale
-  return { text: `${d < 0 ? "▼" : "▲"} ${groupInt(Math.abs(d))}`, down: d < 0 };
-}
-
-/** Generic window-vs-prior delta of any scalar stat over day windows. */
-function statDelta(
-  stat: (from: string, to: string) => number | null,
-  from: string,
-  to: string,
-  fmt: (d: number) => string = (d) => decimal1(Math.abs(d)),
-): DeltaChip | undefined {
-  const len = dayGap(from, to);
-  const prevTo = dayFromIndex(dayIndex(from) - 1);
-  const prevFrom = dayFromIndex(dayIndex(from) - 1 - len);
-  const cur = stat(from, to);
-  const prev = stat(prevFrom, prevTo);
-  if (cur == null || prev == null) return undefined;
-  const d = cur - prev;
-  return { text: `${d < 0 ? "▼" : "▲"} ${fmt(d)}`, down: d < 0 };
-}
-
-/** Days-based heat chip for habits whose sessions carry no minutes. */
-function daysHeatChip(sessions: SessionRow[], today: string): HeatChip {
-  const from = dayFromIndex(dayIndex(today) - 13);
-  const d14 = distinctDays(scoped(sessions, { from, to: today }));
-  return d14 >= 9 ? "HOT" : d14 >= 4 ? "WARM" : d14 >= 1 ? "COOLING" : "COLD";
-}
-
+// bestAmount · periodDeltaBy · daysHeatChip live in ../metrics/shapes;
 // streakTile · longestRunOf · lastRunOf · vsYear · yearOverYearDelta ·
-// monthOverMonth · lastMonthWithData all live in ./specShared.
+// monthOverMonth · lastMonthWithData · amountActiveDayDelta · statDelta all
+// live in ./specShared.
 
 // ── The builder ───────────────────────────────────────────────────────────────
 
@@ -315,9 +228,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
 
   // ── Scope window (clamped to the tracked span and to today) ──
   const isYear = sel.kind === "year";
-  const base = firstDay ?? today;
-  const scopeFrom = empty ? today : isYear ? maxStr(`${sel.year}-01-01`, base) : base;
-  const scopeTo = isYear ? minStr(`${sel.year}-12-31`, today) : today;
+  const { scopeFrom, scopeTo } = resolveScopeWindow(sel, firstDay, today, empty);
   const sessScoped = scoped(sessions, { from: scopeFrom, to: scopeTo });
 
   const spanDays = dayGap(scopeFrom, scopeTo) + 1;
@@ -392,10 +303,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
   const usedInScope = [...aggScoped.keys()];
 
   // ── Masthead ──
-  const years: string[] = [];
-  if (!empty)
-    for (let y = Number(yearKey(firstDay!)); y <= Number(yearKey(today)); y++) years.push(String(y));
-  const tabs = [{ key: "all", label: "All Time" }, ...[...years].reverse().map((y) => ({ key: y, label: y }))];
+  const { years, tabs } = yearTabs(firstDay, today);
   const totPrimaryAll = sessions.reduce((a, s) => a + primary.amountOf(s), 0);
   const allDaysCount = distinctDays(sessions);
   const totalWord =
@@ -429,24 +337,15 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
   // ── MEASURELESS: attendance + dayspark, nothing else ──
   if (flavor === "measureless") {
     const playedAll = playedDaySet(sessions);
-    const end = scopeTo;
-    const weeks53 = 53;
-    const startIdx = dayIndex(weekStart(end)) - (weeks53 - 1) * 7;
-    const endIdx = dayIndex(end);
-    const fromIdx = isYear ? dayIndex(`${(sel as { year: string }).year}-01-01`) : -Infinity;
-    const cells: NonNullable<SimpleModel["attendance"]>["cells"] = [];
-    for (let row = 0; row < 7; row++) {
-      for (let col = 0; col < weeks53; col++) {
-        const idx = startIdx + col * 7 + row;
-        if (idx > endIdx || idx < fromIdx) {
-          cells.push({ day: null, on: false, tip: "" });
-          continue;
-        }
-        const day = dayFromIndex(idx);
+    const cells = heatmapGrid<NonNullable<SimpleModel["attendance"]>["cells"][number]>(
+      scopeTo,
+      (day) => {
         const on = playedAll.has(day);
-        cells.push({ day, on, tip: `${fmtDMY(day)} · ${on ? "logged" : "not logged"}` });
-      }
-    }
+        return { day, on, tip: `${fmtDMY(day)} · ${on ? "logged" : "not logged"}` };
+      },
+      () => ({ day: null, on: false, tip: "" }),
+      { from: isYear ? `${(sel as { year: string }).year}-01-01` : null },
+    );
 
     const bestWk = best(sessScoped, "week", "days");
     const bestMo = best(sessScoped, "month", "days");
@@ -535,8 +434,6 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
 
   // Engagement — the categorical family trades both attendance-average tiles
   // for their per-value forms (Dashboard Composition, ruled 2026-07-17/18).
-  const bestWk = best(sessScoped, "week", "days");
-  const bestMo = best(sessScoped, "month", "days");
   const currentStreakTile: TileSpec = input.archived
     ? { label: "Current streak", value: "0", unit: "d", subtitle: "archived — streaks ended" }
     : streakTile(
@@ -601,6 +498,10 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
       subtitle: bestMonthRatio ? `best: ${Math.round(bestMonthRatio.v)} · ${fmtMonY(bestMonthRatio.mk)}` : undefined,
     });
   } else {
+    // Only this branch reads the attendance bests — derived here, not above
+    // (the categorical branch never needs them).
+    const bestWk = best(sessScoped, "week", "days");
+    const bestMo = best(sessScoped, "month", "days");
     engagement.push(
       {
         label: "Avg days / week",
@@ -637,7 +538,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
       ? groupInt(daysActive > 0 ? totPrimary / daysActive : 0)
       : hoursMinutes(daysActive > 0 ? totPrimary / daysActive : 0),
     delta: vsYear(
-      amountActiveDayDelta(sessions, primary.amountOf, dFrom, dTo, isCount ? "" : "h"),
+      amountActiveDayDelta(sessions, primary.amountOf, dFrom, dTo, isCount ? intDeltaChip : perDayMinChip),
       isYear,
       isYear ? sel.year : "",
     ),
@@ -698,7 +599,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
           : hoursTrim1(months > 0 ? totPrimary / months : 0).replace(/h$/, ""),
         unit: isCount ? undefined : "h",
         delta: vsYear(
-          amountPeriodDelta(sessions, primary.amountOf, dFrom, dTo, "month", isCount ? "" : "h"),
+          periodDeltaBy(sessions, dFrom, dTo, "month", primary.amountOf, isCount ? intDeltaChip : hourRateChip),
           isYear,
           isYear ? sel.year : "",
         ),
@@ -895,24 +796,16 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
 
   const sparkYear = isYear ? sel.year : yearKey(today);
   const sparkUnit = isCount ? ` ${primary.abbr}` : " h";
-  const spark = MON.map((mo, i) => {
-    const mk = `${sparkYear}-${String(i + 1).padStart(2, "0")}`;
-    const v =
-      [...dayAmtAll.entries()].filter(([d]) => monthKey(d) === mk).reduce((a, [, x]) => a + x, 0) / div;
-    return {
-      label: mo[0],
-      value: v,
-      monthVar: `--month-${mo.toLowerCase()}`,
-      tip: `${mo} ${sparkYear} · ${v > 0 ? `${groupInt(v)}${sparkUnit}` : "—"}`,
-    };
-  });
+  const spark = monthlySpark(dayAmtAll, sparkYear, div).map((s) => ({
+    label: s.label,
+    value: s.value,
+    monthVar: s.monthVar,
+    tip: `${s.month} ${sparkYear} · ${s.value > 0 ? `${groupInt(s.value)}${sparkUnit}` : "—"}`,
+  }));
   const sparkMax = Math.max(1, ...spark.map((s) => s.value));
   const nowMonthIdx = isYear ? lastMonthWithData(spark.map((s) => s.value)) : Number(today.slice(5, 7)) - 1;
   const windowEmpty = buckets.every((b) => sumOf(dayAmtAll, b) === 0);
-  const archivedEmpty =
-    input.archived && windowEmpty
-      ? `No activity in ${isYear ? sel.year : "the last 30 days"} — this habit was archived${archivedOn ? ` ${fmtDMY(archivedOn)}` : ""}.`
-      : null;
+  const archivedEmpty = archivedEmptyMessage(input.archived, windowEmpty, isYear, isYear ? sel.year : "", archivedOn);
   const trend: CreationModel["trend"] = {
     series,
     xticks,
@@ -945,22 +838,12 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
             : v < cutoffs[2]
               ? 3
               : 4;
-  const weeks53 = 53;
-  const startIdx = dayIndex(weekStart(trendEnd)) - (weeks53 - 1) * 7;
-  const endIdx = dayIndex(trendEnd);
-  const fromIdx = isYear ? dayIndex(`${sel.year}-01-01`) : -Infinity;
-  const hcells: NonNullable<SimpleModel["heatmap"]>["cells"] = [];
-  for (let row = 0; row < 7; row++) {
-    for (let col = 0; col < weeks53; col++) {
-      const idx = startIdx + col * 7 + row;
-      if (idx > endIdx || idx < fromIdx) {
-        hcells.push({ day: null, level: -1, value: null, tip: "" });
-        continue;
-      }
-      const day = dayFromIndex(idx);
+  const hcells = heatmapGrid<NonNullable<SimpleModel["heatmap"]>["cells"][number]>(
+    trendEnd,
+    (day) => {
       const amt = dayAmtAll.get(day) ?? 0;
       const v = dominantByDay.get(day) ?? null;
-      hcells.push({
+      return {
         day,
         level: levelOf(amt),
         value: v,
@@ -968,9 +851,11 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
           amt > 0
             ? `${fmtDMY(day)} · ${primary.fmtLong(amt)}${v ? ` · ${v}` : ""}`
             : `${fmtDMY(day)} · no session`,
-      });
-    }
-  }
+      };
+    },
+    () => ({ day: null, level: -1, value: null, tip: "" }),
+    { from: isYear ? `${sel.year}-01-01` : null },
+  );
   const recDay = bestAmount(sessions, "day", primary.amountOf);
   const recWk = bestAmount(sessions, "week", primary.amountOf);
   const recMo = bestAmount(sessions, "month", primary.amountOf);

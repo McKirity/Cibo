@@ -20,19 +20,28 @@
  */
 import {
   best,
+  bestBucketBy,
   dayMinutes,
   distinctDays,
   erasForWaves,
   streaks,
   total,
   wavesForEntry,
-  type Run,
   type SessionRow,
   type Wave,
 } from "../metrics/shapes";
 import { dayFromIndex, dayGap, dayIndex, isoWeek, monthKey, weekStart, yearKey } from "../metrics/dates";
-import { fmtDMY, fmtMonY, fmtRange, groupInt, hoursMinutes, hoursWhole } from "../metrics/format";
+import {
+  fmtDMY,
+  fmtMonY,
+  groupInt,
+  hoursMinutes,
+  hoursWhole,
+  MONTHS_LONG,
+  MONTHS_SHORT,
+} from "../metrics/format";
 import type { TileSpec } from "./consumptionSpec";
+import { CAT_SLOTS, dayCounts, initialism, longestRunOf, STATUS_CAT, streakTile } from "./specShared";
 import {
   buildDistributions,
   buildCreationHeatmap,
@@ -256,14 +265,6 @@ export interface EntryModel {
  *  user-ruled 2026-07-23: "Build it, but I want the option to disable it." */
 const RAIL_BANNER_DEFAULT = true;
 
-const STATUS_CAT: Record<string, string> = {
-  Current: "--cat-2",
-  Finished: "--cat-4",
-  Dropped: "--cat-6",
-  Planned: "--cat-3",
-  Hiatus: "--cat-8",
-};
-
 /** Presentation vocab for the story-vs-wiki pie (the 2026-07-18 in-canvas
  *  ruling: the labels read Novel / Wiki) — keyed by def key like HERO_NOUN;
  *  unknown defs fall back to their own label. */
@@ -274,25 +275,14 @@ const SPLIT_LABEL: Record<string, string> = {
 
 const RATING_WORD = ["", "one", "two", "three", "four", "five"];
 const MILESTONE_LADDER = [10_000, 25_000, 50_000, 75_000, 100_000, 250_000, 500_000, 1_000_000];
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+// initialism · dayCounts · streakTile · longestRunOf · STATUS_CAT · CAT_SLOTS
+// live in ./specShared; the rail cover passes initialism's max = 12.
 
-const initialism = (title: string): string => {
-  const words = title.split(/[^A-Za-z0-9]+/).filter(Boolean);
-  const s = words.length > 1 ? words.map((w) => w[0]).join("") : title.replace(/[^A-Za-z0-9]/g, "");
-  return s.slice(0, 12).toUpperCase();
-};
-
-/** Day-summed count values (the count sibling of dayMinutes). */
-function dayCounts(sessions: SessionRow[]): Map<string, number> {
-  const m = new Map<string, number>();
-  for (const s of sessions)
-    if (s.measure_kind === "count") m.set(s.day, (m.get(s.day) ?? 0) + (s.value ?? 0));
-  return m;
-}
-
-/** "50.4k" / "900" — one-decimal k above 10k, whole k above 100k. */
+/** "50.4k" / "900" — one-decimal k above 10k, whole k above 100k. A SIBLING of
+ *  specShared's `kFmt` (which rounds to whole k from 1000 up) — the drawn wave-
+ *  table/day-log face keeps the finer steps, so the two do not merge. */
 const kFmt1 = (v: number): string => {
   if (v >= 100_000) return `${Math.round(v / 1000)}k`;
   if (v >= 10_000) return `${(v / 1000).toFixed(1).replace(/\.0$/, "")}k`;
@@ -335,49 +325,6 @@ const fmtQtr = (qk: string): string => `${qk.slice(5)} ${qk.slice(0, 4)}`;
 
 /** Grain-list value format for hour amounts (short form under 10 h). */
 const hoursGrain = (min: number): string => (min < 600 ? hoursMinutes(min) : hoursWhole(min));
-
-/** The richest bucket of a per-day amount map at an arbitrary keyer. */
-function bestBucket(
-  src: Map<string, number>,
-  keyOf: (day: string) => string,
-): { key: string; value: number } | null {
-  const by = new Map<string, number>();
-  for (const [d, v] of src) {
-    const k = keyOf(d);
-    by.set(k, (by.get(k) ?? 0) + v);
-  }
-  let out: { key: string; value: number } | null = null;
-  for (const [key, value] of by) if (!out || value > out.value) out = { key, value };
-  return out;
-}
-
-/** A streak stat tile (the shared idiom — date line + prior/next-streak table). */
-function streakTile(
-  label: string,
-  run: Run | null,
-  st: { runs: Run[]; currentRun: Run | null },
-  isCurrent: boolean,
-): TileSpec {
-  const value = run ? `${run.days}` : "0";
-  const dateLine = run
-    ? isCurrent && run === st.currentRun
-      ? `since ${fmtDMY(run.start)}`
-      : fmtRange(run.start, run.end)
-    : "—";
-  const others = st.runs.filter((r) => r !== run);
-  const picked = isCurrent
-    ? [...others].sort((a, b) => b.end.localeCompare(a.end)).slice(0, 3)
-    : [...others].sort((a, b) => b.days - a.days).slice(0, 3);
-  return {
-    label,
-    value,
-    unit: "d",
-    list: { dateLine, rows: picked.map((r) => ({ k: fmtRange(r.start, r.end), v: `${r.days}d` })) },
-  };
-}
-
-const longestRunOf = (st: { runs: Run[] }): Run | null =>
-  st.runs.reduce<Run | null>((b, r) => (!b || r.days > b.days ? r : b), null);
 
 // ── The builder ───────────────────────────────────────────────────────────────
 
@@ -516,7 +463,7 @@ function buildRail(input: EntryBuildInput): RailSpec {
 
   return {
     banner: creation && RAIL_BANNER_DEFAULT,
-    coverLabel: initialism(entry.title),
+    coverLabel: initialism(entry.title, 12),
     eyebrow: { habit: input.habitName, type: entry.type },
     title: entry.title,
     byline,
@@ -647,10 +594,10 @@ function buildCreationStrip(
 
   // Best-bucket lists per grain (wk N · Mon YYYY · Q# YYYY · YYYY).
   const bestList = (src: Map<string, number>, fmt: (v: number) => string) => {
-    const bw = bestBucket(src, weekStart);
-    const bm = bestBucket(src, monthKey);
-    const bq = bestBucket(src, qKey);
-    const by = bestBucket(src, yearKey);
+    const bw = bestBucketBy(src, weekStart);
+    const bm = bestBucketBy(src, monthKey);
+    const bq = bestBucketBy(src, qKey);
+    const by = bestBucketBy(src, yearKey);
     const rows: { k: string; v: string }[] = [];
     if (bw) rows.push({ k: `wk ${isoWeek(bw.key).week}`, v: fmt(bw.value) });
     if (bm) rows.push({ k: fmtMonY(bm.key), v: fmt(bm.value) });
@@ -688,8 +635,7 @@ function buildCreationStrip(
         ),
       }))
       .filter((x) => x.v > 0);
-    let bdC: { key: string; value: number } | null = null;
-    for (const [d, v] of dayCnt) if (!bdC || v > bdC.value) bdC = { key: d, value: v };
+    const bdC = bestBucketBy(dayCnt, (d) => d);
     const capUnit = unitWord.charAt(0).toUpperCase() + unitWord.slice(1);
     rows.push({
       label: capUnit,
@@ -748,7 +694,37 @@ function buildWaves(
 ): WavesSpec {
   const primary = twoMeasure ? dayCnt : dayMin;
   const primaryDiv = twoMeasure ? 1 : 60; // hours on the band for time habits
-  const amountOf = (w: Wave): number => (twoMeasure ? sumRange(dayCnt, w) : w.minutes);
+
+  // Sorted-day + prefix-sum view of the primary map: the table's per-row
+  // amount/best/sum reads slice by binary search instead of rescanning the
+  // whole map per row (the pre-bucket pass, 2026-07-30).
+  const primDays = [...primary.keys()].sort();
+  const primVals = primDays.map((d) => primary.get(d)!);
+  const primPrefix: number[] = [0];
+  for (const v of primVals) primPrefix.push(primPrefix[primPrefix.length - 1] + v);
+  const lb = (days: readonly string[], d: string): number => {
+    let lo = 0;
+    let hi = days.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (days[mid] < d) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  };
+  const ub = (days: readonly string[], d: string): number => {
+    let lo = 0;
+    let hi = days.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (days[mid] <= d) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  };
+  const sumIn = (start: string, end: string): number =>
+    primPrefix[ub(primDays, end)] - primPrefix[lb(primDays, start)];
+  const amountOf = (w: Wave): number => (twoMeasure ? sumIn(w.start, w.end) : w.minutes);
   // The active/"now" reading was STRUCK app-wide 2026-07-30 (user-ruled: "No.
   // Actually remove that from writing and other creation entries as well" —
   // asked whether consumption should gain the then-creation-only chip). No
@@ -765,7 +741,8 @@ function buildWaves(
     twoMeasure ? `${kFmt1(v)} ${unitAbbr}` : hoursWhole(v).replace(/h$/, " h");
   const bestIn = (start: string, end: string): number => {
     let b = 0;
-    for (const [d, v] of primary) if (d >= start && d <= end && v > b) b = v;
+    for (let i = lb(primDays, start), n = ub(primDays, end); i < n; i++)
+      if (primVals[i] > b) b = primVals[i];
     return b;
   };
   const bestStr = (v: number): string => (twoMeasure ? `${groupInt(v)} ${unitAbbr}` : hoursMinutes(v));
@@ -862,14 +839,13 @@ function buildWaves(
   }));
 
   // ── Merged categorical share (creation) — table composition cells ──
-  const compOf = (start: string, end: string): WaveComp | null => {
-    if (template !== "creation" || defs.length === 0) return null;
-    const share = new Map<string, { v: number; slot: string }>();
-    const CAT_SLOTS = ["--cat-1", "--cat-2", "--cat-3", "--cat-4", "--cat-5", "--cat-6", "--cat-7", "--cat-8"];
+  // Tagged amounts flattened ONCE, day-sorted; compOf slices by binary search
+  // instead of rescanning defs × sessions per table row (2026-07-30).
+  const catRows: { day: string; val: string; slot: string; amount: number }[] = [];
+  if (template === "creation" && defs.length > 0) {
     for (const d of defs) {
       const slot = new Map(d.vocab.map((v, i) => [v, CAT_SLOTS[i % CAT_SLOTS.length]]));
       for (const s of sessions) {
-        if (s.day < start || s.day > end) continue;
         const v = valOf(s.id, d.key);
         if (v == null) continue;
         const amount = twoMeasure
@@ -880,10 +856,20 @@ function buildWaves(
             ? s.value ?? 0
             : 0;
         if (amount === 0) continue;
-        const cur = share.get(v) ?? { v: 0, slot: slot.get(v) ?? "--cat-1" };
-        cur.v += amount;
-        share.set(v, cur);
+        catRows.push({ day: s.day, val: v, slot: slot.get(v) ?? "--cat-1", amount });
       }
+    }
+    catRows.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+  }
+  const catDays = catRows.map((r) => r.day);
+  const compOf = (start: string, end: string): WaveComp | null => {
+    if (catRows.length === 0) return null;
+    const share = new Map<string, { v: number; slot: string }>();
+    for (let i = lb(catDays, start), n = ub(catDays, end); i < n; i++) {
+      const r = catRows[i];
+      const cur = share.get(r.val) ?? { v: 0, slot: r.slot };
+      cur.v += r.amount;
+      share.set(r.val, cur);
     }
     const tot = [...share.values()].reduce((a, x) => a + x.v, 0);
     if (tot === 0) return null;
@@ -1009,19 +995,14 @@ function buildWaves(
   };
 }
 
-/** Sum of a per-day amount map inside a wave's span. */
-const sumRange = (src: Map<string, number>, w: Wave): number => {
-  let out = 0;
-  for (const [d, v] of src) if (d >= w.start && d <= w.end) out += v;
-  return out;
-};
-
 const fmtWaveSpan = (w: { start: string; end: string }): string => {
   const [fy, fm] = [yearKey(w.start), Number(w.start.slice(5, 7))];
   const [ty, tm] = [yearKey(w.end), Number(w.end.slice(5, 7))];
   if (fy === ty)
-    return fm === tm ? `${MON[fm - 1]} ${fy}` : `${MON[fm - 1]} – ${MON[tm - 1]} ${fy}`;
-  return `${MON[fm - 1]} ${fy} – ${MON[tm - 1]} ${ty}`;
+    return fm === tm
+      ? `${MONTHS_SHORT[fm - 1]} ${fy}`
+      : `${MONTHS_SHORT[fm - 1]} – ${MONTHS_SHORT[tm - 1]} ${fy}`;
+  return `${MONTHS_SHORT[fm - 1]} ${fy} – ${MONTHS_SHORT[tm - 1]} ${ty}`;
 };
 
 function buildGrowth(
@@ -1165,17 +1146,16 @@ function buildDayLog(
   let bestCv = 0;
   for (const [d, v] of dayCnt) if (v > bestCv) ((bestCv = v), (bestC = d));
 
-  const chipsOf = (day: string): string[] => {
-    const set = new Set<string>();
-    for (const s of sessions) {
-      if (s.day !== day) continue;
-      for (const d of defs) {
-        const v = valOf(s.id, d.key);
-        if (v != null) set.add(v.toLowerCase());
-      }
+  // Pre-bucketed day → chips (was an O(days × sessions) rescan per row).
+  const chipsByDay = new Map<string, Set<string>>();
+  for (const s of sessions) {
+    for (const d of defs) {
+      const v = valOf(s.id, d.key);
+      if (v == null) continue;
+      (chipsByDay.get(s.day) ?? chipsByDay.set(s.day, new Set()).get(s.day)!).add(v.toLowerCase());
     }
-    return [...set];
-  };
+  }
+  const chipsOf = (day: string): string[] => [...(chipsByDay.get(day) ?? [])];
 
   const rowVal = (day: string): string => {
     const t = logHours(dayMin.get(day) ?? 0);
@@ -1202,7 +1182,6 @@ function buildDayLog(
     return `${groupInt(min / 60)} h · ${nDays} day${nDays === 1 ? "" : "s"}`;
   };
 
-  const MONTH_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const years: DayLogSpec["years"] = [];
   const byYear = new Map<string, string[]>();
   for (const d of days) (byYear.get(yearKey(d)) ?? byYear.set(yearKey(d), []).get(yearKey(d))!).push(d);
@@ -1212,12 +1191,12 @@ function buildDayLog(
     const byMonth = new Map<string, string[]>();
     for (const d of yDays) (byMonth.get(monthKey(d)) ?? byMonth.set(monthKey(d), []).get(monthKey(d))!).push(d);
     const months = [...byMonth.entries()].map(([mk, list], mi) => ({
-      label: MONTH_FULL[Number(mk.slice(5)) - 1],
+      label: MONTHS_LONG[Number(mk.slice(5)) - 1],
       sum: sumOf(list),
       open: yi === 0 && mi === 0,
       days: list.map((d) => ({
         day: d,
-        label: `${d.slice(8)} ${MON[Number(d.slice(5, 7)) - 1]} ${d.slice(0, 4)}`,
+        label: `${d.slice(8)} ${MONTHS_SHORT[Number(d.slice(5, 7)) - 1]} ${d.slice(0, 4)}`,
         val: rowVal(d),
         chips: chipsOf(d),
         best: bestOf(d),

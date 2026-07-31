@@ -1,56 +1,49 @@
 /**
  * Shared atoms for the Library screen + its two modals — the cover-card
- * vocabulary (capsule fallback, status pill, stars, priority glyph), the
- * lucide-path icon helper, and the small popover menu the toolbar chips and
- * modal selects summon.
+ * vocabulary (capsule fallback, status pill, stars, priority glyph) and the
+ * lucide-path icon helper. The small popover menu the toolbar chips and modal
+ * selects summon lives in kit/Menu.tsx (hoisted 2026-07-30), re-exported below.
  *
  * The status pill is PARAMETRIZED on a `--pill-cat` custom property (the
  * frozen file wrote five fixed `s-*` classes; a data-driven vocab cannot be
  * enumerated at build time, so the tint rule reads the dial through the
  * property — the `--cell-ink`/`--rail-hue` precedent).
  */
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties } from "react";
 import { stars } from "../metrics/format";
+import { Menu, type MenuItem } from "../kit/Menu";
+import { Ico, ICONS } from "../shell/icons";
 import { coverAbbr, statusCatVar } from "./librarySpec";
 
-export function Ico({ d, size }: { d: string[]; size?: number }) {
-  return (
-    <svg
-      className="ico"
-      viewBox="0 0 24 24"
-      style={size != null ? { width: size, height: size } : undefined}
-      aria-hidden="true"
-    >
-      {d.map((p, i) => (
-        <path key={i} d={p} />
-      ))}
-    </svg>
-  );
-}
+// The popover menu HOISTED to the kit 2026-07-30 (the dedup pass — CS and
+// Advanced Search made it three consumers); re-exported so library-internal
+// import paths keep working.
+export { Menu, type MenuItem };
+
+// The icon wrapper + shared glyphs HOISTED to shell/icons 2026-07-30 (the
+// dedup pass) — every path below was verified byte-identical against the
+// shell roster before adopting. Re-exported (with the library's ICON name)
+// so library consumers don't churn; the three glyphs the shell roster does
+// not carry (download · image · info) stay local.
+export { Ico };
 
 export const ICON = {
-  search: ["M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16z", "m21 21-4.3-4.3"],
-  chevron: ["m6 9 6 6 6-6"],
-  close: ["M18 6 6 18", "m6 6 12 12"],
-  check: ["M20 6 9 17l-5-5"],
-  plus: ["M5 12h14", "M12 5v14"],
-  back: ["m12 19-7-7 7-7", "M19 12H5"],
-  edit: ["M12 20h9", "M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"],
+  search: ICONS.search,
+  chevron: ICONS.chevron,
+  close: ICONS.close,
+  check: ICONS.check,
+  plus: ICONS.plus,
+  back: ICONS.back,
+  edit: ICONS.edit,
+  trash: ICONS.trash,
+  calendar: ICONS.calendar,
   download: ["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"],
-  trash: [
-    "M3 6h18",
-    "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6",
-    "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
-  ],
   image: [
     "M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
     "M9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
     "m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21",
   ],
   info: ["M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z", "M12 16v-4", "M12 8h.01"],
-  calendar: ["M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z", "M16 2v4", "M8 2v4", "M3 10h18"],
-  grid: ["M3 4a1 1 0 0 1 1-1h6v7H3z", "M14 3h6a1 1 0 0 1 1 1v6h-7z", "M3 14h7v7H4a1 1 0 0 1-1-1z", "M14 14h7v6a1 1 0 0 1-1 1h-6z"],
-  list: ["M8 6h13", "M8 12h13", "M8 18h13", "M3 6h.01", "M3 12h.01", "M3 18h.01"],
 };
 
 /** The no-cover face: the fallback hatch + mono lettermark. Real cover files
@@ -86,7 +79,7 @@ export function Stars({ rating }: { rating: number | null }) {
   );
 }
 
-/** The read-only priority chevrons (0–3), list-view glance — never a control. */
+/** The read-only priority chevrons (0–3), a glance — never a control. */
 export function PrioGlyph({ p }: { p: number }) {
   return (
     <span className="prio">
@@ -106,105 +99,19 @@ export function PrioGlyph({ p }: { p: number }) {
   );
 }
 
-export function Owned({ on }: { on: boolean }) {
-  if (!on) return <span className="ownnone">—</span>;
-  return (
-    <span className="lown">
-      <Ico d={ICON.check} />
-    </span>
-  );
-}
-
-// ── The popover menu (toolbar chips + modal selects) ─────────────────────────
-
-export interface MenuItem {
-  key: string;
-  label: ReactNode;
-  selected?: boolean;
-  onPick: () => void;
-}
-
-/**
- * A minimal anchored menu wearing the app's shared popover surface (the
- * `.calpop`/`.timepop` recipe — border · radius-medium · raised + blur ·
- * shadow-high, opaque under reduce-effects): opens under its trigger,
- * click-out and Esc close. Not a route; one open at a time falls out of each
- * trigger owning its own open state.
- */
-export function Menu({ items, onClose }: { items: MenuItem[]; onClose: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    // CAPTURE phase for both listeners, and the containment root is the
-    // trigger WRAPPER (.tselwrap), not the menu alone. Capture matters: the
-    // modal chassis stops mousedown propagation (its dim-click guard), so a
-    // bubble-phase window listener never hears clicks inside a modal — the
-    // "menu won't close until I pick something" bug. The wrapper root keeps
-    // the trigger's own click a toggle instead of a close-then-reopen.
-    const onDown = (e: MouseEvent) => {
-      const root = ref.current?.parentElement ?? ref.current;
-      if (root != null && !root.contains(e.target as Node)) onClose();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopImmediatePropagation();
-        onClose();
-      }
-    };
-    window.addEventListener("mousedown", onDown, true);
-    window.addEventListener("keydown", onKey, true);
-    return () => {
-      window.removeEventListener("mousedown", onDown, true);
-      window.removeEventListener("keydown", onKey, true);
-    };
-  }, [onClose]);
-
-  return (
-    <div className="libmenu" ref={ref} role="menu">
-      {items.map((it) => (
-        <button
-          key={it.key}
-          className={`libmenu-item${it.selected ? " on" : ""}`}
-          role="menuitem"
-          onClick={() => {
-            it.onPick();
-            onClose();
-          }}
-        >
-          {it.label}
-          {it.selected && <Ico d={ICON.check} size={14} />}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /** A trigger + menu pairing for the drawn `.tsel` filter chip. */
 export function FilterChip({
   k,
   value,
   active,
-  delta,
-  deltaTitle,
   items,
 }: {
   k: string;
   value: string;
   active: boolean;
-  /** The Medium delta — dashed + inert where the habit declares no type. */
-  delta?: boolean;
-  deltaTitle?: string;
   items: MenuItem[];
 }) {
   const [open, setOpen] = useState(false);
-  if (delta) {
-    return (
-      <span className="tsel delta" title={deltaTitle}>
-        <span className="k">{k}</span>
-        <b>—</b>
-        <Ico d={ICON.chevron} size={14} />
-      </span>
-    );
-  }
   return (
     <span className="tselwrap">
       <button className={`tsel${active ? " on" : ""}`} onClick={() => setOpen((o) => !o)}>

@@ -10,21 +10,17 @@
  * >1-screen membership test) — drawn here with the shared box-sized-viewBox
  * technique, not minted as kit blocks.
  */
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { useRangeData } from "./useRangeData";
-import { buildRangeDashboard, h18, fmtHM, type RangeModel } from "./rangeSpec";
+import { buildRangeDashboard, h18, type RangeModel } from "./rangeSpec";
+import { fmtHM } from "../metrics/clockMath";
+import { todayLocal } from "../metrics/clock";
 import type { ScopeSel } from "./creationSpec";
+import { HEAT_CLASS } from "./specShared";
 import { Panel, StatGroup, StatTile } from "./kit";
+import { useBox } from "./useBox";
 import "../dashboard.css";
 import "./screen.css";
-
-const todayLocal = (): string => {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
-
-const HEAT_CLASS: Record<string, string> = { HOT: "hot", WARM: "warm", COOLING: "warm", COLD: "cold" };
 
 export function RangeDashboard({ habitKey }: { habitKey: string }) {
   const data = useRangeData(habitKey);
@@ -32,6 +28,7 @@ export function RangeDashboard({ habitKey }: { habitKey: string }) {
   const [scope, setScope] = useState<ScopeSel>({ kind: "all" });
 
   const { model, ms } = useMemo(() => {
+    if (!data.ready) return { model: null as RangeModel | null, ms: 0 };
     const t0 = performance.now();
     const model = buildRangeDashboard(
       {
@@ -50,7 +47,7 @@ export function RangeDashboard({ habitKey }: { habitKey: string }) {
     return { model, ms: performance.now() - t0 };
   }, [data, habitKey, scope, today]);
 
-  if (!data.ready) return <div className="gsdash">Loading {habitKey}…</div>;
+  if (!data.ready || model == null) return <div className="gsdash">Loading {habitKey}…</div>;
 
   const m = model;
   const color = m.colorVar;
@@ -199,29 +196,7 @@ export function RangeDashboard({ habitKey }: { habitKey: string }) {
   );
 }
 
-// ── Chart plumbing (box-sized viewBox — the step-4 ruling) ────────────────────
-
-function useBox<T extends Element>() {
-  const ref = useRef<T | null>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
-    measure();
-    let ro: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(measure);
-      ro.observe(el);
-    }
-    window.addEventListener("resize", measure);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, []);
-  return { ref, ...box };
-}
+// ── Chart plumbing (box-sized viewBox — the shared ./useBox hook) ─────────────
 
 /** Break a per-month series into contiguous non-null path segments. */
 function segments<T>(months: T[], get: (m: T) => number | null): { i: number; v: number }[][] {

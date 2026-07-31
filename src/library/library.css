@@ -104,9 +104,8 @@
 /* an ACTIVE (non-default) filter reads accent */
 .libscreen .tsel.on { border-color: var(--accent); color: var(--accent); background: var(--selected-wash); }
 .libscreen .tsel.on .k, .libscreen .tsel.on b, .libscreen .tsel.on .ico { color: var(--accent); }
-/* the type filter is a MEDIUM DELTA — dashed + inert where no type is declared */
-.libscreen .tsel.delta { border-style: dashed; color: var(--text-muted); cursor: default; }
-.libscreen .tsel.delta .k, .libscreen .tsel.delta b { color: var(--text-muted); }
+/* (.tsel.delta — the drawn dashed-inert Medium face — deleted 2026-07-30:
+   Type is ABSENT, never dashed, per the 2026-07-27 ruling; no tenant left) */
 .libscreen .towned { display: inline-flex; align-items: center; gap: var(--space-3); white-space: nowrap;
   background: var(--panel-background); border: var(--border-hairline) solid var(--border);
   border-radius: var(--radius-small); padding: var(--space-3) var(--space-4); font-size: var(--size-small);
@@ -207,53 +206,26 @@
 /* The LIST view + grid⇄list toggle were REMOVED 2026-07-27 (user-ruled,
    overriding the FINAL's drawn toggle): the library is grid-only; the tabular
    face belongs to the bulk editor's picker. The FINAL stays the pre-ruling
-   record (the wave-zone precedent). */
-.libscreen .ownnone { color: var(--text-muted); }
+   record (the wave-zone precedent). `.ownnone` (the list rows' owned dash)
+   died with it — deleted 2026-07-30. */
 
-/* numbered pager — shared by both views */
+/* numbered pager — the cell strip (.pgnums/.pgnum/.pgell) HOISTED to kit.css
+   2026-07-30 with the kit Pager component (the Map shares it); only the
+   library's own wrapper + count line stay here */
 .libscreen .pager { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
   gap: var(--space-5); margin-top: var(--space-5); padding-top: var(--space-5);
   border-top: var(--border-hairline) solid var(--divider); }
 .libscreen .pgcount { font-family: var(--font-mono); font-size: var(--size-small); color: var(--text-muted); }
-.libscreen .pgnums { display: flex; align-items: center; gap: var(--space-2); }
-.libscreen .pgnum { min-width: var(--pager-btn-size); height: var(--pager-btn-size); display: inline-flex;
-  align-items: center; justify-content: center; padding: 0 var(--space-3);
-  border: var(--border-hairline) solid var(--border); background: var(--panel-background);
-  border-radius: var(--radius-small); font-family: var(--font-mono); font-size: var(--size-small);
-  color: var(--text-secondary); cursor: pointer;
-  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
-.libscreen .pgnum:hover { background: var(--hover-wash); color: var(--text-strong); }
-.libscreen .pgnum.on { border-color: var(--accent); background: var(--selected-wash); color: var(--accent);
-  font-weight: var(--weight-bold); cursor: default; }
-.libscreen .pgnum:disabled { color: var(--text-muted); pointer-events: none; opacity: .55; }
-.libscreen .pgell { color: var(--text-muted); padding: 0 var(--space-2); font-family: var(--font-mono); }
 
 /* empty state wrapper (the .emptybox anatomy is the claimed kit-state-empty) */
 .libscreen .lib-empty { display: flex; flex: 1 1 auto; min-height: 0; }
 
-/* ── the popover menu (Build-side implementation — overlay tier) ─────────── */
+/* ── the popover menu triggers — the .libmenu rule family HOISTED to kit.css
+      2026-07-30 with the kit Menu component (three consumers); only the
+      anchor wrappers stay here ─────────────────────────────────────────── */
 
 .tselwrap { position: relative; display: inline-flex; }
 .tselwrap.block { display: block; }
-/* the shared popover SURFACE — CONFORMED 2026-07-29 to the calpop/timepop
-   recipe's CURRENT form: "a popover is a single CONTENT surface, not a shell"
-   (the 2026-07-28 surface-ladder ruling moved .calpop/.timepop to
-   --panel-background; .libmenu had missed that sweep and still wore the old
-   raised+blur face — the inconsistency surfaced at the palette GUI pass). */
-.libmenu { position: absolute; top: calc(100% + var(--space-2)); left: 0; z-index: 45;
-  min-width: 160px; max-height: 320px; overflow-y: auto; padding: var(--space-2);
-  background: var(--panel-background); -webkit-backdrop-filter: var(--backdrop-blur); backdrop-filter: var(--backdrop-blur);
-  border: var(--border-hairline) solid var(--border); border-radius: var(--radius-medium); box-shadow: var(--shadow-high); }
-.reduce-effects .libmenu { -webkit-backdrop-filter: none; backdrop-filter: none;
-  background: var(--panel-background); }
-.libmenu-item { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5);
-  width: 100%; text-align: left; background: transparent; border: none; border-radius: calc(var(--radius-small) - var(--space-1));
-  padding: var(--space-3) var(--space-4); font-family: var(--font-ui); font-size: var(--size-small);
-  color: var(--text-strong); cursor: pointer; white-space: nowrap;
-  transition: background var(--motion-fast) var(--ease-standard); }
-.libmenu-item:hover { background: var(--hover-wash); }
-.libmenu-item.on { color: var(--accent); }
-.libmenu-item .ico { color: var(--accent); }
 
 /* ── the entry-creation modal (kit-modal-entry-creation) ─────────────────── */
 

@@ -13,9 +13,18 @@
  * Owning-day rule (data, not zones): a range session's owning day = its END
  * date; duration = end − start.
  */
-import { heatmapMonths, scoped, type HeatChip, type SessionRow } from "../metrics/shapes";
-import { dayFromIndex, dayIndex, monthKey, weekStart, yearKey } from "../metrics/dates";
-import { fmtDMY, groupInt, type DeltaChip } from "../metrics/format";
+import {
+  daysHeatChip,
+  heatmapGrid,
+  heatmapMonths,
+  scoped,
+  type HeatChip,
+  type SessionRow,
+} from "../metrics/shapes";
+import { clockMinutes, circularMeanMinutes, durationMinutes, fmtHM } from "../metrics/clockMath";
+import { monthKey } from "../metrics/dates";
+import { fmtDMY, groupInt, MONTHS_SHORT, type DeltaChip } from "../metrics/format";
+import { MON_1, resolveScopeWindow, yearTabs } from "./specShared";
 import type { TileSpec } from "./consumptionSpec";
 import type { ScopeSel } from "./creationSpec";
 import type { DerivedRule } from "../db/schema";
@@ -91,54 +100,16 @@ export interface RangeModel {
 }
 
 // ── Time helpers ──────────────────────────────────────────────────────────────
+// clockMinutes · durationMinutes · fmtHM · circularMeanMinutes live in
+// ../metrics/clockMath (this file's contracts named that module).
 
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const MON_1 = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-
-const maxStr = (a: string, b: string) => (a >= b ? a : b);
-const minStr = (a: string, b: string) => (a <= b ? a : b);
-
-/** Minutes since the epoch-agnostic midnight of a "YYYY-MM-DDTHH:MM[:SS]". */
-const clockMinutes = (dt: string): number =>
-  Number(dt.slice(11, 13)) * 60 + Number(dt.slice(14, 16));
-
-/** Absolute minute index of a local datetime (day index × 1440 + clock). */
-const absMinutes = (dt: string): number => dayIndex(dt.slice(0, 10)) * 1440 + clockMinutes(dt);
-
-export const durationMinutes = (s: RangeSessionRow): number =>
-  s.start != null && s.end != null ? Math.max(0, absMinutes(s.end) - absMinutes(s.start)) : 0;
-
-export const fmtHM = (clockMin: number): string => {
-  const m = ((Math.round(clockMin) % 1440) + 1440) % 1440;
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-};
-
+/** "7h 42m" with the hour ALWAYS present ("0h 45m") — the drawn night-duration
+ *  face; deliberately not format's `hoursMinutes` (which drops a zero hour). */
 export const fmtDur = (min: number): string => {
   const h = Math.floor(min / 60);
   const m = Math.round(min - h * 60);
   return `${h}h ${String(m).padStart(2, "0")}m`;
 };
-
-/**
- * Circular mean of clock times in minutes (wraps midnight — 23:30 and 00:30
- * average to 00:00, never 12:00). Null when the list is empty.
- */
-export function circularMeanMinutes(mins: number[]): number | null {
-  if (mins.length === 0) return null;
-  let sx = 0;
-  let sy = 0;
-  for (const m of mins) {
-    const a = (m / 1440) * 2 * Math.PI;
-    sx += Math.cos(a);
-    sy += Math.sin(a);
-  }
-  if (sx === 0 && sy === 0) return null;
-  const a = Math.atan2(sy, sx);
-  const m = (a / (2 * Math.PI)) * 1440;
-  return ((Math.round(m) % 1440) + 1440) % 1440;
-}
 
 /** Night-centric hours-since-18:00 (0..24) for the bed & wake chart axis. */
 export const h18 = (clockHours: number): number => (((clockHours - 18) % 24) + 24) % 24;
@@ -155,30 +126,19 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
   const empty = firstDay == null;
 
   const isYear = sel.kind === "year";
-  const base = firstDay ?? today;
-  const scopeFrom = empty ? today : isYear ? maxStr(`${sel.year}-01-01`, base) : base;
-  const scopeTo = isYear ? minStr(`${sel.year}-12-31`, today) : today;
+  const { scopeFrom, scopeTo } = resolveScopeWindow(sel, firstDay, today, empty);
   const sessScoped = scoped(sessions, { from: scopeFrom, to: scopeTo }) as RangeSessionRow[];
   const nights = sessScoped.length;
 
   // ── Masthead ──
-  const years: string[] = [];
-  if (!empty)
-    for (let y = Number(yearKey(firstDay!)); y <= Number(yearKey(today)); y++) years.push(String(y));
-  const tabs = [{ key: "all", label: "All Time" }, ...[...years].reverse().map((y) => ({ key: y, label: y }))];
-  // Nights-based heat: a nightly habit is judged by recent logging density.
-  const last14 = scoped(sessions, { from: dayFromIndex(dayIndex(today) - 13), to: today }).length;
+  const { tabs } = yearTabs(firstDay, today);
+  // Nights-based heat: a nightly habit is judged by recent logging density
+  // (the catalog's days-based chip — one range session per night by validity).
   const heat: HeatChip | null = empty
     ? null
     : input.archived
       ? "COLD"
-      : last14 >= 9
-        ? "HOT"
-        : last14 >= 4
-          ? "WARM"
-          : last14 >= 1
-            ? "COOLING"
-            : "COLD";
+      : daysHeatChip(sessions, today);
   const sinceLive = empty
     ? `Tracking since — · no nights logged yet`
     : `Tracking since ${fmtDMY(firstDay!)} · ${groupInt(sessions.length)} nights all-time`;
@@ -262,7 +222,7 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
     const mDurs = rows.map(durationMinutes).filter((m) => m > 0);
     return {
       label: MON_1[i],
-      name: `${MON[i]} ${mk.slice(0, 4)}`,
+      name: `${MONTHS_SHORT[i]} ${mk.slice(0, 4)}`,
       bed: bandOf(rows.map((s) => clockMinutes(s.start!))),
       wake: bandOf(rows.map((s) => clockMinutes(s.end!))),
       durationH: mDurs.length > 0 ? mDurs.reduce((a, b) => a + b, 0) / mDurs.length / 60 : null,
@@ -321,27 +281,15 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
     if (m > 0) durByDay.set(s.day, (durByDay.get(s.day) ?? 0) + m);
   }
   const levelOf = (m: number): number => (m <= 0 ? 0 : m < 360 ? 1 : m < 420 ? 2 : m < 480 ? 3 : 4);
-  const weeks53 = 53;
-  const startIdx = dayIndex(weekStart(scopeTo)) - (weeks53 - 1) * 7;
-  const endIdx = dayIndex(scopeTo);
-  const fromIdx = isYear ? dayIndex(`${sel.year}-01-01`) : -Infinity;
-  const cells: RangeModel["heatmap"]["cells"] = [];
-  for (let row = 0; row < 7; row++) {
-    for (let col = 0; col < weeks53; col++) {
-      const idx = startIdx + col * 7 + row;
-      if (idx > endIdx || idx < fromIdx) {
-        cells.push({ day: null, level: -1, tip: "" });
-        continue;
-      }
-      const day = dayFromIndex(idx);
+  const cells = heatmapGrid<RangeModel["heatmap"]["cells"][number]>(
+    scopeTo,
+    (day) => {
       const m = durByDay.get(day) ?? 0;
-      cells.push({
-        day,
-        level: levelOf(m),
-        tip: `${fmtDMY(day)} · ${m > 0 ? fmtDur(m) : "not logged"}`,
-      });
-    }
-  }
+      return { day, level: levelOf(m), tip: `${fmtDMY(day)} · ${m > 0 ? fmtDur(m) : "not logged"}` };
+    },
+    () => ({ day: null, level: -1, tip: "" }),
+    { from: isYear ? `${sel.year}-01-01` : null },
+  );
   const allDurs = sessions.map((s) => ({ day: s.day, min: durationMinutes(s) })).filter((d) => d.min > 0);
   const allBest = allDurs.reduce<{ day: string; min: number } | null>((b, d) => (!b || d.min > b.min ? d : b), null);
   const allShort = allDurs.reduce<{ day: string; min: number } | null>((b, d) => (!b || d.min < b.min ? d : b), null);
@@ -351,9 +299,6 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
     { label: "Shortest night", value: allShort ? fmtDur(allShort.min) : "—", subtitle: allShort ? fmtDMY(allShort.day) : undefined },
     { label: "Avg night", value: allDurs.length > 0 ? fmtDur(allAvg) : "—", subtitle: `across ${groupInt(allDurs.length)} nights` },
   ];
-
-  const avgBedAll = circularMeanMinutes(sessScoped.map((s) => clockMinutes(s.start!)));
-  const avgWakeAll = circularMeanMinutes(sessScoped.map((s) => clockMinutes(s.end!)));
 
   return {
     colorVar,
@@ -368,9 +313,12 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
     },
     statRow,
     charts: {
+      // The stat row's circular means, reused — the legend and the tiles read
+      // the same scoped population (this was computed twice under misleading
+      // "…All" names).
       months: chartMonths,
-      avgBed: avgBedAll != null ? fmtHM(avgBedAll) : "—",
-      avgWake: avgWakeAll != null ? fmtHM(avgWakeAll) : "—",
+      avgBed: bedMean != null ? fmtHM(bedMean) : "—",
+      avgWake: wakeMean != null ? fmtHM(wakeMean) : "—",
     },
     flags: { panels, noun: "nights" },
     heatmap: { cells, months: heatmapMonths(scopeTo), trio },

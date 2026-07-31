@@ -172,9 +172,6 @@ button.doorlink {
 button.doorlink:hover {
   color: var(--accent);
 }
-.cal-placeholder {
-  cursor: pointer;
-}
 .calhead .month {
   grid-column: 1 / -1;
   margin-top: calc(-1 * var(--space-5));
@@ -186,6 +183,7 @@ button.doorlink:hover {
   color: var(--text-strong);
 }
 .cal-placeholder {
+  cursor: pointer;
   border: var(--border-standard) dashed
     color-mix(in oklch, var(--border), var(--window-background) 35%);
   border-radius: var(--radius-medium);

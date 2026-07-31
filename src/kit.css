@@ -86,6 +86,20 @@
    drawn size when this lands. */
 *{box-sizing:border-box;}
 
+/* HOVER FEEDBACK IS INSTANT-IN, FADED-OUT (user-ruled 2026-07-30: the hover
+   dim "feels slow, like there's a lag" — reported once before, and the
+   2026-07-29 hunt already cleared the structural causes, leaving the designed
+   fade-IN itself as the felt latency). While the cursor is ON an element its
+   transitions run at zero duration, so the hover face lands the same frame
+   the cursor arrives; lifting the cursor fades back at --motion-fast as the
+   base rules declare. Presses on a hovered control snap for the same reason
+   (instant feedback). !important on purpose: this must outrank every
+   per-family transition shorthand without re-touching them all — a
+   declaration-site sweep can retire it at step 6a if wanted. Expansions and
+   overlay entrances are unaffected (they animate elements the cursor is not
+   on, or use keyframes). */
+*:hover{transition-duration:0s !important;}
+
 /* ------- Buttons ------- */
 .btn-accent, .btn-plain, .btn-ghost, .btn-danger{display:inline-flex; align-items:center; gap:var(--space-3); font-family:var(--font-ui); font-size:var(--size-body); font-weight:var(--weight-medium); border-radius:var(--radius-small); padding:var(--space-4) var(--space-6); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard); white-space:nowrap;}
 .btn-accent{color:var(--text-on-filled); background:var(--accent); border:none;}
@@ -96,6 +110,7 @@
 .btn-accent[aria-disabled="true"] .ico{color:var(--text-muted);}
 .btn-plain{color:var(--text-strong); background:var(--panel-background); border:var(--border-hairline) solid var(--border);}
 .btn-plain .ico{color:var(--text-secondary);}
+/* claimed-family variant, no live tenant yet (kept with its family — do not re-flag) */
 .btn-plain.ghost{background:transparent; border-color:transparent;}
 .btn-plain:hover{background:var(--hover-wash);}
 .btn-plain[aria-disabled="true"]{color:var(--text-muted); pointer-events:none; background:var(--inset-background); border-color:var(--divider);}
@@ -121,6 +136,7 @@
 .inp .cap{color:var(--text-muted);}
 .inp .chevd{color:var(--text-muted);}
 .inp.num{min-width:80px; font-family:var(--font-mono);}
+/* claimed-family variant, no live tenant yet (kept with its family — do not re-flag) */
 .inp.ph{color:var(--text-muted);}
 .inp.sel{justify-content:space-between; min-width:190px;}
 
@@ -180,6 +196,21 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
 .errstate .epip{width:20px; height:20px; border-radius:var(--radius-full); background:var(--danger); color:var(--text-on-filled); font-size:var(--size-small); font-weight:var(--weight-bold); display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
 .errstate .et2{font-size:var(--size-body); font-weight:var(--weight-medium); color:var(--text-strong); margin:0 0 var(--space-2);}
 .errstate .em{font-size:var(--size-small); color:var(--text-secondary); margin:0 0 var(--space-4);}
+
+/* ------- kit-state-empty — the what-goes-here-plus-the-door contract -------
+   Moved here from dashboard.css at the 2026-07-30 dedup pass (it was the
+   unscoped base every screen's empty state already leaned on — the dashboards'
+   `.emptybox gen`, the Library, the daily spine; timers/compare carry scoped
+   refinements). Radius resolved on --radius-large (the majority face; daily's
+   medium copy was deleted the same pass). Bodies otherwise verbatim. */
+.emptybox{border:var(--border-standard) dashed var(--border); border-radius:var(--radius-large); padding:var(--space-8); text-align:center;}
+.emptybox .eh{font-size:var(--size-subheading); font-weight:var(--weight-medium); margin-bottom:var(--space-2);}
+.emptybox .et{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); margin-bottom:var(--space-3);}
+.emptybox .es{font-size:var(--size-body); color:var(--text-secondary); margin-bottom:var(--space-6); max-width:56ch; margin-left:auto; margin-right:auto;}
+.emptybox .edoors{display:flex; gap:var(--space-4); justify-content:center; flex-wrap:wrap;}
+.emptybox .edoors .btn-accent, .emptybox .edoors .btn-plain{display:inline-flex; align-items:center; gap:var(--space-3);}
+.emptybox.gen .eh{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold);}
+.emptybox.gen .es{font-size:var(--size-body); max-width:56ch;}
 
 /* ------- kit-tooltip — the hover whisper, two blessed faces -------
    Verbatim from staging (the overlays sheet's chip face; .long = the
@@ -325,3 +356,217 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
 .calpop .cd.out:hover { background:transparent; }
 .calpop .cd.sel { background:var(--accent); color:var(--text-on-filled); }
 .calpop .cd.today { box-shadow:inset 0 0 0 var(--border-hairline) var(--accent); }
+
+/* == kit-menu — the anchored popover menu (.libmenu) =========================
+   Hoisted from library.css 2026-07-30 (the dedup pass, wave 2) with the kit
+   Menu component (src/kit/Menu.tsx) — CS and Advanced Search made it three
+   consumers. The class NAME stays `.libmenu` (renames out of scope); bodies
+   verbatim. The trigger wrappers (.tselwrap · .fieldwrap) stay with their
+   screens. z 45 = z-popover (the ladder above). */
+.libmenu { position: absolute; top: calc(100% + var(--space-2)); left: 0; z-index: 45;
+  min-width: 160px; max-height: 320px; overflow-y: auto; padding: var(--space-2);
+  background: var(--panel-background); -webkit-backdrop-filter: var(--backdrop-blur); backdrop-filter: var(--backdrop-blur);
+  border: var(--border-hairline) solid var(--border); border-radius: var(--radius-medium); box-shadow: var(--shadow-high); }
+.reduce-effects .libmenu { -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: var(--panel-background); }
+.libmenu-item { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5);
+  width: 100%; text-align: left; background: transparent; border: none; border-radius: calc(var(--radius-small) - var(--space-1));
+  padding: var(--space-3) var(--space-4); font-family: var(--font-ui); font-size: var(--size-small);
+  color: var(--text-strong); cursor: pointer; white-space: nowrap;
+  transition: background var(--motion-fast) var(--ease-standard); }
+.libmenu-item:hover { background: var(--hover-wash); }
+.libmenu-item.on { color: var(--accent); }
+.libmenu-item .ico { color: var(--accent); }
+
+/* == the numbered pager face (.pgnums/.pgnum/.pgell) =========================
+   Hoisted from library.css 2026-07-30 (the dedup pass, wave 2) with the kit
+   Pager component (src/kit/Pager.tsx); map.css's admitted mirror copy was
+   deleted with it. Scoped :is() over the two tenant screens — same
+   specificity as the former per-screen rules, so the Map's outline-scale
+   overrides (.mapscreen .pgnum .ico · .mapscreen .pgcount) still win; each
+   screen's wrapper (.pager / .pagerrow) and .pgcount stay per-screen. */
+:is(.libscreen, .mapscreen) .pgnums { display: flex; align-items: center; gap: var(--space-2); }
+:is(.libscreen, .mapscreen) .pgnum { min-width: var(--pager-btn-size); height: var(--pager-btn-size); display: inline-flex;
+  align-items: center; justify-content: center; padding: 0 var(--space-3);
+  border: var(--border-hairline) solid var(--border); background: var(--panel-background);
+  border-radius: var(--radius-small); font-family: var(--font-mono); font-size: var(--size-small);
+  color: var(--text-secondary); cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+:is(.libscreen, .mapscreen) .pgnum:hover { background: var(--hover-wash); color: var(--text-strong); }
+:is(.libscreen, .mapscreen) .pgnum.on { border-color: var(--accent); background: var(--selected-wash); color: var(--accent);
+  font-weight: var(--weight-bold); cursor: default; }
+:is(.libscreen, .mapscreen) .pgnum:disabled { color: var(--text-muted); pointer-events: none; opacity: .55; }
+:is(.libscreen, .mapscreen) .pgell { color: var(--text-muted); padding: 0 var(--space-2); font-family: var(--font-mono); }
+
+/* == the shared picker/menu/preset/window families ===========================
+   Hoisted from compare.css 2026-07-30 (the dedup pass, wave 2), riding the
+   kit PeriodPicker + PresetMenu components: every rule the two query
+   workspaces share — the ones compare.css scoped `:is(.csdash, .advs)` when
+   Advanced Search became the second consumer. SELECTORS BYTE-IDENTICAL
+   (scopes kept — renames out of scope); bodies verbatim; internal order
+   preserved. CS-only rules stay in compare.css under plain `.csdash`. */
+
+/* the per-step reset, right-aligned in its section header */
+:is(.csdash, .advs) .bclear{margin-left:auto; font-family:var(--font-ui); font-size:var(--size-caption); font-weight:var(--weight-medium); color:var(--text-muted); background:transparent; border:none; border-radius:var(--radius-small); padding:var(--space-2) var(--space-3); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .bclear:hover{background:var(--hover-wash); color:var(--text-strong);}
+
+:is(.csdash, .advs) .presetwrap{position:relative;}
+:is(.csdash, .advs) .presetbtn{display:inline-flex; align-items:center; gap:var(--space-3); font-family:var(--font-ui); font-size:var(--size-body); font-weight:var(--weight-medium); color:var(--text-strong); background:var(--panel-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); padding:var(--space-4) var(--space-6); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .presetbtn:hover{background:var(--hover-wash);}
+:is(.csdash, .advs) .presetbtn .ico{color:var(--text-secondary); width:var(--icon-size); height:var(--icon-size);}
+:is(.csdash, .advs) .presetbtn .caret{transition:transform var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .presetbtn .caret .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
+:is(.csdash, .advs) .presetbtn[aria-expanded="true"] .caret{transform:rotate(180deg);}
+
+/* ---- kit-menu-preset — floats on the overlay tier ---- */
+:is(.csdash, .advs) .preset-menu{display:none; position:absolute; z-index:20; top:calc(100% + var(--space-3)); right:0; width:var(--popover-width); background:var(--raised-background); -webkit-backdrop-filter:var(--backdrop-blur); backdrop-filter:var(--backdrop-blur); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-medium); box-shadow:var(--shadow-high); padding:var(--space-4); animation:cs-pop-in var(--motion-standard) var(--ease-entering);}
+:is(.csdash, .advs) .preset-menu.open{display:block;}
+@keyframes cs-pop-in{from{opacity:0; transform:translateY(-4px) scale(.99);} to{opacity:1; transform:none;}}
+:is(.csdash, .advs) .preset-menu .mh{font-size:var(--size-caption); font-weight:var(--weight-bold); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); padding:var(--space-3) var(--space-4) var(--space-2);}
+:is(.csdash, .advs) .prow{display:flex; align-items:center; gap:var(--space-3); width:100%; padding:var(--space-3) var(--space-4); border:none; background:transparent; border-radius:var(--radius-small); cursor:pointer; text-align:left; font-family:var(--font-ui); color:var(--text-strong); transition:background var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .prow:hover{background:var(--hover-wash);}
+:is(.csdash, .advs) .prow.save{color:var(--accent); font-weight:var(--weight-medium);}
+:is(.csdash, .advs) .prow.save .ico{color:var(--accent);}
+:is(.csdash, .advs) .prow .ico{color:var(--text-secondary); width:var(--icon-size-small); height:var(--icon-size-small); flex:0 0 auto;}
+:is(.csdash, .advs) .prow .pn{font-size:var(--size-small); font-weight:var(--weight-medium); flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+:is(.csdash, .advs) .prow .pacts{display:flex; align-items:center; gap:var(--space-1); opacity:0; flex:0 0 auto; transition:opacity var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .prow:hover .pacts{opacity:1;}
+:is(.csdash, .advs) .pact{display:flex; align-items:center; justify-content:center; width:24px; height:24px; border:none; background:transparent; border-radius:var(--radius-small); cursor:pointer; color:var(--text-muted); transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .pact:hover{background:var(--hover-wash); color:var(--text-strong);}
+:is(.csdash, .advs) .pact.del:hover{color:var(--danger);}
+:is(.csdash, .advs) .pact .ico{width:15px; height:15px;}
+:is(.csdash, .advs) .preset-menu .mdiv{height:var(--border-hairline); background:var(--divider); margin:var(--space-3) var(--space-2);}
+:is(.csdash, .advs) .prow.manage{color:var(--text-secondary);}
+:is(.csdash, .advs) .prow.manage:disabled{cursor:default; opacity:.7;}
+:is(.csdash, .advs) .prow.manage .pn{font-weight:var(--weight-regular);}
+.reduce-effects :is(.csdash, .advs) .preset-menu{-webkit-backdrop-filter:none; backdrop-filter:none; background:var(--panel-background); box-shadow:var(--shadow-low);}
+/* build glue: the inline naming input + the empty roster line */
+:is(.csdash, .advs) .prow.namer{cursor:default;}
+:is(.csdash, .advs) .pnamein{flex:1 1 auto; min-width:0; font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-strong); background:var(--inset-background); border:var(--border-hairline) solid transparent; border-radius:var(--radius-small); padding:var(--space-2) var(--space-3); outline:none;}
+:is(.csdash, .advs) .pnamein:focus{border-color:var(--accent);}
+:is(.csdash, .advs) .pempty{font-size:var(--size-small); color:var(--text-muted); padding:var(--space-3) var(--space-4);}
+
+/* ---- BUILDER — kit-panel sections, title-only headers ---- */
+:is(.csdash, .advs) .builder{display:flex; flex-direction:column; gap:var(--space-6);}
+:is(.csdash, .advs) .bsec{background:var(--panel-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-medium); box-shadow:var(--shadow-low); padding:var(--space-6) var(--space-7);}
+:is(.csdash, .advs) .bhead{display:flex; align-items:baseline; gap:var(--space-4); margin-bottom:var(--space-5); padding-bottom:var(--space-4); border-bottom:var(--border-hairline) solid var(--divider);}
+:is(.csdash, .advs) .bstep{font-family:var(--font-mono); font-size:var(--size-caption); font-weight:var(--weight-bold); color:var(--text-muted);}
+:is(.csdash, .advs) .btitle{font-family:var(--font-heading); font-size:var(--size-subheading); font-weight:var(--weight-bold); color:var(--text-strong); letter-spacing:-.005em;}
+
+/* the select-field (kit-input, select variant) */
+:is(.csdash, .advs) .fieldwrap{position:relative;}
+:is(.csdash, .advs) .field{display:flex; align-items:center; gap:var(--space-4); width:100%; background:var(--inset-background); border:var(--border-hairline) solid transparent; border-radius:var(--radius-small); padding:var(--space-4) var(--space-5); font-family:var(--font-ui); font-size:var(--size-body); color:var(--text-strong); cursor:pointer; transition:border-color var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .field:hover{border-color:var(--border);}
+:is(.csdash, .advs) .field.placeholder{color:var(--text-muted);}
+:is(.csdash, .advs) .field .dot{width:var(--space-6); height:var(--space-6); border-radius:var(--radius-small); flex:0 0 auto;}
+:is(.csdash, .advs) .field .fname{font-weight:var(--weight-medium);}
+/* (.fname.door died with the struck builder habit-door — rules removed at the
+   2026-07-30 dedup pass; .fname itself stays a live selection face.) */
+:is(.csdash, .advs) .field .caret{margin-left:auto; color:var(--text-muted);}
+:is(.csdash, .advs) .field .caret .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
+:is(.csdash, .advs) .fieldwrap + .fieldwrap .field{margin-top:var(--space-3);}
+/* the field and its remove share a row — the X is a sibling, never an overlay */
+:is(.csdash, .advs) .scopetop{display:flex; align-items:center; gap:var(--space-3);}
+:is(.csdash, .advs) .scopetop .fieldwrap{flex:1 1 auto; min-width:0;}
+:is(.csdash, .advs) .scoperm{display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:34px; height:34px; border:none; background:transparent; border-radius:var(--radius-small); cursor:pointer; color:var(--text-muted); transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .scoperm:hover{background:var(--hover-wash); color:var(--danger);}
+:is(.csdash, .advs) .scoperm .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
+/* the split's value list: searchable for entries, which run to hundreds */
+:is(.csdash, .advs) .splitsearch{width:100%; margin-bottom:var(--space-4); font-family:var(--font-ui); font-size:var(--size-small); color:var(--text-strong); background:var(--panel-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); padding:var(--space-3) var(--space-4); outline:none;}
+:is(.csdash, .advs) .splitsearch:focus{border-color:var(--accent);}
+:is(.csdash, .advs) .splitmore{margin:var(--space-4) 0 0; font-size:var(--size-caption); color:var(--text-muted);}
+/* The habit/entry dropdowns wear the app's ONE anchored menu (.libmenu, the
+   kit Menu component — surface, click-out and Esc live there); only the
+   row interiors are styled here. */
+:is(.csdash, .advs) .mrow{display:inline-flex; align-items:center; gap:var(--space-4);}
+:is(.csdash, .advs) .mrow .dot{width:var(--space-6); height:var(--space-6); border-radius:var(--radius-small); flex:0 0 auto;}
+/* habit identity = the stored icon stroked in the habit colour (ruled
+   2026-07-27, over the FINAL's dots); the dot is the icon-less fallback */
+:is(.csdash, .advs) .hico{display:inline-flex; flex:0 0 auto;}
+:is(.csdash, .advs) .hico .ico{width:var(--icon-size); height:var(--icon-size);}
+
+/* per-scope options (drill to entry · medium split) — chip toggles */
+:is(.csdash, .advs) .opts{display:flex; flex-wrap:wrap; gap:var(--space-3); align-items:center; margin:var(--space-3) 0 var(--space-2) var(--space-5);}
+:is(.csdash, .advs) .opt{display:inline-flex; align-items:center; gap:var(--space-2); font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-secondary); background:transparent; border:var(--border-hairline) solid var(--border); border-radius:var(--radius-full); padding:var(--space-2) var(--space-4); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .opt:hover{background:var(--hover-wash); color:var(--text-strong);}
+:is(.csdash, .advs) .opt.on{border-color:var(--accent); background:var(--selected-wash); color:var(--accent);}
+:is(.csdash, .advs) .opt .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
+/* a window too short for the picked average — grayed, not hidden, so the
+   gate reads as a rule rather than a disappearing control */
+:is(.csdash, .advs) .opt.off{color:var(--text-muted); border-color:var(--divider); opacity:.5; cursor:not-allowed;}
+:is(.csdash, .advs) .opt.off:hover{background:transparent; color:var(--text-muted);}
+
+/* the add-row ghost control (add scope · add window) */
+:is(.csdash, .advs) .addrow{display:inline-flex; align-items:center; gap:var(--space-3); margin-top:var(--space-4); font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-secondary); background:transparent; border:var(--border-standard) dashed var(--border); border-radius:var(--radius-small); padding:var(--space-3) var(--space-5); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .addrow:hover{background:var(--hover-wash); color:var(--text-strong); border-color:var(--accent);}
+:is(.csdash, .advs) .addrow .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
+
+/* ---- kit-picker-period — PERIOD windows ---- */
+:is(.csdash, .advs) .windows{display:flex; flex-direction:column; gap:var(--space-4);}
+:is(.csdash, .advs) .window{position:relative; border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-small); padding:var(--space-4) var(--space-5);}
+/* room for the corner X so a wrapping chip row never runs under it */
+:is(.csdash, .advs) .window.removable{padding-right:calc(var(--space-5) + 26px);}
+:is(.csdash, .advs) .wclose{display:flex; align-items:center; justify-content:center; width:26px; height:26px; border:none; background:transparent; border-radius:var(--radius-small); cursor:pointer; color:var(--text-muted); transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .wclose.float{position:absolute; top:var(--space-3); right:var(--space-3);}
+:is(.csdash, .advs) .wclose:hover{background:var(--hover-wash); color:var(--text-strong);}
+:is(.csdash, .advs) .wclose .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
+/* The value header is gone in BOTH modes (ruled), so the mode rows always
+   lead and the divider that separated them from it has nothing left to
+   divide — no top rule, no top gap (the resets folded into the grid rule
+   below; an earlier flex declaration this one fully shadowed was merged away
+   at the 2026-07-30 dedup pass). */
+/* The period rows sit on the same grid device: the mode labels take max-content
+   instead of the drawn fixed column, and the reclaimed width goes to the pills
+   rather than to slack.
+   AMENDED 2026-07-29 (user-ruled, in-canvas at the palette exhibit) — the
+   one-line ruling is REVERSED for the pill row. The Relative mode carries six
+   pills (All time · Today · 7/30/90/365 days), which overran the builder column
+   at --builder-w and clipped past the panel edge. nowrap → wrap: the row takes
+   a second line instead of leaving the panel, and the label aligns to the FIRST
+   line (align-self:start + the pill's own top padding) so a wrapped row still
+   reads as one labelled row. The +1px is the user's optical nudge — a raw px,
+   flagged as step-6a dial-ify residue. */
+:is(.csdash, .advs) .wmodes{display:grid; grid-template-columns:max-content 1fr; align-items:center; gap:var(--space-3) var(--space-4); margin-top:0; padding-top:0; border-top:none;}
+:is(.csdash, .advs) .wmode{display:contents;}
+:is(.csdash, .advs) .wopts{display:flex; flex-wrap:wrap; gap:var(--space-3); min-width:0;}
+:is(.csdash, .advs) .wmode .mlabel{align-self:center;}
+:is(.csdash, .advs) .wopts.many{align-items:center;}
+/* a row that WILL wrap pins its label to the first line, not to the block.
+   `.many` is RENDER-SIDE (PeriodPicker counts its own chips) — this was
+   authored in-canvas as `:has(> :nth-child(5))`, but :has() invalidation
+   re-runs style recalculation on every hover while the screen is mounted
+   (the 2026-07-29 app-wide hover-lag report); the component knows the count,
+   so the selector doesn't have to ask the DOM. */
+:is(.csdash, .advs) .wmode.many .mlabel{align-self:start; padding-top:calc(var(--space-3) + 1px);}
+:is(.csdash, .advs) .wmode .opt{padding:var(--space-3) var(--space-4); white-space:nowrap;}
+/* The drawn 92px fixed column (the 2026-07-19 Slab-pull conform widened it
+   64 → 92) is replaced by the grid's max-content column — same alignment, no
+   wasted width, and no label can wrap. The raw 92 leaves with it. */
+:is(.csdash, .advs) .wmode .mlabel{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-weight:var(--weight-bold); white-space:nowrap;}
+
+/* the resolved picker the custom shape reveals */
+:is(.csdash, .advs) .cpick{margin-top:var(--space-4);}
+:is(.csdash, .advs) .cp{display:none; align-items:center; gap:var(--space-4); flex-wrap:wrap;}
+:is(.csdash, .advs) .window[data-custom="daterange"] .cp-daterange,
+:is(.csdash, .advs) .window[data-custom="month"] .cp-month,
+:is(.csdash, .advs) .window[data-custom="year"] .cp-year{display:flex;}
+:is(.csdash, .advs) .cpfield{display:flex; flex-direction:column; gap:var(--space-1); min-width:0; position:relative;}
+:is(.csdash, .advs) .cpfield .cplbl, :is(.csdash, .advs) .cpstep .cplbl{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-weight:var(--weight-bold);}
+:is(.csdash, .advs) .cpval{display:flex; align-items:center; gap:var(--space-4); background:var(--inset-background); border:var(--border-hairline) solid transparent; border-radius:var(--radius-small); padding:var(--space-3) var(--space-5); font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-strong); cursor:pointer; transition:border-color var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .cpval:hover{border-color:var(--border);}
+:is(.csdash, .advs) .cpval .ico{width:var(--icon-size-small); height:var(--icon-size-small); color:var(--text-muted);}
+:is(.csdash, .advs) .cparrow{font-family:var(--font-mono); color:var(--text-muted); align-self:flex-end; padding-bottom:var(--space-3);}
+:is(.csdash, .advs) .cpstep{display:flex; flex-direction:column; gap:var(--space-1);}
+:is(.csdash, .advs) .stepper{display:inline-flex; align-items:center; background:var(--inset-background); border-radius:var(--radius-small); overflow:hidden;}
+:is(.csdash, .advs) .stepper button{display:flex; align-items:center; justify-content:center; width:var(--step-btn-size); height:var(--step-btn-size); border:none; background:transparent; color:var(--text-secondary); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .stepper button:hover{background:var(--hover-wash); color:var(--text-strong);}
+:is(.csdash, .advs) .stepper button .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
+:is(.csdash, .advs) .stepper .sv{min-width:56px; text-align:center; font-family:var(--font-mono); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-strong);}
+/* build glue: the popovers the cpvals open (.calpop base look = the shared
+   claim above; only anchoring + the month grid live here) */
+:is(.csdash, .advs) .cpfield .calpop{position:absolute; z-index:20; top:calc(100% + var(--space-2)); left:0;}
+:is(.csdash, .advs) .monthpop .mgrid{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--space-2);}
+:is(.csdash, .advs) .monthpop .mcell{display:flex; align-items:center; justify-content:center; padding:var(--space-3) 0; font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-strong); border-radius:var(--radius-small); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard);}
+:is(.csdash, .advs) .monthpop .mcell:hover{background:var(--hover-wash);}
+:is(.csdash, .advs) .monthpop .mcell.sel{background:var(--selected-wash); color:var(--accent); font-weight:var(--weight-bold);}
+:is(.csdash, .advs) .monthpop .mcell.dead{color:var(--text-muted); opacity:.5; cursor:default;}

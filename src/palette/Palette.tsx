@@ -41,6 +41,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { EntryCreationModal } from "../library/EntryCreationModal";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { AdvancedSearch } from "./AdvancedSearch";
+import { useOverlayEsc } from "../shell/overlayHooks";
 import { rankPalette, type PalIndexItem, type RankedGroup } from "./paletteSpec";
 import { monthVar, parsePeriods, periodDisplay, type PeriodScale, type PlaceMatch } from "./periodGrammar";
 import {
@@ -161,6 +162,10 @@ const VERBS: Verb[] = [
 ];
 
 // ── Row descriptors (one flat keyboard order over whatever the body draws) ───
+
+/** ONE row-key derivation — the rows memo and GroupedBody must agree on it. */
+const rowKeyFor = (group: string, it: { title: string; action: unknown }): string =>
+  `${group}-${it.title}-${(it.action as { id?: string }).id ?? ""}`;
 
 interface Row {
   key: string;
@@ -535,7 +540,7 @@ export function PaletteOverlay({
         const disabled = a.t === "verb" && !a.live;
         const verb = a.t === "verb" ? verbsById.get(a.v) : undefined;
         out.push(
-          palRow(`${g.group}-${it.title}-${(a as { id?: string }).id ?? ""}`, lead, it.title, {
+          palRow(rowKeyFor(g.group, it), lead, it.title, {
             sub: it.sub,
             meta: (
               <>
@@ -564,7 +569,7 @@ export function PaletteOverlay({
       }
     }
     return out;
-  }, [picking, empty, query, projectHabits, entryCounts, groups, periods, data.habits, data.entries, recents, lastVerb, today, go, nav, fireAction, firePlace]);
+  }, [picking, query, projectHabits, entryCounts, groups, periods, data.habits, data.entries, recents, lastVerb, today, go, nav, fireAction, firePlace]);
 
   const selectable = useMemo(() => rows.filter((r) => r.selectable), [rows]);
 
@@ -576,17 +581,18 @@ export function PaletteOverlay({
     inputRef.current?.focus();
   }, [mode]);
 
-  // Keyboard: ↑↓ move · ↵ open · Esc closes (the top layer — here, the overlay).
+  // Esc closes the top layer — the habit-pick step first, else the overlay
+  // (the shared overlay stack; capture-phase popovers still pre-empt it).
+  useOverlayEsc(() => {
+    if (picking) setPicking(false);
+    else close();
+  }, mode.m === "palette");
+
+  // Keyboard: ↑↓ move · ↵ open (Esc rides the overlay stack above).
   useEffect(() => {
     if (mode.m !== "palette") return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (picking) {
-          setPicking(false);
-          return;
-        }
-        close();
-      } else if (e.key === "ArrowDown") {
+      if (e.key === "ArrowDown") {
         e.preventDefault();
         // zero rows would compute min(-1, …) and strand sel negative (2026-07-30)
         setSel((s) =>
@@ -602,7 +608,7 @@ export function PaletteOverlay({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [mode.m, picking, selectable, sel, close]);
+  }, [mode.m, selectable, sel]);
 
   // ── The three faces ────────────────────────────────────────────────────────
 
@@ -773,7 +779,7 @@ function GroupedBody({
         return (
           <div key={g.group}>
             <div className="pal-grp">{g.label}</div>
-            {draw(g.items.map((it) => `${g.group}-${it.title}-${(it.action as { id?: string }).id ?? ""}`))}
+            {draw(g.items.map((it) => rowKeyFor(g.group, it)))}
             {g.more > 0 && <div className="pal-more">…and {g.more} more — keep typing</div>}
           </div>
         );

@@ -28,18 +28,12 @@ import {
   type ShapeChart,
   type TrendSeries,
 } from "./creationSpec";
-import { Panel, StatGroup } from "./kit";
+import { CAT_RAMP_BG, Panel, StatGroup } from "./kit";
 import { EntryCreationModal } from "../library/EntryCreationModal";
+import { todayLocal } from "../metrics/clock";
+import { HEAT_CLASS } from "./specShared";
 import "../dashboard.css";
 import "./screen.css";
-
-const todayLocal = (): string => {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
-
-const HEAT_CLASS: Record<string, string> = { HOT: "hot", WARM: "warm", COOLING: "warm", COLD: "cold" };
 
 export function CreationDashboard({
   habitKey,
@@ -57,6 +51,7 @@ export function CreationDashboard({
   const [creationOpen, setCreationOpen] = useState(false);
 
   const { model, ms } = useMemo(() => {
+    if (!data.ready) return { model: null as CreationModel | null, ms: 0 };
     const t0 = performance.now();
     const model = buildCreationDashboard(
       {
@@ -78,7 +73,7 @@ export function CreationDashboard({
     return { model, ms: performance.now() - t0 };
   }, [data, habitKey, scope, today]);
 
-  if (!data.ready) return <div className="gsdash">Loading {habitKey}…</div>;
+  if (!data.ready || model == null) return <div className="gsdash">Loading {habitKey}…</div>;
 
   const m = model;
   const color = m.colorVar;
@@ -300,7 +295,9 @@ function Shape({ chart }: { chart: ShapeChart }) {
 
 // ── Trend panel (line · dots · stacked, box-sized viewBox) ────────────────────
 
-/** Round up to a clean chart ceiling (1/2/5 × 10^k, min 2 for hour scales). */
+/** Round up to a clean chart CEILING (1/2/5 × 10^k, min 2 for hour scales).
+ *  A sibling of creationSpec's `niceAxisMax` (no hour floor) and entrySpec's
+ *  `niceStep` (a tick step) — different drawn axes, deliberately unmerged. */
 function niceCeil(v: number, unit: string): number {
   if (unit === "h") return Math.max(2, Math.ceil(v / 2) * 2);
   if (v <= 0) return 10;
@@ -468,8 +465,7 @@ export function CreationTrend({ trend, color }: { trend: CreationModel["trend"];
 }
 
 // ── Heatmap (scope faces per categorical · measure faces when two) ────────────
-
-const CAT_RAMP_BG: Record<number, number> = { 1: 78, 2: 52, 3: 26, 4: 0 }; // --cat-ramp complements
+// CAT_RAMP_BG (the --cat-ramp complement stops) is kit.tsx's export.
 
 function CreationHeatmap({ heatmap }: { heatmap: CreationModel["heatmap"] }) {
   const [scope, setScope] = useState("intensity");

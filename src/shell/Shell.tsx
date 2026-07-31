@@ -12,12 +12,9 @@
  * The dev seed/activation panels ride the Log view — the working loop that
  * turns seeds into rail habits: seed rich → activate → click → dashboard.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@evolu/react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { evolu } from "../db/evolu";
-import { clearRichSeed, seedRich } from "../db/seedRich";
-import { LogForm } from "../log/LogForm";
 import { Daily } from "../daily/Daily";
 import { ToastSlot } from "./toast";
 import { ConsumptionDashboard } from "../dashboard/ConsumptionDashboard";
@@ -34,7 +31,8 @@ import { recordRecent } from "../palette/recents";
 import { TimersScreen } from "../timers/TimersScreen";
 import { MapScreen } from "../map/MapScreen";
 import { TooltipLayer } from "./tooltip";
-import { GlobalTimerTray, TimerOverlays } from "../timers/TimerOverlays";
+import { TimerOverlays } from "../timers/TimerOverlays";
+import { GlobalTimerTray } from "../timers/GlobalTimerTray";
 import { focusClock } from "../timers/timerStore";
 import { armCloseGuard, proceedQuit, registerQuitWarning } from "../timers/closeGuard";
 import { registerTrayNavigate } from "../timers/tray";
@@ -42,13 +40,20 @@ import { DangerConfirm } from "./DangerConfirm";
 import type { CadenceScale } from "../metrics/cadence";
 import { useHistory } from "./useHistory";
 import { HabitIcon, hasIcon } from "./habitIcons";
+import { Ico } from "./icons";
+import { Titlebar } from "./Titlebar";
+import { VignetteClock } from "./VignetteClock";
+import { NotYetDashboard } from "./NotYetDashboard";
+import { LogView, REDUCE_KEY } from "./DevPanels";
+import { viewTitle, type View } from "./views";
+import { todayLocal } from "../metrics/clock";
 import "./shell.css";
 // Routing reads the habit row's kind/sub_type (chunk 3) — the key sets are
 // gone, so a habit can never be routed by name: consumption/creation off
 // sub_type, simple/range off kind, exactly the derived-template rule. Coding's
 // 2026-07-22 downgrade lands it on the simple template beside Keyboard.
 
-const activeHabitsQuery = evolu.createQuery((db) =>
+export const activeHabitsQuery = evolu.createQuery((db) =>
   db
     .selectFrom("habits")
     .select(["id", "key", "name", "kind", "sub_type", "colour_slot", "icon", "archived"])
@@ -56,36 +61,11 @@ const activeHabitsQuery = evolu.createQuery((db) =>
     .orderBy("sort_order"),
 );
 
-type View =
-  /**
-   * The front door. "Launch opens to Daily — there is NO homepage."
-   * `day` addresses ANY date: a past unfinalized day is the same working state,
-   * date-addressed, and a finalized one is its cover wall. Absent = today.
-   */
-  | { kind: "daily"; day?: string }
-  /** The dev logging view — hosts the seed/activation panels until step 15. */
-  | { kind: "log" }
-  | { kind: "habit"; key: string }
-  /** The consumption catalog — the stats-vs-library split's second screen. */
-  | { kind: "library"; habitKey: string }
-  | { kind: "cadence"; scale: CadenceScale; anchor: string }
-  | { kind: "entry"; id: string; habitKey: string }
-  /** Comparing Statistics — the Tools-rail query workspace (step 6 catch-up). */
-  | { kind: "compare" }
-  /** Timers — the Tools-rail board of independent clocks (step 7). */
-  | { kind: "timers" }
-  /** The Map — the Tools-rail table of contents (the catch-up's last screen). */
-  | { kind: "map" };
-
-const todayStr = (): string => {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
-
 export function Shell() {
   const habits = useQuery(activeHabitsQuery);
-  const active = habits.filter((h) => !h.archived);
+  // Memoized: `active` feeds the archived-habit bail-out effect below, and a
+  // fresh array every render would re-fire that correctness-bearing effect.
+  const active = useMemo(() => habits.filter((h) => !h.archived), [habits]);
   // Browser-style session history (Shell Mechanics § 1). `setView` keeps its
   // name and signature so every door below is unchanged — it just pushes now.
   const {
@@ -107,7 +87,7 @@ export function Shell() {
     contentRef.current?.scrollTo({ top: 0, left: 0 });
   }, [view]);
 
-  // If the selected habit gets archived out from under us, fall back to Log.
+  // If the selected habit gets archived out from under us, fall back to Daily.
   // REPLACE, not navigate: the user did not ask to go here, so it must not
   // become a history entry you can press "back" into (and bail out of again).
   useEffect(() => {
@@ -213,7 +193,7 @@ export function Shell() {
     proceedQuit();
   };
 
-  const today = todayStr();
+  const today = todayLocal();
   /**
    * The one day door every surface routes through. The FUTURE is a dead route
    * (no target until the date arrives), so it is refused here rather than in
@@ -222,11 +202,11 @@ export function Shell() {
    */
   const openDay = useCallback(
     (day: string) => {
-      // todayStr() at CLICK time, never the render-captured `today`: a Shell
+      // todayLocal() at CLICK time, never the render-captured `today`: a Shell
       // that hasn't re-rendered since midnight would otherwise refuse the new
       // day's door — silently, and without triggering the re-render that
       // would fix it (2026-07-30).
-      if (day > todayStr()) return;
+      if (day > todayLocal()) return;
       setView({ kind: "daily", day });
     },
     [setView],
@@ -244,6 +224,23 @@ export function Shell() {
       recordRecent({ kind: "day", day: view.day });
   }, [view, today]);
 
+  // Memoized: the palette's rows memo depends on `nav`, so a fresh object
+  // literal every Shell render would rebuild its rows per keystroke.
+  const paletteNav = useMemo(
+    () => ({
+      openDay,
+      openHabit: (key: string) => setView({ kind: "habit", key }),
+      openLibrary: (habitKey: string) => setView({ kind: "library", habitKey }),
+      openEntry: (id: string, habitKey: string) => setView({ kind: "entry", id, habitKey }),
+      openCadence: (scale: CadenceScale, anchor: string) =>
+        setView({ kind: "cadence", scale, anchor }),
+      openCompare: () => setView({ kind: "compare" }),
+      openTimers: () => setView({ kind: "timers" }),
+      openMap: () => setView({ kind: "map" }),
+    }),
+    [openDay, setView],
+  );
+
   // Dev stand-in (step 10 owns the real switch): re-apply the persisted
   // reduce-effects choice at launch. DEV-gated on purpose — a stale flag in a
   // production build would degrade effects with no control to undo it.
@@ -256,31 +253,7 @@ export function Shell() {
     }
   }, []);
 
-  const title =
-    view.kind === "habit"
-      ? active.find((h) => h.key === view.key)?.name ?? "Cibo"
-      : view.kind === "library"
-        ? `${active.find((h) => h.key === view.habitKey)?.name ?? "Cibo"} — Library`
-        : view.kind === "entry"
-        ? active.find((h) => h.key === view.habitKey)?.name ?? "Cibo"
-        : view.kind === "compare"
-          ? "Comparing Statistics"
-        : view.kind === "timers"
-          ? "Timers"
-        : view.kind === "map"
-          ? "Map"
-          : view.kind === "cadence"
-          ? { week: "Weekly", month: "Monthly", quarter: "Quarterly", year: "Yearly" }[view.scale]
-          : view.kind === "daily" && view.day != null && view.day !== today
-            ? // The FINAL's titlebar carries the viewed day, not the word
-              // "Today", the moment the screen is date-addressed.
-              new Intl.DateTimeFormat(undefined, {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              }).format(new Date(`${view.day}T12:00:00`))
-            : "Today";
+  const title = viewTitle(view, active, today);
   const monthName = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(today.slice(5, 7)) - 1];
 
   return (
@@ -507,16 +480,7 @@ export function Shell() {
         <PaletteOverlay
           today={today}
           onClose={() => setPaletteOpen(false)}
-          nav={{
-            openDay,
-            openHabit: (key) => setView({ kind: "habit", key }),
-            openLibrary: (habitKey) => setView({ kind: "library", habitKey }),
-            openEntry: (id, habitKey) => setView({ kind: "entry", id, habitKey }),
-            openCadence: (scale, anchor) => setView({ kind: "cadence", scale, anchor }),
-            openCompare: () => setView({ kind: "compare" }),
-            openTimers: () => setView({ kind: "timers" }),
-            openMap: () => setView({ kind: "map" }),
-          }}
+          nav={paletteNav}
         />
       )}
 
@@ -587,288 +551,3 @@ function HabitButton({
   );
 }
 
-// Custom titlebar (native decorations are off in tauri.conf.json). The drag
-// region moves the window; the right cluster drives the OS window via the Tauri
-// window API. Back/forward drive the app's own session history (useHistory) —
-// pulled ahead from step 9 on 2026-07-25; they are NOT the webview's history.
-const winAction = (fn: (w: ReturnType<typeof getCurrentWindow>) => Promise<unknown>) => () => {
-  try {
-    void fn(getCurrentWindow()).catch(() => {});
-  } catch {
-    /* not in a Tauri webview (plain browser dev) — no-op */
-  }
-};
-
-function Titlebar({
-  title,
-  canBack,
-  canForward,
-  onBack,
-  onForward,
-}: {
-  title: string;
-  canBack: boolean;
-  canForward: boolean;
-  onBack: () => void;
-  onForward: () => void;
-}) {
-  return (
-    <div className="tb">
-      <div className="cluster">
-        <button
-          className={`tb-btn${canBack ? "" : " disabled"}`}
-          title="Back (Alt+←)"
-          disabled={!canBack}
-          onClick={onBack}
-        >
-          <Ico d={["m12 19-7-7 7-7", "M19 12H5"]} />
-        </button>
-        <button
-          className={`tb-btn${canForward ? "" : " disabled"}`}
-          title="Forward (Alt+→)"
-          disabled={!canForward}
-          onClick={onForward}
-        >
-          <Ico d={["M5 12h14", "m12 5 7 7-7 7"]} />
-        </button>
-      </div>
-      <div className="drag" data-tauri-drag-region>
-        <span className="title">{title}</span>
-      </div>
-      <div className="cluster winbtns">
-        <button className="tb-btn" title="Minimize" onClick={winAction((w) => w.minimize())}>
-          <Ico d={["M5 12h14"]} />
-        </button>
-        <button className="tb-btn" title="Maximize" onClick={winAction((w) => w.toggleMaximize())}>
-          <Ico d={["M4 4h16v16H4z"]} />
-        </button>
-        <button className="tb-btn close" title="Close" onClick={winAction((w) => w.close())}>
-          <Ico d={["M18 6 6 18", "m6 6 12 12"]} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/** The numberless analog vignette face, faithful to the frozen `frame.html`:
- *  60 minute ticks (skipping the 12 hour positions) + 12 longer hour ticks near
- *  the rim, minute/hour hands repainted each second, and the accent second hand
- *  sweeping via CSS (a 60s linear loop, delayed to the current second so it's in
- *  phase with real time). The live-data vignette proper is step 6a. */
-function VignetteClock() {
-  const [now, setNow] = useState(() => new Date());
-  // The second hand sweeps via a continuous 60s CSS loop — its start is aligned
-  // to real time ONCE (a stable negative delay). Recomputing the delay on every
-  // render would restart the animation each tick (the "skip"). The minute/hour
-  // hands are discrete transforms, so re-rendering them each second is fine.
-  const [sweepDelay] = useState(() => {
-    const d = new Date();
-    return `-${d.getSeconds() + d.getMilliseconds() / 1000}s`;
-  });
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const mins = now.getMinutes();
-  const secs = now.getSeconds();
-  const mAngle = (mins + secs / 60) * 6;
-  const hAngle = ((now.getHours() % 12) + mins / 60) * 30;
-
-  const minTicks = Array.from({ length: 60 }, (_, i) => i).filter((i) => i % 5 !== 0);
-  const hourTicks = Array.from({ length: 12 }, (_, h) => h);
-
-  // TWO stacked svgs (2026-07-29 hover-lag fix): the face, and a sweep layer
-  // that rotates as a WHOLE element — Chromium composites element transforms
-  // but not SVG-child ones, so the old in-svg animated line repainted the
-  // clock every frame. The hub dots ride the rotating layer (centered circles
-  // are rotation-invariant), keeping the draw order: hand under hubs.
-  return (
-    <div className="clockwrap">
-      <svg className="clock" viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r="56" fill="var(--window-background)" stroke="var(--divider)" strokeWidth="1" />
-        <g stroke="var(--text-muted)" strokeWidth="1">
-          {minTicks.map((i) => (
-            <line key={i} x1="60" y1="6" x2="60" y2="10" transform={`rotate(${i * 6} 60 60)`} />
-          ))}
-        </g>
-        <g stroke="var(--text-secondary)" strokeWidth="2">
-          {hourTicks.map((h) => (
-            <line key={h} x1="60" y1="6" x2="60" y2="14" transform={`rotate(${h * 30} 60 60)`} />
-          ))}
-        </g>
-        <line x1="60" y1="60" x2="60" y2="34" stroke="var(--text-strong)" strokeWidth="3.5" strokeLinecap="round" transform={`rotate(${hAngle} 60 60)`} />
-        <line x1="60" y1="60" x2="60" y2="22" stroke="var(--text-strong)" strokeWidth="2.5" strokeLinecap="round" transform={`rotate(${mAngle} 60 60)`} />
-      </svg>
-      <svg className="clock clock-sweep-layer" viewBox="0 0 120 120" style={{ animationDelay: sweepDelay }}>
-        <line className="sweep" x1="60" y1="68" x2="60" y2="18" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" />
-        <circle cx="60" cy="60" r="3" fill="var(--text-strong)" />
-        <circle cx="60" cy="60" r="1.6" fill="var(--accent)" />
-      </svg>
-    </div>
-  );
-}
-
-/** Inline lucide-style icon from a list of path `d` strings. */
-function Ico({ d }: { d: string[] }) {
-  return (
-    <svg className="ico" viewBox="0 0 24 24">
-      {d.map((p, i) => (
-        <path key={i} d={p} />
-      ))}
-    </svg>
-  );
-}
-
-function NotYetDashboard({ habitKey }: { habitKey: string }) {
-  return (
-    <div className="gsdash">
-      <div className="emptybox gen" style={{ maxWidth: 640 }}>
-        <div className="eh">{habitKey} dashboard — not built yet</div>
-        <div className="es">
-          This habit's template (creation · simple · range) lands in a later step-6 chunk.
-          Consumption habits (Gaming · Reading · Media) render today.
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Dev tooling on the Log view (temporary — first-run setup replaces it) ──────
-
-function LogView() {
-  const [ownerId, setOwnerId] = useState<string | null>(null);
-  useEffect(() => {
-    evolu.appOwner.then((owner) => setOwnerId(owner.id));
-  }, []);
-  return (
-    <div style={{ maxWidth: 900 }}>
-      <div className="perf-line">{ownerId ? `Evolu ready — owner ${ownerId}` : "Evolu starting…"}</div>
-      <LogForm />
-      {/* Dev-only tooling — `import.meta.env.DEV` is statically false in a
-          production build, so these panels (and seedRich) are tree-shaken out. */}
-      {import.meta.env.DEV && (
-        <>
-          <DevReduceEffectsToggle />
-          <DevHabitPanel />
-          <DevRichSeedPanel />
-        </>
-      )}
-    </div>
-  );
-}
-
-/**
- * Dev stand-in for the reduce-effects switch — the real control is
- * Settings → Appearance (step 10; a per-device lever, [[Cross-device]]'s
- * 3-lever model). The class on the root element IS the mechanism the whole
- * corpus keys on; localStorage persistence = the established per-device
- * stand-in. First use: the 2026-07-29 hover-lag A/B (reduce-effects sheds
- * the vignette clock sweep).
- */
-const REDUCE_KEY = "cibo.dev.reduceEffects";
-function DevReduceEffectsToggle() {
-  const [on, setOn] = useState(() => document.documentElement.classList.contains("reduce-effects"));
-  const toggle = () => {
-    const next = !on;
-    document.documentElement.classList.toggle("reduce-effects", next);
-    try {
-      localStorage.setItem(REDUCE_KEY, next ? "1" : "0");
-    } catch {
-      /* per-device sugar */
-    }
-    setOn(next);
-  };
-  return (
-    <div style={{ marginTop: 16 }}>
-      <button className="btn-plain" onClick={toggle}>
-        Reduce effects: {on ? "ON" : "off"}
-      </button>
-    </div>
-  );
-}
-
-function DevHabitPanel() {
-  const habits = useQuery(activeHabitsQuery);
-  return (
-    <details className="dev-panel">
-      <summary>
-        Dev: habit activation ({habits.filter((h) => !h.archived).length} active) — temporary,
-        replaced by first-run setup
-      </summary>
-      <table className="day-table">
-        <tbody>
-          {habits.map((h) => (
-            <tr key={h.id}>
-              <td>{h.name}</td>
-              <td>{h.kind}</td>
-              <td>{h.archived ? "archived" : "active"}</td>
-              <td>
-                <button
-                  type="button"
-                  className="btn-plain btn-sm"
-                  onClick={() => {
-                    const r = evolu.update("habits", { id: h.id, archived: h.archived ? 0 : 1 });
-                    if (!r.ok) console.error("Dev: habit toggle rejected", r.error);
-                  }}
-                >
-                  {h.archived ? "Activate" : "Archive"}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </details>
-  );
-}
-
-function DevRichSeedPanel() {
-  const [status, setStatus] = useState<string>("");
-  const [busy, setBusy] = useState(false);
-  const run = async (fn: () => Promise<string>) => {
-    setBusy(true);
-    setStatus("working… (this seeds thousands of rows)");
-    try {
-      setStatus(await fn());
-    } catch (e) {
-      setStatus(`error: ${String(e)}`);
-      console.error(e);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <details className="dev-panel">
-      <summary>Dev: rich seeder (step 5) — faithful ~5-year dataset, all 11 habits</summary>
-      <div className="row">
-        <button
-          type="button"
-          className="btn-accent btn-sm"
-          disabled={busy}
-          onClick={() =>
-            run(async () => {
-              const r = await seedRich(evolu);
-              return `Seeded ${r.entries} entries · ${r.sessions} sessions · ${r.subunits} categoricals · ${r.days} finalized days (cleared ${r.clearedFirst} first).`;
-            })
-          }
-        >
-          Seed rich data
-        </button>
-        <button
-          type="button"
-          className="btn-plain btn-sm"
-          disabled={busy}
-          onClick={() =>
-            run(async () => {
-              const r = await clearRichSeed(evolu);
-              return `Cleared ${r.removed} rows.`;
-            })
-          }
-        >
-          Clear
-        </button>
-        {status && <span className="fieldnote">{status}</span>}
-      </div>
-    </details>
-  );
-}

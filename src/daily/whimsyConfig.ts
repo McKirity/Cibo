@@ -12,6 +12,7 @@
  * ([[Calendar & Whimsy]] § config). Per-device by nature, so the dev store is
  * localStorage; the real one is the per-device settings file.
  */
+import { pad2 } from "../metrics/clock";
 
 export interface DatedEvent {
   id: string;
@@ -136,8 +137,7 @@ export function randomWhimsyConfig(): WhimsyConfig {
   const year = 1940 + Math.floor(Math.random() * 70);
   const month = 1 + Math.floor(Math.random() * 12);
   const day = 1 + Math.floor(Math.random() * 28);
-  const p = (n: number) => String(n).padStart(2, "0");
-  const birthdate = `${year}-${p(month)}-${p(day)}`;
+  const birthdate = `${year}-${pad2(month)}-${pad2(day)}`;
 
   return {
     lat: place.lat,

@@ -32,6 +32,7 @@
 import type { ContinuingStreak, MilestoneDay, MilestoneFamily, MilestoneItem } from "./milestones";
 import type { FeedSnapshot, HoroscopeSnap, TarotSnap, WeatherSnap } from "./feedData";
 import { hoursMinutes, groupInt } from "../metrics/format";
+import { sessionMinutes } from "../metrics/shapes";
 import type { KeepsakeValues } from "./keepsake";
 import { keepsakeValues } from "./keepsake";
 import { RANK, type PackInput, type Span } from "./wallPack";
@@ -308,13 +309,7 @@ export interface WallInput {
 }
 
 // ── Small derivations ────────────────────────────────────────────────────────
-
-const minutesOf = (s: WallSession): number => {
-  if (s.measure_kind === "time") return s.value ?? 0;
-  if (s.measure_kind === "range" && s.start != null && s.end != null)
-    return Math.max(0, Math.round((Date.parse(s.end) - Date.parse(s.start)) / 60_000));
-  return 0;
-};
+// minutes-of-a-session = metrics/shapes.sessionMinutes (2026-07-30 dedup).
 
 /** Family names, in the order the day's cards are built. */
 const FAMILY_LABEL: Record<MilestoneFamily, string> = {
@@ -358,7 +353,7 @@ export function buildWall(input: WallInput): WallTile[] {
     const byEntry = new Map<string, number>();
     for (const s of rows) {
       if (s.entry_fk == null) continue;
-      byEntry.set(s.entry_fk, (byEntry.get(s.entry_fk) ?? 0) + minutesOf(s));
+      byEntry.set(s.entry_fk, (byEntry.get(s.entry_fk) ?? 0) + sessionMinutes(s));
     }
     for (const [id, mins] of byEntry)
       if (mins > bigMinutes) ((bigMinutes = mins), (bigEntryId = id));
@@ -388,7 +383,7 @@ export function buildWall(input: WallInput): WallTile[] {
       for (const [entryId, bouts] of byEntry) {
         const entry = entryById.get(entryId);
         if (entry == null) continue;
-        const mins = bouts.reduce((a, s) => a + minutesOf(s), 0);
+        const mins = bouts.reduce((a, s) => a + sessionMinutes(s), 0);
         const counts = bouts
           .filter((s) => s.measure_kind === "count")
           .reduce((a, s) => a + (s.value ?? 0), 0);

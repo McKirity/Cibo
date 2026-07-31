@@ -22,28 +22,41 @@
  * faces but the drop is inert — there is no cloud root until step 14, so a
  * dropped file has nowhere to live. Entries wear the lettermark fallback.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { NonEmptyString100, NonEmptyString1000, NonNegativeInt, PositiveInt } from "@evolu/common";
 import { evolu } from "../db/evolu";
 import { DateOnly, stringListToJson } from "../db/schema";
 import { findDuplicate } from "./librarySpec";
-import { useLibraryData } from "./useLibraryData";
+import { useLibraryData, type LibraryData } from "./useLibraryData";
+import { useOverlayEsc } from "../shell/overlayHooks";
 import { Ico, ICON, Menu, StatusPill } from "./bits";
 
 export function EntryCreationModal({
   habitKey,
   onClose,
   onOpenEntry,
+  data: dataProp,
 }: {
   habitKey: string;
   onClose: () => void;
   /** The nudge's "Open existing ↗" door. */
   onOpenEntry: (id: string) => void;
+  /**
+   * The Library passes its own hook result down so the open modal doesn't run
+   * a second full fetch+aggregation beside the screen's. Optional — the
+   * palette and CreationDashboard mount this modal standalone.
+   */
+  data?: LibraryData;
 }) {
   // (An `initialTitle` pre-fill prop lived here for two days for the palette's
   // quick-create handoff; it left 2026-07-29 when that flow was struck —
   // "it's not the search's job to make it".)
-  const data = useLibraryData(habitKey);
+  //
+  // Hook rules: the fallback hook is called UNCONDITIONALLY and the prop's
+  // value wins when present (Evolu dedupes the identical underlying queries,
+  // so the double subscription collapses at the store layer).
+  const ownData = useLibraryData(habitKey);
+  const data = dataProp ?? ownData;
   const creation = data.subType === "creation";
 
   const [title, setTitle] = useState("");
@@ -71,15 +84,10 @@ export function EntryCreationModal({
   const duplicate = useMemo(() => findDuplicate(title, data.entries), [title, data.entries]);
   const showNudge = duplicate != null && !nudgeDismissed;
 
-  // Esc closes (the ✕ and a dim-click too). The Menu's own Esc runs in the
-  // capture phase and stops propagation, so an open menu closes first.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // Esc closes (the ✕ and a dim-click too) — the shared overlay stack, so
+  // only the TOP overlay pops. The Menu's own Esc runs in the capture phase
+  // and stops propagation, so an open menu still closes first.
+  useOverlayEsc(onClose);
 
   const create = () => {
     setErr(null);

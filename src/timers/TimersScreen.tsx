@@ -19,32 +19,18 @@
 import { useState } from "react";
 import { clockMs, fmtMs, fmtTarget, itemMs, remainingMs, type Clock } from "./timerCore";
 import { focusClock, pauseClock, runClock, stopClock, useTimers } from "./timerStore";
-import { CreateClockModal, clockChipReadout } from "./TimerOverlays";
+import { CreateClockModal } from "./TimerOverlays";
+import { clockChipReadout } from "./GlobalTimerTray";
+import { Ico, ICONS } from "../shell/icons";
 import "./timers.css";
 
-const Ico = ({ d }: { d: string[] }) => (
-  <svg className="ico" viewBox="0 0 24 24">
-    {d.map((p) => (
-      <path key={p} d={p} />
-    ))}
-  </svg>
-);
-const IPlus = () => <Ico d={["M12 5v14", "M5 12h14"]} />;
-const ITimer = () => (
-  <Ico d={["M10 2h4", "M12 14l3-3", "M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"]} />
-);
-const IPause = () => (
-  <svg className="ico" viewBox="0 0 24 24">
-    <rect x="6" y="4" width="4" height="16" rx="1" />
-    <rect x="14" y="4" width="4" height="16" rx="1" />
-  </svg>
-);
-const IPlay = () => <Ico d={["M7 4l13 8-13 8z"]} />;
-const IStop = () => (
-  <svg className="ico" viewBox="0 0 24 24">
-    <rect x="5" y="5" width="14" height="14" rx="2" />
-  </svg>
-);
+// Glyphs from the shell roster (dedup pass 2026-07-30); pause/stop were drawn
+// as <rect>s here and the roster carries their sanctioned path equivalents.
+const IPlus = () => <Ico d={ICONS.plus} />;
+const ITimer = () => <Ico d={ICONS.timer} />;
+const IPause = () => <Ico d={ICONS.pause} />;
+const IPlay = () => <Ico d={ICONS.play} />;
+const IStop = () => <Ico d={ICONS.stop} />;
 
 const RING_C = 2 * Math.PI * 45; // the 100-unit viewBox circle, r=45
 

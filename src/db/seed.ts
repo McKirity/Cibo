@@ -40,6 +40,28 @@ export const SEED_VERSION = 9;
 
 type CiboEvolu = Evolu<typeof Schema>;
 
+/**
+ * The batch-4 pattern's WRITE step, extracted 2026-07-30 (it existed as five
+ * hand-copied stanzas): issue ONE mutation whose `onComplete` resolves only
+ * after the worker commits, check its `Result` synchronously, and REJECT on a
+ * failed validation — so the awaiting batch throws and runSeed never records
+ * a version whose write did not land. The pattern's other half — the re-read
+ * past the optimistic layer — stays at each call site, because what to verify
+ * is per-batch. Gate semantics are unchanged: resolve ⇔ worker commit,
+ * reject ⇔ rejected Result, and a reject propagates out of the batch.
+ */
+const verifiedUpdate = (
+  issue: (opts: { onComplete: () => void }) => { ok: boolean; error?: unknown },
+  label: string,
+): Promise<void> =>
+  new Promise<void>((resolve, reject) => {
+    const r = issue({ onComplete: () => resolve() });
+    if (!r.ok) {
+      console.error(`${label} rejected`, r.error);
+      reject(new Error(`${label} failed validation`));
+    }
+  });
+
 // ── Batch 1 data ─────────────────────────────────────────────────────────────
 
 interface DefinitionSeed {
@@ -519,21 +541,14 @@ async function seedBatch2(evolu: CiboEvolu): Promise<void> {
       .where("value", "=", s100("Anthology"))
       .where("isDeleted", "is not", 1),
   );
-  // The batch-4 pattern (retrofitted 2026-07-30): check the Result, await
-  // `onComplete` (fires only after the worker commits), re-read past the
-  // optimistic layer, throw to hold the gate.
+  // The batch-4 pattern (retrofitted 2026-07-30, via verifiedUpdate): check
+  // the Result, await `onComplete` (fires only after the worker commits),
+  // re-read past the optimistic layer, throw to hold the gate.
   for (const o of await evolu.loadQuery(optQuery)) {
-    await new Promise<void>((resolve, reject) => {
-      const r = evolu.update(
-        "vocab_options",
-        { id: o.id, value: s100("Fanfiction") },
-        { onComplete: () => resolve() },
-      );
-      if (!r.ok) {
-        console.error("Seed batch 2: vocab rename failed", r.error);
-        reject(new Error("Seed batch 2: vocab rename failed validation"));
-      }
-    });
+    await verifiedUpdate(
+      (opts) => evolu.update("vocab_options", { id: o.id, value: s100("Fanfiction") }, opts),
+      "Seed batch 2: vocab rename",
+    );
   }
 
   const entryQuery = evolu.createQuery((db) =>
@@ -544,17 +559,10 @@ async function seedBatch2(evolu: CiboEvolu): Promise<void> {
       .where("isDeleted", "is not", 1),
   );
   for (const e of await evolu.loadQuery(entryQuery)) {
-    await new Promise<void>((resolve, reject) => {
-      const r = evolu.update(
-        "entries",
-        { id: e.id, type: s100("Fanfiction") },
-        { onComplete: () => resolve() },
-      );
-      if (!r.ok) {
-        console.error("Seed batch 2: entry type rename failed", r.error);
-        reject(new Error("Seed batch 2: entry type rename failed validation"));
-      }
-    });
+    await verifiedUpdate(
+      (opts) => evolu.update("entries", { id: e.id, type: s100("Fanfiction") }, opts),
+      "Seed batch 2: entry type rename",
+    );
   }
 
   // Re-read: any row still carrying the old value means the rename didn't land.
@@ -593,17 +601,15 @@ async function seedBatch4(evolu: CiboEvolu): Promise<void> {
   );
   for (const h of await evolu.loadQuery(habitQuery)) {
     if (h.kind === "simple") continue;
-    await new Promise<void>((resolve, reject) => {
-      const r = evolu.update(
-        "habits",
-        { id: h.id, kind: "simple", sub_type: null, entry_attributes: null },
-        { onComplete: () => resolve() },
-      );
-      if (!r.ok) {
-        console.error("Seed batch 4: coding downgrade rejected", r.error);
-        reject(new Error("Seed batch 4: coding downgrade failed validation"));
-      }
-    });
+    await verifiedUpdate(
+      (opts) =>
+        evolu.update(
+          "habits",
+          { id: h.id, kind: "simple", sub_type: null, entry_attributes: null },
+          opts,
+        ),
+      "Seed batch 4: coding downgrade",
+    );
   }
   for (const h of await evolu.loadQuery(habitQuery)) {
     if (h.kind !== "simple") {
@@ -658,17 +664,15 @@ async function seedBatch5(evolu: CiboEvolu): Promise<void> {
     if (key == null) continue;
     const ladders = ENTRY_HOUR_LADDERS[key];
     if (ladders == null || h.milestone_ladders != null) continue;
-    await new Promise<void>((resolve, reject) => {
-      const r = evolu.update(
-        "habits",
-        { id: h.id, milestone_ladders: milestoneLaddersToJson(ladders as unknown as MilestoneLadders) },
-        { onComplete: () => resolve() },
-      );
-      if (!r.ok) {
-        console.error(`Seed batch 5: ladder for "${key}" rejected`, r.error);
-        reject(new Error(`Seed batch 5: ladder for "${key}" failed validation`));
-      }
-    });
+    await verifiedUpdate(
+      (opts) =>
+        evolu.update(
+          "habits",
+          { id: h.id, milestone_ladders: milestoneLaddersToJson(ladders as unknown as MilestoneLadders) },
+          opts,
+        ),
+      `Seed batch 5: ladder for "${key}"`,
+    );
   }
   for (const h of await evolu.loadQuery(habitQuery)) {
     if (h.key != null && ENTRY_HOUR_LADDERS[h.key] != null && h.milestone_ladders == null) {
@@ -710,17 +714,15 @@ async function seedBatch6(evolu: CiboEvolu): Promise<void> {
     if (key == null || h.keepsake_snippet != null) continue;
     const seed = KEEPSAKE_SEEDS.find((s) => s.key === key);
     if (seed == null) continue;
-    await new Promise<void>((resolve, reject) => {
-      const r = evolu.update(
-        "habits",
-        { id: h.id, keepsake_snippet: EvoluString.orThrow(seed.snippet) },
-        { onComplete: () => resolve() },
-      );
-      if (!r.ok) {
-        console.error(`Seed batch 6: keepsake for "${key}" rejected`, r.error);
-        reject(new Error(`Seed batch 6: keepsake for "${key}" failed validation`));
-      }
-    });
+    await verifiedUpdate(
+      (opts) =>
+        evolu.update(
+          "habits",
+          { id: h.id, keepsake_snippet: EvoluString.orThrow(seed.snippet) },
+          opts,
+        ),
+      `Seed batch 6: keepsake for "${key}"`,
+    );
   }
   for (const h of await evolu.loadQuery(habitQuery)) {
     if (
@@ -774,17 +776,10 @@ async function plantIcons(evolu: CiboEvolu, batch: string): Promise<void> {
     if (key == null || h.icon != null) continue;
     const seed = ICON_SEEDS.find((s) => s.key === key);
     if (seed == null) continue;
-    await new Promise<void>((resolve, reject) => {
-      const r = evolu.update(
-        "habits",
-        { id: h.id, icon: s100(seed.icon) },
-        { onComplete: () => resolve() },
-      );
-      if (!r.ok) {
-        console.error(`Seed ${batch}: icon for "${key}" rejected`, r.error);
-        reject(new Error(`Seed ${batch}: icon for "${key}" failed validation`));
-      }
-    });
+    await verifiedUpdate(
+      (opts) => evolu.update("habits", { id: h.id, icon: s100(seed.icon) }, opts),
+      `Seed ${batch}: icon for "${key}"`,
+    );
   }
   for (const h of await evolu.loadQuery(habitQuery)) {
     if (h.key != null && ICON_SEEDS.some((s) => s.key === h.key) && h.icon == null) {

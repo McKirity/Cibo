@@ -9,13 +9,25 @@
  * Everything is scoped to the day except the habit roster, because the wall
  * shows the FULL roster, logged or not: "a finalized day's misses are part of
  * the keepsake."
+ *
+ * The day-scoped queries + row mappers are shared with the form spine's fetch
+ * layer — `daySlice.ts` (2026-07-30 dedup); this hook keeps only its own
+ * output shape (the keepsake columns, the rule-hit derivation, the snapshot).
  */
 import { useMemo } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
-import { DateOnly, derivedRulesFromJson, type DerivedRule } from "../db/schema";
+import { parseDerivedRules, type DerivedRule } from "../db/schema";
 import { ruleHolds } from "./milestones";
 import { parseFeedSnapshot, type FeedSnapshot } from "./feedData";
+import {
+  dayCatsQuery,
+  dayLedgerQuery,
+  daySessionsQuery,
+  mapDayCats,
+  mapDayLedger,
+  mapDaySessions,
+} from "./daySlice";
 import type { WallEntry, WallHabit, WallSession } from "./wallSpec";
 
 const habitsQuery = evolu.createQuery((db) =>
@@ -54,104 +66,38 @@ export function useWallData(dayKey: string): WallData {
   const habitRows = useQuery(habitsQuery);
   const entryRows = useQuery(entriesQuery);
 
-  const sessionsQuery = useMemo(
-    () =>
-      evolu.createQuery((db) =>
-        db
-          .selectFrom("sessions")
-          .select([
-            "id", "habit_fk", "entry_fk", "measure_kind", "value",
-            "start", "end", "source", "createdAt",
-          ])
-          .where("isDeleted", "is not", 1)
-          .where("day", "=", DateOnly.orThrow(dayKey))
-          .orderBy("createdAt"),
-      ),
-    [dayKey],
-  );
+  const sessionsQuery = useMemo(() => daySessionsQuery(dayKey), [dayKey]);
   const sessionRows = useQuery(sessionsQuery);
 
-  const catsQuery = useMemo(
-    () =>
-      evolu.createQuery((db) =>
-        db
-          .selectFrom("subunit_values")
-          .innerJoin("sessions", "sessions.id", "subunit_values.session_fk")
-          .innerJoin("subunit_definitions", "subunit_definitions.id", "subunit_values.definition_fk")
-          .select([
-            "subunit_values.session_fk as session_fk",
-            "subunit_definitions.key as def_key",
-            "subunit_values.value as value",
-          ])
-          .where("sessions.day", "=", DateOnly.orThrow(dayKey))
-          .where("sessions.isDeleted", "is not", 1)
-          .where("subunit_values.isDeleted", "is not", 1),
-      ),
-    [dayKey],
-  );
+  const catsQuery = useMemo(() => dayCatsQuery(dayKey), [dayKey]);
   const catRows = useQuery(catsQuery);
 
-  const dayQuery = useMemo(
-    () =>
-      evolu.createQuery((db) =>
-        db
-          .selectFrom("days")
-          .select(["id", "finalized", "feed_snapshot"])
-          .where("isDeleted", "is not", 1)
-          .where("date", "=", DateOnly.orThrow(dayKey)),
-      ),
-    [dayKey],
-  );
+  const dayQuery = useMemo(() => dayLedgerQuery(dayKey), [dayKey]);
   const dayRows = useQuery(dayQuery);
 
   const habits = useMemo<WallHabit[]>(
     () =>
       habitRows
         .filter((h) => h.kind != null && h.name != null)
-        .map((h) => {
-          let rules: DerivedRule[] = [];
-          if (h.derived_rules != null) {
-            try {
-              rules = derivedRulesFromJson(h.derived_rules) as unknown as DerivedRule[];
-            } catch {
-              rules = [];
-            }
-          }
-          return {
-            id: h.id,
-            key: (h.key as string | null) ?? null,
-            name: h.name as string,
-            kind: h.kind as WallHabit["kind"],
-            sub_type: (h.sub_type as WallHabit["sub_type"]) ?? null,
-            colour_slot: (h.colour_slot as string) ?? "habit-1",
-            icon: (h.icon as string | null) ?? null,
-            measures_time: h.measures_time === 1,
-            measures_count: h.measures_count === 1,
-            count_unit: (h.count_unit as string | null) ?? null,
-            keepsake_snippet: (h.keepsake_snippet as string | null) ?? null,
-            derived_rules: rules,
-            sort_order: (h.sort_order as number | null) ?? null,
-          };
-        }),
+        .map((h) => ({
+          id: h.id,
+          key: (h.key as string | null) ?? null,
+          name: h.name as string,
+          kind: h.kind as WallHabit["kind"],
+          sub_type: (h.sub_type as WallHabit["sub_type"]) ?? null,
+          colour_slot: (h.colour_slot as string) ?? "habit-1",
+          icon: (h.icon as string | null) ?? null,
+          measures_time: h.measures_time === 1,
+          measures_count: h.measures_count === 1,
+          count_unit: (h.count_unit as string | null) ?? null,
+          keepsake_snippet: (h.keepsake_snippet as string | null) ?? null,
+          derived_rules: parseDerivedRules(h.derived_rules),
+          sort_order: (h.sort_order as number | null) ?? null,
+        })),
     [habitRows],
   );
 
-  const sessions = useMemo<WallSession[]>(
-    () =>
-      sessionRows
-        .filter((s) => s.habit_fk != null && s.measure_kind != null)
-        .map((s) => ({
-          id: s.id,
-          habit_fk: s.habit_fk as string,
-          entry_fk: (s.entry_fk as string | null) ?? null,
-          measure_kind: s.measure_kind as WallSession["measure_kind"],
-          value: s.value,
-          start: s.start,
-          end: s.end,
-          source: (s.source as string) ?? "manual",
-        })),
-    [sessionRows],
-  );
+  const sessions = useMemo<WallSession[]>(() => mapDaySessions(sessionRows), [sessionRows]);
 
   const entries = useMemo<WallEntry[]>(
     () =>
@@ -169,16 +115,7 @@ export function useWallData(dayKey: string): WallData {
     [entryRows],
   );
 
-  const cats = useMemo(() => {
-    const m = new Map<string, Record<string, string>>();
-    for (const r of catRows) {
-      if (r.session_fk == null || r.def_key == null) continue;
-      const rec = m.get(r.session_fk as string) ?? {};
-      rec[r.def_key as string] = (r.value as string) ?? "";
-      m.set(r.session_fk as string, rec);
-    }
-    return m;
-  }, [catRows]);
+  const cats = useMemo(() => mapDayCats(catRows).cats, [catRows]);
 
   // Which derived rules HELD, per session — the keepsake's `{{flags}}` token
   // list. Rules-as-data, evaluated by the one evaluator the milestones use.
@@ -208,10 +145,7 @@ export function useWallData(dayKey: string): WallData {
     return m;
   }, [habits, sessions, dayKey]);
 
-  const dayRow = useMemo(() => {
-    const r = dayRows[0];
-    return r ? { id: r.id as string, finalized: r.finalized === 1 } : null;
-  }, [dayRows]);
+  const dayRow = useMemo(() => mapDayLedger(dayRows), [dayRows]);
 
   const snapshot = useMemo(
     () =>

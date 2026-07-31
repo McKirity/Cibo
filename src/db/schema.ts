@@ -148,6 +148,19 @@ export const [DerivedRulesJson, derivedRulesToJson, derivedRulesFromJson] = json
 export type DerivedRulesJson = typeof DerivedRulesJson.Type;
 
 /**
+ * Never-throwing decode of a habit's `derived_rules` cell — [] for null and
+ * for any malformed JSON (the stanza every reading hook carried verbatim).
+ */
+export function parseDerivedRules(raw: unknown): DerivedRule[] {
+  if (raw == null) return [];
+  try {
+    return derivedRulesFromJson(raw as never) as unknown as DerivedRule[];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * One milestone threshold ladder — rules-as-data, the shape the ladders were
  * dictated in ("2/5/10, then intervals of 10, and from 100 intervals of 25"):
  * an optional leading `steps` list plus `bands` of `{every, until}` (a band

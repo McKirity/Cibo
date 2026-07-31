@@ -45,6 +45,13 @@ import {
   type PeriodBounds,
 } from "../metrics/cadence";
 import { dayFromIndex, dayGap, dayIndex, monthKey, weekStart } from "../metrics/dates";
+import {
+  circularMeanMinutes,
+  clockMinutes as minOfDay,
+  durationMinutes as rangeMinutes,
+  fmtHM as fmtClock,
+} from "../metrics/clockMath";
+import { escapeHtml, groupInt, MONTHS_LONG } from "../metrics/format";
 import { wavesForEntry, type SessionRow } from "../metrics/shapes";
 import type { CadenceData, CadHabit, CadSession } from "./useCadenceData";
 
@@ -179,37 +186,14 @@ const fmtH = (min: number): string => {
   return `${h} h ${String(m).padStart(2, "0")} m`;
 };
 const fmtHShort = (min: number): string => `${Math.round(min / 60)} h`;
-const groupInt = (n: number): string => Math.round(n).toLocaleString("en-US");
 const dayLabel = (day: string): string =>
   `${MONTH_ABBR[Number(day.slice(5, 7)) - 1]} ${Number(day.slice(8, 10))}`;
 const dowName = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const dow = (day: string): number => (new Date(dayIndex(day) * 86_400_000).getUTCDay() + 6) % 7;
 
-const fmtClock = (mins: number): string => {
-  const m = ((Math.round(mins) % 1440) + 1440) % 1440;
-  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-};
-
-/** Minutes-of-day from a "YYYY-MM-DDTHH:MM[:SS]" local datetime. */
-const minOfDay = (dt: string): number => Number(dt.slice(11, 13)) * 60 + Number(dt.slice(14, 16));
-
-const rangeMinutes = (s: CadSession): number =>
-  s.start != null && s.end != null
-    ? Math.max(0, (dayIndex(s.end.slice(0, 10)) - dayIndex(s.start.slice(0, 10))) * 1440 + minOfDay(s.end) - minOfDay(s.start))
-    : 0;
-
-/** Circular mean of minutes-of-day values (wraps midnight). */
-const circularMeanMin = (vals: number[]): number | null => {
-  if (vals.length === 0) return null;
-  let x = 0, y = 0;
-  for (const v of vals) {
-    const a = (v / 1440) * 2 * Math.PI;
-    x += Math.cos(a);
-    y += Math.sin(a);
-  }
-  const ang = Math.atan2(y / vals.length, x / vals.length);
-  return ((ang / (2 * Math.PI)) * 1440 + 1440) % 1440;
-};
+// minOfDay / rangeMinutes / fmtClock / the circular mean live in
+// ../metrics/clockMath (imported under their old local names above; the mean's
+// rounded/null canonicalization is documented in that module's header).
 
 // ── The builder ───────────────────────────────────────────────────────────────
 
@@ -223,6 +207,9 @@ export function buildCadenceModel(
   const listCap = opts.listCap ?? 10;
   const bounds = periodBounds(scale, anchor);
   const inPeriod = (d: string) => d >= bounds.from && d <= bounds.to;
+  // Computed ONCE and threaded through (ribbon · stacked · headers · rows ·
+  // expansions all read it — this was re-derived ~6× per build).
+  const ownedWeeks = majorityWeeks(bounds);
 
   // ── The roster: active now OR with sessions in the period ──
   const sessionsByHabit = new Map<string, CadSession[]>();
@@ -303,7 +290,7 @@ export function buildCadenceModel(
       scale === "quarter"
         ? `color-mix(in oklch, var(${monthSlot(`${bounds.from.slice(0, 4)}-${String((quarterOf(bounds.from) - 1) * 3 + 2).padStart(2, "0")}`)}), var(--window-background) var(--quarter-wash-mix))`
         : "var(--accent)"; // RATIFIED 2026-07-23 — the year wears the theme base accent
-    const weeks = majorityWeeks(bounds);
+    const weeks = ownedWeeks;
     const byDay = new Map(days.map((d) => [d.day, d]));
     // A week's owner section = its Thursday's month (quarterly ticks) or
     // quarter (yearly ticks); the tick draws AFTER the section's last column.
@@ -416,7 +403,7 @@ export function buildCadenceModel(
   if (scale === "year") {
     const y = bounds.from.slice(0, 4);
     const monthBuckets = Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, "0")}`);
-    const weekBuckets = majorityWeeks(bounds);
+    const weekBuckets = ownedWeeks;
     const perHabit = roster
       .filter((h) => (habitMinutes.get(h.id) ?? 0) > 0)
       .map((h) => {
@@ -473,7 +460,7 @@ export function buildCadenceModel(
 
   // ── Habit rows ──
   const rows = roster.map((h) =>
-    buildHabitRow(h, periodSessions.get(h.id)!, playedByHabit.get(h.id)!, days, bounds, scale, data, entryTitle, listCap),
+    buildHabitRow(h, periodSessions.get(h.id)!, playedByHabit.get(h.id)!, days, bounds, scale, data, entryTitle, listCap, ownedWeeks),
   );
 
   // ── Header ──
@@ -485,7 +472,7 @@ export function buildCadenceModel(
       scale === "year"
         ? `weeks ${bounds.weekNums.first}–${bounds.weekNums.last} · ${periodDays} days`
         : scale === "quarter"
-          ? `${["January","April","July","October"][quarterOf(bounds.from) - 1]} – ${["March","June","September","December"][quarterOf(bounds.from) - 1]} · weeks ${bounds.weekNums.first}–${bounds.weekNums.last} · days ${bounds.dayOfYear.first}–${bounds.dayOfYear.last}`
+          ? `${MONTHS_LONG[(quarterOf(bounds.from) - 1) * 3]} – ${MONTHS_LONG[(quarterOf(bounds.from) - 1) * 3 + 2]} · weeks ${bounds.weekNums.first}–${bounds.weekNums.last} · days ${bounds.dayOfYear.first}–${bounds.dayOfYear.last}`
           : scale === "month"
             ? `weeks ${bounds.weekNums.first}–${bounds.weekNums.last} · days ${bounds.dayOfYear.first}–${bounds.dayOfYear.last}`
             : `${dayLabel(bounds.from)} – ${dayLabel(bounds.to)} · days ${bounds.dayOfYear.first}–${bounds.dayOfYear.last}`,
@@ -515,7 +502,7 @@ export function buildCadenceModel(
         : scale === "week"
           ? { kind: "daynums", count: 7 }
           : scale === "quarter"
-            ? { kind: "weeknums", nums: majorityWeeks(bounds).map(isoWeekNum) }
+            ? { kind: "weeknums", nums: ownedWeeks.map(isoWeekNum) }
             : { kind: "months" },
     bestColLabel:
       scale === "quarter" ? "best week" : scale === "year" ? "best month · week" : "best day",
@@ -535,6 +522,7 @@ function buildHabitRow(
   data: CadenceData,
   entryTitle: Map<string, string>,
   listCap: number,
+  ownedWeeks: string[],
 ): HabitRowVM {
   const finDays = days.filter((d) => d.finalized).length;
   const doneDays = days.filter((d) => d.finalized && played.has(d.day)).length;
@@ -600,7 +588,7 @@ function buildHabitRow(
   // Cells at the scale's grain
   let cells: HabitRowVM["cells"];
   if (scale === "quarter") {
-    cells = { intensities: weekIntensity(majorityWeeks(bounds), played, bounds) };
+    cells = { intensities: weekIntensity(ownedWeeks, played, bounds) };
   } else if (scale === "year") {
     cells = { intensities: monthIntensity(bounds.from.slice(0, 4), played) };
   } else if (isRange) {
@@ -626,7 +614,7 @@ function buildHabitRow(
 
   let expansion: HabitRowVM["expansion"] = null;
   if (expandable) {
-    expansion = buildExpansion(h, sessions, days, bounds, scale, data, entryTitle, listCap, countPrimary, amtByDay, fmtAmt);
+    expansion = buildExpansion(h, sessions, days, bounds, scale, data, entryTitle, listCap, countPrimary, amtByDay, fmtAmt, ownedWeeks);
   }
 
   return {
@@ -649,10 +637,11 @@ function occupancy(
   days: CrossDay[],
   bounds: PeriodBounds,
   scale: CadenceScale,
+  ownedWeeks: string[],
 ): DayCellState[] {
   const set = new Set(subset.map((s) => s.day));
   if (scale === "quarter")
-    return majorityWeeks(bounds).map((ws) => {
+    return ownedWeeks.map((ws) => {
       for (let i = 0; i < 7; i++) if (set.has(dayFromIndex(dayIndex(ws) + i))) return "d" as DayCellState;
       return "e" as DayCellState;
     });
@@ -679,6 +668,7 @@ function buildExpansion(
   countPrimary: boolean,
   amtByDay: Map<string, number>,
   fmtAmt: (v: number) => string,
+  ownedWeeks: string[],
 ): NonNullable<HabitRowVM["expansion"]> {
   const isRange = h.kind === "range";
 
@@ -689,7 +679,7 @@ function buildExpansion(
     let buckets: number[];
     let unitLabel: string;
     if (scale === "quarter") {
-      const byWeek = majorityWeeks(bounds).map((ws) => {
+      const byWeek = ownedWeeks.map((ws) => {
         let v = 0;
         for (let i = 0; i < 7; i++) v += amtByDay.get(dayFromIndex(dayIndex(ws) + i)) ?? 0;
         return v;
@@ -745,7 +735,7 @@ function buildExpansion(
       const bd = [...perDay.entries()].sort((a, b) => b[1] - a[1])[0];
       if (bd[1] > 0) bestTxt = `best ${dayLabel(bd[0])} · ${fmtAmt(bd[1])}`;
     }
-    return { title, door, total: totalTxt, best: bestTxt, cells: occupancy(subset, days, bounds, scale), inner };
+    return { title, door, total: totalTxt, best: bestTxt, cells: occupancy(subset, days, bounds, scale, ownedWeeks), inner };
   };
 
   // ── Project → entry strips (Writing = card-within-card) ──
@@ -808,8 +798,10 @@ function buildExpansion(
       const AXIS_START = 20 * 60, AXIS_LEN = 16 * 60;
       const clampPct = (p: number) => Math.min(100, Math.max(0, p));
       const pos = (m: number) => clampPct((((m - AXIS_START + 1440) % 1440) / AXIS_LEN) * 100);
-      const bedAvg = circularMeanMin(beds)!;
-      const wakeAvg = circularMeanMin(wakes)!;
+      // ?? 0 preserves the old degenerate-case face (a fully-cancelling set
+      // read 0 = midnight before the clockMath canonicalization).
+      const bedAvg = circularMeanMinutes(beds) ?? 0;
+      const wakeAvg = circularMeanMinutes(wakes) ?? 0;
       const bedLo = Math.min(...beds.map((b) => (b - AXIS_START + 1440) % 1440));
       const bedHi = Math.max(...beds.map((b) => (b - AXIS_START + 1440) % 1440));
       const wakeLo = Math.min(...wakes.map((b) => (b - AXIS_START + 1440) % 1440));
@@ -832,14 +824,14 @@ function buildExpansion(
     const nightsCount = rangeSessions.length;
     const eightPlus = rangeSessions.filter((s) => rangeMinutes(s) >= 480);
     if (nightsCount > 0)
-      strips.push({ title: "8 h+ nights", door: false, total: `${eightPlus.length} of ${nightsCount}`, best: "—", cells: occupancy(eightPlus, days, bounds, scale) });
+      strips.push({ title: "8 h+ nights", door: false, total: `${eightPlus.length} of ${nightsCount}`, best: "—", cells: occupancy(eightPlus, days, bounds, scale, ownedWeeks) });
     const beforeNoon = rangeSessions.filter((s) => minOfDay(s.end!) < 12 * 60);
     if (nightsCount > 0)
-      strips.push({ title: "up before noon", door: false, total: `${beforeNoon.length} of ${nightsCount}`, best: "—", cells: occupancy(beforeNoon, days, bounds, scale) });
+      strips.push({ title: "up before noon", door: false, total: `${beforeNoon.length} of ${nightsCount}`, best: "—", cells: occupancy(beforeNoon, days, bounds, scale, ownedWeeks) });
     for (const flagKey of data.flagDefs) {
       const flagged = rangeSessions.filter((s) => data.valueBySession.get(s.id)?.[flagKey] != null);
       if (flagged.length > 0)
-        strips.push({ title: (data.defLabels.get(flagKey) ?? flagKey).toLowerCase(), door: false, total: `${flagged.length} nights`, best: "—", cells: occupancy(flagged, days, bounds, scale) });
+        strips.push({ title: (data.defLabels.get(flagKey) ?? flagKey).toLowerCase(), door: false, total: `${flagged.length} nights`, best: "—", cells: occupancy(flagged, days, bounds, scale, ownedWeeks) });
     }
     return { storyCard: null, strips, cap: strips.length, more: 0, sleepLine, measureStrip: null };
   }
@@ -918,10 +910,11 @@ function deriveMilestones(
   }
   // Finished entries (status Finished + last session in period)
   if (bounds.scale === "quarter" || bounds.scale === "month") {
+    const rosterById = new Map(roster.map((h) => [h.id, h]));
     const finishedTitles: string[] = [];
     for (const e of data.entries) {
       if (e.status !== "Finished") continue;
-      const habit = roster.find((h) => h.id === e.habitId);
+      const habit = rosterById.get(e.habitId);
       if (!habit) continue;
       const ss = (allByHabit.get(e.habitId) ?? []).filter((s) => s.entryId === e.id);
       if (ss.length === 0) continue;
@@ -1060,6 +1053,7 @@ function deriveChurn(
         (byEntry.get(s.entryId) ?? byEntry.set(s.entryId, []).get(s.entryId)!).push({
           id: s.id, entry_fk: s.entryId, day: s.day, measure_kind: s.kind, value: s.value,
         });
+    const titleById = new Map(data.entries.map((e) => [e.id, e.title]));
     for (const [id, ss] of byEntry) {
       // Number waves BEFORE filtering so the label names the entry's real wave
       // number, not its index in the in-year ≥20-day subset (2026-07-30).
@@ -1067,7 +1061,7 @@ function deriveChurn(
         .map((w, i) => ({ w, n: i + 1 }))
         .filter(({ w }) => w.start.slice(0, 4) === y && w.days >= 20);
       for (const { w, n } of waves) {
-        const title = data.entries.find((e) => e.id === id)?.title ?? "—";
+        const title = titleById.get(id) ?? "—";
         out.push({
           html: `<b>${escapeHtml(title)}</b> wave ${n} — <b>${MONTH_ABBR[Number(w.start.slice(5, 7)) - 1]} – ${MONTH_ABBR[Number(w.end.slice(5, 7)) - 1]}</b>.`,
         });
@@ -1085,10 +1079,11 @@ function deriveFinished(
   bounds: PeriodBounds,
 ): { html: string }[] {
   const out: { html: string }[] = [];
+  const rosterById = new Map(roster.map((h) => [h.id, h]));
   const finished: { title: string; habit: string }[] = [];
   const fiveStar: string[] = [];
   for (const e of data.entries) {
-    const habit = roster.find((h) => h.id === e.habitId);
+    const habit = rosterById.get(e.habitId);
     if (!habit) continue;
     const ss = (allByHabit.get(e.habitId) ?? []).filter((s) => s.entryId === e.id);
     if (ss.length === 0) continue;
@@ -1111,6 +1106,3 @@ function deriveFinished(
   return out;
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}

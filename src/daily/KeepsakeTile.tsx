@@ -12,7 +12,7 @@
  * always safe. The talkative half of that ruling lives in the paste slot
  * (step 10), not here.
  */
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { renderSnippet, type KeepsakeValues } from "./keepsake";
 
 export function KeepsakeTile({
@@ -29,7 +29,8 @@ export function KeepsakeTile({
   // The values object is rebuilt on every render of the wall; re-injecting the
   // fragment each time would throw away the shadow tree for nothing. A cheap
   // signature makes the effect fire only when a drawn value actually moved.
-  const signature = useMemo(() => JSON.stringify(values), [values]);
+  // (Computed bare — a useMemo keyed on the always-fresh object never cached.)
+  const signature = JSON.stringify(values);
 
   useEffect(() => {
     const host = hostRef.current;

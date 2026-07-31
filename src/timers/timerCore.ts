@@ -172,7 +172,9 @@ export const takenUnits = (
 
 // ── formatting ───────────────────────────────────────────────────────────────
 
-/** h:mm:ss above an hour, m:ss below (the drawn readout shapes). */
+/** h:mm:ss above an hour, m:ss below (the drawn readout shapes).
+ * Near-twin of `fmtTarget` below, deliberately NOT merged: this one FLOORS
+ * (a live readout must never show a second that hasn't elapsed). */
 export const fmtMs = (ms: number): string => {
   const total = Math.floor(ms / 1000);
   const h = Math.floor(total / 3600);
@@ -182,7 +184,10 @@ export const fmtMs = (ms: number): string => {
   return h > 0 ? `${h}:${p(m)}:${p(s)}` : `${m}:${p(s)}`;
 };
 
-/** "25:00"-style mm:ss (config chips; grows to h:mm:ss above an hour). */
+/** "25:00"-style mm:ss (config chips; grows to h:mm:ss above an hour).
+ * Near-twin of `fmtMs` above, deliberately NOT merged: this one ROUNDS — a
+ * configured target is a nominal length, and flooring would show "24:59"
+ * for a 25-minute target off any sub-second float residue. */
 export const fmtTarget = (ms: number): string => {
   const total = Math.round(ms / 1000);
   const h = Math.floor(total / 3600);

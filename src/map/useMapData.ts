@@ -74,9 +74,13 @@ export function useMapData(todayYear: number): MapData {
   );
 
   const entriesByHabit = useMemo(() => {
+    // Filter FIRST (2026-07-30): only listed habits' entries are grouped and
+    // sorted — an archived habit's hundreds of titles used to be sorted and
+    // then dropped by the render.
+    const listed = new Set(habits.map((h) => h.id));
     const by = new Map<string, MapEntry[]>();
     for (const e of entryRows) {
-      if (e.title == null) continue;
+      if (e.title == null || !listed.has(e.habit_fk as string)) continue;
       const list = by.get(e.habit_fk as string);
       const row = { id: e.id as string, title: e.title as string };
       if (list) list.push(row);
@@ -85,7 +89,7 @@ export function useMapData(todayYear: number): MapData {
     // entries within a habit stay ALPHABETICAL as drawn (the ruling kept it)
     for (const list of by.values()) list.sort((a, b) => a.title.localeCompare(b.title));
     return by;
-  }, [entryRows]);
+  }, [entryRows, habits]);
 
   const firstYear = useMemo(() => {
     const day = firstDayRows[0]?.day as string | undefined;

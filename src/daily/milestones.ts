@@ -36,6 +36,7 @@
 import type { DerivedRule } from "../db/schema";
 import { dayFromIndex, dayGap, dayIndex } from "../metrics/dates";
 import { groupInt, hoursMinutes } from "../metrics/format";
+import { sessionMinutes } from "../metrics/shapes";
 
 // ── Ladders ──────────────────────────────────────────────────────────────────
 
@@ -243,13 +244,7 @@ export interface MilestoneDay {
 }
 
 // ── Small helpers ────────────────────────────────────────────────────────────
-
-const minutesOf = (s: MSession): number => {
-  if (s.measure_kind === "time") return s.value ?? 0;
-  if (s.measure_kind === "range" && s.start != null && s.end != null)
-    return Math.max(0, Math.round((Date.parse(s.end) - Date.parse(s.start)) / 60_000));
-  return 0;
-};
+// minutes-of-a-session = metrics/shapes.sessionMinutes (2026-07-30 dedup).
 
 const byDay = (a: MSession, b: MSession): number => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0);
 
@@ -267,7 +262,7 @@ const ordinal = (n: number): string => {
 export const ruleHolds = (rule: DerivedRule, s: MSession): boolean => {
   if (s.start == null || s.end == null) return false;
   if (rule.template === "duration" && rule.minutes != null) {
-    const mins = minutesOf(s);
+    const mins = sessionMinutes(s);
     return rule.op === "lte" ? mins <= rule.minutes : mins >= rule.minutes;
   }
   if (rule.template === "timeOfDay" && rule.time != null) {
@@ -291,11 +286,13 @@ export const daySubjects = (
   cats: MilestoneInput["cats"],
 ): Array<{ label: string; days: string[] }> => {
   const swap = habit.key != null ? SUBJECT_SWAP[habit.key] : undefined;
-  const sorted = rows.slice().sort(byDay);
+  // No internal re-sort (2026-07-30 dedup): every branch accumulates day SETS
+  // and sorts the day lists it returns, so row order never mattered here — the
+  // caller's once-per-derivation sort is the only one needed.
 
   if (swap?.kind === "categorical") {
     const byValue = new Map<string, Set<string>>();
-    for (const s of sorted) {
+    for (const s of rows) {
       const v = cats.get(s.id)?.[swap.defKey];
       if (v == null) continue;
       const set = byValue.get(v) ?? new Set<string>();
@@ -311,7 +308,7 @@ export const daySubjects = (
   if (swap?.kind === "subjects") {
     return swap.subjects.map((sub) => {
       const days = new Set<string>();
-      for (const s of sorted) {
+      for (const s of rows) {
         const held =
           "rule" in sub
             ? habit.derived_rules.some((r) => r.label === sub.rule && ruleHolds(r, s)) === sub.want
@@ -322,7 +319,7 @@ export const daySubjects = (
     });
   }
 
-  const days = [...new Set(sorted.map((s) => s.day))].sort();
+  const days = [...new Set(rows.map((s) => s.day))].sort();
   return [{ label: habit.name, days }];
 };
 
@@ -446,8 +443,8 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
     if (today.length === 0) continue;
 
     // ── Thresholds · the habit's Nth hour ────────────────────────────────────
-    const totalBefore = rows.filter((s) => s.day < day).reduce((a, s) => a + minutesOf(s), 0);
-    const totalNow = totalBefore + today.reduce((a, s) => a + minutesOf(s), 0);
+    const totalBefore = rows.filter((s) => s.day < day).reduce((a, s) => a + sessionMinutes(s), 0);
+    const totalNow = totalBefore + today.reduce((a, s) => a + sessionMinutes(s), 0);
     for (const v of ladderCrossings(
       ladderFor(habit.ladders, "hours"),
       totalBefore / 60,
@@ -478,8 +475,8 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
       const touched = new Set(today.map((s) => s.entry_fk).filter((e): e is string => e != null));
       for (const entryId of touched) {
         const mine = rows.filter((s) => s.entry_fk === entryId);
-        const before = mine.filter((s) => s.day < day).reduce((a, s) => a + minutesOf(s), 0);
-        const now = mine.filter((s) => s.day <= day).reduce((a, s) => a + minutesOf(s), 0);
+        const before = mine.filter((s) => s.day < day).reduce((a, s) => a + sessionMinutes(s), 0);
+        const now = mine.filter((s) => s.day <= day).reduce((a, s) => a + sessionMinutes(s), 0);
         const title = input.entryTitle.get(entryId) ?? "an entry";
         for (const v of ladderCrossings(
           ladderFor(habit.ladders, "entryHours"),
@@ -492,7 +489,7 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
 
     // ── Records · best day + longest session (first observation SILENT) ──────
     const dayTotals = new Map<string, number>();
-    for (const s of rows) dayTotals.set(s.day, (dayTotals.get(s.day) ?? 0) + minutesOf(s));
+    for (const s of rows) dayTotals.set(s.day, (dayTotals.get(s.day) ?? 0) + sessionMinutes(s));
     const todayTotal = dayTotals.get(day) ?? 0;
     const priorDays = [...dayTotals.entries()].filter(([d]) => d < day);
     if (todayTotal > 0 && priorDays.length > 0) {
@@ -502,8 +499,8 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
           item("record", hoursMinutes(todayTotal), `best ${habit.name} day`),
         );
     }
-    const priorSessions = rows.filter((s) => s.day < day).map(minutesOf);
-    const todayLongest = Math.max(0, ...today.map(minutesOf));
+    const priorSessions = rows.filter((s) => s.day < day).map(sessionMinutes);
+    const todayLongest = Math.max(0, ...today.map(sessionMinutes));
     if (todayLongest > 0 && priorSessions.length > 0) {
       const priorBest = Math.max(...priorSessions);
       if (priorBest > 0 && todayLongest > priorBest)
@@ -550,7 +547,7 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
         const m = new Map<string, number>();
         for (const s of rows) {
           if (s.day > limit || s.entry_fk == null) continue;
-          m.set(s.entry_fk, (m.get(s.entry_fk) ?? 0) + minutesOf(s));
+          m.set(s.entry_fk, (m.get(s.entry_fk) ?? 0) + sessionMinutes(s));
         }
         return m;
       };

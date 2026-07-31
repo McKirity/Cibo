@@ -30,7 +30,6 @@ import {
   genreFilterOptions,
   importerDoors,
   isFilterActive,
-  pagerCells,
   paginate,
   pinBandLabel,
   recentSortLabel,
@@ -40,6 +39,7 @@ import {
 import { stars } from "../metrics/format";
 import { useLibraryData } from "./useLibraryData";
 import { Capsule, FilterChip, Ico, ICON, PrioGlyph, Stars, StatusPill } from "./bits";
+import { Pager } from "../kit/Pager";
 import { EntryCreationModal } from "./EntryCreationModal";
 import { BulkEditModal } from "./BulkEditModal";
 import "./library.css";
@@ -435,39 +435,12 @@ export function Library({
                 <span className="pgcount">
                   Page {pageData.page} of {pageData.pageCount}
                 </span>
-                <div className="pgnums">
-                  <button
-                    className="pgnum arrow"
-                    title="Previous page"
-                    disabled={pageData.page <= 1}
-                    onClick={() => setPage(pageData.page - 1)}
-                  >
-                    <Ico d={["m15 18-6-6 6-6"]} size={14} />
-                  </button>
-                  {pagerCells(pageData.page, pageData.pageCount).map((c, i) =>
-                    c === "…" ? (
-                      <span key={`e${i}`} className="pgell">
-                        …
-                      </span>
-                    ) : (
-                      <button
-                        key={c}
-                        className={`pgnum${c === pageData.page ? " on" : ""}`}
-                        onClick={() => setPage(c)}
-                      >
-                        {c}
-                      </button>
-                    ),
-                  )}
-                  <button
-                    className="pgnum arrow"
-                    title="Next page"
-                    disabled={pageData.page >= pageData.pageCount}
-                    onClick={() => setPage(pageData.page + 1)}
-                  >
-                    <Ico d={["m9 18 6-6-6-6"]} size={14} />
-                  </button>
-                </div>
+                <Pager
+                  page={pageData.page}
+                  pageCount={pageData.pageCount}
+                  onPage={setPage}
+                  iconSize={14}
+                />
               </div>
               )}
             </div>
@@ -478,6 +451,7 @@ export function Library({
       {creationOpen && (
         <EntryCreationModal
           habitKey={habitKey}
+          data={data}
           onClose={() => setCreationOpen(false)}
           onOpenEntry={(id) => {
             setCreationOpen(false);
@@ -485,7 +459,9 @@ export function Library({
           }}
         />
       )}
-      {bulkOpen && <BulkEditModal habitKey={habitKey} onClose={() => setBulkOpen(false)} />}
+      {bulkOpen && (
+        <BulkEditModal habitKey={habitKey} data={data} onClose={() => setBulkOpen(false)} />
+      )}
     </div>
   );
 }

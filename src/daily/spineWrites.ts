@@ -32,7 +32,7 @@ import {
   validateSessionAgainstHabit,
   validateSessionMeasure,
 } from "../db/validate";
-import { writingWordsForDay } from "../db/derivedKeyboard";
+import { resolveKeyboardWrite, writingWordsForDay } from "../db/derivedKeyboard";
 import type { Bout, SpineHabit } from "./spineSpec";
 
 export type WriteResult = { ok: true } | { ok: false; reason: string };
@@ -422,13 +422,20 @@ export const logBoard = (
   return checked(res, "board write") ? good : bad("Write failed — see console.");
 };
 
-/** The visible REFRESH control: re-derive the count from Writing's current total. */
+/**
+ * The visible REFRESH control: re-derive the count from Writing's current
+ * total. Routed through `resolveKeyboardWrite`, the harness-verified pure core
+ * (2026-07-30 dedup) — neither intent below consults the current row's state,
+ * so a placeholder is passed.
+ */
 export const refreshDerived = async (id: string, day: string): Promise<WriteResult> => {
   const words = await writingWordsForDay(evolu, day);
+  const w = resolveKeyboardWrite("refresh", { source: null, value: null }, words);
+  if (w == null) return good; // unreachable for "refresh" — the core is the authority
   const res = evolu.update("sessions", {
     id: id as SessionId,
-    value: FiniteNumber.orThrow(words),
-    source: "derived",
+    value: FiniteNumber.orThrow(w.value),
+    source: w.source,
   });
   return checked(res, "derived refresh") ? good : bad("Write failed — see console.");
 };
@@ -436,10 +443,12 @@ export const refreshDerived = async (id: string, day: string): Promise<WriteResu
 /** The OVERRIDE field: a hand value detaches the count (`derived` → `manual`). */
 export const overrideDerived = (id: string, value: number): WriteResult => {
   if (!Number.isFinite(value) || value < 0) return bad("A word count cannot be negative.");
+  const w = resolveKeyboardWrite("override", { source: null, value: null }, 0, value);
+  if (w == null) return good; // unreachable for "override"
   const res = evolu.update("sessions", {
     id: id as SessionId,
-    value: FiniteNumber.orThrow(value),
-    source: "manual",
+    value: FiniteNumber.orThrow(w.value),
+    source: w.source,
   });
   return checked(res, "derived override") ? good : bad("Write failed — see console.");
 };

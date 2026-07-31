@@ -40,19 +40,16 @@ import {
   type WaveTableRow,
 } from "./entrySpec";
 import { Panel, StatGroup } from "./kit";
+import { useBox } from "./useBox";
 import { DistPanel } from "./CreationDashboard";
 import { deleteEntriesCascade } from "../library/entryDelete";
 import { showErrorToast, showUndoToast } from "../shell/toast";
+import { todayLocal } from "../metrics/clock";
+import { MONTHS_SHORT } from "../metrics/format";
 import type { CreationHeatCell, CreationModel } from "./creationSpec";
 import "../dashboard.css";
 import "./screen.css";
 import "./entry.css";
-
-const todayLocal = (): string => {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
 
 export function EntryDashboard({
   entryId,
@@ -611,31 +608,10 @@ function RailEdit({
 }
 
 // ── The wave band (kit-timeline-waves) ────────────────────────────────────────
-// Box-sized viewBox (the step-4 ruling); waves = filled area hills, breaks =
-// washed rects with dashed edges + a rotated duration label (the honesty mark),
-// markers = dashed bookend lines. Geometry mirrors the FINAL's drawWaves.
-
-function useBox<T extends Element>() {
-  const ref = useRef<T | null>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
-    measure();
-    let ro: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(measure);
-      ro.observe(el);
-    }
-    window.addEventListener("resize", measure);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, []);
-  return { ref, ...box };
-}
+// Box-sized viewBox (the step-4 ruling, via the shared ./useBox hook); waves =
+// filled area hills, breaks = washed rects with dashed edges + a rotated
+// duration label (the honesty mark), markers = dashed bookend lines. Geometry
+// mirrors the FINAL's drawWaves.
 
 // ── The wave zone (the 2026-07-24 rulings) ────────────────────────────────────
 // Band (scrolling axis — never crams below --wave-bucket-min) + the wave lane
@@ -828,7 +804,6 @@ function WaveBand({
     const numY = laneY + laneH + laneGap;
     const labY = numY + numH + laneGap;
     const ty = (v: number) => padT + (H - padT - padB) * (1 - v / maxV);
-    const MONS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
     const svg = document.createElementNS(SVGNS, "svg");
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
@@ -1062,7 +1037,7 @@ function WaveBand({
             // January carries the year inline ("Jan 2024", bold) so the axis
             // shows both months and years on one always-visible row.
             tk.className = `wxlab tick${isJan ? " yrlab" : ""}`;
-            tk.textContent = isJan ? `${MONS[0]} ${mk.slice(0, 4)}` : MONS[mo - 1];
+            tk.textContent = isJan ? `${MONTHS_SHORT[0]} ${mk.slice(0, 4)}` : MONTHS_SHORT[mo - 1];
             tk.style.left = `${x}px`;
             tk.style.top = `${labY}px`;
             ov.appendChild(tk);

@@ -256,23 +256,48 @@ export interface TimeProgress {
   weekPct: number;
   monthPct: number;
   yearPct: number;
+  /** 1-based day of year — the footer's "Day N of M". */
+  doy: number;
+  daysInYear: number;
+  /** Monday-first week number counted from Jan 1 — the footer's "week N". */
+  week: number;
+  /** 1–4. */
+  quarter: number;
+  /** Progress through the containing calendar quarter. */
+  quarterPct: number;
 }
 
-/** Progress through the containing periods. `now` only affects the day figure. */
+/** Progress through the containing periods. `now` only affects the day figure.
+ * The week/quarter/year footer figures were reunited here from
+ * TimeProgressCard's inline math (2026-07-30 dedup) — `dayOfYear`'s rounding
+ * carries the DST fix, so nothing here divides local-midnight diffs naively. */
 export function timeProgress(dayKey: string, now: Date): TimeProgress {
   const d = dayStart(dayKey);
   const year = d.getFullYear();
-  const daysInYear = (new Date(year + 1, 0, 1).getTime() - new Date(year, 0, 1).getTime()) / DAY_MS;
+  const jan1 = new Date(year, 0, 1);
+  const daysInYear = (new Date(year + 1, 0, 1).getTime() - jan1.getTime()) / DAY_MS;
   const daysInMonth = new Date(year, d.getMonth() + 1, 0).getDate();
   // Weeks run Mon–Sun (the configured default; Settings owns this later).
   const dow = (d.getDay() + 6) % 7;
   const sameDay = now.getFullYear() === d.getFullYear() && now.getMonth() === d.getMonth() && now.getDate() === d.getDate();
   const msIntoDay = sameDay ? now.getTime() - d.getTime() : DAY_MS;
+  const doy = dayOfYear(dayKey);
+  const q = Math.floor(d.getMonth() / 3);
+  // Anchored at noon, as the card always computed it — never within an hour of
+  // a DST boundary, so the ratio stays exact.
+  const noon = new Date(year, d.getMonth(), d.getDate(), 12);
+  const qStart = new Date(year, q * 3, 1);
+  const qEnd = new Date(year, q * 3 + 3, 1);
   return {
     dayPct: Math.min(1, Math.max(0, msIntoDay / DAY_MS)),
     weekPct: (dow + msIntoDay / DAY_MS) / 7,
     monthPct: (d.getDate() - 1 + msIntoDay / DAY_MS) / daysInMonth,
-    yearPct: (dayOfYear(dayKey) - 1 + msIntoDay / DAY_MS) / daysInYear,
+    yearPct: (doy - 1 + msIntoDay / DAY_MS) / daysInYear,
+    doy,
+    daysInYear,
+    week: Math.floor((doy + ((jan1.getDay() + 6) % 7) - 1) / 7) + 1,
+    quarter: q + 1,
+    quarterPct: (noon.getTime() - qStart.getTime()) / (qEnd.getTime() - qStart.getTime()),
   };
 }
 

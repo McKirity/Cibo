@@ -21,17 +21,12 @@
  */
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { winAction } from "./safeWindow";
 import "./fatal.css";
 
 function FatalLaunch({ detail }: { detail: string }) {
-  const close = () => {
-    try {
-      void getCurrentWindow().close().catch(() => {});
-    } catch {
-      /* plain-browser dev — no window API */
-    }
-  };
+  // safeWindow's shared stanza — a missing window (plain-browser dev) is a no-op.
+  const close = winAction((w) => w.close());
   return (
     <div className="launch">
       {/* the minimum OS affordance (decorations are off) — not titlebar content */}

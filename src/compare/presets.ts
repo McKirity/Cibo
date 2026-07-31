@@ -41,16 +41,35 @@ export interface Preset<C = PresetCfg> {
   cfg: C;
 }
 
-const presetsQuery = evolu.createQuery((db) =>
-  db
-    .selectFrom("app_meta")
-    .select(["id", "key", "value", "createdAt"])
-    .where("isDeleted", "is not", 1)
-    .orderBy("createdAt"),
-);
+/**
+ * One query PER PREFIX, narrowed in SQL — subscribing to ALL of app_meta made
+ * every unrelated meta write (autosave_minutes, app_start…) re-fire the
+ * preset menus (2026-07-30). Queries are cached module-side so a prefix's
+ * query object is created once (a fresh object per render would re-subscribe).
+ * SQLite LIKE is the narrowing only — the JS startsWith below stays the exact
+ * authority (LIKE's `_` wildcard and ASCII case-folding are looser).
+ */
+const presetQueryByPrefix = new Map<string, ReturnType<typeof buildPresetsQuery>>();
+const buildPresetsQuery = (prefix: string) =>
+  evolu.createQuery((db) =>
+    db
+      .selectFrom("app_meta")
+      .select(["id", "key", "value", "createdAt"])
+      .where("isDeleted", "is not", 1)
+      .where("key", "like", `${prefix}%` as never)
+      .orderBy("createdAt"),
+  );
+const presetsQueryFor = (prefix: string) => {
+  let q = presetQueryByPrefix.get(prefix);
+  if (q == null) {
+    q = buildPresetsQuery(prefix);
+    presetQueryByPrefix.set(prefix, q);
+  }
+  return q;
+};
 
 export function usePresets<C = PresetCfg>(prefix: string = KEY_PREFIX): Preset<C>[] {
-  const rows = useQuery(presetsQuery);
+  const rows = useQuery(presetsQueryFor(prefix));
   return useMemo(() => {
     const out: Preset<C>[] = [];
     for (const r of rows) {

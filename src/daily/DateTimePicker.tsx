@@ -26,35 +26,17 @@
  * nor is helped by it.
  */
 import { useRef, useState } from "react";
-import { dayFromIndex, dayIndex } from "../metrics/dates";
+import { monthGridCells } from "../metrics/dates";
+import { MONTHS_LONG } from "../metrics/format";
+import { pad2 as pad, todayLocal } from "../metrics/clock";
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
 const DOW = ["M", "T", "W", "T", "F", "S", "S"];
-
-const pad = (n: number) => String(n).padStart(2, "0");
-
-const todayLocal = (): string => {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
 
 /** "Thu 3 Jul" — the frozen face's date label. */
 const dateLabel = (day: string): string =>
   new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric", month: "short" }).format(
     new Date(`${day}T12:00:00`),
   );
-
-/** Monday-first weekday index (0–6) of a day. */
-const dowIndex = (day: string): number => {
-  const js = new Date(`${day}T12:00:00`).getDay();
-  return (js + 6) % 7;
-};
-
-const daysInMonth = (year: number, month: number): number =>
-  new Date(year, month + 1, 0).getDate();
 
 /**
  * 24-HOUR ONLY (user-ruled 2026-07-26: "it should be military time too").
@@ -111,16 +93,8 @@ export function DateTimePicker({
   const shownTime = typed ?? time;
 
   // The grid: leading days of the previous month, this month, then trailing —
-  // always whole weeks, Monday first.
-  const first = `${view.y}-${pad(view.m + 1)}-01`;
-  const lead = dowIndex(first);
-  const total = daysInMonth(view.y, view.m);
-  const cells: Array<{ day: string; out: boolean }> = [];
-  for (let i = lead; i > 0; i--) cells.push({ day: dayFromIndex(dayIndex(first) - i), out: true });
-  for (let d = 1; d <= total; d++)
-    cells.push({ day: `${view.y}-${pad(view.m + 1)}-${pad(d)}`, out: false });
-  while (cells.length % 7 !== 0)
-    cells.push({ day: dayFromIndex(dayIndex(cells[cells.length - 1].day) + 1), out: true });
+  // always whole weeks, Monday first (metrics/dates.monthGridCells — 2026-07-30 dedup).
+  const cells = monthGridCells(view.y, view.m);
 
   const scrub = useRef<HTMLDivElement>(null);
   const scrubTo = (clientX: number) => {
@@ -171,7 +145,7 @@ export function DateTimePicker({
         <div className="calpop">
           <div className="caltop">
             <span className="m">
-              {MONTHS[view.m]} {view.y}
+              {MONTHS_LONG[view.m]} {view.y}
             </span>
             <span className="nav">
               <span className="b" onMouseDown={(e) => (e.preventDefault(), stepMonth(-1))}>

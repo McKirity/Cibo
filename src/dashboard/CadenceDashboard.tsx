@@ -13,14 +13,10 @@
 import { useMemo, useState } from "react";
 import { buildCadenceModel, type CadenceModel, type HabitRowVM, type StripVM } from "./cadenceSpec";
 import { useCadenceData } from "./useCadenceData";
+import { todayLocal } from "../metrics/clock";
+import { Ico } from "../shell/icons";
 import type { CadenceScale } from "../metrics/cadence";
 import "./cadence.css";
-
-const todayLocal = (): string => {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
 
 export interface CadenceNav {
   scale: CadenceScale;
@@ -41,7 +37,9 @@ export function CadenceDashboard({
   onOpenDay?: (day: string) => void;
 }) {
   const data = useCadenceData();
-  const today = todayLocal();
+  // The other dashboards' today idiom — read the clock once per mount, not on
+  // every render (conformed 2026-07-30).
+  const [today] = useState(todayLocal);
   const model = useMemo(
     () => (data.ready ? buildCadenceModel(data, scale, anchor, today) : null),
     [data, scale, anchor, today],
@@ -508,10 +506,5 @@ function SleepLine({ v }: { v: import("./cadenceSpec").SleepLineVM }) {
   );
 }
 
-function Ico({ d }: { d: string[] }) {
-  return (
-    <svg className="ico" viewBox="0 0 24 24">
-      {d.map((p, i) => <path key={i} d={p} />)}
-    </svg>
-  );
-}
+// Ico is the shell's shared path-only wrapper (shell/icons.tsx) — the local
+// copy adopted away at the dedup pass (identical markup).

@@ -92,9 +92,12 @@ function ResultCard({
         <Ico d={ICON.check} size={12} />
         In library
       </span>
-      <span className="gcap">
-        <span className="gt">{cand.title}</span>
-        {cand.subtitle != null && <span className="gcreator">{cand.subtitle}</span>}
+      {/* the caption carries the modal's OWN class names — never the library's
+          (see importer.css § the results-card caption: this modal renders
+          inside `.libscreen`, so a borrowed name is a live collision) */}
+      <span className="rcap">
+        <span className="rct">{cand.title}</span>
+        {cand.subtitle != null && <span className="rcsub">{cand.subtitle}</span>}
       </span>
     </button>
   );

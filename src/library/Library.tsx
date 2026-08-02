@@ -484,21 +484,26 @@ export function Library({
   );
 }
 
-/** The portrait cover-forward face shared by catalog + pin cards: capsule (or
- * art, later), badges row, the scrim caption. */
+/** The portrait cover-forward face shared by catalog + pin cards: the art box
+ * (cover + the overlaid badges row) with the caption FOOTER beneath it —
+ * user-ruled 2026-08-01, moving the caption off the cover it had been overlaid
+ * on since 2026-07-11 (titles were unreadable over real box-art). The badges
+ * stayed put; only the caption moved, contents unchanged. */
 function CoverFace({ e, vocab }: { e: LibEntry; vocab: string[] }) {
   return (
     <>
-      <CoverArt title={e.title} cover={e.cover} className="gcover" />
-      <div className="gbadges">
-        {e.status != null ? <StatusPill status={e.status} vocab={vocab} /> : <span />}
-        {e.purchased ? (
-          <span className="cown" title="Purchased">
-            <Ico d={ICON.check} size={13} />
-          </span>
-        ) : (
-          <span />
-        )}
+      <div className="gcovbox">
+        <CoverArt title={e.title} cover={e.cover} className="gcover" />
+        <div className="gbadges">
+          {e.status != null ? <StatusPill status={e.status} vocab={vocab} /> : <span />}
+          {e.purchased ? (
+            <span className="cown" title="Purchased">
+              <Ico d={ICON.check} size={13} />
+            </span>
+          ) : (
+            <span />
+          )}
+        </div>
       </div>
       <div className="gcap">
         {/* priority ends the title row, RIGHT-aligned and decoupled from the

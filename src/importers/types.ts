@@ -29,7 +29,8 @@ export type SourceKey =
 export interface ImportCandidate {
   externalId: string;
   title: string;
-  /** The caption's second line — studio, year, author (the FINAL's .gcreator). */
+  /** The caption's second line — studio, year, author (the FINAL's .gcreator;
+   * the modal's own `.rcsub` since the 2026-08-01 rename). */
   subtitle: string | null;
   /** Remote thumb URL; null renders the capsule lettermark. Fetched Rust-side
    * into a blob URL — the webview never talks to the network. */

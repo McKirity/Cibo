@@ -141,8 +141,9 @@
   color: var(--text-muted); font-weight: var(--weight-bold); }
 .libscreen .pinlabel .pc { font-size: var(--size-caption); color: var(--text-muted); }
 .libscreen .pinrow { display: flex; gap: var(--space-6); flex-wrap: wrap; }
-.libscreen .pincard { position: relative; width: var(--lib-pin-card-w); aspect-ratio: var(--lib-cover-ratio);
-  flex: 0 0 auto; border: none; padding: 0; background: none; font-family: var(--font-ui); text-align: left;
+.libscreen .pincard { position: relative; width: var(--lib-pin-card-w); display: flex; flex-direction: column; align-items: stretch;
+  flex: 0 0 auto; border: var(--border-hairline) solid var(--border); padding: 0;
+  background: var(--panel-background); font-family: var(--font-ui); text-align: left;
   border-radius: var(--radius-medium); overflow: hidden; cursor: pointer; box-shadow: var(--shadow-low);
   transition: box-shadow var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard); }
 .libscreen .pincard:hover { box-shadow: var(--shadow-low), inset 0 0 0 var(--border-heavy) var(--accent); transform: translateY(-2px); }
@@ -157,14 +158,33 @@
 .libscreen .cathead .ct { font-size: var(--size-body); font-weight: var(--weight-bold); color: var(--text-strong); }
 .libscreen .cathead .cm { font-size: var(--size-small); color: var(--text-muted); font-family: var(--font-mono); }
 
-/* GRID view — the cover IS the card, caption overlaid over the scrim wash */
+/* GRID view — the cover sits ON TOP and the caption drops BELOW it into its
+   own footer panel (user-ruled 2026-08-01, reversing the 2026-07-11
+   cover-as-card overlay: over real box-art the titles were unreadable). The
+   card is two stacked parts inside ONE door — `.gcovbox` (the 2:3 art, badges
+   still overlaid on it) + `.gcap` (the footer). ONLY the caption's HOME moved:
+   its contents, order and the priority placement are unchanged; the ink flips
+   from --text-on-filled back to the normal ramp, which is the whole point.
+   The card carries a hairline border because the footer shares
+   --panel-background with the catalog panel behind it — the shadow alone
+   wouldn't draw its edge on every theme. */
+/* rows STRETCH (was `start`, changed 2026-08-01 with the footer): the cards in
+   a row match the tallest, so a two-line title costs its own row height and
+   nothing else — no reserved empty line on every card in the catalog. */
 .libscreen .grid { flex: 1 1 auto; display: grid; grid-template-columns: repeat(var(--lib-grid-cols), 1fr);
-  grid-auto-rows: auto; align-content: start; align-items: start; gap: var(--space-6); }
-.libscreen .gcard { position: relative; aspect-ratio: var(--lib-cover-ratio); border: none; padding: 0;
-  background: none; font-family: var(--font-ui); text-align: left;
+  grid-auto-rows: auto; align-content: start; align-items: stretch; gap: var(--space-6); }
+/* `align-items: stretch` is EXPLICIT on both card faces: the UA sheet gives a
+   <button> its own align-items, and a column flex would otherwise shrink the
+   cover + footer to their content width instead of the card's. */
+.libscreen .gcard { position: relative; display: flex; flex-direction: column; align-items: stretch;
+  border: var(--border-hairline) solid var(--border); padding: 0;
+  background: var(--panel-background); font-family: var(--font-ui); text-align: left;
   border-radius: var(--radius-medium); overflow: hidden; cursor: pointer; box-shadow: var(--shadow-low);
   transition: box-shadow var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard); }
 .libscreen .gcard:hover { box-shadow: var(--shadow-low), inset 0 0 0 var(--border-heavy) var(--accent); transform: translateY(-2px); }
+/* the art half — the aspect ratio moved here off the card, so the card's own
+   height is now cover + footer (both card faces share this box) */
+.libscreen .gcovbox { position: relative; flex: 0 0 auto; aspect-ratio: var(--lib-cover-ratio); overflow: hidden; }
 .libscreen .gcover { position: absolute; inset: 0; }
 .libscreen .gcover .cwm { font-size: var(--size-subheading); }
 .libscreen .gbadges { position: absolute; top: var(--space-4); left: var(--space-4); right: var(--space-4);
@@ -172,37 +192,36 @@
 .libscreen .gbadges .cown { width: 22px; height: 22px; border-radius: var(--radius-full); background: var(--panel-background);
   box-shadow: var(--shadow-low); display: flex; align-items: center; justify-content: center; color: var(--verdict-done); }
 .libscreen .gbadges .cown .ico { stroke-width: 3; }
-.libscreen .gcap { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
-  padding: var(--space-6) var(--space-5) var(--space-5); display: flex; flex-direction: column; gap: var(--space-2);
-  background: linear-gradient(to top, var(--scrim), var(--scrim) 12%, transparent); }
-/* the cover-caption legibility wash — mix amounts carried as drawn (the frozen
-   corpus's tolerated literal family; the cover-scrim dial stays the flagged
-   candidate — per-screen note § freeze lint) */
-.libscreen .gcap::before { content: ""; position: absolute; inset: 0; z-index: -1;
-  background: linear-gradient(to top, color-mix(in oklch, var(--text-strong), transparent 10%),
-    color-mix(in oklch, var(--text-strong), transparent 45%) 55%, transparent); }
-.libscreen .gcap .gt { font-size: var(--size-body); font-weight: var(--weight-bold); color: var(--text-on-filled);
+/* the FOOTER panel — a flow sibling of the art, not an overlay. The scrim
+   gradient and its `::before` legibility wash are GONE with the overlay (the
+   flagged --cover-scrim literal-amount family goes with them here; the import
+   modal keeps its own copy of the overlaid face, `.importmo .gcap`). It hugs
+   its three lines — TIGHTENED 2026-08-01 (user-ruled, the first pass sat too
+   tall): no reserved second title line, --space-4 vertical padding, tight
+   leading throughout, and no lead-in above the rating row. `flex: 1 1 auto`
+   lets it absorb the row's stretch, so a taller neighbour pads THIS card's
+   footer rather than every card carrying the space unconditionally. */
+.libscreen .gcap { position: relative; flex: 1 1 auto;
+  padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-2);
+  background: var(--panel-background); }
+.libscreen .gcap .gt { font-size: var(--size-body); font-weight: var(--weight-bold); color: var(--text-strong);
   white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   line-height: var(--line-tight); }
-.libscreen .gcap .gcreator { font-size: var(--size-caption); color: var(--text-on-filled); opacity: .78;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1em; }
-.libscreen .gcap .grow { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-1); }
-.libscreen .gcap .rating, .libscreen .gcap .rating .st { color: var(--text-on-filled); }
-.libscreen .gcap .chip-h { color: var(--text-on-filled);
-  background: color-mix(in oklch, var(--text-on-filled), transparent 82%); }
+.libscreen .gcap .gcreator { font-size: var(--size-caption); color: var(--text-muted);
+  line-height: var(--line-tight); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1em; }
+.libscreen .gcap .grow { display: flex; align-items: center; gap: var(--space-4); line-height: var(--line-tight); }
 /* priority ENDS the title row, right-aligned (user-ruled 2026-07-27, final
    placement): a flex SIBLING of the title, so the title's line box never
    inflates — the glyph is compact-scaled to sit inside one line's height and
    aligns to the title's first line. Zero priority draws nothing; ownership =
-   the top-right badge alone. On-scrim ink shares carry the caption family's
-   tolerated literal amounts (the .gcap 82% precedent). */
+   the top-right badge alone. (The on-scrim ink overrides retired 2026-08-01
+   with the overlay — the glyph reads the base --divider/--accent pair again;
+   only its compact scaling is still the caption's own.) */
 .libscreen .gcap .gtrow { display: flex; align-items: flex-start; gap: var(--space-3); min-width: 0; }
 .libscreen .gcap .gtrow .gt { flex: 1 1 auto; min-width: 0; }
 .libscreen .gcap .gtprio { flex: 0 0 auto; display: flex; margin-top: 2px; margin-left: auto; }
 .libscreen .gcap .gtprio .prio { gap: 0; }
-.libscreen .gcap .gtprio .prio .ar { width: 9px; height: 5px;
-  color: color-mix(in oklch, var(--text-on-filled), transparent var(--scrim-ink)); }
-.libscreen .gcap .gtprio .prio .ar.on { color: var(--text-on-filled); }
+.libscreen .gcap .gtprio .prio .ar { width: 9px; height: 5px; }
 .libscreen .gcap .chip-h { margin-left: auto; }
 
 /* The LIST view + grid⇄list toggle were REMOVED 2026-07-27 (user-ruled,

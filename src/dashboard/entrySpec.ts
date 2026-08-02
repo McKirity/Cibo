@@ -72,6 +72,8 @@ export interface EntryIdentity {
   started: string | null;
   completed: string | null;
   banner: string | null;
+  /** Stored cover REFERENCE (root-relative), null = the lettermark face. */
+  cover: string | null;
 }
 
 /** A sibling entry (same habit) — the rating-context count + the series strip. */
@@ -117,6 +119,8 @@ export interface RailSpec {
    *  spec-level default is ON. */
   banner: boolean;
   coverLabel: string;
+  /** The cover ref the rail paints over its lettermark box (step 8). */
+  cover: string | null;
   eyebrow: { habit: string; type: string | null };
   title: string;
   byline: string | null;
@@ -464,6 +468,7 @@ function buildRail(input: EntryBuildInput): RailSpec {
   return {
     banner: creation && RAIL_BANNER_DEFAULT,
     coverLabel: initialism(entry.title, 12),
+    cover: entry.cover,
     eyebrow: { habit: input.habitName, type: entry.type },
     title: entry.title,
     byline,
@@ -1108,9 +1113,11 @@ function buildSplit(
   }));
   const tot = totals.reduce((a, x) => a + x.v, 0);
   if (tot <= 0) return null;
-  // Slice colours: the habit hue, then its window-background mixes (62/34/90 —
-  // the --heatmap-ramp complement transcription, cf. the heatmap kit exception).
-  const MIXES = [null, 62, 34, 90];
+  // Slice colours: the habit hue, then its window-background mixes at the
+  // --heatmap-ramp complements — READ via the published --heat-bg-N dials
+  // (src/theme/derived.ts; step 6a retired the 62/34/90 transcription). The
+  // cycle order (full · stop-2 · stop-3 · stop-1) is the drawn face's.
+  const MIXES = [null, "--heat-bg-2", "--heat-bg-3", "--heat-bg-1"] as const;
   return {
     slices: totals.map((x, i) => ({
       label: SPLIT_LABEL[x.def.key] ?? x.def.label,
@@ -1119,7 +1126,7 @@ function buildSplit(
       color:
         MIXES[i % MIXES.length] == null
           ? `var(${colorVar})`
-          : `color-mix(in oklch, var(${colorVar}), var(--window-background) ${MIXES[i % MIXES.length]}%)`,
+          : `color-mix(in oklch, var(${colorVar}), var(--window-background) var(${MIXES[i % MIXES.length]}))`,
     })),
   };
 }

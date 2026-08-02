@@ -28,7 +28,7 @@ import {
   type ShapeChart,
   type TrendSeries,
 } from "./creationSpec";
-import { CAT_RAMP_BG, Panel, StatGroup } from "./kit";
+import { catCellFill, Panel, StatGroup } from "./kit";
 import { EntryCreationModal } from "../library/EntryCreationModal";
 import { todayLocal } from "../metrics/clock";
 import { HEAT_CLASS } from "./specShared";
@@ -465,7 +465,7 @@ export function CreationTrend({ trend, color }: { trend: CreationModel["trend"];
 }
 
 // ── Heatmap (scope faces per categorical · measure faces when two) ────────────
-// CAT_RAMP_BG (the --cat-ramp complement stops) is kit.tsx's export.
+// catCellFill (the --cat-ramp complements via --cat-bg-N) is kit.tsx's export.
 
 function CreationHeatmap({ heatmap }: { heatmap: CreationModel["heatmap"] }) {
   const [scope, setScope] = useState("intensity");
@@ -483,7 +483,7 @@ function CreationHeatmap({ heatmap }: { heatmap: CreationModel["heatmap"] }) {
     if (lvl <= 0 || dom == null) return { style: {}, cls: "hcell", tip: `${c.day} · ${exact}` };
     return {
       style: {
-        background: `color-mix(in oklch, var(${dom.slot}), var(--window-background) ${CAT_RAMP_BG[lvl]}%)`,
+        background: catCellFill(dom.slot, lvl),
         boxShadow: "none",
       } as CSSProperties,
       cls: "hcell",
@@ -624,7 +624,7 @@ function HeroCard({ h, onOpen }: { h: HeroSpec; onOpen?: (entryId: string) => vo
     ? {
         background: `color-mix(in oklch, var(${h.pill.colorVar}), var(--panel-background) var(--tint-mix))`,
         borderColor: `color-mix(in oklch, var(${h.pill.colorVar}), var(--panel-background) var(--tint-border))`,
-        color: `color-mix(in oklch, var(${h.pill.colorVar}), var(--text-strong) 30%)`,
+        color: `color-mix(in oklch, var(${h.pill.colorVar}), var(--text-strong) var(--pill-ink-shift))`,
       }
     : undefined;
   return (

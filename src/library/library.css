@@ -21,6 +21,8 @@
 .capsule .cwm { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   font-family: var(--font-mono); font-weight: var(--weight-bold); letter-spacing: .06em;
   color: color-mix(in oklch, var(--text-muted), var(--inset-background) 45%); }
+/* (the cover ART face is `.cimg`, in kit.css — it serves the capsule, the entry
+   rail and the 5★ hall alike) */
 
 /* status pill — parametrized on --pill-cat (the frozen five `s-*` classes were
    sample-vocab enumeration; a managed vocab reads the dial through the
@@ -199,7 +201,7 @@
 .libscreen .gcap .gtprio { flex: 0 0 auto; display: flex; margin-top: 2px; margin-left: auto; }
 .libscreen .gcap .gtprio .prio { gap: 0; }
 .libscreen .gcap .gtprio .prio .ar { width: 9px; height: 5px;
-  color: color-mix(in oklch, var(--text-on-filled), transparent 65%); }
+  color: color-mix(in oklch, var(--text-on-filled), transparent var(--scrim-ink)); }
 .libscreen .gcap .gtprio .prio .ar.on { color: var(--text-on-filled); }
 .libscreen .gcap .chip-h { margin-left: auto; }
 

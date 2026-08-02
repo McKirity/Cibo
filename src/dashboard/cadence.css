@@ -3,10 +3,11 @@
    (monthly = the chassis; weekly/quarterly/yearly deltas). Scoped under
    `.cadash` — the shared heads (.panel/.tile) are already claimed by earlier
    dashboards; cadence variants stay scoped so nothing repaints them.
-   The verdict heat transcribes --heatmap-ramp over the LOCAL --heat-ink alias
-   (stops 90/62/34/0 — the ramp-transcription carve-out; citation:
-   --heatmap-ramp). --heat-ink is set inline per scale (month slot · quarter
-   compact · the year's ratified --accent). */
+   The verdict heat reads --heatmap-ramp over the LOCAL --heat-ink alias via
+   the published complements (--heat-bg-N, src/theme/derived.ts — step 6a
+   retired the 90/62/34/0 transcription and its carve-out). --heat-ink is set
+   inline per scale (month slot · quarter compact · the year's ratified
+   --accent). */
 
 .cadash{display:flex; flex-direction:column; gap:var(--space-4); max-width:2180px;}
 /* panel clearance = --frame-clear-grand (panel · headliner · dialog — there is
@@ -45,12 +46,14 @@
 .cadash .vc{position:relative; min-height:var(--verdict-cell-min-h); border-radius:var(--radius-small); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); background:var(--panel-background); padding:var(--space-3) var(--space-4); overflow:hidden; transition:box-shadow var(--motion-fast) var(--ease-standard);}
 .cadash .vc .dn{font-size:var(--size-small); font-weight:var(--weight-bold); color:var(--text-strong); position:relative; z-index:1;}
 .cadash .vc .hc{position:absolute; left:var(--space-4); right:var(--space-4); bottom:var(--space-3); z-index:1; font-size:var(--size-caption); color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-/* the five-stage heat — --heatmap-ramp transcribed over --heat-ink (90/62/34/0) */
-.cadash .vc.g1{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 90%); box-shadow:none;}
-.cadash .vc.g2{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 62%); box-shadow:none;}
-.cadash .vc.g3{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 34%); box-shadow:none;}
+/* the five-stage heat — --heatmap-ramp READ via the published complements
+   (--heat-bg-N, src/theme/derived.ts — step 6a; the 90/62/34/0 transcription
+   is retired) over --heat-ink */
+.cadash .vc.g1{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) var(--heat-bg-1)); box-shadow:none;}
+.cadash .vc.g2{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) var(--heat-bg-2)); box-shadow:none;}
+.cadash .vc.g3{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) var(--heat-bg-3)); box-shadow:none;}
 .cadash .vc.g3 .dn, .cadash .vc.g3 .hc{color:var(--text-on-filled);}
-.cadash .vc.g4{background:var(--heat-ink, var(--finalize-mark)); box-shadow:none;}
+.cadash .vc.g4{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) var(--heat-bg-4)); box-shadow:none;}
 .cadash .vc.g4 .dn, .cadash .vc.g4 .hc{color:var(--text-on-filled);}
 .cadash .vc.gap .hc{color:var(--text-muted);}
 .cadash .vc.unf{background:var(--panel-background); box-shadow:none; border:var(--border-standard) dashed var(--finalize-outline);}
@@ -70,13 +73,14 @@
 .cadash .wcol .wdow{font-size:var(--size-caption); font-weight:var(--weight-bold); letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted);}
 .cadash .wcol .wdate{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong);}
 .cadash .wcol .wcount{margin-top:auto; font-family:var(--font-mono); font-size:var(--size-display); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong);}
-.cadash .wcol .wfin{font-size:var(--size-caption); color:var(--text-muted);}
-.cadash .wcol.g1{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 90%); box-shadow:none;}
-.cadash .wcol.g2{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 62%); box-shadow:none;}
-.cadash .wcol.g3{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 34%); box-shadow:none;}
-.cadash .wcol.g3 .wdate, .cadash .wcol.g3 .wcount, .cadash .wcol.g3 .wdow, .cadash .wcol.g3 .wfin{color:var(--text-on-filled);}
-.cadash .wcol.g4{background:var(--heat-ink, var(--finalize-mark)); box-shadow:none;}
-.cadash .wcol.g4 .wdate, .cadash .wcol.g4 .wcount, .cadash .wcol.g4 .wdow, .cadash .wcol.g4 .wfin{color:var(--text-on-filled);}
+/* .wfin (the per-column state caption) died 2026-07-31 — user-ruled: appearance
+   carries the state; the legend + tooltips keep the words. */
+.cadash .wcol.g1{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) var(--heat-bg-1)); box-shadow:none;}
+.cadash .wcol.g2{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) var(--heat-bg-2)); box-shadow:none;}
+.cadash .wcol.g3{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) var(--heat-bg-3)); box-shadow:none;}
+.cadash .wcol.g3 .wdate, .cadash .wcol.g3 .wcount, .cadash .wcol.g3 .wdow{color:var(--text-on-filled);}
+.cadash .wcol.g4{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) var(--heat-bg-4)); box-shadow:none;}
+.cadash .wcol.g4 .wdate, .cadash .wcol.g4 .wcount, .cadash .wcol.g4 .wdow{color:var(--text-on-filled);}
 .cadash .wcol.unf{background:var(--panel-background); box-shadow:none; border:var(--border-standard) dashed var(--finalize-outline);}
 .cadash .wcol.unf .wdate, .cadash .wcol.unf .wcount{color:var(--text-muted);}
 .cadash .wcol.best{box-shadow:inset 0 0 0 var(--focus-ring-weight) var(--accent);}
@@ -104,10 +108,10 @@
 .cadash .monthlabels span{text-align:left; overflow:hidden; white-space:nowrap;}
 .cadash .heataside{margin-top:var(--space-6);}
 .cadash .ncell{border-radius:var(--radius-cell); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); background:var(--panel-background);}
-.cadash .ncell.i0{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 90%); box-shadow:none;}
-.cadash .ncell.i1{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 62%); box-shadow:none;}
-.cadash .ncell.i2{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) 34%); box-shadow:none;}
-.cadash .ncell.i3{background:var(--heat-ink, var(--finalize-mark)); box-shadow:none;}
+.cadash .ncell.i0{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) var(--heat-bg-1)); box-shadow:none;}
+.cadash .ncell.i1{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) var(--heat-bg-2)); box-shadow:none;}
+.cadash .ncell.i2{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) var(--heat-bg-3)); box-shadow:none;}
+.cadash .ncell.i3{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) var(--heat-bg-4)); box-shadow:none;}
 .cadash .ncell.unf{background:var(--panel-background); box-shadow:none; border:var(--border-standard) dashed var(--finalize-outline);}
 .cadash .ncell.ghost{background:var(--window-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); opacity:.4;}
 /* Ruled 2026-07-30: gap days (finalized, nothing logged) take the monthly
@@ -202,7 +206,7 @@
 .cadash .chev .ico{width:18px; height:18px; transition:transform var(--motion-standard) var(--ease-standard);} /* 18px = the flagged Build-snap residue (Monthly note § raw px) */
 .cadash .hgroup.open .chev .ico{transform:rotate(90deg);}
 .cadash .chev.none{visibility:hidden;}
-.cadash .hlab{display:flex; align-items:center; gap:var(--space-5); min-width:0;}
+.cadash .hlab{display:flex; align-items:center; gap:var(--space-5); min-width:0; cursor:pointer;}
 .cadash .hlab .cdot{width:16px; height:16px; border-radius:var(--radius-cell); flex:0 0 auto;}
 .cadash .hlab .hname{font-size:var(--size-subheading); font-weight:var(--weight-bold); color:var(--text-strong);}
 .cadash .htotal{font-family:var(--font-mono); font-size:var(--size-subheading); color:var(--text-strong);}
@@ -224,11 +228,13 @@
 .cadash .cell.u{background:transparent; box-shadow:none; border:var(--border-hairline) dotted var(--verdict-unknown);}
 .cadash .cell.e{background:var(--window-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider);}
 .cadash .cell.fut{background:none; box-shadow:none;}
-/* week/month-grain intensity — habit-hue ramp over --cell-ink (90/62/34/0) */
+/* week/month-grain intensity — habit-hue ramp over --cell-ink, reading the
+   published --heat-bg-N complements (iv1..iv3 ride stops 2..4 — the drawn
+   face's three lit levels) */
 .cadash .cell.iv0{background:var(--window-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider);}
-.cadash .cell.iv1{background:color-mix(in oklch, var(--cell-ink, var(--text-muted)), var(--panel-background) 62%); box-shadow:none;}
-.cadash .cell.iv2{background:color-mix(in oklch, var(--cell-ink, var(--text-muted)), var(--panel-background) 34%); box-shadow:none;}
-.cadash .cell.iv3{background:var(--cell-ink, var(--text-muted)); box-shadow:none;}
+.cadash .cell.iv1{background:color-mix(in oklch, var(--cell-ink, var(--text-muted)), var(--panel-background) var(--heat-bg-2)); box-shadow:none;}
+.cadash .cell.iv2{background:color-mix(in oklch, var(--cell-ink, var(--text-muted)), var(--panel-background) var(--heat-bg-3)); box-shadow:none;}
+.cadash .cell.iv3{background:color-mix(in oklch, var(--cell-ink, var(--text-muted)), var(--panel-background) var(--heat-bg-4)); box-shadow:none;}
 
 /* the expansion */
 .cadash .exp{border:var(--border-hairline) solid var(--divider); border-top:none; background:var(--window-background); border-radius:0 0 var(--radius-small) var(--radius-small); padding:var(--space-5) var(--space-5) var(--space-6); margin-top:-1px;}
@@ -262,7 +268,7 @@
 /* the sleep ranges line (screen-specific composition — kit-row-habit internal) */
 .cadash .sleepline{position:relative; height:84px; margin:var(--space-5) var(--space-6) var(--space-6);}
 .cadash .sl-track{position:absolute; top:42px; left:0; right:0; height:var(--space-3); background:var(--inset-background); border-radius:var(--radius-full);}
-.cadash .sl-band{position:absolute; top:34px; height:22px; border-radius:var(--radius-small); background:color-mix(in oklch, var(--habit-6), var(--panel-background) 62%);}
+.cadash .sl-band{position:absolute; top:34px; height:22px; border-radius:var(--radius-small); background:color-mix(in oklch, var(--habit-6), var(--panel-background) var(--heat-bg-2));}
 .cadash .sl-band .blab{position:absolute; top:-26px; left:0; font-size:var(--size-caption); color:var(--text-secondary); white-space:nowrap; font-weight:var(--weight-medium);}
 .cadash .sl-avg{position:absolute; top:28px; width:var(--border-heavy); height:34px; background:var(--habit-6); border-radius:var(--radius-full);}
 .cadash .sl-tick{position:absolute; top:58px; font-size:var(--size-caption); color:var(--text-muted); transform:translateX(-50%);}

@@ -1,6 +1,13 @@
 /**
  * THE SIX PRE-SEEDED KEEPSAKE SNIPPETS.
  *
+ * DERIVATION-LAW EXEMPT (user-ruled 2026-07-31, the step-6a orphan-amount
+ * batch, family F): keepsake snippet content is ARTWORK DATA — raw hex,
+ * literal mix amounts, and mixes toward #000 in these strings are the art's
+ * own pigment, not app chrome; they render inside a sealed shadow root. The
+ * Build-side lint skips snippet string content; the law governs the app's
+ * own stylesheets and components.
+ *
  * Owning ruling: [[Habit Artwork & Assets]] § Amended 2026-07-26 —
  * "the canonical habits' tiles ship as PRE-SEEDED SNIPPET ROWS, which honours
  * the pasted-snippet ruling exactly (the definition *is* a snippet, synced,

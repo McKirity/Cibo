@@ -57,6 +57,12 @@ export function Capsule({ title, className }: { title: string; className?: strin
   );
 }
 
+// The cover FACE hoisted to kit/CoverArt.tsx 2026-07-31 (the same day it was
+// born) — the entry rail, the 5★ hall and the bulk picker all needed it within
+// the hour, which is exactly the second-reader trigger its watch note named.
+// Re-exported so library-internal import paths keep working.
+export { CoverArt, CoverInner, useCoverUrl } from "../kit/CoverArt";
+
 export function StatusPill({ status, vocab }: { status: string; vocab: string[] }) {
   return (
     <span

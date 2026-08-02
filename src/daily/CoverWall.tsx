@@ -43,6 +43,7 @@ import {
 } from "./wallSpec";
 import { packWall, type Span } from "./wallPack";
 import { KeepsakeTile } from "./KeepsakeTile";
+import { useCoverUrl } from "../kit/CoverArt";
 import { useWallData } from "./useWallData";
 import { useMilestoneDay } from "./useMilestoneDay";
 import { displayTemp, weatherWords } from "./feedData";
@@ -318,6 +319,14 @@ export function CoverWall({
 }
 
 /** The `--slot` a tile paints itself with; only the art-bearing kinds carry one. */
+/** The wall's cover art: the shared reader, drawn OVER the keepsake fallback
+ *  (which stays visible whenever there is no art, per fail-to-fallback). */
+function WallArt({ cover }: { cover: string | null }) {
+  const src = useCoverUrl(cover);
+  if (src == null) return null;
+  return <img className="art" src={src} alt="" />;
+}
+
 const tileStyle = (t: WallTile): Record<string, string> => {
   const b = t.body;
   if (b.kind === "cover" || b.kind === "banner") return { ["--slot"]: `var(--${b.slot})` };
@@ -435,17 +444,13 @@ function Cover({ t }: { t: CoverTile }) {
     <>
       {/* Real cover art at runtime; the typographic keepsake underneath is the
           `kit-tile-fallback` treatment, which stays the permanent look for an
-          entry that never got art. A cover that 404s (the seeded paths point at
-          files that do not exist) removes itself the same way — silently, per
-          the fail-to-fallback law. */}
-      {t.cover != null && (
-        <img
-          className="art"
-          src={t.cover}
-          alt=""
-          onError={(e) => e.currentTarget.remove()}
-        />
-      )}
+          entry that never got art. An absent or dead ref simply draws nothing —
+          silently, per the fail-to-fallback law.
+          FIXED 2026-07-31 (step 8): this drew `src={t.cover}` — the RAW stored
+          reference — which the webview resolved against the dev server and
+          404'd every time, so wall art had never once rendered. The ref is
+          root-relative and its bytes are read Rust-side (kit/CoverArt). */}
+      <WallArt cover={t.cover} />
       <span className="kind">{t.eyebrow}</span>
       {hasIcon(t.icon) && (
         <span className="glyph">
@@ -559,7 +564,7 @@ function Whimsy({
                   flex: s.days,
                   background: s.current
                     ? `var(${s.monthVar})`
-                    : `color-mix(in oklch, var(${s.monthVar}), var(--panel-background) 45%)`,
+                    : `color-mix(in oklch, var(${s.monthVar}), var(--panel-background) var(--quarter-wash-mix))`,
                 }}
               />
             ))}

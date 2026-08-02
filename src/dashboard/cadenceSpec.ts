@@ -90,6 +90,8 @@ export interface StatTileVM {
 export interface StripVM {
   title: string;
   door: boolean; // entries are doors; vocab values are not
+  /** The door's destination — set exactly when `door` is true (entry strips). */
+  entryId?: string;
   total: string;
   best: string;
   cells: DayCellState[] | null; // engaged marks at the row grain ("d"/"e"/"u"/"f")
@@ -713,7 +715,7 @@ function buildExpansion(
     return new Set(subset.map((s) => s.day)).size;
   };
 
-  const stripFor = (title: string, subset: CadSession[], door: boolean, inner = false): StripVM => {
+  const stripFor = (title: string, subset: CadSession[], door: boolean, inner = false, entryId?: string): StripVM => {
     let t = 0, w = 0;
     const perDay = new Map<string, number>();
     for (const s of subset) {
@@ -735,7 +737,7 @@ function buildExpansion(
       const bd = [...perDay.entries()].sort((a, b) => b[1] - a[1])[0];
       if (bd[1] > 0) bestTxt = `best ${dayLabel(bd[0])} · ${fmtAmt(bd[1])}`;
     }
-    return { title, door, total: totalTxt, best: bestTxt, cells: occupancy(subset, days, bounds, scale, ownedWeeks), inner };
+    return { title, door, entryId, total: totalTxt, best: bestTxt, cells: occupancy(subset, days, bounds, scale, ownedWeeks), inner };
   };
 
   // ── Project → entry strips (Writing = card-within-card) ──
@@ -755,7 +757,7 @@ function buildExpansion(
     }
     if (h.measuresTime && h.measuresCount && catKeys.size > 0 && ranked.length > 0) {
       const [topEntry, topSessions] = ranked[0];
-      const story = [stripFor(`${entryTitle.get(topEntry) ?? "—"} — the story`, topSessions, true)];
+      const story = [stripFor(`${entryTitle.get(topEntry) ?? "—"} — the story`, topSessions, true, false, topEntry)];
       const groups = [...catKeys].map((key) => {
         const byValue = new Map<string, CadSession[]>();
         for (const s of topSessions) {
@@ -770,7 +772,7 @@ function buildExpansion(
             .map(([v, ss]) => stripFor(v, ss, false, true)),
         };
       }).filter((g) => g.strips.length > 0);
-      const rest = ranked.slice(1).map(([id, ss]) => stripFor(entryTitle.get(id) ?? "—", ss, true));
+      const rest = ranked.slice(1).map(([id, ss]) => stripFor(entryTitle.get(id) ?? "—", ss, true, false, id));
       return {
         storyCard: { story, groups },
         strips: rest,
@@ -781,7 +783,7 @@ function buildExpansion(
       };
     }
 
-    const strips = ranked.map(([id, ss]) => stripFor(entryTitle.get(id) ?? "—", ss, true));
+    const strips = ranked.map(([id, ss]) => stripFor(entryTitle.get(id) ?? "—", ss, true, false, id));
     return { storyCard: null, strips, cap: listCap, more: Math.max(0, strips.length - listCap), sleepLine: null, measureStrip };
   }
 

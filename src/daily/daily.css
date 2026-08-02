@@ -4,6 +4,13 @@
  * `Final/daily-state-1.html` stylesheet, verbatim, wrapped in `.daily` with
  * native CSS nesting. Build TRANSLATES the FINAL; it does not redesign it.
  *
+ * WHIMSY-INTERIOR MIX AMOUNTS: RATIFIED AS DRAWN (user-ruled 2026-07-31,
+ * the step-6a orphan-amount batch, family A) — the one-off color-mix
+ * percentages inside the whimsy cards stand as frozen literals and are NOT
+ * lint debt. Exceptions already converged onto dials the same day:
+ * --whimsy-fade ×3 · --whimsy-wash-mix ×1 · --tint-mix ×1 · --cover-scrim ×4
+ * (the cover/banner scrim family) · the two oklab hue-arc fixes.
+ *
  * Why nesting rather than prefixing each selector: the first attempt rewrote
  * selectors with a regex and injected `.daily ` INSIDE comments that happened
  * to contain commas, corrupting the sheet. Nesting scopes the whole thing
@@ -97,14 +104,32 @@
   /* ---- the CATCH-UP CARD — the almanac column's one NON-whimsy tenant.
      Functional, not whimsy: it never folds into the wall and it is exempt from
      whimsy-fails-silent. Claimed 2026-07-27 from `kit-staging.css`, which held
-     it because the frozen file styles it and never renders it. ---- */
-    .catch { background: color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-mix));
+     it because the frozen file styles it and never renders it. RE-SHAPED
+     2026-07-31 (user-ruled — the frozen .ttl/p/.acts anatomy was styled-only,
+     never drawn): presence IS the signal, so the card is one wrapping line —
+     dot + label + date-bearing day-door chips, no prose, no count. The chips
+     step UP the surface ladder (panel body on the tint ground); their border
+     and hover reuse the attention token's own tint recipe (--tint-border /
+     --tint-hover), the .catch-flag's drawn hover exactly. ---- */
+    /* row, explicitly — .card's base anatomy is a COLUMN and would otherwise
+       stack dot/label/chips centred down the card */
+    /* baseline, not center: box-centering leaves the label and chip TEXT a hair
+       apart (padding + line-box rounding); baseline locks the text itself. The
+       dot has no baseline, so it alone re-centers. */
+    .catch { display:flex; flex-direction:row; align-items:baseline; flex-wrap:wrap; gap:var(--space-4);
+             background: color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-mix));
              border:var(--border-hairline) solid color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-border)); }
-    .catch .ttl { display:flex; align-items:center; gap:var(--space-4); }
-    .catch .dot { width:var(--dot-size); height:var(--dot-size); border-radius:var(--radius-full); background:var(--attention-dot); flex:0 0 auto; }
-    .catch .lbl { font-size:var(--size-subheading); font-weight:var(--weight-medium); }
-    .catch p { font-size:var(--size-small); color:var(--text-secondary); margin:var(--space-3) 0 var(--space-5); }
-    .catch .acts { display:flex; gap:var(--space-5); font-size:var(--size-small); font-weight:var(--weight-medium); flex-wrap:wrap; }
+    .catch .dot { width:var(--dot-size); height:var(--dot-size); border-radius:var(--radius-full); background:var(--attention-dot); flex:0 0 auto; align-self:center; }
+    .catch .lbl { font-size:var(--size-small); font-weight:var(--weight-medium); margin-right:var(--space-3); }
+    .catch .day { display:inline-flex; align-items:baseline; gap:var(--space-3);
+                  padding:var(--space-2) var(--space-4); border-radius:var(--radius-full);
+                  background:var(--panel-background);
+                  border:var(--border-hairline) solid color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-border));
+                  font-family:var(--font-ui); font-size:var(--size-small); color:var(--text-strong);
+                  cursor:pointer; transition:background var(--motion-fast) var(--ease-standard); }
+    .catch .day:hover { background: color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-hover)); }
+    .catch .day b { font-weight:var(--weight-medium); }
+    .catch .day span { color:var(--text-muted); font-size:var(--size-caption); }
   .ovl { font-size:var(--whimsy-size-caption); font-weight:var(--weight-bold); letter-spacing:.09em;
            text-transform:uppercase; color:var(--text-muted); margin:0 0 var(--space-4);
            display:flex; align-items:center; justify-content:space-between; }
@@ -141,7 +166,9 @@
   /* pass 5 — the sky field fills the space it's given up to its CEILING, and
        scales BELOW it when the sealed band is short (min-height:0). No floor. */
     .sun-field { flex:1 1 auto; min-height:0; max-height:var(--sun-arc-h); }
-  .sun-field::before { background:linear-gradient(to bottom, var(--whimsy-zenith), color-mix(in oklch, var(--whimsy-day), var(--whimsy-dusk) 20%)); }
+  /* in oklab: day→dusk is a saturated hue-distant pair — the oklch hue arc
+     invents hues between them (the 2026-07-26 derivation-law clause). */
+  .sun-field::before { background:linear-gradient(to bottom, var(--whimsy-zenith), color-mix(in oklab, var(--whimsy-day), var(--whimsy-dusk) 20%)); }
   .sun-field .arc { position:absolute; inset:0; width:100%; height:100%; display:block; }
   .sun-disc { position:absolute; width:32px; height:32px; border-radius:var(--radius-full);
                 background:var(--whimsy-sun); transform:translate(-50%,-50%); }
@@ -164,9 +191,13 @@
        sun-disc idiom). The 92px floor carries over from the pre-fit svg rule. */
     .wx-plot { position:relative; flex:1 1 auto; min-height:92px; }
   .wx-plot svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  /* text-strong, NOT --whimsy-ink (the frozen choice): the mark is data text on
+     the CHROME panel ground, and whimsy-ink is art-register — Void's near-black
+     ink vanished on its near-black panel (found 2026-07-31). Same register as
+     .whead, which already reads text-strong. */
   .wx-mark { position:absolute; transform:translate(-50%,-100%); margin-top:calc(-1 * var(--space-2));
                font-family:var(--font-mono); font-size:var(--whimsy-size-caption);
-               font-weight:var(--weight-bold); color:var(--whimsy-ink); }
+               font-weight:var(--weight-bold); color:var(--text-strong); }
   .wx-hours { position:relative; flex:0 0 auto; height:var(--whimsy-size-caption); line-height:1;
                 margin-top:var(--space-2); font-size:var(--whimsy-size-caption); color:var(--text-muted); }
   .wx-hours span { position:absolute; transform:translateX(-50%); }
@@ -202,15 +233,18 @@
   .moon-facts .il { font-family:var(--font-mono); font-size:var(--whimsy-size-stat); font-weight:var(--weight-bold);
                       line-height:1; color:var(--whimsy-moon); }
   .moon-facts .nx { font-size:var(--whimsy-size-small); margin-top:var(--space-3);
-                      color:color-mix(in oklch, var(--whimsy-moon), var(--whimsy-night) 42%); }
+                      color:color-mix(in oklch, var(--whimsy-moon), var(--whimsy-night) var(--whimsy-fade)); }
   .moon-facts .nx b { color:var(--whimsy-moon); font-weight:var(--weight-medium); }
   .pstrip { flex:0 0 auto; display:flex; gap:2px; align-items:center; margin-top:0;
-              border-top:var(--border-hairline) solid color-mix(in oklch, var(--whimsy-moon), var(--whimsy-night) 74%);
+              border-top:var(--border-hairline) solid color-mix(in oklch, var(--whimsy-moon), var(--whimsy-night) var(--whimsy-wash-mix));
               padding:10px var(--space-6); }
   .pstrip .pd { flex:1 1 0; min-width:0; aspect-ratio:1; display:block; }
   .pstrip .pd svg { width:100%; height:100%; display:block; }
   /* ---- TONIGHT'S SKY — the screen's one window onto black ---- */
-    .night-field { flex:1 1 auto; min-height:0; max-height:var(--sun-arc-h); }
+    /* No --sun-arc-h cap here (deviates from the frozen sheet): the card's floor
+       was re-ruled 230px (2026-07-31) so the figure clears, and a capped field
+       would strand the granted height outside the star field. */
+    .night-field { flex:1 1 auto; min-height:0; }
   .night-field::before { background:var(--whimsy-night); }
   .night-field .stars { position:absolute; inset:0; width:100%; height:100%; display:block; }
   .sky-cap { position:absolute; left:var(--space-6); right:var(--space-6); bottom:var(--space-5);
@@ -242,7 +276,7 @@
   /* Fun fact — a domain chip (categorical colour) tags it as one of a set */
     .chip-cat { display:inline-flex; align-items:center; font-size:var(--whimsy-size-caption); font-weight:var(--weight-medium);
                 text-transform:uppercase; letter-spacing:.06em; color:var(--c);
-                background:color-mix(in oklch, var(--c), var(--panel-background) 86%);
+                background:color-mix(in oklch, var(--c), var(--panel-background) var(--tint-mix)); /* 86 → the 85% dial (converged at the 2026-07-31 orphan ruling) */
                 border-radius:var(--radius-full); padding:var(--space-2) var(--space-4); }
   .fact { font-size:var(--whimsy-size-subheading); color:var(--text-secondary); line-height:var(--line-normal); text-wrap:pretty; }
   /* On this day — a vertical timeline; the anniversary is the living bottom node (door = accent) */
@@ -510,8 +544,12 @@
        --backdrop-blur + --shadow-high); in the app it overlays the strips beneath the field —
        drawn in-flow here so the frozen specimen stays static. Dial-clean: no raw values. */
     .pkdrop { border:var(--border-hairline) solid var(--border); border-radius:var(--radius-medium);
-              background:var(--raised-background); backdrop-filter:var(--backdrop-blur);
+              background:var(--raised-background); -webkit-backdrop-filter:var(--backdrop-blur);
+              backdrop-filter:var(--backdrop-blur);
               box-shadow:var(--shadow-high); overflow:hidden; margin-top:var(--space-2); }
+  /* step-6a coverage fix: .pkdrop had no -webkit- prefix and no reduce rule */
+  .reduce-effects .pkdrop { -webkit-backdrop-filter:none; backdrop-filter:none;
+                             background:var(--panel-background); box-shadow:var(--shadow-low); }
   .pkdrop .pk-row { display:flex; align-items:center; gap:var(--space-4);
                       padding:var(--space-4) var(--space-5); font-size:var(--size-body); cursor:pointer; }
   .pkdrop .pk-row + .pk-row { border-top:var(--border-hairline) solid var(--divider); }
@@ -642,14 +680,17 @@
  * shared height, which made them a function of the almanac — backwards.
  *
  * THE MINIMUM HEIGHTS, derived from the FINAL:
- *   --triptych-min is 860px, documented as "the sky column's comfortable
- *   minimum". `.sky-stack` gaps are --space-5 (12px) x 4 = 48px, leaving 812px
- *   for the five cards, split by the drawn weights (2.2 / 1.2 / 1.15 / 1.9 /
- *   1.35, summing 7.8):
+ *   --triptych-min is 1115px (860 at the freeze; 1060 at the 2026-07-26 "give
+ *   height back to the sky column" re-rule; +55 at the 2026-07-31 tonight-card
+ *   re-rule). `.sky-stack` gaps are --space-5 (12px) x 4 = 48px, leaving 1067px
+ *   for the five cards. Four floors are the drawn weights' division of the
+ *   2026-07-26 budget (2.2 / 1.2 / 1.15 / 1.9 / 1.35, summing 7.8, over
+ *   1012px); TONIGHT alone sits 55px ABOVE its weight share, user-ruled
+ *   2026-07-31 so the featured figure clears the caption:
  *
- *     sun 229px · weather 125px · season 120px · moon 198px · tonight 140px
+ *     sun 285px · weather 156px · season 149px · moon 247px · tonight 230px
  *
- *   which sums to exactly 812. Change a weight or the dial and these must be
+ *   which sums to exactly 1067. Change a weight or the dial and these must be
  *   recomputed — they are derived numbers, not taste.
  *
  * No `min-height: fit-content` here: it was added earlier as an anti-clip floor,
@@ -1022,8 +1063,42 @@
            padding:var(--space-6); color:var(--text-on-filled);
            background:var(--slot); }
   .cover > .art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; }
-  .cover:has(> .art)::after { content:""; position:absolute; inset:0; z-index:0;
-                              background:linear-gradient(to top, var(--scrim), transparent 62%); }
+  /* THE CAPTION WASH — the library's cover-caption recipe, with its stops
+     RE-SCOPED to a bottom band (user-ruled 2026-07-31 across three corrections:
+     the tile's original single ramp lost the words in the box-art · a boxed
+     plate behind the title was "incredibly ugly" · a full-height copy
+     "shouldn't cover the entire tile").
+     WHY THE --text-strong MIX IS CORRECT HERE, though it looks like the
+     derivation-law inversion (this cost a round of getting it backwards):
+     --text-strong and --text-on-filled ALWAYS INVERT TOGETHER — near-black +
+     white on the Default, near-white (#f2f2f5) + near-black (#1a0510) on Void.
+     The tile's ink IS --text-on-filled, so wash and ink stay opposite in every
+     theme: a dark wash under white text, a light wash under dark text. Swapping
+     this ramp for a --scrim-only darkening BREAKS that pairing and puts Void's
+     dark ink on a dark bed — which is exactly what it did. The pair is the
+     unit; neither half may be re-derived alone.
+     What WAS wrong: the library authors these stops on `.gcap`, a bottom
+     anchored caption BOX, so they measure against the caption. Transplanted to
+     a full-bleed ::after they measured against the whole tile and veiled the
+     art. Compressed here into the bottom ~44%, so the wash is solid under the
+     justify-end text block and the upper art is untouched. */
+  /* --wash-top is the ONE knob: how far up the tile the wash reaches; every
+     other stop is a fraction of it, so the ramp keeps its SHAPE when it moves.
+     Tuned to the user's eye 2026-07-31: 44% → 34% → 26%, and the falloff
+     steepened to read as a BOUNDARY rather than a long haze — the band holds
+     near-full to ~⅔ of its height, then clears over the last third. Still a
+     gradient, not an edge: a hard cut is the "plate" face that was rejected.
+     ONE LAYER, deliberately: this stacked a --scrim pass over the ramp (the
+     library's own two-layer face), and since the first-listed background paints
+     ON TOP, a black scrim sat over Void's near-white ramp and the band rendered
+     GRAY — user-ruled 2026-07-31, "the wash should be white instead of gray".
+     The ramp alone carries it. It is not hardcoded white: --text-strong is the
+     theme's ink, so this is near-WHITE under a dark theme (which is the wanted
+     face) and near-BLACK under a light one — staying opposite --text-on-filled,
+     the tile's ink, exactly as the pair requires. */
+  .cover:has(> .art)::after { --wash-top:26%; content:""; position:absolute; inset:0; z-index:0;
+                              background:linear-gradient(to top, color-mix(in oklch, var(--text-strong), transparent 6%),
+                                           color-mix(in oklch, var(--text-strong), transparent 22%) calc(var(--wash-top) * .66), transparent var(--wash-top)); }
   .cover .kind { position:absolute; top:var(--space-5); left:var(--space-6); z-index:1;
                  font-family:var(--font-mono); font-size:var(--size-caption); letter-spacing:.06em;
                  text-transform:uppercase; color:var(--text-on-filled); opacity:.8; }
@@ -1039,7 +1114,7 @@
                  margin-top:var(--space-4); display:flex; align-items:center; gap:var(--space-4);
                  flex-wrap:wrap; font-family:var(--font-mono); font-size:var(--size-caption); }
   .cover .chip { display:inline-flex; align-items:center; gap:var(--space-2); padding:var(--space-1) var(--space-4);
-                 border-radius:var(--radius-full); background: color-mix(in oklch, var(--slot), var(--scrim) 55%);
+                 border-radius:var(--radius-full); background: color-mix(in oklch, var(--slot), var(--scrim) var(--cover-scrim));
                  color:var(--text-on-filled); }
   .cover .dur { font-weight:var(--weight-bold); }
   .cover .stars { letter-spacing:.12em; color:var(--text-on-filled); }
@@ -1088,17 +1163,17 @@
   .banner > img.art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; }
   /* the shadow the art sits under — legibility for the text above it */
   .banner:has(> img.art)::after { content:""; position:absolute; inset:0; z-index:1;
-                                  background:linear-gradient(to top, var(--scrim), color-mix(in oklch, var(--scrim), transparent 55%)); }
+                                  background:linear-gradient(to top, var(--scrim), color-mix(in oklch, var(--scrim), transparent var(--cover-scrim))); }
   .banner .kind { position:relative; z-index:2; font-family:var(--font-mono); font-size:var(--size-caption);
                   text-transform:uppercase; letter-spacing:.18em;
-                  color: color-mix(in oklch, var(--slot), var(--text-on-filled) 55%); }
+                  color: color-mix(in oklch, var(--slot), var(--text-on-filled) var(--cover-scrim)); }
   .banner .foot { position:relative; z-index:2; display:flex; flex-direction:column; gap:var(--space-3); }
   .banner .ttl { font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold);
                  line-height:var(--line-tight); text-wrap:pretty; }
   .banner .meta { display:flex; align-items:center; gap:var(--space-4); flex-wrap:wrap; }
   .banner .stage { font-family:var(--font-mono); font-size:var(--size-caption);
                    padding:var(--space-1) var(--space-4); border-radius:var(--radius-small);
-                   background: color-mix(in oklch, var(--slot), var(--scrim) 55%);
+                   background: color-mix(in oklch, var(--slot), var(--scrim) var(--cover-scrim));
                    color:var(--text-on-filled); }
   .banner .nums { font-family:var(--font-mono); font-size:var(--size-subheading); font-weight:var(--weight-bold); }
   .banner .nums span { font-weight:var(--weight-regular); opacity:.7; }
@@ -1143,11 +1218,11 @@
   .whim-word .def { font-size:var(--size-caption); color:var(--text-secondary); line-height:var(--line-normal); text-wrap:pretty; }
 
   .whim-moon { background:var(--whimsy-night); border-color: color-mix(in oklch, var(--whimsy-night), var(--text-strong) 12%); }
-  .whim-moon .wl { color: color-mix(in oklch, var(--whimsy-moon), var(--whimsy-night) 40%); }
+  .whim-moon .wl { color: color-mix(in oklch, var(--whimsy-moon), var(--whimsy-night) var(--whimsy-fade)); }
   .whim-moon .body { flex:1 1 auto; display:flex; align-items:center; gap:var(--space-4); }
   .whim-moon .disc { width:44px; height:44px; flex:0 0 auto; }
   .whim-moon .il { font-family:var(--font-mono); font-size:var(--size-subheading); font-weight:var(--weight-bold); color:var(--whimsy-moon); line-height:1; }
-  .whim-moon .ph { font-size:var(--size-caption); color: color-mix(in oklch, var(--whimsy-moon), var(--whimsy-night) 42%); }
+  .whim-moon .ph { font-size:var(--size-caption); color: color-mix(in oklch, var(--whimsy-moon), var(--whimsy-night) var(--whimsy-fade)); }
 
   .whim-fact .body { flex:1 1 auto; display:flex; flex-direction:column; justify-content:center; gap:var(--space-3); }
   /* The FINAL pins the chip to --cat-1; the app's fact carries its own slot,

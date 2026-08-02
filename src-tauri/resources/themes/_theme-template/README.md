@@ -11,29 +11,32 @@ at launch. The folder rides your cloud drive, so it appears on both devices auto
 
 | File / folder                    | What it is                                          | Dimensions | Required? |
 | -------------------------------- | --------------------------------------------------- | ---------- | --------- |
-| `theme.css`                      | The `:root` values — 233 dials                      | —          | **Yes**   |
+| `theme.css`                      | The `:root` values — 247 dials                      | —          | **Yes**   |
 | `backdrop.<ext>`                 | Still — the main backdrop, painting the whole window | 2560×1440  | No        |
 | `backdrop_loop.mp4`              | Motion — the whole scene as a seamless opaque loop   | 2560×1440  | No        |
 | `backdrop_loop/`                 | Motion — patch loops (animated crops of the still)   | per patch  | No        |
 | `timer.<ext>`                    | Still — the Timers-screen backdrop                   | 2560×1440  | No        |
 | `timer_loop.mp4` · `timer_loop/` | Timer motion — the same two types                    | —          | No        |
-| `vignette/`                      | The rail's small ambient loop                        | 340×170    | No        |
+| `fonts/`                         | Font files this theme's type dials name              | —          | No        |
 | `decoration/`                    | Per-slot ornament art                                | per slot   | No        |
 
 **The only required file is `theme.css`.** A theme with no art is simply a recolour — nothing
 breaks, silence is always valid. A theme with no `backdrop` has no backdrop; the window shows the
 theme's flat `--window-background`.
 
-## The three ambience surfaces
+## The two ambience surfaces
 
 - **`backdrop`** — the lowest layer, painting the **whole window**; panels, tiles, and the
   attached rail all sit on top. On resize it **cover-scales** (never stretches, never letterboxes)
-  toward the theme's focal anchor — default **(1470, 740)**, the pane's optical centre.
+  **with the image's right top and bottom corners anchored to the window's right corners** —
+  the right edge always rides the window's right edge, and a wider window reveals more of the
+  left *(re-ruled 2026-07-31)*. Compose accordingly: the important subjects sit toward the
+  **right** (the content pane's side); the left quarter is the under-rail falloff zone and the
+  first region cropped.
 - **`timer`** — **replaces** `backdrop` on the Timers screen, so only one full-scene loop is ever
-  visible at a time. Absent → falls back to `backdrop`. Default anchor **(1280, 740)**, the window
-  centre (the Timers screen runs rail-minimized by design).
-- **`vignette`** — a fixed **340×170** box, centred in the rail's flex band and positioned by
-  code. Space-conditional: if the band can't clear it, it drops cleanly.
+  visible at a time. Absent → falls back to `backdrop`. Crop: **dead center to dead center** —
+  compose the important parts around the image's centre (the Timers screen runs rail-minimized
+  by design).
 
 ## Motion — exactly two types, never both on one surface
 
@@ -63,21 +66,43 @@ still's cover-scaled container, so authored coordinates hold at every window siz
 - **Reduce-effects hides all motion** and leaves the stills; motion pauses when the window is
   hidden or minimized.
 
-## The vignette — the same vocabulary at 340×170
+## Fonts — drop them in, nothing installs
 
-- **PNG frames** (the default): zero-padded frames + a manifest holding only `{ "fps": N }` — no
-  coordinates, code anchors the box. This is the **only** form that may use transparency (a sprite
-  sitting directly on the rail surface). `001.png` doubles as the poster.
-- **`still.png` + `loop.mp4`**: for a long opaque mini-scene filling the box.
-- Idle behavior ("mostly still, occasionally stirs") is **baked into the frame sequence**, never
-  coded. Mostly-identical frames are near-free.
-- **A `vignette/` folder wins over a theme's code-drawn vignette**, if it has one.
+A theme can carry its own fonts in a **`fonts/`** folder. **The filename is the family name**:
+`Anton.ttf` becomes the family `Anton`, and `theme.css` just names it —
+
+```css
+--font-heading: "Anton", Impact, sans-serif;
+```
+
+The app registers them itself when the theme applies. **Nothing is installed on your system** —
+no admin rights, nothing in Windows' font settings, nothing left behind when you switch themes.
+The folder rides your cloud drive with the rest of the theme, so both devices get the same type
+with no second install.
+
+**Multiple weights?** Add a weight to the end of the filename and they join the same family:
+
+```
+fonts/
+├── Anton.woff2                 → family "Anton" (one weight — no suffix needed)
+├── IBMPlexMono-400.woff2       → family "IBMPlexMono", weight 400
+├── IBMPlexMono-500.woff2       → family "IBMPlexMono", weight 500
+└── IBMPlexSans-100-700.woff2   → family "IBMPlexSans", a VARIABLE font covering 100–700
+```
+
+A **variable font needs its range in the name** (`-100-700`), or it will only ever draw at one
+weight. A hyphen followed by anything that isn't a number stays part of the family name.
+
+- **Formats:** `.woff2` (preferred) · `.woff` · `.ttf` · `.otf`.
+- **Soft-fail:** an unreadable font is skipped and the fallback stack in `theme.css` stands.
+  Always keep a sane fallback in the stack.
+- Keep `@font-face` out of `theme.css` — it stays values-only; the `fonts/` folder is the channel.
 
 ## File formats
 
 - **Stills** — `.png` preferred (lossless, alpha). `.jpg`/`.jpeg` fine for opaque scenes;
   `.webp`, `.avif`, `.svg` also render. One file per base name; PNG wins ties.
-- **Patch + vignette frames** — **PNG only**.
+- **Patch frames** — **PNG only**.
 - **Full-scene loops** — **H.264 in `.mp4`, no audio**. Never GIF.
 
 ## `theme.css`

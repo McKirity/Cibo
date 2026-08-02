@@ -204,6 +204,7 @@ export function useEntryData(entryId: string): EntryData {
       started: raw.started,
       completed: raw.completed,
       banner: raw.banner,
+      cover: raw.cover,
     };
   }, [raw]);
 

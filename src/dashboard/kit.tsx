@@ -9,6 +9,7 @@
  */
 import { useState, type CSSProperties } from "react";
 import { useBox } from "./useBox";
+import { CoverInner } from "../kit/CoverArt";
 import type {
   DistColumnSpec,
   LeaderColumnSpec,
@@ -181,7 +182,7 @@ export function LeaderboardColumns({
                   role={h.entryId && onOpenEntry ? "button" : undefined}
                   onClick={h.entryId && onOpenEntry ? () => onOpenEntry(h.entryId!) : undefined}
                 >
-                  <span className="cinit">{h.initial}</span>
+                  <CoverInner cover={h.cover} label={h.initial} />
                 </div>
               ))}
             </div>
@@ -323,9 +324,12 @@ export function TrendPanel({
 // `zeroWord` prop) — "no play" is only the Gaming/default face.
 const HEAT_WORDS = ["no play", "~45 min", "1 h 30", "3 h 10", "5 h+"];
 /** By-Type/categorical cell fill: the dominant slot's cat colour over the
- *  canvas at the --cat-ramp complement (background share) per level (the
- *  FINAL's stops). ONE table — CreationDashboard's heatmap imports it too. */
-export const CAT_RAMP_BG: Record<number, number> = { 1: 78, 2: 52, 3: 26, 4: 0 };
+ *  canvas at the --cat-ramp complement (background share) per level — READ
+ *  via the published --cat-bg-N dials (src/theme/derived.ts; step 6a retired
+ *  the transcribed {78,52,26,0} table). ONE helper — CreationDashboard's
+ *  heatmap imports it too. */
+export const catCellFill = (slotVar: string, level: number): string =>
+  `color-mix(in oklch, var(${slotVar}), var(--window-background) var(--cat-bg-${level}))`;
 
 interface HeatCell {
   day: string | null;
@@ -412,10 +416,7 @@ export function Heatmap({
             {cells.map((c, i) => {
               // Intensity → the habit-ramp level classes. By-Type → an inline
               // color-mix of the dominant type's cat slot (level 0 stays bare).
-              const bg =
-                byType && c.level >= 1 && c.catVar
-                  ? `color-mix(in oklch, var(${c.catVar}), var(--window-background) ${CAT_RAMP_BG[c.level]}%)`
-                  : undefined;
+              const bg = byType && c.level >= 1 && c.catVar ? catCellFill(c.catVar, c.level) : undefined;
               const style: CSSProperties =
                 c.level < 0
                   ? { visibility: "hidden" }

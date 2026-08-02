@@ -170,6 +170,7 @@ export function useLibraryData(habitKey: string): LibraryData {
         hours: a.hours,
         lastDay: a.lastDay,
         sessionCount: a.count,
+        createdAt: String(r.createdAt ?? ""),
       };
     });
   }, [entryRows, sessionRows]);

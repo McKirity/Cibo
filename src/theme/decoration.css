@@ -1,0 +1,169 @@
+/* == THE DECORATION CHANNEL — role → kit-target wiring (step 6a, job 2) =====
+   The 25-slot catalog attaches to kit ROLES, never instances ([[Decoration
+   Layer]]); src/theme/decoration.ts reads a theme's decoration/manifest.json
+   and publishes per-slot custom properties on the root:
+     --deco-<slot>        url(<blob>)    (asset present, slot not switched off)
+     --deco-<slot>-tint   var(<dial>)    (tint override)
+   Every rule below consumes its role's property with an inert fallback, so
+   the sheet is a NO-OP until a manifest publishes something — the bundled
+   pair is art-free by design, and the first Phase-2 asset drops onto live
+   plumbing instead of reopening this layer.
+
+   Selector discipline: border-image-source is an untouched longhand app-wide
+   (safe bare); background-image/-color attachments ride a `:root ` prefix so
+   they outrank the screens' `background:` shorthands regardless of bundle
+   order. Inherit-fallback chains are nested var() fallbacks (headliner →
+   panel · dialog → modal · palette → dialog → modal · the cadence stamp pair
+   cross-inherits). The rail-card split discriminates BY RAIL CONTEXT
+   (.habitgrid vs .tools), never by the bare block — wiring the bare block
+   would collapse the 5a/5b asset split (the 2026-07-14 ruling).
+
+   Deliberately shallow until Phase-2 asset work (the geometry lives in the
+   manifest's reserved slice/scale keys): 9-slice insets, the timer ring's
+   SVG texture, bar-tip glyph placement, and the divider ornament's band
+   anatomy. Their properties PUBLISH today; their paint lands with the
+   assets. Targets that don't exist yet inherit wiring at their steps:
+   kit-calendar-nav (step 9 — the finalize-day mark's primary home),
+   kit-row-progress (step 8), habit-creator/import/manual modals (8/10). */
+
+/* ---- frames (9-slice) --------------------------------------------------- */
+/* panel frame — the five parallel panel implementations + kinship tenants
+   (kit-band-current · kit-table-library's catalog box) */
+.panel, .hero,
+.cadash .cpanel,
+.daily .card,
+:is(.csdash, .advs) .bsec,
+.mapscreen .trunk,
+.libscreen .cat, .libscreen .tbar,
+.libscreen .pinband {
+  border-image-source: var(--deco-frame-panel, none);
+}
+/* headliner frame (falls back to the panel frame) — masthead + tenants */
+.mast, .libscreen .libmast, .erail, .cadash .perhead {
+  border-image-source: var(--deco-frame-headliner, var(--deco-frame-panel, none));
+}
+/* stat-tile frame (no kinship tenant since the 2026-07-25 wave-card strike) */
+.tile, .htile {
+  border-image-source: var(--deco-frame-tile, none);
+}
+/* the rail-card pair — TWO roles on one block, discriminated by rail context */
+.rail .habitgrid .entry {
+  border-image-source: var(--deco-frame-habit-card, none);
+}
+.rail .tools .tool {
+  border-image-source: var(--deco-frame-tool-card, none);
+}
+/* daily-log card frame (collapsed + expanded — the 9-slice re-slices live)
+   + its optional 2D tile fill */
+.daily .strip {
+  border-image-source: var(--deco-frame-daily-log, none);
+}
+:root .daily .strip {
+  background-image: var(--deco-fill-daily-log, none);
+}
+/* whimsy card frame — its own role by ruling, never folded into daily-log */
+.daily .card.whimsy {
+  border-image-source: var(--deco-frame-whimsy, none);
+}
+/* modal frame — every kit-shell-overlay tenant (the --mo-ring clearance is
+   the reserved room; the ring itself stays unpainted until an asset paints it) */
+.dimlayer > .mo {
+  border-image-source: var(--deco-frame-modal, none);
+}
+/* dialog frame (falls back to modal) — confirms + the popover/menu kinship */
+.confirm,
+.calpop, .timepop, .libmenu, .pkdrop,
+:is(.csdash, .advs) .preset-menu {
+  border-image-source: var(--deco-frame-dialog, var(--deco-frame-modal, none));
+}
+/* palette frame (falls back dialog → modal) */
+.palette {
+  border-image-source: var(--deco-frame-palette, var(--deco-frame-dialog, var(--deco-frame-modal, none)));
+}
+/* the rail seam band — NO kit block (the Index's seams checklist owns it);
+   paints into .content's reserved 72px left gutter as a repeat-y band */
+:root .app-frame > .content {
+  background-image: var(--deco-frame-seam, none);
+  background-repeat: repeat-y;
+  background-position: left top;
+  background-size: calc(var(--pane-pad-left) + var(--space-7) + var(--space-5)) auto;
+}
+
+/* ---- strips (1D bands) --------------------------------------------------- */
+:root .tb {
+  background-image: var(--deco-strip-titlebar, none);
+  background-repeat: repeat-x;
+}
+/* section-header flourish (replaces the header's underline when it paints;
+   sub-section scale ruled YES 2026-07-19) — no inherit from the divider */
+:root .phead, :root .cadash .phead, :root .mapscreen .trunk-head,
+:root :is(.csdash, .advs) .bhead, :root .libscreen .cathead,
+:root .chead {
+  background-image: var(--deco-strip-flourish, none);
+  background-repeat: repeat-x;
+  background-position: left bottom;
+}
+/* divider ornament: ONE app-wide role; the app's dividers are borders, not
+   elements — the band attachment anatomy is Phase-2 asset work. Publishes now. */
+
+/* ---- data slots ----------------------------------------------------------- */
+/* bar-fill texture — distributions · leaderboards (+ kit-row-progress, step 8) */
+:root .bfill, :root .lprog, :root .vfill {
+  background-image: var(--deco-fill-bar, none);
+}
+/* timer-fill texture: the ring is an SVG stroke — texture needs the Phase-2
+   renderer pass; NO fallback to bar-fill (struck 2026-07-17). Publishes now. */
+/* heatmap cell pattern (alpha-only, composites over the level colour) */
+:root .hcell, :root .cadash .ncell {
+  background-image: var(--deco-pattern-heatcell, none);
+}
+/* cadence headliner stamp (authored-colour, five stage variants) — cross-
+   inherits with the row stamp; painted into the verdict cells' corner room */
+:root .cadash .vc, :root .cadash .wcol {
+  background-image: var(--deco-stamp-cadence, var(--deco-stamp-row, none));
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) bottom var(--space-3);
+}
+/* row stamp (alpha, poured with the habit hue via mask at Phase 2) — the
+   cadence habit-row cells; cross-inherit mirror of the headliner stamp */
+:root .cadash .cell {
+  background-image: var(--deco-stamp-row, var(--deco-stamp-cadence, none));
+  background-repeat: no-repeat;
+  background-position: center;
+}
+/* bar-tip glyph (zero/mid/max variants): placement anatomy is Phase-2. */
+
+/* ---- stamps & accents ------------------------------------------------------ */
+/* finalize-day mark — tintable, pours --finalize-mark by default; the manifest
+   tint override re-points the dial. Primary home = the nav calendar (step 9);
+   built tenants today: the cadence period header's dot. */
+:root .cadash .perhead .fin .dotm {
+  background-color: var(--deco-stamp-finalize-day-tint, var(--finalize-mark));
+}
+/* review bullets */
+:root .cadash .rline .rmark {
+  color: var(--deco-stamp-bullet-tint, var(--text-muted));
+}
+/* signature empty-state mark (empties only — errors stay token-only) */
+:root .emptybox {
+  background-image: var(--deco-stamp-empty, none);
+  background-repeat: no-repeat;
+  background-position: center top var(--space-6);
+}
+/* milestone emblem — the daily banner seal + the cadence band card mark */
+:root .daily .milestone .emblem, :root .cadash .mcard .mmark {
+  background-image: var(--deco-stamp-milestone, none);
+  background-repeat: no-repeat;
+  background-position: center;
+}
+/* finalize button — the one signature-button carve-out (per-state assets
+   permitted: the law-5 exception) */
+:root .daily .finalize {
+  background-image: var(--deco-button-finalize, none);
+}
+:root .daily .finalize:hover {
+  background-image: var(--deco-button-finalize-hover, var(--deco-button-finalize, none));
+}
+:root .daily .finalize:active {
+  background-image: var(--deco-button-finalize-press, var(--deco-button-finalize-hover, var(--deco-button-finalize, none)));
+}

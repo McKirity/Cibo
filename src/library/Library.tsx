@@ -38,10 +38,12 @@ import {
 } from "./librarySpec";
 import { stars } from "../metrics/format";
 import { useLibraryData } from "./useLibraryData";
-import { Capsule, FilterChip, Ico, ICON, PrioGlyph, Stars, StatusPill } from "./bits";
+import { CoverArt, FilterChip, Ico, ICON, PrioGlyph, Stars, StatusPill } from "./bits";
 import { Pager } from "../kit/Pager";
 import { EntryCreationModal } from "./EntryCreationModal";
 import { BulkEditModal } from "./BulkEditModal";
+import { ImportModal } from "../importers/ImportModal";
+import { importDoorReady } from "../importers/sources";
 import "./library.css";
 
 const PER_PAGE_COLS = "--lib-grid-cols";
@@ -110,6 +112,7 @@ export function Library({
   const [page, setPage] = useState(1);
   const [creationOpen, setCreationOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -345,7 +348,13 @@ export function Library({
               Bulk edit
             </button>
             {importerDoors(habitKey).map((label) => (
-              <button key={label} className="btn-plain" disabled title="Importers arrive at step 8">
+              <button
+                key={label}
+                className="btn-plain"
+                disabled={!importDoorReady(label)}
+                title={importDoorReady(label) ? undefined : "This importer lands later in step 8"}
+                onClick={importDoorReady(label) ? () => setImportOpen(true) : undefined}
+              >
                 <Ico d={ICON.download} size={14} />
                 {label}
               </button>
@@ -373,7 +382,15 @@ export function Library({
                 {importerDoors(habitKey)
                   .slice(0, 1)
                   .map((label) => (
-                    <button key={label} className="btn-plain" disabled title="Importers arrive at step 8">
+                    <button
+                      key={label}
+                      className="btn-plain"
+                      disabled={!importDoorReady(label)}
+                      title={
+                        importDoorReady(label) ? undefined : "This importer lands later in step 8"
+                      }
+                      onClick={importDoorReady(label) ? () => setImportOpen(true) : undefined}
+                    >
                       <Ico d={ICON.download} size={14} />
                       {label}
                     </button>
@@ -462,6 +479,7 @@ export function Library({
       {bulkOpen && (
         <BulkEditModal habitKey={habitKey} data={data} onClose={() => setBulkOpen(false)} />
       )}
+      {importOpen && <ImportModal habitKey={habitKey} onClose={() => setImportOpen(false)} />}
     </div>
   );
 }
@@ -471,7 +489,7 @@ export function Library({
 function CoverFace({ e, vocab }: { e: LibEntry; vocab: string[] }) {
   return (
     <>
-      <Capsule title={e.title} className="gcover" />
+      <CoverArt title={e.title} cover={e.cover} className="gcover" />
       <div className="gbadges">
         {e.status != null ? <StatusPill status={e.status} vocab={vocab} /> : <span />}
         {e.purchased ? (

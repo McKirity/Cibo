@@ -28,12 +28,14 @@ export function CadenceDashboard({
   anchor,
   onNavigate,
   onOpenHabit,
+  onOpenEntry,
   onOpenDay,
 }: {
   scale: CadenceScale;
   anchor: string;
   onNavigate: (nav: CadenceNav) => void;
   onOpenHabit: (habitKey: string) => void;
+  onOpenEntry: (id: string, habitKey: string) => void;
   onOpenDay?: (day: string) => void;
 }) {
   const data = useCadenceData();
@@ -50,6 +52,7 @@ export function CadenceDashboard({
       model={model}
       onNavigate={onNavigate}
       onOpenHabit={onOpenHabit}
+      onOpenEntry={onOpenEntry}
       onOpenDay={onOpenDay}
       today={today}
     />
@@ -60,12 +63,14 @@ function CadenceView({
   model,
   onNavigate,
   onOpenHabit,
+  onOpenEntry,
   onOpenDay,
   today,
 }: {
   model: CadenceModel;
   onNavigate: (nav: CadenceNav) => void;
   onOpenHabit: (key: string) => void;
+  onOpenEntry: (id: string, habitKey: string) => void;
   onOpenDay?: (day: string) => void;
   today: string;
 }) {
@@ -147,10 +152,12 @@ function CadenceView({
                 {m.verdict.cells.map((c, i) => {
                   const go = dayDoor(c.day);
                   return (
+                  /* No state captions on gap/unfinalized cells (user-ruled
+                     2026-07-31): the appearance carries the state, the legend
+                     names it, the tooltip keeps the words. Best keeps its
+                     caption — it carries a count, not a state. */
                   <div key={c.day ?? `x${i}`} className={`vc ${c.cls}${c.best ? " best" : ""}${go ? " door" : ""}`} title={c.tip ?? undefined} onClick={go} role={go ? "button" : undefined} tabIndex={go ? 0 : undefined} onKeyDown={go ? onKeyActivate(go) : undefined}>
                     <span className="dn">{c.label}</span>
-                    {c.cls === "gap" && <span className="hc">gap · 0/{c.active}</span>}
-                    {c.cls === "unf" && <span className="hc">unfinalized</span>}
                     {c.best && c.done != null && <span className="hc">best · {c.done}/{c.active}</span>}
                   </div>
                   );
@@ -167,11 +174,14 @@ function CadenceView({
               {m.verdict.cells.map((c, i) => {
                 const go = dayDoor(c.day);
                 return (
+                /* The .wfin state line is GONE (user-ruled 2026-07-31): its
+                   whole vocabulary (unfinalized/future/finalized) restated
+                   the column's appearance; the legend names the states and
+                   the tooltip keeps the words. */
                 <div key={c.day ?? i} className={`wcol ${c.cls}${c.best ? " best" : ""}${go ? " door" : ""}`} title={c.tip ?? undefined} onClick={go} role={go ? "button" : undefined} tabIndex={go ? 0 : undefined} onKeyDown={go ? onKeyActivate(go) : undefined}>
                   <span className="wdow">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}</span>
                   <span className="wdate">{c.label}</span>
                   <span className="wcount">{c.done != null ? <>{c.done}<span className="u"> / {c.active}</span></> : "—"}</span>
-                  <span className="wfin">{c.cls === "unf" ? "unfinalized — unknown" : c.cls === "blank future" ? "future" : c.best ? "best day · finalized" : "finalized"}</span>
                 </div>
                 );
               })}
@@ -324,6 +334,7 @@ function CadenceView({
               open={open.has(r.key)}
               onToggle={() => toggle(r.key)}
               onOpen={() => onOpenHabit(r.key)}
+              onOpenEntry={(id) => onOpenEntry(id, r.key)}
               moreShown={moreShown.has(r.key)}
               onShowMore={() => setMoreShown(new Set(moreShown).add(r.key))}
             />
@@ -383,12 +394,13 @@ function StackChart({ data, weekly }: { data: { totals: number[]; segs: { colour
 }
 
 function HabitRowView({
-  r, open, onToggle, onOpen, moreShown, onShowMore,
+  r, open, onToggle, onOpen, onOpenEntry, moreShown, onShowMore,
 }: {
   r: HabitRowVM;
   open: boolean;
   onToggle: () => void;
   onOpen: () => void;
+  onOpenEntry: (entryId: string) => void;
   moreShown: boolean;
   onShowMore: () => void;
 }) {
@@ -401,9 +413,16 @@ function HabitRowView({
         tabIndex={0}
         style={{ ["--cell-ink" as string]: ink, cursor: r.expandable ? "pointer" : "default" }}
         onClick={() => (r.expandable ? onToggle() : onOpen())}
+        onKeyDown={onKeyActivate(() => (r.expandable ? onToggle() : onOpen()))}
       >
         <span className={`chev${r.expandable ? "" : " none"}`}><Ico d={["m9 18 6-6-6-6"]} /></span>
-        <span className="hlab"><span className="cdot" style={{ background: ink }} /><span className="hname">{r.name}</span></span>
+        {/* Identity is clickable (shell law): the NAME doors to the habit even on
+            expandable rows, where the row body itself toggles the strips. The
+            frozen face is script-free and drew the whole row as one button with
+            an accent-on-hover name — which reads as a link, so it must be one. */}
+        <span className="hlab" title={`Open ${r.name}`} onClick={(e) => { e.stopPropagation(); onOpen(); }}>
+          <span className="cdot" style={{ background: ink }} /><span className="hname">{r.name}</span>
+        </span>
         <span className="htotal">{r.total}{r.totalSub && <span className="sub"> {r.totalSub}</span>}</span>
         <span className="hbest">{r.best}</span>
         <CellStrip cells={r.cells} />
@@ -424,7 +443,7 @@ function HabitRowView({
           {r.expansion.sleepLine && <SleepLine v={r.expansion.sleepLine} />}
           {r.expansion.storyCard && (
             <div className="scard">
-              {r.expansion.storyCard.story.map((s, i) => <StripView key={`s${i}`} s={s} story />)}
+              {r.expansion.storyCard.story.map((s, i) => <StripView key={`s${i}`} s={s} story onOpenEntry={onOpenEntry} />)}
               {r.expansion.storyCard.groups.map((g) => (
                 <div key={g.heading}>
                   <div className="shead">{g.heading}</div>
@@ -434,7 +453,7 @@ function HabitRowView({
             </div>
           )}
           {(moreShown ? r.expansion.strips : r.expansion.strips.slice(0, r.expansion.cap)).map((s, i) => (
-            <StripView key={i} s={s} />
+            <StripView key={i} s={s} onOpenEntry={onOpenEntry} />
           ))}
           {r.expansion.more > 0 && !moreShown && (
             <div className="estrip more" onClick={onShowMore}>
@@ -471,9 +490,21 @@ function CellStrip({ cells }: { cells: HabitRowVM["cells"] }) {
   );
 }
 
-function StripView({ s, story }: { s: StripVM; story?: boolean }) {
+/** Entry strips door to their entry dashboard (identity is clickable) — the
+ *  spec marked them `door: true` from the start and the CSS reserves the
+ *  `.edoor` arrow column; the click and the arrow were never wired (found at
+ *  the 2026-07-31 GUI pass). Vocab strips stay inert. */
+function StripView({ s, story, onOpenEntry }: { s: StripVM; story?: boolean; onOpenEntry?: (entryId: string) => void }) {
+  const go = s.door && s.entryId != null && onOpenEntry != null ? () => onOpenEntry(s.entryId!) : undefined;
   return (
-    <div className={`estrip${s.door ? " door" : ""}${story ? " story" : ""}${s.inner ? " inner" : ""}`}>
+    <div
+      className={`estrip${s.door ? " door" : ""}${story ? " story" : ""}${s.inner ? " inner" : ""}`}
+      title={go ? `Open ${s.title}` : undefined}
+      onClick={go}
+      role={go ? "button" : undefined}
+      tabIndex={go ? 0 : undefined}
+      onKeyDown={go ? onKeyActivate(go) : undefined}
+    >
       <span className="et">{!s.inner && <span className="tick" />}{s.title}</span>
       <span className="etot">{s.total}</span>
       <span className="ebest">{s.best}</span>

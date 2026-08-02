@@ -43,6 +43,7 @@ import { HabitIcon, hasIcon } from "./habitIcons";
 import { Ico } from "./icons";
 import { Titlebar } from "./Titlebar";
 import { VignetteClock } from "./VignetteClock";
+import { Ambience } from "../theme/Ambience";
 import { NotYetDashboard } from "./NotYetDashboard";
 import { LogView, REDUCE_KEY } from "./DevPanels";
 import { viewTitle, type View } from "./views";
@@ -258,6 +259,9 @@ export function Shell() {
 
   return (
     <div className="app-frame">
+      {/* step 6a — the whole-window ambience layer (backdrop · timer backdrop);
+          silent (null) for the art-free bundled pair */}
+      <Ambience timers={view.kind === "timers"} />
       <Titlebar
         title={title}
         canBack={canBack}
@@ -441,6 +445,7 @@ export function Shell() {
             anchor={view.anchor}
             onNavigate={(nav) => setView({ kind: "cadence", scale: nav.scale, anchor: nav.anchor })}
             onOpenHabit={(key) => setView({ kind: "habit", key })}
+            onOpenEntry={(id, habitKey) => setView({ kind: "entry", id, habitKey })}
             onOpenDay={openDay}
           />
         ) : view.kind === "compare" ? (

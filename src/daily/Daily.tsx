@@ -325,10 +325,12 @@ function WorkingDay({
   }, []);
   const appYears = useMemo(() => appAnniversary(appStart, dayKey), [appStart, dayKey]);
 
-  // Recent unfinalized days, today excluded — today is not "behind".
+  // Unfinalized days before the viewed one — today is not "behind". No cap:
+  // the card's whole job is naming WHICH days (re-ruled 2026-07-31; the old
+  // slice(0,4) silently dropped the tail), and the chips wrap.
   const unfinalizedRows = useQuery(unfinalizedQuery);
   const catchUp = useMemo(
-    () => unfinalizedRows.map((r) => String(r.date)).filter((d) => d < dayKey).slice(0, 4),
+    () => unfinalizedRows.map((r) => String(r.date)).filter((d) => d < dayKey),
     [unfinalizedRows, dayKey],
   );
 
@@ -391,7 +393,8 @@ function WorkingDay({
   );
 }
 
-const CATCH_WEEKDAY = new Intl.DateTimeFormat(undefined, { weekday: "long" });
+const CATCH_WD = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+const CATCH_MD = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
 
 /**
  * The catch-up card. Drawn-vs-described: the frozen state-1 file STYLES `.catch`
@@ -399,7 +402,13 @@ const CATCH_WEEKDAY = new Intl.DateTimeFormat(undefined, { weekday: "long" });
  * built for the same reason (described, styled, and the only thing missing was
  * the markup).
  *
- * Each listed day is a door. "Open the catch-up queue" — the popover the ruling
+ * RE-SHAPED 2026-07-31 (user-ruled): presence IS the signal, so the card is one
+ * wrapping line — dot + "Still open" + date-bearing day chips — no prose, no
+ * count. Weekday alone was ambiguous past a week (two Mondays, nothing to tell
+ * them apart), so every chip carries its date; yesterday reads as "Yesterday"
+ * relative to the REAL today, never the viewed day.
+ *
+ * Each chip is a door. "Open the catch-up queue" — the popover the ruling
  * gives the rail's flag — waits for step 9's nav calendar; until then this card
  * IS the queue, which is what the ruling calls a second door to the same
  * machinery rather than a different feature.
@@ -411,40 +420,28 @@ function CatchUpCard({
   days: string[];
   onOpenDay?: (day: string) => void;
 }) {
-  const first = days[0];
-  const label = CATCH_WEEKDAY.format(new Date(`${first}T12:00:00`));
+  const y = new Date(`${todayLocal()}T12:00:00`);
+  y.setDate(y.getDate() - 1);
+  const yesterday = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, "0")}-${String(y.getDate()).padStart(2, "0")}`;
   return (
     <div className="card catch">
-      <div className="ttl">
-        <span className="dot" />
-        <span className="lbl">
-          {days.length === 1 ? `${label} is still open` : `${days.length} days to finalize`}
-        </span>
-      </div>
-      <p>
-        {days.length === 1
-          ? "Finish it and it becomes a keepsake."
-          : "Late days stay unfinalized until you close them — nothing is counted as missed in the meantime."}
-      </p>
-      <div className="acts">
-        {days.map((d) => (
-          <span
-            key={d}
-            className="door"
-            role="button"
-            tabIndex={0}
-            onClick={onOpenDay ? () => onOpenDay(d) : undefined}
-            onKeyDown={(e) => {
-              if (onOpenDay && (e.key === "Enter" || e.key === " ")) {
-                e.preventDefault();
-                onOpenDay(d);
-              }
-            }}
-          >
-            {CATCH_WEEKDAY.format(new Date(`${d}T12:00:00`))}
-          </span>
-        ))}
-      </div>
+      <span className="dot" />
+      <span className="lbl">Still open</span>
+      {days.map((d) => {
+        const noon = new Date(`${d}T12:00:00`);
+        return (
+          <button key={d} className="day" onClick={onOpenDay ? () => onOpenDay(d) : undefined}>
+            {d === yesterday ? (
+              <b>Yesterday</b>
+            ) : (
+              <>
+                <b>{CATCH_WD.format(noon)}</b>
+                <span>{CATCH_MD.format(noon)}</span>
+              </>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

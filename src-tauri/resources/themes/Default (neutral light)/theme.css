@@ -9,7 +9,8 @@
    Ambience: backdrop + timer backdrop SILENT; the vignette is the
    code-drawn tick-face clock (the data-bearing carve-out — no files).
    ---------------------------------------------------------------------
-   244 dials (--band-wash was minted and retired on 2026-07-28, same day, tenantless — the modal
+   247 dials (244 → 247 at the 2026-07-31 step-6a orphan-amount mint — --cover-scrim ·
+   --scrim-ink · --pill-ink-shift; --band-wash was minted and retired on 2026-07-28, same day, tenantless — the modal
    appearance pass ruled ROLES instead of a wash amount; net zero. Four values moved at that pass:
    --raised-background · --backdrop-blur · --overlay-dim · --shadow-high, each annotated in place;
    241 → 244 at the 2026-07-26 whimsy-amount mint; 233 → 241 at the 2026-07-24 wave-zone mint; 234 → 233 at the 2026-07-19 --mini-verdict-cell retirement,
@@ -185,6 +186,9 @@
      ruling replaced it with ROLES: shell = --raised-background · content = --panel-background ·
      well = --inset-background. Roster returns to 244. */
   --absent-wash:       82%;   /* the unlogged/absent cover-wall tile */
+  --cover-scrim:       55%;   /* cover/caption legibility scrim strength (minted 2026-07-31, step 6a — the dial library.css had named as owed) */
+  --scrim-ink:         65%;   /* on-scrim ink share — text receding into a scrim (minted with --cover-scrim) */
+  --pill-ink-shift:    30%;   /* a coloured pill's ink toward --text-strong (sibling of --hover-shift; converged three tenants 2026-07-31) */
 
   /* -- Group 7 · Motion (3 durations + 3 easings) — tuned snappy ------ */
   --motion-fast:        120ms;   /* hover, focus, presses */
@@ -399,7 +403,7 @@
   --donut-size:      64px;  /* CEILING · the period-progress donut diameter */
   --donut-stroke:     7px;
   --shelf-height:   168px;  /* the mystical-shelf band's flex FLOOR */
-  --triptych-min:   1060px;  /* Daily's triptych row MIN height — columns never scroll internally; the PANE scrolls */
+  --triptych-min:   1115px;  /* Daily's triptych row MIN height — columns never scroll internally; the PANE scrolls. 1060→1115 2026-07-31: the tonight card's floor re-ruled 175→230 */
 
   /* -- Theme-owned ambience sizing (1) — NOT structural ---------------
      A theme with no vignette inherits a dead dial and may ignore or

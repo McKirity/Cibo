@@ -185,7 +185,7 @@ button.doorlink:hover {
 .cal-placeholder {
   cursor: pointer;
   border: var(--border-standard) dashed
-    color-mix(in oklch, var(--border), var(--window-background) 35%);
+    color-mix(in oklch, var(--border), var(--window-background) 35%); /* ratified as drawn (2026-07-31 orphan batch, family E) */
   border-radius: var(--radius-medium);
   padding: var(--space-6) var(--space-5);
   text-align: center;
@@ -268,7 +268,12 @@ button.doorlink:hover {
   border: var(--border-hairline) solid var(--divider);
   border-radius: var(--radius-medium);
   cursor: pointer;
-  color: var(--text-secondary);
+  /* --text-secondary → --text-strong, ruled 2026-07-31 at the Blame! mint: a tool card
+     is a door with a one-word label, and on a rail whose register differs from the pane
+     the secondary step read as disabled. This is also the practical half of the
+     "half-wired split-register rail" finding — the other half (minting --rail-inset /
+     --rail-muted) is still open; see [[Blame!]] § Minted state. */
+  color: var(--text-strong);
   font-family: var(--font-ui);
   font-size: var(--size-small);
   font-weight: var(--weight-medium);
@@ -389,3 +394,20 @@ button.doorlink:hover {
     transform: rotate(360deg);
   }
 }
+
+/* == THE AMBIENCE LAYER (step 6a — build glue, no corpus source) ============
+   The backdrop paints the WHOLE window as .app-frame's lowest layer: a
+   negative-z child paints above the frame's flat --window-background and
+   below every in-flow tenant (titlebar · rail · content — an OPAQUE rail
+   covers its column; that is the rail's theme lever, not this layer's).
+   Scaling law re-ruled 2026-07-31: main = right corners pinned · timer =
+   dead-center cover; the placement math is JS (Ambience.tsx), NEVER CSS
+   percentage positioning. Patch loops sit INSIDE the scaled scene at
+   master-coordinate fractions, so they inherit its transform. Motion sheds
+   whole under reduce-effects (the stills stay — the poster-frame law). */
+.ambdrop{position:absolute; inset:0; z-index:-1; overflow:hidden;}
+.ambdrop .ambscene{position:absolute;}
+.ambdrop .ambscene .ambstill{position:absolute; inset:0; width:100%; height:100%;}
+.ambdrop .ambscene .ambpatch{position:absolute;}
+.ambdrop .ambscene video.amb-motion{position:absolute; inset:0; width:100%; height:100%; object-fit:fill;}
+.reduce-effects .ambdrop .amb-motion{display:none;}

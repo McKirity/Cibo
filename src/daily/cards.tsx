@@ -38,6 +38,7 @@ import {
   sunArcPath,
   sunArcPoint,
   sunInfo,
+  tonightsFeature,
   tonightsSky,
   type MoonInfo,
   type SunInfo,
@@ -121,7 +122,7 @@ export function SunCard({ sun, lon, now }: { sun: SunInfo; lon: number; now: Dat
             y1={SUN_ARC.horizon}
             x2={SUN_ARC.w}
             y2={SUN_ARC.horizon}
-            stroke="color-mix(in oklch, var(--whimsy-dusk), var(--whimsy-day) 46%)"
+            stroke="color-mix(in oklab, var(--whimsy-dusk), var(--whimsy-day) 46%)"
             strokeWidth="1.5"
           />
           <path d={sunArcPath()} fill="none" stroke="var(--whimsy-sun)" strokeWidth="2" strokeDasharray="3 7" strokeLinecap="round" />
@@ -379,7 +380,7 @@ export function SeasonCard({ dayKey, lat }: { dayKey: string; lat: number }) {
                   flex: seg.days,
                   background: seg.current
                     ? "var(" + seg.monthVar + ")"
-                    : "color-mix(in oklch, var(" + seg.monthVar + "), var(--panel-background) 45%)",
+                    : "color-mix(in oklch, var(" + seg.monthVar + "), var(--panel-background) var(--quarter-wash-mix))",
                 }}
               />
             ))}
@@ -455,23 +456,29 @@ export function MoonCard({ moon }: { moon: MoonInfo }) {
   );
 }
 
+// The bright figure is the FEATURED asterism's, drawn from tonightsFeature's
+// table — the frozen face's triangle IS the Summer Triangle, so the art and
+// the Featured line move together. The faint dots stay a fixed backfield.
 export function TonightSkyCard({ dayKey, lat }: { dayKey: string; lat: number }) {
   const list = tonightsSky(dayKey, lat);
+  const feat = tonightsFeature(dayKey, lat);
   return (
-    <div className="card whimsy tonight-card" style={{ flex: "1.35 0 175px" }}>
+    <div className="card whimsy tonight-card" style={{ flex: "1.35 0 230px" }}>
       <Ovl label="Tonight's sky" d={I_STAR} />
       <div className="field night-field">
-        <svg className="stars" viewBox="0 0 480 230" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-          <g transform="translate(240 115) scale(0.62) translate(-200 -100)">
+        {/* xMax + the right-shifted centre keep the figure clear of the caption,
+            which owns the bottom-left; narrow cards crop the empty left instead. */}
+        <svg className="stars" viewBox="0 0 480 230" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+          <g transform="translate(340 100) scale(0.62) translate(-200 -100)">
             <g stroke="var(--whimsy-star)" strokeWidth="1.2" opacity="0.65">
-              <line x1="46" y1="52" x2="300" y2="60" />
-              <line x1="300" y1="60" x2="182" y2="158" />
-              <line x1="182" y1="158" x2="46" y2="52" />
+              {feat.lines.map(([a, b], i) => (
+                <line key={i} x1={feat.stars[a][0]} y1={feat.stars[a][1]} x2={feat.stars[b][0]} y2={feat.stars[b][1]} />
+              ))}
             </g>
             <g fill="var(--whimsy-star)">
-              <circle cx="46" cy="52" r="3.4" />
-              <circle cx="300" cy="60" r="3" />
-              <circle cx="182" cy="158" r="3.2" />
+              {feat.stars.map(([x, y, r], i) => (
+                <circle key={i} cx={x} cy={y} r={r} />
+              ))}
             </g>
             <g fill="color-mix(in oklch, var(--whimsy-star), var(--whimsy-night) 48%)">
               <circle cx="110" cy="30" r="1.5" />
@@ -490,7 +497,7 @@ export function TonightSkyCard({ dayKey, lat }: { dayKey: string; lat: number })
         <div className="sky-cap">
           <b>{list[0]}</b>
           {list.length > 1 ? " \u00b7 " + list.slice(1).join(" \u00b7 ") : ""}
-          <span className="feat">Featured · {list[0]}</span>
+          <span className="feat">Featured · {feat.name}</span>
         </div>
       </div>
     </div>

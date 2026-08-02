@@ -35,10 +35,15 @@ export interface LibEntry {
   lastDay: string | null;
   /** Live session count (the bulk confirm's blast radius). */
   sessionCount: number;
+  /** Evolu's row birth timestamp (ISO) — the "Recently added" sort key
+   * (user-asked 2026-08-01 at the importer pass: imports land in bulk, and
+   * "what just arrived" is a different question from "what I last played"). */
+  createdAt: string;
 }
 
 export type SortKey =
   | "recent"
+  | "added"
   | "title"
   | "creator"
   | "rating"
@@ -90,6 +95,7 @@ export const isFilterActive = (s: LibraryViewState): boolean =>
 
 export const SORT_LABELS: Record<SortKey, string> = {
   recent: "Recently played",
+  added: "Recently added",
   title: "Title",
   creator: "Creator",
   rating: "Rating",
@@ -112,16 +118,14 @@ export const recentSortLabel = (habitKey: string): string =>
   ] ?? "Recently active";
 
 /**
- * The per-habit importer door set (doors only — the importers are step 8, the
- * import modal rides them). [[Dashboard Composition]]: gaming Steam · media
- * TMDB + YouTube · reading Calibre + Manga (+ AO3, the 2026-07-21 fifth).
+ * The importer door — ONE per library (user-ruled 2026-08-01 at the step-8
+ * GUI pass: *"just have a single Import that opens the modal and I can then
+ * select from where to import"* — the per-source toolbar doors collapsed,
+ * and gaming's single door reads "Import", never "Import from Steam"). The
+ * modal's area switch owns source selection.
  */
 export const importerDoors = (habitKey: string): string[] =>
-  ({
-    gaming: ["Import from Steam"],
-    media: ["Import from TMDB", "Import from YouTube"],
-    reading: ["Import from Calibre", "Import manga"],
-  })[habitKey] ?? [];
+  habitKey === "gaming" || habitKey === "media" || habitKey === "reading" ? ["Import"] : [];
 
 // ── Filtering (tier-3 local search + the five toolbar filters) ───────────────
 
@@ -162,6 +166,7 @@ const byTitle = (a: LibEntry, b: LibEntry) => a.title.localeCompare(b.title);
  * hours/priority read best-first). Title tiebreaks live in `sortEntries`. */
 const primaryComparators: Record<SortKey, (a: LibEntry, b: LibEntry) => number> = {
   recent: (a, b) => (b.lastDay ?? "").localeCompare(a.lastDay ?? ""),
+  added: (a, b) => b.createdAt.localeCompare(a.createdAt),
   title: byTitle,
   creator: (a, b) =>
     (a.creators[0] ?? a.studios[0] ?? "~").localeCompare(b.creators[0] ?? b.studios[0] ?? "~"),

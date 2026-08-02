@@ -94,11 +94,26 @@
    the cursor arrives; lifting the cursor fades back at --motion-fast as the
    base rules declare. Presses on a hovered control snap for the same reason
    (instant feedback). !important on purpose: this must outrank every
-   per-family transition shorthand without re-touching them all — a
-   declaration-site sweep can retire it at step 6a if wanted. Expansions and
-   overlay entrances are unaffected (they animate elements the cursor is not
-   on, or use keyframes). */
+   per-family transition shorthand without re-touching them all. The
+   declaration-site retirement sweep was offered at 6a's close (2026-07-31)
+   and SKIPPED by ruling — this rule stands as the permanent mechanism; do
+   not re-flag it. Expansions and overlay entrances are unaffected (they
+   animate elements the cursor is not on, or use keyframes). */
 *:hover{transition-duration:0s !important;}
+
+/* ------- Links -------
+   Ported from the 2026-07-31 Blame! theme exhibit. The motivating case: a theme whose
+   accent is PURE WHITE with resting text one step below it, where colour alone is a thin
+   affordance — but the rule is the standing NEVER COLOUR ALONE law, so it is app-wide and
+   theme-agnostic. The underline carries the affordance; the accent carries emphasis.
+   NOTE, verified at the port: the app currently renders ZERO <a> elements (every door is a
+   <button>; there are no string routes until step 9), so this rule is INERT today — it is
+   future-proofing for the first real anchor tenant (the manual viewer is the likely one).
+   The app's existing link-ish idiom, `.doorlink`, already carries its own dotted underline
+   and out-specifies this rule. */
+a{color:var(--accent); text-decoration:underline; text-underline-offset:3px; text-decoration-thickness:var(--border-hairline); text-decoration-color:color-mix(in oklch, var(--accent), transparent var(--fade));}
+a:hover{text-decoration-color:var(--accent); text-decoration-thickness:var(--border-standard);}
+a:focus-visible{outline:var(--focus-ring-weight) solid var(--focus-ring); outline-offset:2px;}
 
 /* ------- Buttons ------- */
 .btn-accent, .btn-plain, .btn-ghost, .btn-danger{display:inline-flex; align-items:center; gap:var(--space-3); font-family:var(--font-ui); font-size:var(--size-body); font-weight:var(--weight-medium); border-radius:var(--radius-small); padding:var(--space-4) var(--space-6); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard); white-space:nowrap;}
@@ -152,13 +167,27 @@
 /* ------- Labels ------- */
 .kicker{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); font-weight:var(--weight-bold); margin-bottom:var(--space-3);}
 
+/* ------- Cover art (step 8, 2026-07-31) -------
+   The painted face of every cover box — the library capsule, the entry rail's
+   .cover, the 5★ hall's .cover. One rule because all three boxes already share
+   the same contract (position:relative + overflow:hidden + the drawn aspect),
+   and the art simply fills it. The box's own hatch/lettermark stays the
+   fallback when a ref is absent or dead ([[Habit Artwork & Assets]] — the
+   lettermark is a legitimate permanent look, never an error state).
+   Component: kit/CoverArt.tsx. */
+.cimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;}
+
 /* ------- Segmented control -------
    THE PILL IS THE APP'S SEGMENTED IDIOM (user-ruled 2026-07-28, at the timer-modal
    appearance pass): --radius-full on the track and on each segment, kit-toggle-segmented-wide.
    The timers' .modeseg drew it first; .segctl moves with it so the two never diverge. */
 .segctl{display:inline-flex; background:var(--inset-background); border-radius:var(--radius-full); padding:var(--space-1); gap:var(--space-1);}
 .segctl button{font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-secondary); background:transparent; border:none; cursor:pointer; padding:var(--space-3) var(--space-6); border-radius:var(--radius-full); transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
-.segctl button[aria-pressed="true"]{background:var(--panel-background); color:var(--text-strong); box-shadow:var(--shadow-low);}
+/* selection accepts EITHER signal: wired controls set aria-pressed, static specimens
+   only carry .on, and a specimen that cannot show its active segment is unreviewable.
+   Ported 2026-07-31 from the Blame! exhibit; INERT in the app today (every built
+   `.segctl` sets aria-pressed — verified at the port), kept for exhibit/spec fidelity. */
+.segctl button[aria-pressed="true"], .segctl button.on{background:var(--panel-background); color:var(--text-strong); box-shadow:var(--shadow-low);}
 
 /* ------- kbd — the keyboard-hint chip -------
    Verbatim from staging (the palette FINAL drew it: the foot legend + the Esc
@@ -185,6 +214,9 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
   .toastslot{animation:toast-in var(--motion-standard) var(--ease-entering);}
 }
 @keyframes toast-in{from{opacity:0; transform:translate(-50%, var(--space-6));} to{opacity:1; transform:translate(-50%, 0);}}
+/* step-6a coverage fix: flatten the toast's high shadow + shed its entrance */
+.reduce-effects .toast{box-shadow:var(--shadow-low);}
+.reduce-effects .toastslot{animation:none;}
 
 /* ------- kit-state-error — failure tier ②, inline where-caused -------
    Verbatim from staging (the empty-and-failure-states sheet's founding
@@ -235,6 +267,8 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
 /* APPEARANCE PASS 2026-07-28 — the same double inset as the modal chassis: .confirm's
    clearance ring (28+8) plus this box's space-8 put prose 68px off the edge. The ring is the
    inset. */
+/* step-6a coverage fix: .confirm had no reduce rule (the 2026-07-31 survey) */
+.reduce-effects .confirm{-webkit-backdrop-filter:none; backdrop-filter:none; background:var(--panel-background); box-shadow:var(--shadow-low);}
 .confirm-body{padding:0; display:flex; flex-direction:column; gap:var(--space-5);}
 .confirm .ch{display:flex; align-items:center; gap:var(--space-4); font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); color:var(--text-strong);}
 .confirm .ch .ico{color:var(--danger); width:var(--size-heading); height:var(--size-heading);}
@@ -375,7 +409,10 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
   color: var(--text-strong); cursor: pointer; white-space: nowrap;
   transition: background var(--motion-fast) var(--ease-standard); }
 .libmenu-item:hover { background: var(--hover-wash); }
-.libmenu-item.on { color: var(--accent); }
+/* never colour alone (2026-07-31, the Blame! exhibit): weight + wash carry the
+   selected state so it survives a theme whose accent is near-indistinguishable
+   from resting text. */
+.libmenu-item.on { color: var(--accent); font-weight: var(--weight-bold); background: var(--selected-wash); }
 .libmenu-item .ico { color: var(--accent); }
 
 /* == the numbered pager face (.pgnums/.pgnum/.pgell) =========================
@@ -439,7 +476,7 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
 :is(.csdash, .advs) .prow.manage{color:var(--text-secondary);}
 :is(.csdash, .advs) .prow.manage:disabled{cursor:default; opacity:.7;}
 :is(.csdash, .advs) .prow.manage .pn{font-weight:var(--weight-regular);}
-.reduce-effects :is(.csdash, .advs) .preset-menu{-webkit-backdrop-filter:none; backdrop-filter:none; background:var(--panel-background); box-shadow:var(--shadow-low);}
+.reduce-effects :is(.csdash, .advs) .preset-menu{-webkit-backdrop-filter:none; backdrop-filter:none; background:var(--panel-background); box-shadow:var(--shadow-low); animation:none;}
 /* build glue: the inline naming input + the empty roster line */
 :is(.csdash, .advs) .prow.namer{cursor:default;}
 :is(.csdash, .advs) .pnamein{flex:1 1 auto; min-width:0; font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-strong); background:var(--inset-background); border:var(--border-hairline) solid transparent; border-radius:var(--radius-small); padding:var(--space-2) var(--space-3); outline:none;}

@@ -425,3 +425,93 @@ export function tonightsSky(dayKey: string, lat: number): string[] {
   if (visible.length === 0) return lat >= 0 ? ["Ursa Minor", "Cassiopeia"] : ["Crux", "Centaurus"];
   return visible.slice(0, 4);
 }
+
+/**
+ * The featured sky highlight — the card's second caption line and its star art.
+ *
+ * The frozen face reads "Featured · the Summer Triangle" under a list that
+ * names Lyra/Cygnus/Aquila, and the drawn figure IS that triangle: Featured is
+ * an ASTERISM distinct from the constellation list, not the list's first entry
+ * repeated (which is what the build did until 2026-07-31). Same curated-table
+ * philosophy as the constellations — an ambient card, not a planetarium.
+ *
+ * Figures are authored in the 400×200 box the card's transform centres into
+ * its 480×230 field; positions are recognisable-shape approximations, not
+ * plotted coordinates. First month+latitude match wins; the circumpolar pair
+ * (Big Dipper north, Southern Cross south) backstops the table the way the
+ * constellation fallbacks do.
+ */
+export interface SkyFeature {
+  name: string;
+  months: number[];
+  minLat: number;
+  maxLat: number;
+  /** `[x, y, r]` in the authored 400×200 box. */
+  stars: Array<[number, number, number]>;
+  /** Index pairs into `stars`. */
+  lines: Array<[number, number]>;
+}
+
+const BIG_DIPPER: SkyFeature = {
+  name: "the Big Dipper",
+  months: [3, 4],
+  minLat: -25,
+  maxLat: 90,
+  stars: [[36, 64, 3], [100, 82, 3], [160, 72, 3], [218, 86, 3], [302, 70, 3.2], [314, 150, 3], [228, 154, 3]],
+  lines: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 3]],
+};
+
+const SOUTHERN_CROSS: SkyFeature = {
+  name: "the Southern Cross",
+  months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+  minLat: -90,
+  maxLat: -25,
+  stars: [[192, 42, 3.2], [200, 178, 3.6], [128, 96, 3], [262, 110, 3.2]],
+  lines: [[0, 1], [2, 3]],
+};
+
+const SKY_FEATURES: SkyFeature[] = [
+  {
+    // Capella · Aldebaran · Rigel · Sirius · Procyon · Pollux, Betelgeuse inside
+    name: "the Winter Hexagon",
+    months: [12, 1, 2],
+    minLat: -55,
+    maxLat: 70,
+    stars: [[200, 16, 3.2], [92, 58, 3.2], [78, 142, 3.4], [192, 186, 3.8], [300, 148, 3.2], [312, 52, 3], [196, 104, 3.4]],
+    lines: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0]],
+  },
+  BIG_DIPPER,
+  {
+    // Arcturus · Spica · Denebola
+    name: "the Spring Triangle",
+    months: [5, 6],
+    minLat: -45,
+    maxLat: 75,
+    stars: [[206, 30, 3.6], [128, 168, 3.4], [330, 140, 3]],
+    lines: [[0, 1], [1, 2], [2, 0]],
+  },
+  {
+    // Vega · Deneb · Altair — the frozen face's own figure, kept verbatim
+    name: "the Summer Triangle",
+    months: [7, 8, 9],
+    minLat: -35,
+    maxLat: 90,
+    stars: [[46, 52, 3.4], [300, 60, 3], [182, 158, 3.2]],
+    lines: [[0, 1], [1, 2], [2, 0]],
+  },
+  {
+    name: "the Great Square of Pegasus",
+    months: [10, 11],
+    minLat: -55,
+    maxLat: 90,
+    stars: [[118, 42, 3.2], [282, 52, 3], [292, 158, 3], [108, 148, 3.2]],
+    lines: [[0, 1], [1, 2], [2, 3], [3, 0]],
+  },
+  SOUTHERN_CROSS,
+];
+
+export function tonightsFeature(dayKey: string, lat: number): SkyFeature {
+  const month = dayStart(dayKey).getMonth() + 1;
+  const hit = SKY_FEATURES.find((f) => f.months.includes(month) && lat >= f.minLat && lat <= f.maxLat);
+  return hit ?? (lat >= 0 ? BIG_DIPPER : SOUTHERN_CROSS);
+}

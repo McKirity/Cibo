@@ -38,6 +38,9 @@ export interface EntryRow {
   rating: number | null;
   /** Entry-level Medium (`entries.type`) — null for habits with no type vocab (Gaming). */
   type: string | null;
+  /** Stored cover REFERENCE (root-relative); null = the lettermark face. Added
+   *  at step 8, when covers first existed to display. */
+  cover?: string | null;
 }
 
 /** Inclusive day-bounds; null = open. */

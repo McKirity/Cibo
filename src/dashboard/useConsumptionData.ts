@@ -79,7 +79,7 @@ export function useConsumptionData(habitKey: string): ConsumptionData {
       evolu.createQuery((db) =>
         db
           .selectFrom("entries")
-          .select(["id", "title", "status", "genre", "rating", "type"])
+          .select(["id", "title", "status", "genre", "rating", "type", "cover"])
           .where("habit_fk", "=", habitId)
           .where("isDeleted", "is not", 1),
       ),
@@ -135,6 +135,7 @@ export function useConsumptionData(habitKey: string): ConsumptionData {
         genre: decodeGenre(r.genre),
         rating: r.rating,
         type: r.type,
+        cover: r.cover,
       })),
     [entryRows],
   );
@@ -161,7 +162,7 @@ export function useConsumptionData(habitKey: string): ConsumptionData {
     () => ({
       ready: habit != null,
       name: habit?.name ?? habitKey,
-      colourSlot: habit?.colour_slot ?? "habit-2",
+      colourSlot: habit?.colour_slot ?? "habit-1", // habit-1: the app-wide null-slot fallback (unified 2026-07-30; this straggler caught at the 6a sweep)
       sessions,
       entries,
       finalized,

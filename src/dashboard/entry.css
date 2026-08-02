@@ -207,7 +207,7 @@
 .log .day .dchip { font-size: var(--size-caption); color: var(--text-secondary); background: var(--panel-background);
               border: var(--border-hairline) solid var(--divider); border-radius: var(--radius-full); padding: 1px var(--space-4); }
 .log .day .best { margin-left: auto; font-size: var(--size-caption); font-weight: var(--weight-bold);
-             color: color-mix(in oklch, var(--cat-3), var(--text-strong) 30%);
+             color: color-mix(in oklch, var(--cat-3), var(--text-strong) var(--pill-ink-shift));
              background: color-mix(in oklch, var(--cat-3), var(--panel-background) var(--tint-mix));
              border: var(--border-hairline) solid color-mix(in oklch, var(--cat-3), var(--panel-background) var(--tint-border));
              border-radius: var(--radius-full); padding: 1px var(--space-4); }

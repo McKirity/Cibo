@@ -86,7 +86,7 @@ export interface LeaderColumnSpec {
   title: string;
   meta?: string;
   rows?: { rank: number; title: string; value: string; pct: number; entryId?: string }[];
-  hall?: { title: string; initial: string; entryId?: string }[];
+  hall?: { title: string; initial: string; entryId?: string; cover?: string | null }[];
 }
 
 export interface DashboardModel {
@@ -390,7 +390,9 @@ export function buildConsumptionDashboard(
   // ── Leaderboards ──
   const longestRuns = leaderboard(sessScoped, ent, "minutes", 5);
   const mostDays = leaderboard(sessScoped, ent, "days", 5);
-  const hall = ent.filter((e) => e.rating === 5).map((e) => ({ title: e.title, initial: initialism(e.title), entryId: e.id }));
+  const hall = ent
+    .filter((e) => e.rating === 5)
+    .map((e) => ({ title: e.title, initial: initialism(e.title), entryId: e.id, cover: e.cover }));
   const leaderboards: LeaderColumnSpec[] = [
     { title: "Longest runs", rows: longestRuns.map((r, i) => ({ rank: i + 1, title: r.title, value: `${groupInt(r.value / 60)} h`, pct: r.pct, entryId: r.entryId })) },
     { title: "Most days", rows: mostDays.map((r, i) => ({ rank: i + 1, title: r.title, value: `${groupInt(r.value)} d`, pct: r.pct, entryId: r.entryId })) },

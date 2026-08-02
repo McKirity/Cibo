@@ -111,6 +111,9 @@ export function periodBounds(scale: CadenceScale, anchor: string): PeriodBounds 
     nextAnchor = dayFromIndex(dayIndex(from) + 7);
     up.push(
       { scale: "month", label: MONTH_ABBR[Number(anchor.slice(5, 7)) - 1] },
+      // The quarter door was missing from the drawn header (month + year only);
+      // user-ruled in 2026-07-31: a week doors to every containing period.
+      { scale: "quarter", label: `Q${quarterOf(anchor)}` },
       { scale: "year", label: anchor.slice(0, 4) },
     );
   } else if (scale === "month") {

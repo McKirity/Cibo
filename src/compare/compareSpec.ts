@@ -28,6 +28,7 @@ import { dayFromIndex, dayIndex, monthKey, weekStart, yearKey } from "../metrics
 import { MONTHS_SHORT, decimal1, groupInt } from "../metrics/format";
 import { sessionMinutes } from "../metrics/shapes";
 import { resolveWindow, type ResolvedWindow, type WindowCfg } from "../kit/periodWindow";
+import { CAT_SLOTS as CAT_SLOT_VARS } from "../dashboard/specShared";
 
 // The period-window vocabulary MOVED to kit/periodWindow.ts 2026-07-30 (the
 // dedup pass — it belongs beside kit/PeriodPicker, its editor). Re-exported
@@ -525,7 +526,9 @@ export interface CmpResult {
   error: string | null;
 }
 
-const CAT_SLOTS = 8;
+// The categorical palette's one owner is specShared.CAT_SLOTS — the local
+// `= 8` copy retired at the 6a sweep (two sources of truth for the count).
+const CAT_SLOTS = CAT_SLOT_VARS.length;
 // Minutes-of-a-session = the canonical shapes.sessionMinutes (the local float
 // copy converged there 2026-07-30 — a sub-minute display shift is accepted).
 

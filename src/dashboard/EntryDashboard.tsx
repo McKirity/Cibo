@@ -40,6 +40,7 @@ import {
   type WaveTableRow,
 } from "./entrySpec";
 import { Panel, StatGroup } from "./kit";
+import { CoverInner } from "../kit/CoverArt";
 import { useBox } from "./useBox";
 import { DistPanel } from "./CreationDashboard";
 import { deleteEntriesCascade } from "../library/entryDelete";
@@ -245,7 +246,7 @@ function RailView({
         <div className="railbanner" style={{ "--rail-hue": `var(${m.colorVar})` } as CSSProperties} />
       )}
       <div className={`cover${r.banner ? " overbanner" : ""}`} title={`${r.title} · cover`}>
-        <span className="cinit">{r.coverLabel}</span>
+        <CoverInner cover={r.cover} label={r.coverLabel} />
       </div>
       <div className="eyebrow">
         <button className="door" onClick={() => onOpenHabit(data.habitKey)}>
@@ -272,7 +273,7 @@ function RailView({
               style={{
                 background: `color-mix(in oklch, var(${r.pill.colorVar}), var(--panel-background) var(--tint-mix))`,
                 borderColor: `color-mix(in oklch, var(${r.pill.colorVar}), var(--panel-background) var(--tint-border))`,
-                color: `color-mix(in oklch, var(${r.pill.colorVar}), var(--text-strong) 30%)`,
+                color: `color-mix(in oklch, var(${r.pill.colorVar}), var(--text-strong) var(--pill-ink-shift))`,
               }}
             >
               {r.pill.label}

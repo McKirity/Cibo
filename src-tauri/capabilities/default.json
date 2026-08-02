@@ -18,11 +18,32 @@
     "core:tray:default",
     "core:image:default",
     "core:app:allow-default-window-icon",
+    "fs:default",
+    { "identifier": "fs:allow-read-dir", "allow": [{ "path": "$RESOURCE/**" }] },
+    { "identifier": "fs:allow-read-text-file", "allow": [{ "path": "$RESOURCE/**" }] },
+    { "identifier": "fs:allow-read-file", "allow": [{ "path": "$RESOURCE/**" }] },
+    { "identifier": "fs:allow-exists", "allow": [{ "path": "$RESOURCE/**" }] },
+    { "identifier": "fs:allow-read-file", "allow": [{ "path": "$APPLOCALDATA/images/**" }] },
+    { "identifier": "fs:allow-write-file", "allow": [{ "path": "$APPLOCALDATA/images/**" }] },
+    { "identifier": "fs:allow-mkdir", "allow": [{ "path": "$APPLOCALDATA/images/**" }] },
+    { "identifier": "fs:allow-exists", "allow": [{ "path": "$APPLOCALDATA/images/**" }] },
+    "dialog:allow-open",
     {
       "identifier": "http:default",
       "allow": [
         { "url": "https://api.open-meteo.com/*" },
-        { "url": "https://freehoroscopeapi.com/*" }
+        { "url": "https://freehoroscopeapi.com/*" },
+        { "url": "https://store.steampowered.com/*" },
+        { "url": "https://shared.cloudflare.steamstatic.com/*" },
+        { "url": "https://api.themoviedb.org/*" },
+        { "url": "https://image.tmdb.org/*" },
+        { "url": "https://graphql.anilist.co/*" },
+        { "url": "https://s4.anilist.co/*" },
+        { "url": "https://www.googleapis.com/*" },
+        { "url": "https://yt3.ggpht.com/*" },
+        { "url": "https://yt3.googleusercontent.com/*" },
+        { "url": "https://archiveofourown.org/*" },
+        { "url": "https://www.gstatic.com/generate_204" }
       ]
     }
   ]

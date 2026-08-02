@@ -39,7 +39,7 @@ import { isFilterActive } from "./librarySpec";
 import { stars } from "../metrics/format";
 import { useLibraryData, type LibraryData } from "./useLibraryData";
 import { useOverlayEsc } from "../shell/overlayHooks";
-import { Capsule, Ico, ICON, Menu, PrioGlyph, StatusPill, type MenuItem } from "./bits";
+import { CoverArt, Ico, ICON, Menu, PrioGlyph, StatusPill, type MenuItem } from "./bits";
 import { deleteEntriesCascade } from "./entryDelete";
 
 const PICKER_SORT_LABELS: Record<PickerSortKey, string> = {
@@ -558,7 +558,7 @@ function PickerRow({
       <span className="lcb">
         <Ico d={ICON.check} size={11} />
       </span>
-      <Capsule title={e.title} className="lthumb" />
+      <CoverArt title={e.title} cover={e.cover} className="lthumb" />
       <span className="lt">{e.title}</span>
       <span className="cell">
         {e.status != null && <StatusPill status={e.status} vocab={vocab} />}

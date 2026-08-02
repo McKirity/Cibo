@@ -106,7 +106,7 @@
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-7) var(--space-4) var(--space-4);
-  background: linear-gradient(transparent, color-mix(in oklch, var(--scrim), var(--text-strong) 65%));
+  background: linear-gradient(transparent, color-mix(in oklch, var(--scrim), var(--text-strong) var(--scrim-ink)));
 }
 .cover .chan .cn {
   font-family: var(--font-heading);

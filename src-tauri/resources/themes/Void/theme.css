@@ -18,7 +18,9 @@
    regression coverage; this file is its shipping fork. The two are free to
    diverge from here — a change to one is not a change to the other.
 
-   244 dials, declaration-parity exact with the Default (--band-wash minted AND retired 2026-07-28, tenantless — the modal appearance pass ruled the SURFACE LADDER instead (kit.css § the ladder): Void's shell/dim/shadow/blur values are ITS OWN and its ladder re-value is OWED at its next pass, with its stale ramps; 233 → 241 at the 2026-07-24 wave-zone mint; 234 → 233 at the
+   247 dials, declaration-parity exact with the Default (244 → 247 at the 2026-07-31 step-6a
+   orphan-amount mint — --cover-scrim · --scrim-ink · --pill-ink-shift, Default values pending
+   Void's own pass; --band-wash minted AND retired 2026-07-28, tenantless — the modal appearance pass ruled the SURFACE LADDER instead (kit.css § the ladder): Void's shell/dim/shadow/blur values are ITS OWN and its ladder re-value is OWED at its next pass, with its stale ramps; 233 → 241 at the 2026-07-24 wave-zone mint; 234 → 233 at the
    2026-07-19 --mini-verdict-cell retirement, tenantless; count corrected
    2026-07-19 — was published as 220; 14 packed declarations were invisible
    to a line-anchored count. Nothing changed).
@@ -53,8 +55,8 @@
   --text-secondary:      #b4b4bd;
   --text-muted:          #7c7c86;
   --text-on-filled:      #1a0510;              /* DARK — fills are bright here */
-  --border:              #3a3a44;
-  --divider:             #26262e;
+  --border:              #8e8e9c;              /* LIFTED 2026-07-31 ×3 (user-ruled: "make it brighter, it's just a dark gray") — now ABOVE --text-muted, a deliberate loudness taken with the 1.5px hairline */
+  --divider:             #4c4c58;              /* lifted in step with --border, keeping the border > divider contrast order */
   --accent:              #ff2d78;              /* hot magenta */
   --hover-wash:          rgba(255,255,255,.06);/* light ink over dark — the neutral wash inverts direction */
   --hover-shift:         14%;
@@ -97,7 +99,7 @@
   --radius-medium:       10px;
   --radius-large:        14px;
   --radius-full:         999px;
-  --border-hairline:     1px;
+  --border-hairline:     1.5px;                /* 1px → 1.5px 2026-07-31 (user-ruled): the colour lifts alone weren't enough on the dark ground. VOID ONLY — the Default keeps 1px; shape is no longer byte-identical to the Default's. */
   --border-standard:     1.5px;
   --border-heavy:        2px;
 
@@ -173,6 +175,9 @@
      surface toward transparent assumes the thing behind is lighter, the mixing-toward-white
      class of mistake). Roster returns to 244. */
   --absent-wash:       74%;
+  --cover-scrim:       55%;   /* minted 2026-07-31 (step 6a); Void's own value owed at its next pass (the ladder-re-value precedent) */
+  --scrim-ink:         65%;
+  --pill-ink-shift:    30%;
 
   /* -- Group 7 · Motion (3 + 3) — the Default timings ------------------ */
   --motion-fast:        120ms;
@@ -364,7 +369,7 @@
   --donut-size:      64px;
   --donut-stroke:     7px;
   --shelf-height:   168px;
-  --triptych-min:   1060px;
+  --triptych-min:   1115px;
 
   /* -- Theme-owned ambience sizing (1) --------------------------------
      Void inherits the Default's code-drawn vignette clock, so this dial

@@ -52,10 +52,13 @@
 .hall::-webkit-scrollbar{height:var(--space-4);}
 .hall::-webkit-scrollbar-thumb{background:var(--border); border-radius:var(--radius-full);}
 .hcell{aspect-ratio:1/1; border-radius:var(--radius-cell); background:var(--panel-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); cursor:default;}
-.hcell.l1{background:color-mix(in oklch, var(--heat-hue), var(--window-background) 90%); box-shadow:none;}
-.hcell.l2{background:color-mix(in oklch, var(--heat-hue), var(--window-background) 62%); box-shadow:none;}
-.hcell.l3{background:color-mix(in oklch, var(--heat-hue), var(--window-background) 34%); box-shadow:none;}
-.hcell.l4{background:var(--heat-hue); box-shadow:none;}
+/* Heat levels read the published ramp complements (--heat-bg-N, derived from
+   --heatmap-ramp by src/theme/derived.ts at every theme apply — step 6a; the
+   90/62/34/0 transcription is retired). */
+.hcell.l1{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-1)); box-shadow:none;}
+.hcell.l2{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-2)); box-shadow:none;}
+.hcell.l3{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-3)); box-shadow:none;}
+.hcell.l4{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-4)); box-shadow:none;}
 .heat{display:grid; grid-template-columns:auto 1fr; gap:var(--space-4);}
 .heat .cells{display:grid; grid-template-columns:repeat(53,1fr); grid-template-rows:repeat(7,1fr); gap:var(--space-1);}
 .heat .cols{display:flex; flex-direction:column; gap:var(--space-2); min-width:0;}
@@ -76,7 +79,11 @@
 .lrow > .ltitle, .lrow > .lval{position:relative; z-index:1;}
 .lrow > .lval{text-align:right;}
 .lrow:hover{background:var(--hover-wash);}
-.lrow:hover .ltitle .nm{color:var(--accent);}
+/* DOOR HOVERS CARRY AN UNDERLINE, not colour alone (ported 2026-07-31 from the
+   Blame! theme exhibit). These four are the LIVE tenants of the never-colour-alone
+   law on identity-is-clickable surfaces: under a theme whose accent sits one step
+   from resting text, a colour-only hover is not an affordance. */
+.lrow:hover .ltitle .nm{color:var(--accent); text-decoration:underline; text-underline-offset:3px;}
 .mast .art .ico{width:38%; height:auto;}
 .mast .hname{font-family:var(--font-heading); font-size:var(--size-display); font-weight:var(--weight-bold); line-height:var(--line-tight);}
 .mast .idcol{min-width:0; padding-top:var(--space-2);}
@@ -98,10 +105,10 @@
 .catleg .lg{display:inline-flex; align-items:center; gap:var(--space-3); font-size:var(--size-caption); color:var(--text-secondary);}
 .catleg .lg .sw{width:var(--space-6); height:var(--space-6); border-radius:var(--radius-cell);}
 .ramp .sw0{background:var(--panel-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider);}
-.ramp .sw1{background:color-mix(in oklch, var(--heat-hue), var(--window-background) 90%);}
-.ramp .sw2{background:color-mix(in oklch, var(--heat-hue), var(--window-background) 62%);}
-.ramp .sw3{background:color-mix(in oklch, var(--heat-hue), var(--window-background) 34%);}
-.ramp .sw4{background:var(--heat-hue);}
+.ramp .sw1{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-1));}
+.ramp .sw2{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-2));}
+.ramp .sw3{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-3));}
+.ramp .sw4{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-4));}
 .spark{display:flex; flex-direction:column; height:100%; padding-left:var(--space-7); border-left:var(--border-hairline) solid var(--divider);}
 .sparkbars{display:flex; align-items:flex-end; gap:var(--space-3); flex:1; min-height:0;}
 .sparkbars .col{flex:1; display:flex; flex-direction:column; align-items:center; gap:var(--space-2); height:100%; justify-content:flex-end;}
@@ -128,7 +135,7 @@
 .tile.doortile > .ts{text-align:left; white-space:normal; align-self:auto;}
 .tile.doortile > .tv, .tile.doortile > .tvrow{align-self:flex-start;}
 .tile.doortile:hover{background:var(--hover-wash);}
-.tile.doortile:hover .tv{color:var(--accent);}
+.tile.doortile:hover .tv{color:var(--accent); text-decoration:underline; text-underline-offset:3px;}
 .tile.tlist{height:auto; min-height:var(--tile-height); grid-template-rows:auto 1fr;}
 .tile.tlist > .tsl{grid-column:2; grid-row:1 / -1; align-self:end; justify-self:end; font-size:var(--size-small); color:var(--text-secondary); min-width:0;}
 .tile.tlist > .tv, .tile.tlist > .tvrow{grid-column:1;}
@@ -237,12 +244,12 @@
 .hero{position:relative; overflow:hidden; background:var(--panel-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-medium); box-shadow:var(--shadow-low); padding:var(--space-7); min-height:var(--hero-card-min-h); display:flex; flex-direction:column; gap:var(--space-6);}
 .hero .hbanner{position:absolute; inset:0; z-index:0; background:repeating-linear-gradient(135deg, var(--inset-background) 0 14px, var(--divider) 14px 28px); -webkit-mask-image:linear-gradient(100deg, black 0, black 26%, transparent var(--hero-banner-fade)); mask-image:linear-gradient(100deg, black 0, black 26%, transparent var(--hero-banner-fade));}
 .hero .hscrim{position:absolute; inset:0; z-index:0; background:linear-gradient(100deg, var(--panel-background) 40%, color-mix(in oklch, var(--panel-background), transparent 55%) 100%);}
-.hero .htitlerow:hover .htitle{color:var(--accent);}
+.hero .htitlerow:hover .htitle{color:var(--accent); text-decoration:underline; text-underline-offset:4px;}
 .hero > .hbody, .hero > .harc{position:relative; z-index:1;}
 .hero.door{border-style:dashed; border-color:var(--border); background:transparent; box-shadow:none; min-height:auto; align-items:center; justify-content:center; text-align:center; gap:var(--space-3); cursor:pointer; padding:var(--space-6) var(--space-7); transition:background var(--motion-fast) var(--ease-standard);}
 .hero.door .dplus{display:inline-flex; align-items:center; gap:var(--space-4); font-family:var(--font-heading); font-size:var(--size-subheading); font-weight:var(--weight-bold); color:var(--text-strong);}
 .hero.door:hover{background:var(--hover-wash);}
-.hero.door:hover .dplus{color:var(--accent);}
+.hero.door:hover .dplus{color:var(--accent); text-decoration:underline; text-underline-offset:4px;}
 .hfandom{font-size:var(--size-small); color:var(--text-secondary);}
 .hfandom b{color:var(--text-strong); font-weight:var(--weight-medium);}
 .hbody{display:flex; gap:var(--space-7);}
@@ -253,6 +260,7 @@
 .hpill{display:inline-flex; align-items:center; font-size:var(--size-caption); font-weight:var(--weight-bold); letter-spacing:.02em; border-radius:var(--radius-full); padding:var(--space-1) var(--space-4); border:var(--border-hairline) solid transparent;}
 .hstats{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--space-4);}
 .hsparks{display:grid; grid-template-columns:1fr; gap:var(--space-5);}
+/* the 12% canvas-over-banner washes below: RATIFIED AS DRAWN (2026-07-31 orphan batch, family C) */
 .hspark{background:color-mix(in oklch, var(--window-background), transparent 12%); border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-small); padding:var(--space-3) var(--space-4);}
 .hspark .shlabel{display:flex; align-items:center; justify-content:space-between; font-size:var(--size-caption); color:var(--text-muted); margin-bottom:var(--space-2);}
 .hspark svg{width:100%; height:var(--hero-spark-h); display:block;}

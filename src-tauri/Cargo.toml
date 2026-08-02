@@ -23,6 +23,17 @@ tauri-plugin-opener = "2"
 # The whimsy network tier (weather · horoscope) — all fetches run Rust-side;
 # the webview never talks to the network (Importer Runtime & External Access).
 tauri-plugin-http = "2"
+# The theme loader (step 6a) — fs reads the two theme roots (bundled resources +
+# the drop-in folder); dialog picks the drop-in root (its picks extend the fs
+# scope at runtime); persisted-scope keeps that grant across restarts.
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-persisted-scope = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# The Calibre importer (step 8) — read-only reads of the user's Calibre
+# metadata.db, a second SQLite entirely separate from Evolu; never writes
+# (Importer Runtime & External Access § the Calibre reader). `bundled` so the
+# build never depends on a system sqlite.
+rusqlite = { version = "0.32", features = ["bundled"] }
 

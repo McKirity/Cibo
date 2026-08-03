@@ -49,8 +49,8 @@
 /* (the `.emptybox` family moved to kit.css § kit-state-empty, 2026-07-30) */
 .gs-empty{display:none;}
 .hall .cover{height:var(--hall-h); width:calc(var(--hall-h) * var(--lib-cover-ratio)); flex:0 0 auto;}
-.hall::-webkit-scrollbar{height:var(--space-4);}
-.hall::-webkit-scrollbar-thumb{background:var(--border); border-radius:var(--radius-full);}
+/* (the hall's own scrollbar rules retired 2026-08-01 at the scrollbar mint — it
+   rides the app-wide overlay-minimal recipe, kit.css § Scrollbars) */
 .hcell{aspect-ratio:1/1; border-radius:var(--radius-cell); background:var(--panel-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); cursor:default;}
 /* Heat levels read the published ramp complements (--heat-bg-N, derived from
    --heatmap-ramp by src/theme/derived.ts at every theme apply — step 6a; the
@@ -177,8 +177,11 @@
 .lval{font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-secondary); white-space:nowrap;}
 
 /* ------- gaming-stats screen variants (de-scoped; refine the above) ------- */
-.bars{display:flex; flex-direction:column; gap:var(--space-5); max-height:calc(var(--bar-row-h) * 5 + var(--space-5) * 4 + var(--space-6)); overflow:hidden auto; scrollbar-width:thin; scrollbar-color:var(--border) transparent; scrollbar-gutter:stable;}
-.hall{--hall-h:calc(5 * 37px + 4 * var(--space-2)); display:flex; flex-wrap:nowrap; gap:var(--space-4); align-items:flex-start; overflow-x:auto; overflow-y:hidden; overscroll-behavior-x:contain; scrollbar-width:thin; scrollbar-color:var(--border) transparent;}
+/* scrollbar-width/-color struck here 2026-08-01 (the mint's trap a: the standard
+   pair silently overrides the WebKit pseudo-elements the app-wide recipe uses).
+   .bars keeps scrollbar-gutter:stable — its own pre-existing no-reflow guard. */
+.bars{display:flex; flex-direction:column; gap:var(--space-5); max-height:calc(var(--bar-row-h) * 5 + var(--space-5) * 4 + var(--space-6)); overflow:hidden auto; scrollbar-gutter:stable;}
+.hall{--hall-h:calc(5 * 37px + 4 * var(--space-2)); display:flex; flex-wrap:nowrap; gap:var(--space-4); align-items:flex-start; overflow-x:auto; overflow-y:hidden; overscroll-behavior-x:contain;}
 .lrow{position:relative; display:grid; grid-template-columns:1fr var(--bar-value-w); gap:var(--space-4); align-items:center; width:100%; border:none; background:transparent; text-align:left; font-family:var(--font-ui); padding:var(--space-4) var(--space-4); border-radius:var(--radius-small); cursor:pointer; overflow:hidden; transition:background var(--motion-fast) var(--ease-standard);}
 .trio.grouped > .dcol{padding:0 var(--space-7); border-left:var(--border-hairline) solid var(--divider); min-width:0;}
 

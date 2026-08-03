@@ -15,6 +15,7 @@ import { initTheme } from "./theme/loader";
 import { applyDerivedDials } from "./theme/derived";
 import { initCompact } from "./theme/compact";
 import { initDecoration } from "./theme/decoration";
+import { initScrollReveal } from "./shell/scrollReveal";
 import App from "./App";
 // AFTER the App import on purpose: the role → kit-target decoration wiring
 // must follow every screen sheet in the bundle so its attachments win the
@@ -43,6 +44,10 @@ initCompact();
 // Decoration — reads the theme's decoration/manifest.json (inert while the
 // bundled pair is art-free; job 2 of the 2026-07-20 split).
 initDecoration();
+// Scrollbars — the while-scrolling half of the overlay-minimal reveal (the
+// hover half is pure CSS in kit.css § Scrollbars). One capture-phase listener
+// for the whole page; safe before the shell mounts.
+initScrollReveal();
 
 let booted = false;
 evolu.subscribeError(() => {

@@ -46,7 +46,14 @@
      Mounted ONCE by the shell (shell/tooltip.tsx's TooltipLayer); any element
      opts in via data-tip / data-tip-long. First app tenant: the Map's doors.
      All six staged .tooltip rules are served by this claim — the per-screen
-     copies differed only in z-index and face. */
+     copies differed only in z-index and face.
+
+   BUILT (not claimed) 2026-08-01 — § Scrollbars:
+   - the app-wide overlay-minimal scrollbar recipe. NOT a staging claim: the
+     corpus never drew a scrollbar (the mockups' own `.content` used the
+     standard scrollbar-width/-color pair as mockup chrome), so this is the
+     first build of a behaviour RULED in prose 2026-07-18, on four dials
+     minted the same day (roster 248 → 252). */
 
 /* ------- The z-tier ladder (Overlays sheet, movement 08) -------
    The corpus's ad-hoc z-index values normalize to this NAMED ladder at Build —
@@ -100,6 +107,45 @@
    not re-flag it. Expansions and overlay entrances are unaffected (they
    animate elements the cursor is not on, or use keyframes). */
 *:hover{transition-duration:0s !important;}
+
+/* ------- Scrollbars — mac-style overlay-minimal, APP-WIDE -------
+   The 2026-07-18 behaviour ruling ([[Theming & Shared CSS]] § the IOU list),
+   built 2026-08-01 with its four dials: invisible at rest · the thumb paints
+   on container hover AND while scrolling · fades out after idle · a thin
+   reserved gutter · no arrows, no track paint. The trigger was a dark theme
+   showing WebView2's own light-grey bar: the scrollbar was the ONE visible
+   chrome surface with no dial coverage, so it never followed the theme.
+
+   Mechanics (implementation, not ruling):
+   a. WebKit pseudo-elements ONLY. `scrollbar-width`/`scrollbar-color` silently
+      override the pseudos (the wave band's trap a) and cannot express a
+      transparent-at-rest thumb, so no rule in this app may set them. The four
+      pre-mint ad-hoc tenants were swept onto this recipe the same day.
+   b. The thumb takes a TEXT-weight dial, never --border (trap b) — UT/DR's
+      --border is the near-white box rule, and chrome must never inherit it.
+   c. NOTHING REFLOWS ON REVEAL. Chromium/WebView2 dropped `overflow: overlay`,
+      so a styled bar always occupies its track once the container scrolls;
+      only the thumb's PAINT toggles. That is the ruling's "reserved gutter"
+      and it is why this is not `scrollbar-gutter: stable` — which would also
+      reserve space in every `overflow:hidden` box and move real layout.
+   d. The transparent border + background-clip:padding-box is what lets a 10px
+      gutter carry a ~6px bar without changing the gutter.
+   e. The while-scrolling reveal is the `.scrolling` class (shell/scrollReveal.ts).
+      reduce-effects sheds the FADE, never the reveal.
+   ONE EXCEPTION, by the 2026-07-24 ruling: the wave band's scrollbar is CHROME
+   and always visible — dashboard/entry.css out-specifies this block and keeps
+   its own painted track. */
+::-webkit-scrollbar{width:var(--scrollbar-width); height:var(--scrollbar-width);}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner{background:transparent;}
+::-webkit-scrollbar-thumb{background:transparent; background-clip:padding-box; border:var(--space-1) solid transparent; border-radius:var(--scrollbar-radius); transition:background var(--motion-standard) var(--ease-exiting);}
+:hover::-webkit-scrollbar-thumb,
+.scrolling::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb); background-clip:padding-box; transition-timing-function:var(--ease-entering);}
+::-webkit-scrollbar-thumb:hover{background:var(--scrollbar-thumb-hover); background-clip:padding-box;}
+/* both forms: the class sits on the ROOT, and a descendant combinator alone
+   would skip the root's own bar */
+.reduce-effects ::-webkit-scrollbar-thumb,
+.reduce-effects::-webkit-scrollbar-thumb{transition:none;}
 
 /* ------- Links -------
    Ported from the 2026-07-31 Blame! theme exhibit. The motivating case: a theme whose

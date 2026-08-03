@@ -121,7 +121,11 @@
    content width. The scrollbar is CHROME and always visible: declaring the
    WebKit pseudo-elements opts out of overlay scrollbars; scrollbar-width must
    NOT also be set (it silently overrides the pseudos — the ruling's trap a);
-   the thumb takes a text-weight dial, never --border (trap b). */
+   the thumb takes a text-weight dial, never --border (trap b).
+   THE ONE EXCEPTION to the app-wide overlay-minimal recipe (kit.css
+   § Scrollbars, 2026-08-01) — this bar is always visible BY RULING, so it
+   keeps its painted track and out-specifies the global block. Trap b was
+   generalized at that mint: the app's scrollbar dials are text-weight. */
 .waveband.lane { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain;
                  scrollbar-color: var(--text-muted) var(--inset-background); }
 .waveband.lane .wavescroll { position: relative; height: 100%; }

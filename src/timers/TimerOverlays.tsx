@@ -49,6 +49,7 @@ import {
 } from "./TrackedPicker";
 import { Ico, ICONS } from "../shell/icons";
 import { useOverlayEsc } from "../shell/overlayHooks";
+import { getPomoBreak, getPomoWork } from "../settings/local";
 import "./timers.css";
 
 // Glyphs from the shell roster (dedup pass 2026-07-30) — paths verified
@@ -83,9 +84,8 @@ const toHandoff = (items: TrackedItem[], clock: Clock) =>
 
 // ── the create flow ──────────────────────────────────────────────────────────
 
-/** The shipped pomodoro default pair — the Settings row is step 10's. */
-const DEFAULT_WORK = "25:00";
-const DEFAULT_BREAK = "5:00";
+/** The pomodoro default pair — Settings → Timers (step 10; per-clock values
+ *  stay set at creation, this is only what the form opens with). */
 const DEFAULT_TARGET = "25:00";
 
 export function CreateClockModal({ onClose }: { onClose: () => void }) {
@@ -93,8 +93,8 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
   const [mode, setMode] = useState<TimerMode>("stopwatch");
   const [selection, setSelection] = useState<PickerSelection>({});
   const [target, setTarget] = useState(DEFAULT_TARGET);
-  const [work, setWork] = useState(DEFAULT_WORK);
-  const [brk, setBrk] = useState(DEFAULT_BREAK);
+  const [work, setWork] = useState(() => `${getPomoWork()}:00`);
+  const [brk, setBrk] = useState(() => `${getPomoBreak()}:00`);
 
   // Esc closes — the shared overlay stack (top overlay only).
   useOverlayEsc(onClose);

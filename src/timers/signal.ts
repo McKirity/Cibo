@@ -14,6 +14,7 @@
  */
 import { UserAttentionType } from "@tauri-apps/api/window";
 import { withAppWindow } from "../shell/safeWindow";
+import { getSignalStyle } from "../settings/local";
 import type { Boundary } from "./timerCore";
 
 let ctx: AudioContext | null = null;
@@ -76,6 +77,8 @@ export const fireSignal = (boundary: Exclude<Boundary, null>): void => {
   // Every boundary sounds; a break-end is quieter business (the clock keeps
   // running) but still a completion the user scheduled.
   void boundary;
-  chime();
+  // The Settings → Timers signal style (step 10): Silent sheds the sound only —
+  // the OS attention ask is the point of the signal and always fires.
+  if (getSignalStyle() !== "silent") chime();
   flagAttention();
 };

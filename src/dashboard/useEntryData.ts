@@ -11,6 +11,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
+import { waveGapDefault } from "../settings/store";
 import { entryAttributesFromJson, stringListFromJson, type EntryId, type HabitId } from "../db/schema";
 import type { SessionRow } from "../metrics/shapes";
 import type { SessionDef } from "./creationSpec";
@@ -296,7 +297,8 @@ export function useEntryData(entryId: string): EntryData {
       subType: (habit?.sub_type as "consumption" | "creation" | null) ?? null,
       measuresCount: habit?.measures_count === 1,
       countUnit: (habit?.count_unit as string | null) ?? null,
-      waveGapDays: (habit?.wave_gap_days as number | null) ?? null,
+      // Per-habit override, else the Settings global (step 10).
+      waveGapDays: (habit?.wave_gap_days as number | null) ?? waveGapDefault(),
       bundle,
       typeVocab,
       entry,

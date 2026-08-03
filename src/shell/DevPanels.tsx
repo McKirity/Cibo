@@ -8,7 +8,6 @@ import { causeNote, findDuplicates, type DuplicateReport } from "../db/duplicate
 import { deleteEntriesCascade } from "../library/entryDelete";
 import { LogForm } from "../log/LogForm";
 import { activeHabitsQuery } from "./Shell";
-import { withAppWindow } from "./safeWindow";
 import {
   getPick,
   getThemesRoot,
@@ -18,7 +17,6 @@ import {
   type ThemeEntry,
   type ThemeScan,
 } from "../theme/loader";
-import { compactApplied, getCompactMode, setCompactMode, type CompactMode } from "../theme/compact";
 import { decorationSummary } from "../theme/decoration";
 import { getImporterKey, setImporterKey, type ImporterKeyName } from "../importers/keys";
 import { getCalibrePath, setCalibrePath } from "../importers/calibre";
@@ -40,9 +38,6 @@ export function LogView() {
           — don't rely on it being absent. */}
       {import.meta.env.DEV && (
         <>
-          <DevReduceEffectsToggle />
-          <DevCompactToggle />
-          <DevMacBookPreview />
           <DevThemePanel />
           <DevHabitPanel />
           <DevRichSeedPanel />
@@ -55,107 +50,11 @@ export function LogView() {
   );
 }
 
-/**
- * Dev stand-in for the reduce-effects switch — the real control is
- * Settings → Appearance (step 10; a per-device lever, [[Cross-device]]'s
- * 3-lever model). The class on the root element IS the mechanism the whole
- * corpus keys on; localStorage persistence = the established per-device
- * stand-in. First use: the 2026-07-29 hover-lag A/B (reduce-effects shed the
- * vignette clock's sweep — that clock was retired 2026-08-01).
- */
-export const REDUCE_KEY = "cibo.dev.reduceEffects";
-function DevReduceEffectsToggle() {
-  const [on, setOn] = useState(() => document.documentElement.classList.contains("reduce-effects"));
-  const toggle = () => {
-    const next = !on;
-    document.documentElement.classList.toggle("reduce-effects", next);
-    try {
-      localStorage.setItem(REDUCE_KEY, next ? "1" : "0");
-    } catch {
-      /* per-device sugar */
-    }
-    setOn(next);
-  };
-  return (
-    <div style={{ marginTop: 16 }}>
-      <button className="btn-plain" onClick={toggle}>
-        Reduce effects: {on ? "ON" : "off"}
-      </button>
-    </div>
-  );
-}
-
-/** Dev host for compact's tri-state (step 6a) — the real control is
- *  Settings → Appearance (step 10); auto keys off window width live. */
-function DevCompactToggle() {
-  const [mode, setMode] = useState<CompactMode>(getCompactMode());
-  const cycle = () => {
-    const next: CompactMode = mode === "auto" ? "on" : mode === "on" ? "off" : "auto";
-    setCompactMode(next);
-    setMode(next);
-  };
-  return (
-    <div style={{ marginTop: 8 }}>
-      <button className="btn-plain" onClick={cycle}>
-        Compact: {mode}
-        {mode === "auto" ? ` (resolved ${compactApplied() ? "on" : "off"})` : ""}
-      </button>
-    </div>
-  );
-}
-
-/**
- * MACBOOK PREVIEW — the geometry half of the ruled Settings → Developer toggle
- * ([[Design Standardization & Process]] § the fidelity pass: "window locked to
- * 1512x982 logical + parity zoom"), built early as a dev button 2026-08-01
- * because step 9 puts the month grid into a rail that already overflows the 14".
- *
- * IT IS THE GEOMETRY HALF ONLY, and deliberately so:
- *  · 1512x982 logical IS the MacBook canvas, and it is also the window's own
- *    minimum (tauri.conf.json, raised at 6a) — so this button snaps to a size
- *    dragging could already reach. What it adds is EXACTNESS, which is the
- *    whole point when the question is "does the rail overflow by 124px".
- *  · Compact resolves itself: auto keys off window width at the ~1600 knee, so
- *    the preview lands inside compact without touching the compact control.
- *  · **The parity ZOOM is NOT here** — the UI-scale lever is the one of the
- *    three cross-device levers with no implementation at all (step 10 owns it),
- *    so a real 14" still renders ~10% larger than this preview does. Read the
- *    preview for LAYOUT and overflow, never for legibility.
- *
- * **Using it to tune is PHASE 2 work, user-ruled 2026-08-01** ("we won't be
- * working on macbook simulator now. That'll be for phase 2") — this session
- * built the instrument, not the measurements. Phase 2 step 4 keeps the
- * real-hardware fidelity pass regardless; no toggle can show macOS font
- * rendering or physical legibility.
- */
-const MB_W = 1512;
-const MB_H = 982;
-function DevMacBookPreview() {
-  const [size, setSize] = useState<string>("—");
-  const read = () => setSize(`${Math.round(window.innerWidth)}x${Math.round(window.innerHeight)} css px`);
-  useEffect(() => {
-    read();
-    window.addEventListener("resize", read);
-    return () => window.removeEventListener("resize", read);
-  }, []);
-  const resize = (w: number, h: number) => {
-    void (async () => {
-      const { LogicalSize } = await import("@tauri-apps/api/dpi");
-      await withAppWindow((win) => win.setSize(new LogicalSize(w, h)));
-    })();
-  };
-  return (
-    <div style={{ marginTop: 8 }}>
-      <button className="btn-plain" onClick={() => resize(MB_W, MB_H)}>
-        MacBook preview ({MB_W}x{MB_H})
-      </button>{" "}
-      <button className="btn-plain" onClick={() => resize(1600, 1000)}>
-        Back to desktop (1600x1000)
-      </button>{" "}
-      <span className="dimnote">window {size} · geometry only, no parity zoom</span>
-    </div>
-  );
-}
+/* The reduce-effects, compact, and MacBook-preview dev stand-ins RETIRED
+   2026-08-02 — their real controls landed with step 10's Appearance and
+   Developer panes (settings/local.ts owns the machinery; REDUCE_KEY moved
+   there with its value kept verbatim). The MacBook preview's design record
+   travelled to settings/local.ts § setMacBookPreview. */
 
 /**
  * Dev host for the per-device theme pick (step 6a) — the real control is

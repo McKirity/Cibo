@@ -1,0 +1,266 @@
+/* == SETTINGS — the configuration home (Build step 10, slice 1) ==
+   Translation of Final/settings.html's screen CSS (kit-frame-settings +
+   kit-mark-device + the control anatomies), CLAIMED from kit-staging.css
+   2026-08-02 and re-scoped under `.setscreen` per the re-scope-per-screen law
+   (`.pane` · `.field` · `.track` · `.stepper` are all multi-tenant corpus
+   names — `.stepper` alone already lives re-drawn under `:is(.csdash,.advs)`).
+
+   Shared pieces NOT here because kit.css owns them: .segctl (the pill — the
+   ruled idiom, radius-full over this screen's drawn radius-small) · the
+   .btn-* family · .libmenu (the Select dropdown) · scrollbars (§ Scrollbars).
+
+   Deliberate adaptations, each named:
+   - .pane display:flex (not none/[data-pane] switching) — React mounts one
+     pane; the mockup's show/hide table was desk chrome.
+   - .snav-list keeps the frozen .slist name; the screen root supplies the
+     height the mockup's fixed frame provided (100% of the content cell).
+   - .pomopair/.pomoside name the pomodoro row's inline-styled spans (a frozen
+     face carries style="" only because mockups may; the app names them).
+   - .pending is BUILD GLUE (the not-yet-built panes' one-line note), not a
+     drawn state; it dies as the slices land. */
+
+.setscreen { height: 100%; min-height: 0; }
+.setscreen .setgrid { height: 100%; display: grid; grid-template-columns: var(--settings-pane-w) 1fr; gap: var(--space-7); min-height: 0; }
+
+/* --- left pane · the 13-section list --- */
+.setscreen .slist { display: flex; flex-direction: column; gap: var(--space-1); overflow: hidden auto;
+                    border-right: var(--border-hairline) solid var(--divider); padding-right: var(--space-6); }
+.setscreen .slist .overline { margin-bottom: var(--space-5); }
+.setscreen .snav { display: flex; align-items: center; gap: var(--space-5); width: 100%; padding: var(--space-4) var(--space-5);
+                   border: none; background: transparent; border-radius: var(--radius-small); cursor: pointer; text-align: left;
+                   font-family: var(--font-ui); color: var(--text-strong); position: relative; flex: 0 0 auto;
+                   transition: background var(--motion-fast) var(--ease-standard); }
+.setscreen .snav:hover { background: var(--hover-wash); }
+.setscreen .snav.active { background: var(--selected-wash); box-shadow: inset var(--border-heavy) 0 0 var(--accent); }
+.setscreen .snav .ico { color: var(--text-secondary); }
+.setscreen .snav.active .ico { color: var(--accent); }
+.setscreen .snav .name { font-size: var(--size-body); font-weight: var(--weight-medium); }
+.setscreen .snav .hdot { margin-left: auto; width: var(--dot-size); height: var(--dot-size); border-radius: var(--radius-full);
+                         background: var(--attention-dot); flex: 0 0 auto; }
+
+/* --- right pane · header + top tabs + body --- */
+.setscreen .pane { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.setscreen .phead { display: flex; align-items: center; gap: var(--space-6); flex: 0 0 auto; margin-bottom: var(--space-6); }
+.setscreen .phead h2 { font-family: var(--font-heading); font-size: var(--size-display); font-weight: var(--weight-bold);
+                       line-height: var(--line-tight); letter-spacing: -.01em; margin: 0; }
+.setscreen .ttabs { display: flex; align-items: stretch; gap: var(--space-7); flex: 0 0 auto;
+                    border-bottom: var(--border-hairline) solid var(--divider); margin-bottom: var(--space-7); }
+.setscreen .ttab { position: relative; padding: var(--space-4) 0; background: none; border: none; cursor: pointer;
+                   font-family: var(--font-ui); font-size: var(--size-subheading); font-weight: var(--weight-medium);
+                   color: var(--text-muted); transition: color var(--motion-fast) var(--ease-standard); }
+.setscreen .ttab:hover { color: var(--text-secondary); }
+.setscreen .ttab.active { color: var(--text-strong); }
+.setscreen .ttab.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: calc(-1 * var(--border-hairline));
+                                 height: var(--border-heavy); background: var(--accent); border-radius: var(--radius-full); }
+.setscreen .pbody { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.setscreen .hscroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding-right: var(--space-4); }
+
+/* --- the control stack (Appearance's drawn anatomy, every stack pane) --- */
+.setscreen .ctrlstack { display: flex; flex-direction: column; gap: var(--space-4); max-width: 74rem; }
+.setscreen .crow { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--space-6);
+                   padding: var(--space-5) var(--space-6); background: var(--panel-background);
+                   border: var(--border-hairline) solid var(--divider); border-radius: var(--radius-medium); box-shadow: var(--shadow-low); }
+.setscreen .crow.two { grid-template-columns: 1fr auto; }
+.setscreen .crow .clabel { font-size: var(--size-subheading); font-weight: var(--weight-medium); color: var(--text-strong); }
+.setscreen .crow .cright { display: flex; align-items: center; gap: var(--space-5); }
+
+/* kit-mark-device — synced is the unmarked default */
+.setscreen .devmark { display: inline-flex; align-items: center; gap: var(--space-2); font-family: var(--font-ui);
+                      font-size: var(--size-caption); font-weight: var(--weight-medium); color: var(--text-muted);
+                      background: var(--inset-background); border-radius: var(--radius-full);
+                      padding: var(--space-1) var(--space-4); white-space: nowrap; }
+.setscreen .devmark .ico { width: var(--icon-size-small); height: var(--icon-size-small); color: var(--text-muted); }
+
+/* select-like button + its Menu anchor */
+.setscreen .selwrap { position: relative; display: inline-flex; }
+.setscreen .selectbtn { display: inline-flex; align-items: center; gap: var(--space-5); font-family: var(--font-ui);
+                        font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-strong);
+                        background: var(--panel-background); border: var(--border-hairline) solid var(--border);
+                        border-radius: var(--radius-small); padding: var(--space-3) var(--space-5); cursor: pointer; min-width: 14rem;
+                        justify-content: space-between; transition: background var(--motion-fast) var(--ease-standard); }
+.setscreen .selectbtn:hover { background: var(--hover-wash); }
+.setscreen .selectbtn .ico { color: var(--text-muted); }
+
+/* stepper */
+.setscreen .stepper { display: inline-flex; align-items: center; gap: var(--space-4); }
+.setscreen .stepbtn { display: flex; align-items: center; justify-content: center; width: var(--step-btn-size); height: var(--step-btn-size);
+                      border: var(--border-hairline) solid var(--border); background: var(--panel-background); border-radius: var(--radius-small);
+                      color: var(--text-secondary); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard); }
+.setscreen .stepbtn:hover { background: var(--hover-wash); color: var(--text-strong); }
+.setscreen .stepbtn .ico { width: var(--icon-size-small); height: var(--icon-size-small); }
+.setscreen .stepval { font-family: var(--font-mono); font-size: var(--size-body); font-weight: var(--weight-medium);
+                      color: var(--text-strong); min-width: 5ch; text-align: center; }
+
+/* slider */
+.setscreen .slider { display: flex; align-items: center; gap: var(--space-6); }
+.setscreen .track { position: relative; width: 22rem; height: var(--space-3); border-radius: var(--radius-full);
+                    background: var(--inset-background); cursor: pointer; touch-action: none; }
+.setscreen .track .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--radius-full); background: var(--accent); }
+.setscreen .track .handle { position: absolute; top: 50%; transform: translate(-50%, -50%); width: var(--space-7); height: var(--space-7);
+                            border-radius: var(--radius-full); background: var(--panel-background);
+                            border: var(--border-standard) solid var(--accent); box-shadow: var(--shadow-low); pointer-events: none; }
+.setscreen .sval { font-family: var(--font-mono); font-size: var(--size-small); color: var(--text-secondary); min-width: 4ch; text-align: right; }
+
+/* group labels (Timers' Work/Break pair; the hgroup tier arrives with the
+   later panes) */
+.setscreen .sglbl { font-size: var(--size-caption); font-weight: var(--weight-bold); letter-spacing: .06em;
+                    text-transform: uppercase; color: var(--text-muted); }
+.setscreen .pomopair { display: flex; gap: var(--space-7); align-items: center; }
+.setscreen .pomoside { display: flex; gap: var(--space-4); align-items: center; }
+
+/* build glue — the pending panes' one-line note (dies as slices land) */
+.setscreen .pending { max-width: 68ch; font-size: var(--size-body); color: var(--text-secondary);
+                      line-height: var(--line-normal); margin: 0; text-wrap: pretty; }
+
+/* == slice 2 (2026-08-02) — Habits → Manage: kit-list-management + the
+   quick-action pickers + the keepsake paste slot. Claimed from kit-staging
+   (the .mrow management family · .msub/.subgrp/.subchips · the shelf · the
+   missing idiom · .snipslot · .picker/.pk-* families · .iconbtn · .mscroll/
+   .mgroup-lbl · .pact), re-scoped .setscreen like everything above. == */
+
+.setscreen .phead .pact { margin-left: auto; display: flex; align-items: center; gap: var(--space-4); }
+.setscreen .mscroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding-right: var(--space-4); }
+.setscreen .mgroup-lbl { font-size: var(--size-caption); font-weight: var(--weight-bold); letter-spacing: .09em;
+                         text-transform: uppercase; color: var(--text-muted); margin: var(--space-6) 0 var(--space-4); }
+.setscreen .mgroup-lbl:first-child { margin-top: 0; }
+.setscreen .mlist { display: flex; flex-direction: column; gap: var(--space-3); }
+.setscreen .mitem { display: flex; flex-direction: column; }
+.setscreen .mrow { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-4) var(--space-5);
+                   background: var(--panel-background); border: var(--border-hairline) solid var(--divider);
+                   border-radius: var(--radius-medium); box-shadow: var(--shadow-low);
+                   transition: background var(--motion-fast) var(--ease-standard); }
+.setscreen .mrow:hover { background: var(--hover-wash); }
+.setscreen .disc { display: flex; align-items: center; justify-content: center; padding: var(--space-2); border: none;
+                   background: transparent; color: var(--text-muted); cursor: pointer; border-radius: var(--radius-small); flex: 0 0 auto;
+                   transition: transform var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard); }
+.setscreen .disc .ico { width: var(--icon-size-small); height: var(--icon-size-small); }
+.setscreen .disc:hover { background: var(--hover-wash); color: var(--text-strong); }
+.setscreen .mitem.open .disc { transform: rotate(90deg); color: var(--text-strong); }
+.setscreen .grip { display: flex; align-items: center; color: var(--text-muted); cursor: grab; flex: 0 0 auto; padding: 0 var(--space-1); }
+.setscreen .grip:active { cursor: grabbing; }
+.setscreen .msw { width: var(--swatch-size); height: var(--swatch-size); border-radius: var(--radius-small); flex: 0 0 auto;
+                  display: flex; align-items: center; justify-content: center; color: var(--text-on-filled);
+                  font-family: var(--font-heading); font-size: var(--size-small); font-weight: var(--weight-bold); }
+.setscreen .msw .ico { color: var(--text-on-filled); }
+.setscreen .mid { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.setscreen .mname { font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong); width: fit-content; }
+/* claimed dormant with the pair (slice 3 wakes them — the "Edit habit" door):
+   .setscreen .mname { cursor: pointer; }
+   .setscreen .mname:hover { color: var(--accent); } */
+.setscreen .macts { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); flex: 0 0 auto; }
+.setscreen .iconbtn { display: flex; align-items: center; justify-content: center; padding: var(--space-3);
+                      border: var(--border-hairline) solid transparent; background: transparent; border-radius: var(--radius-small);
+                      color: var(--text-secondary); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard); }
+.setscreen .iconbtn:hover { background: var(--hover-wash); color: var(--text-strong); border-color: var(--divider); }
+.setscreen .iconbtn.danger:hover { color: var(--danger); border-color: color-mix(in oklch, var(--danger), var(--panel-background) var(--tint-border)); }
+
+/* the sub-units disclosure */
+.setscreen .msub { display: flex; flex-direction: column; gap: var(--space-5);
+                   padding: var(--space-5) var(--space-6) var(--space-6) calc(var(--swatch-size) + var(--space-8)); }
+.setscreen .subgrp { display: flex; flex-direction: column; gap: var(--space-3); }
+.setscreen .subchips { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.setscreen .subchip { display: inline-flex; align-items: center; gap: var(--space-3); font-size: var(--size-small); font-weight: var(--weight-medium);
+                      color: var(--text-secondary); background: var(--inset-background); border-radius: var(--radius-full); padding: var(--space-2) var(--space-5); }
+.setscreen .subchip.add { color: var(--text-muted); border: var(--border-hairline) dashed var(--border); background: transparent; cursor: pointer;
+                          padding: var(--space-2) var(--space-4); font-family: var(--font-ui); }
+.setscreen .subchip.add:hover { color: var(--text-strong); background: var(--hover-wash); }
+.setscreen .subadd-in { border: var(--border-hairline) solid var(--border); background: var(--panel-background);
+                        color: var(--text-strong); outline: none; font-family: var(--font-ui); width: 12ch; }
+.setscreen .subnone { font-size: var(--size-small); color: var(--text-muted); }
+
+/* the archive shelf */
+.setscreen .shelf { margin-top: var(--space-8); }
+.setscreen .mrow.arch { box-shadow: none; background: var(--window-background); border-style: dashed; }
+.setscreen .mrow.arch .msw { background: color-mix(in oklch, var(--msw-c, var(--text-muted)), var(--window-background) var(--fade)); }
+.setscreen .mrow.arch .mname { color: var(--text-secondary); }
+
+/* the missing idiom — informational, never the attention dot */
+.setscreen .missing { display: flex; align-items: center; gap: var(--space-3); font-size: var(--size-small); color: var(--text-secondary); }
+.setscreen .missing .ico { width: var(--icon-size-small); height: var(--icon-size-small); color: var(--text-muted); }
+.setscreen .missing.soft { color: var(--text-muted); }
+.setscreen .missing.soft .ico { color: var(--text-muted); }
+.setscreen .missing b { color: var(--text-strong); font-weight: var(--weight-medium); }
+
+/* the keepsake paste-slot door (the creator's cosmetics anatomy) */
+.setscreen .snipslot { align-self: flex-start; max-width: var(--builder-w); display: flex; align-items: center; gap: var(--space-5);
+                       padding: var(--space-5); background: var(--panel-background); border: var(--border-hairline) solid var(--divider);
+                       border-radius: var(--radius-medium); box-shadow: var(--shadow-low); text-align: left; cursor: pointer;
+                       font-family: var(--font-ui); transition: background var(--motion-fast) var(--ease-standard); }
+.setscreen .snipslot:hover { background: var(--hover-wash); }
+.setscreen .snipslot .artph { flex: 0 0 auto; height: var(--art-slot-h); aspect-ratio: 14 / 11; border-radius: var(--radius-small);
+                              background: repeating-linear-gradient(45deg, var(--inset-background), var(--inset-background) var(--space-3), var(--panel-background) var(--space-3), var(--panel-background) calc(var(--space-3) * 2));
+                              border: var(--border-standard) dashed var(--border); display: flex; align-items: center; justify-content: center; }
+.setscreen .snipslot .artph .ico { width: var(--icon-size); height: var(--icon-size); color: var(--text-muted); }
+.setscreen .snipslot .cosmeta { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.setscreen .snipslot .cosn { font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong); }
+.setscreen .snipslot .coss { font-size: var(--size-caption); color: var(--text-secondary); line-height: var(--line-normal); }
+.setscreen .snipslot .cosact { margin-left: auto; font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--accent); flex: 0 0 auto; white-space: nowrap; }
+
+/* the quick-action pickers — kit-popover tenants, fixed off the trigger rect
+   (the mscroll pane scrolls; the NavCalendar popovers' lesson) */
+.setscreen .picker { position: fixed; z-index: 120; width: var(--popover-width);
+                     background: var(--raised-background); -webkit-backdrop-filter: var(--backdrop-blur); backdrop-filter: var(--backdrop-blur);
+                     border: var(--border-hairline) solid var(--border); border-radius: var(--radius-medium);
+                     box-shadow: var(--shadow-high); padding: var(--space-5);
+                     animation: setpk-in var(--motion-standard) var(--ease-entering); }
+@keyframes setpk-in { from { opacity: 0; transform: translateY(-4px) scale(.99); } to { opacity: 1; transform: none; } }
+.reduce-effects .setscreen .picker { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--panel-background); box-shadow: var(--shadow-low); animation: none; }
+.setscreen .pk-title { font-size: var(--size-caption); font-weight: var(--weight-bold); text-transform: uppercase;
+                       letter-spacing: .06em; color: var(--text-muted); margin: 0 0 var(--space-5); }
+.setscreen .pk-swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-4); }
+.setscreen .pksw { position: relative; aspect-ratio: 1 / 1; border-radius: var(--radius-small); border: none; cursor: pointer; padding: 0; }
+.setscreen .pksw.sel { box-shadow: 0 0 0 var(--border-heavy) var(--panel-background), 0 0 0 calc(var(--border-heavy) * 2) var(--accent); }
+.setscreen .pksw.taken { cursor: not-allowed; }
+.setscreen .pksw.taken::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--panel-background); opacity: .7; }
+.setscreen .pksw .lk { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1;
+                       width: var(--icon-size-small); height: var(--icon-size-small); color: var(--text-muted); }
+.setscreen .pk-custom { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-5);
+                        padding-top: var(--space-5); border-top: var(--border-hairline) solid var(--divider); }
+.setscreen .pk-custom .cs { width: var(--space-8); height: var(--space-8); border-radius: var(--radius-small);
+                            border: var(--border-standard) dashed var(--border); display: flex; align-items: center; justify-content: center;
+                            color: var(--text-muted); flex: 0 0 auto; }
+.setscreen .pk-custom .cs .ico { width: var(--icon-size-small); height: var(--icon-size-small); }
+.setscreen .pk-custom .cl { font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-strong); }
+.setscreen .pk-custom .hxin { margin-left: auto; width: 9ch; font-family: var(--font-mono); font-size: var(--size-caption);
+                              color: var(--text-strong); background: var(--inset-background); border: var(--border-hairline) solid var(--border);
+                              border-radius: var(--radius-small); padding: var(--space-2) var(--space-3); outline: none; }
+.setscreen .pk-search { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4);
+                        background: var(--inset-background); border-radius: var(--radius-small); margin-bottom: var(--space-5); }
+.setscreen .pk-search .ico { color: var(--text-muted); width: var(--icon-size-small); height: var(--icon-size-small); }
+.setscreen .pk-search input { flex: 1; min-width: 0; border: none; background: transparent; outline: none;
+                              font-family: var(--font-ui); font-size: var(--size-small); color: var(--text-strong); }
+.setscreen .pk-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-3); max-height: 15rem; overflow: auto; }
+.setscreen .pkic { display: flex; align-items: center; justify-content: center; aspect-ratio: 1 / 1;
+                   border: var(--border-hairline) solid transparent; background: transparent; border-radius: var(--radius-small);
+                   color: var(--text-secondary); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard); }
+.setscreen .pkic:hover { background: var(--hover-wash); color: var(--text-strong); }
+.setscreen .pkic.sel { background: var(--selected-wash); color: var(--accent); box-shadow: inset 0 0 0 var(--border-standard) var(--accent); }
+.setscreen .pk-none { font-size: var(--size-caption); color: var(--text-muted); grid-column: 1 / -1; padding: var(--space-3); }
+/* the sample grid's honest foot — how many of the matches are on screen
+   (build-side: the FINAL drew an 11-icon grid that never needed one) */
+.setscreen .pk-foot { margin: var(--space-4) 0 0; font-size: var(--size-caption); color: var(--text-muted); text-align: center; }
+
+/* == the keepsake editor (rides the kit modal chassis; BUILD-SIDE layout —
+   the paste slot's editor face was never drawn, only ruled: pre-filled paste
+   + live preview + named reasons) == */
+.kseditor { width: min(1060px, 92vw); }
+.kseditor .ksed { display: grid; grid-template-columns: 1fr auto; gap: var(--space-7); min-height: 0; }
+.kseditor .kspaste { min-height: 320px; resize: vertical; font-family: var(--font-mono); font-size: var(--size-small);
+                     color: var(--text-strong); background: var(--inset-background); border: var(--border-hairline) solid var(--border);
+                     border-radius: var(--radius-small); padding: var(--space-5); outline: none; line-height: 1.5; }
+.kseditor .ksside { display: flex; flex-direction: column; gap: var(--space-4); width: 300px; }
+.kseditor .sglbl { font-size: var(--size-caption); font-weight: var(--weight-bold); letter-spacing: .06em;
+                   text-transform: uppercase; color: var(--text-muted); }
+/* the preview box IS the wall tile's frame (daily.css's .keep anatomy at the
+   wall's 2x2 footprint), so the verdict is the wall's */
+.kseditor .kprev { position: relative; width: 268px; height: 268px; overflow: hidden; border-radius: var(--radius-medium);
+                   background: var(--panel-background); border: var(--border-hairline) solid var(--border); }
+.kseditor .kprev .ksh { position: absolute; inset: 0; }
+.kseditor .kprev .ksfall { display: none; position: absolute; inset: 0; flex-direction: column; align-items: center;
+                           justify-content: center; gap: var(--space-3); }
+.kseditor .kprev .ksh.blank ~ .ksfall { display: flex; }
+.kseditor .kprev .ksfall .lm { font-family: var(--font-heading); font-size: var(--size-display); font-weight: var(--weight-bold);
+                               color: var(--slot, var(--text-muted)); }
+.kseditor .ksreasons { display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--size-caption);
+                       color: var(--text-secondary); max-width: 300px; }
+.kseditor .ksreasons.ok { color: var(--verdict-done); }

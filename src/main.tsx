@@ -16,6 +16,9 @@ import { applyDerivedDials } from "./theme/derived";
 import { initCompact } from "./theme/compact";
 import { initDecoration } from "./theme/decoration";
 import { initScrollReveal } from "./shell/scrollReveal";
+import { initLocalSettings } from "./settings/local";
+import { initSyncedSettings } from "./settings/store";
+import { initCustomColours } from "./settings/customColours";
 import App from "./App";
 // AFTER the App import on purpose: the role → kit-target decoration wiring
 // must follow every screen sheet in the bundle so its attachments win the
@@ -48,6 +51,14 @@ initDecoration();
 // hover half is pure CSS in kit.css § Scrollbars). One capture-phase listener
 // for the whole page; safe before the shell mounts.
 initScrollReveal();
+// Settings (step 10) — the per-device levers re-apply (reduce-effects · UI
+// scale · force-opaque · banner fade) and the synced-settings cache primes
+// (wave gap · list cap · day cutoff readers outside React).
+initLocalSettings();
+initSyncedSettings();
+// Custom habit colours (the 12-slot palette's overflow) publish as root vars
+// so the 43 `var(--slot)` render sites work unchanged — settings/customColours.
+initCustomColours();
 
 let booted = false;
 evolu.subscribeError(() => {

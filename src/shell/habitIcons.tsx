@@ -2,96 +2,121 @@
  * The habit-icon registry — ICONS AS DATA ([[Iconography]]: a habit's icon is
  * a stored lucide NAME in `habits.icon`; lettermark = the ruled fallback).
  *
- * Until 2026-07-27 this data existed nowhere: the assignments lived only as
- * hand-placed SVGs in the mockups' DOM (which dies by law), the seed's source
- * registry carried no icon column, and the lettermark fallback made the empty
- * column look finished. Seed batch 7 plants the seven names the frozen frame
- * draws; this file is their renderer. The archived four (embroidery · drawing
- * · coding · gamedev) have NO drawn assignment and stay lettermarks until the
- * user picks in the step-10 creator — whose kit-picker-icon inherits this
- * roster as its starting inventory.
+ * THE ROSTER IS THE REAL LUCIDE SET SINCE 2026-08-02 (step 10, slice 2's GUI
+ * pass — user: "the icon list is extremely limited"). Until then this file
+ * held ELEVEN hand-transcribed paths: the seven the frozen frame drew (seed
+ * batch 7) plus the four archived habits' (batch 9). That was never the design
+ * — [[Iconography]] rules "a searchable browser over ~1,500 names" and that the
+ * app "ships a locked lucide version", with the Data Doctor's `unknown-icon`
+ * check testing stored names against that pinned set. The transcriptions were
+ * a stand-in for a dependency the app had simply never installed, and the
+ * picker built on them inherited the stand-in.
  *
- * Path data is the frozen frame's, verbatim (lines/rects hand-converted to
- * path commands — one shape vocabulary). Keyed by lucide name, never by habit:
- * the column stores the name, so a user-picked icon renders through the same
- * door.
+ * THE PIN: `lucide` 1.28.0, EXACT in package.json (no caret) — "stored names
+ * cannot break between releases"; a bump is the ruled deliberate maintenance
+ * pass. 2003 exported names over 1756 distinct icons (the surplus are lucide's
+ * own deprecated aliases, kept: searching "alert" should still find
+ * `circle-alert`).
+ *
+ * WHY THE VANILLA PACKAGE, not `lucide-react`: this one ships icons as DATA
+ * (`[tag, attrs]` node arrays) rather than components that render their own
+ * `<svg>` with their own stroke attributes. Rendering the data into our own
+ * `.ico` element is what keeps the theme's icon dials (colour · size · stroke
+ * width) governing every glyph — the three-token surface [[Iconography]] rules.
+ *
+ * RECORDED DEVIATION — the one-shape-vocabulary convention is spent here. The
+ * old transcriptions converted lucide's rects/circles/lines into paths so this
+ * file spoke one shape language. Upstream draws with seven element types, so
+ * `HabitIcon` is now a GENERIC node renderer. Nothing is lost: the attributes
+ * are geometry only, and the outline look is the `.ico` rule's, not the data's.
+ * (24 icons carry an explicit `fill="currentColor"` on individual nodes —
+ * ChartScatter's dots and kin. That is deliberate upstream and correct: the
+ * `.ico` rule's `fill:none` sets the inherited default, a node that asks to be
+ * filled still is.)
+ *
+ * NAME RESOLUTION IS HYPHEN- AND CASE-INSENSITIVE, which is what makes this
+ * safe: a stored name normalizes (strip hyphens, lowercase) before lookup, so
+ * every canonical lucide name resolves — verified against all 1756 of the
+ * package's own icon filenames — and so do the 11 names already in the store.
+ * The 14 normalization collisions in the export map are pure casing variants
+ * of identical glyphs (`Grid2X2` / `Grid2x2`), so a collision cannot pick a
+ * wrong drawing.
  */
+import { icons as LUCIDE } from "lucide";
 
-/** lucide name → stroke path list (24×24 viewBox, the `.ico` contract). */
-export const ICON_PATHS: Record<string, string[]> = {
-  // Writing
-  pencil: ["M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z", "m15 5 4 4"],
-  // Gaming
-  "gamepad-2": [
-    "M6 11h4",
-    "M8 9v4",
-    "M15 12h.01",
-    "M18 10h.01",
-    "M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.544-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z",
-  ],
-  // Reading
-  "book-open": [
-    "M12 7v14",
-    "M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z",
-  ],
-  // Media
-  clapperboard: [
-    "M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z",
-    "m6.2 5.3 3.1 3.9",
-    "m12.4 3.4 3.1 4",
-    "M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z",
-  ],
-  // Keyboard
-  keyboard: [
-    "M10 8h.01",
-    "M12 12h.01",
-    "M14 8h.01",
-    "M16 12h.01",
-    "M18 8h.01",
-    "M6 8h.01",
-    "M7 16h10",
-    "M8 12h.01",
-    "M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z",
-  ],
-  // Sleep
-  moon: ["M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"],
-  // Walking
-  footprints: [
-    "M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z",
-    "M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z",
-    "M16 17h4",
-    "M4 13h4",
-  ],
+/** One drawn element: the tag plus its geometry attributes. */
+type IconNode = [string, Record<string, string | number>];
 
-  // — The archived four (seed batch 9, 2026-07-27): the OLD PLUGIN's own
-  //   assignments (Reference/Old Source Homepage.tsx HABIT_ICON_BY_KEY),
-  //   except Drawing — the old "pencil" is Writing's under the new frame's
-  //   frozen face, so Drawing wears the brush. Circles hand-converted to
-  //   arc paths (the one-shape-vocabulary rule).
+const normalize = (name: string): string => name.replace(/-/g, "").toLowerCase();
 
-  // Embroidery
-  scissors: [
-    "M6 3a3 3 0 1 0 0 6 3 3 0 1 0 0-6",
-    "M6 15a3 3 0 1 0 0 6 3 3 0 1 0 0-6",
-    "M8.12 8.12 12 12",
-    "M20 4 8.12 15.88",
-    "M14.8 14.8 20 20",
-  ],
-  // Drawing
-  brush: [
-    "m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08",
-    "M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z",
-  ],
-  // Coding
-  code: ["m16 18 6-6-6-6", "m8 6-6 6 6 6"],
-  // Gamedev
-  joystick: [
-    "M21 17a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2Z",
-    "M6 15v-2",
-    "M12 15V9",
-    "M12 3a3 3 0 1 0 0 6 3 3 0 1 0 0-6",
-  ],
-};
+/**
+ * PascalCase export key → the kebab name we display and store.
+ *
+ * Faithful for 1974 of 2003 names. The 29 exceptions are digit/acronym runs
+ * where lucide's own filename groups differently (`axis-3d` · `arrow-down-a-z`
+ * read here as `axis-3-d` · `arrow-down-az`); they are display-only, because
+ * lookup normalizes hyphens away. Recorded rather than special-cased — the
+ * affected names are sort and 3D-transform icons no habit is likely to wear,
+ * and a hardcoded exception table would be one more thing to re-verify at the
+ * next pin bump.
+ */
+const toKebab = (key: string): string =>
+  key
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
+    .replace(/([a-z])([A-Z])/g, "$1-$2")
+    .replace(/([A-Za-z])([0-9])/g, "$1-$2")
+    .replace(/([0-9])([A-Za-z])/g, "$1-$2")
+    .replace(/([A-Z])(?=[A-Z])/g, "$1-")
+    .toLowerCase();
+
+/** normalized name → drawn nodes. Built once; the module is imported eagerly
+ *  because the rail draws icons on first paint. */
+const NODES = new Map<string, IconNode[]>();
+/** The picker's inventory — every name, sorted. */
+const NAMES: string[] = [];
+
+for (const key of Object.keys(LUCIDE)) {
+  const nodes = (LUCIDE as unknown as Record<string, IconNode[]>)[key];
+  if (!Array.isArray(nodes)) continue;
+  const kebab = toKebab(key);
+  const norm = normalize(key);
+  if (!NODES.has(norm)) NODES.set(norm, nodes);
+  NAMES.push(kebab);
+}
+NAMES.sort();
+
+/** The full roster, kebab-cased and sorted — `kit-picker-icon`'s inventory. */
+export const ICON_NAMES: readonly string[] = NAMES;
+
+/** The stored name's nodes, or null when the name is absent from the pinned
+ *  set (the `unknown-icon` case — the caller draws its lettermark). */
+export const iconNodes = (icon: string | null | undefined): IconNode[] | null =>
+  icon == null ? null : NODES.get(normalize(icon)) ?? null;
+
+/**
+ * What the pinned set actually contains — Settings → Habits → Icons.
+ *
+ * `names` and `icons` differ because lucide keeps its retired names as
+ * aliases pointing at the same drawing (`alert-circle` → `circle-alert`), and
+ * this app keeps them so search still finds an icon by the name you remember.
+ * The distinct count therefore has to compare DRAWINGS, not names.
+ *
+ * Computed on first ask and cached: it walks every glyph's node data, which is
+ * pointless work at launch for a number only one settings tab ever reads.
+ */
+let stats: { names: number; icons: number } | null = null;
+export function iconStats(): { names: number; icons: number } {
+  if (stats == null) {
+    const drawings = new Set<string>();
+    for (const nodes of NODES.values()) drawings.add(JSON.stringify(nodes));
+    stats = { names: NAMES.length, icons: drawings.size };
+  }
+  return stats;
+}
+
+/** The pinned lucide version (vite injects it from package.json's pin). */
+export const LUCIDE_VERSION: string =
+  typeof __LUCIDE_VERSION__ === "string" ? __LUCIDE_VERSION__ : "unknown";
 
 /**
  * The stored icon, or null when the name is absent/unknown — the caller
@@ -105,16 +130,17 @@ export function HabitIcon({
   icon: string | null | undefined;
   className?: string;
 }) {
-  const paths = icon != null ? ICON_PATHS[icon] : undefined;
-  if (paths == null) return null;
+  const nodes = iconNodes(icon);
+  if (nodes == null) return null;
   return (
     <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
-      {paths.map((d, i) => (
-        <path key={i} d={d} />
+      {nodes.map(([Tag, attrs], i) => (
+        // Geometry-only attributes, passed through as-is — see the header.
+        <Tag key={i} {...attrs} />
       ))}
     </svg>
   );
 }
 
 export const hasIcon = (icon: string | null | undefined): boolean =>
-  icon != null && ICON_PATHS[icon] != null;
+  iconNodes(icon) != null;

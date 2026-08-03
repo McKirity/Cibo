@@ -12,6 +12,7 @@
  */
 import { useMemo, useState } from "react";
 import { buildCadenceModel, type CadenceModel, type HabitRowVM, type StripVM } from "./cadenceSpec";
+import { dashboardListCap } from "../settings/store";
 import { useCadenceData } from "./useCadenceData";
 import { todayLocal } from "../metrics/clock";
 import { Ico } from "../shell/icons";
@@ -43,7 +44,12 @@ export function CadenceDashboard({
   // every render (conformed 2026-07-30).
   const [today] = useState(todayLocal);
   const model = useMemo(
-    () => (data.ready ? buildCadenceModel(data, scale, anchor, today) : null),
+    () =>
+      data.ready
+        ? // listCap: the Settings → Tracking → Metrics value (step 10); read at
+          // build time — a changed cap is live from the next navigation.
+          buildCadenceModel(data, scale, anchor, today, { listCap: dashboardListCap() })
+        : null,
     [data, scale, anchor, today],
   );
   if (!model) return <div className="cadash"><p className="perf-line">Loading…</p></div>;

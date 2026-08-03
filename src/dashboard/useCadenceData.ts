@@ -10,6 +10,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
+import { waveGapDefault } from "../settings/store";
 
 const habitsQuery = evolu.createQuery((db) =>
   db
@@ -137,7 +138,9 @@ export function useCadenceData(): CadenceData {
           countUnit: (h.count_unit as string | null) ?? null,
           derivedRules: (h.derived_rules as string | null) ?? null,
           sortOrder: (h.sort_order as number) ?? 0,
-          waveGapDays: (h.wave_gap_days as number | null) ?? null,
+          // Per-habit override, else the Settings global (step 10; the spec's
+          // own `?? 30` stays as the final backstop).
+          waveGapDays: (h.wave_gap_days as number | null) ?? waveGapDefault(),
         })),
     [habitRows],
   );

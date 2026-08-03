@@ -24,11 +24,31 @@
  * routing it through strings would trade that validation for parse risk. Two
  * vocabularies, each earning its keep, is the honest state.
  *
- * `settings/*` is in the ruled table but absent here: Settings is step 10 and
- * has no `View` member yet. Add the route with the screen, not before.
+ * `settings/*` joined 2026-08-02 (step 10) — a SECTION is the route unit
+ * ([[Settings & Configuration]]: "a section = a `settings/...` route, so the
+ * palette and the health glance-dot deep-link straight to a pane category");
+ * tabs inside a pane are never routes.
  */
 import type { CadenceScale } from "../metrics/cadence";
 import { isoWeek, isoWeekMonday, isoWeeksInYear } from "../metrics/dates";
+
+/** The 13 ruled sections, left-pane order ([[Settings & Configuration]]). */
+export const SETTINGS_SECTIONS = [
+  "habits",
+  "tracking",
+  "appearance",
+  "timers",
+  "whimsy",
+  "importers",
+  "backups",
+  "storage",
+  "presets",
+  "palette",
+  "health",
+  "developer",
+  "help",
+] as const;
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 export type View =
   /**
@@ -49,7 +69,9 @@ export type View =
   /** Timers — the Tools-rail board of independent clocks (step 7). */
   | { kind: "timers" }
   /** The Map — the Tools-rail table of contents (the catch-up's last screen). */
-  | { kind: "map" };
+  | { kind: "map" }
+  /** Settings — the configuration home; the section is the route unit (step 10). */
+  | { kind: "settings"; section: SettingsSection };
 
 /** The titlebar title, derived from the current view + the active habit roster. */
 export function viewTitle(
@@ -69,6 +91,8 @@ export function viewTitle(
         ? "Timers"
       : view.kind === "map"
         ? "Map"
+      : view.kind === "settings"
+        ? "Settings"
         : view.kind === "cadence"
         ? { week: "Weekly", month: "Monthly", quarter: "Quarterly", year: "Yearly" }[view.scale]
         : view.kind === "daily" && view.day != null && view.day !== today
@@ -137,6 +161,8 @@ export function serializeView(view: View): string {
       return "timers";
     case "map":
       return "map";
+    case "settings":
+      return `settings/${view.section}`;
     case "log":
       return "log";
   }
@@ -160,6 +186,12 @@ export function parseView(route: string): View | null {
   if (head === "timers") return { kind: "timers" };
   if (head === "map") return { kind: "map" };
   if (head === "log") return { kind: "log" };
+  if (head === "settings") {
+    // Bare `settings` = the first section, the drawn default face.
+    if (arg == null || arg === "") return { kind: "settings", section: "habits" };
+    const sec = SETTINGS_SECTIONS.find((s) => s === arg);
+    return sec != null && tail == null ? { kind: "settings", section: sec } : null;
+  }
   if (head === "day") {
     if (arg === "today" || arg == null || arg === "") return { kind: "daily" };
     return isDay(arg) ? { kind: "daily", day: arg } : null;

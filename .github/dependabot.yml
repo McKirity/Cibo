@@ -1,0 +1,46 @@
+# Dependency update checker — the Longevity thread's "update checker", built
+# 2026-08-02 (user-asked at step 10, when the lucide pin made the question
+# concrete). It watches BOTH dependency worlds this app has:
+#
+#   npm   (/)          — React · Evolu · the Tauri JS API + plugins · lucide
+#   cargo (/src-tauri) — the Rust shell, tauri itself, rusqlite
+#
+# Why here and not in the app: the app cannot install a dependency update.
+# Everything npm ships is compiled into the bundle at build time, so an update
+# means npm install -> rebuild -> release, and the auto-updater then hands the
+# result to every install. GitHub is therefore the right place to be TOLD, and
+# a pull request is a better telling than a settings row — it arrives on its
+# own and carries the changelog with it.
+#
+# Cadence is monthly on purpose. This is a solo, on-and-off project with no
+# CI gate; weekly PRs would be noise to close rather than signal to read.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    groups:
+      # Routine bumps arrive as ONE pull request; majors stay separate, because
+      # a major is a decision (the lucide pin's "deliberate maintenance pass",
+      # and the same is true of Evolu and Tauri).
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "cargo"
+    directory: "/src-tauri"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(rust)"
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"

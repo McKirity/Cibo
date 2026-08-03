@@ -19,6 +19,7 @@
  */
 import { useEffect, useState } from "react";
 import { evolu } from "../db/evolu";
+import { waveGapDefault } from "../settings/store";
 import { milestoneLaddersFromJson, parseDerivedRules } from "../db/schema";
 import {
   deriveMilestoneDay,
@@ -156,7 +157,7 @@ export function useMilestoneDay(dayKey: string, revision: string): MilestoneDay 
               completed: e.completed as string,
             })),
           appStart: (metaRows[0]?.value as string | undefined) ?? null,
-          waveGapDefault: 30,
+          waveGapDefault: waveGapDefault(), // Settings → Tracking → Metrics (step 10)
         }),
       );
     };

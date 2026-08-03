@@ -45,7 +45,9 @@ import { Titlebar } from "./Titlebar";
 import { NavCalendar } from "./NavCalendar";
 import { Ambience } from "../theme/Ambience";
 import { NotYetDashboard } from "./NotYetDashboard";
-import { LogView, REDUCE_KEY } from "./DevPanels";
+import { LogView } from "./DevPanels";
+import { SettingsScreen } from "../settings/SettingsScreen";
+import { defaultLogDay } from "../settings/store";
 import { viewTitle, type View } from "./views";
 import { catchUpDays, unfinalizedQuery } from "../daily/catchUp";
 import { todayLocal } from "../metrics/clock";
@@ -120,7 +122,11 @@ export function Shell() {
     const onHome = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Home") {
         e.preventDefault();
-        setView({ kind: "daily" });
+        // The day cutoff "sets logging DEFAULTS only" — before the cutoff
+        // hour, home is still yesterday's working day, DATE-ADDRESSED so the
+        // titlebar says which day it is (step 10; settings/store.ts).
+        const home = defaultLogDay();
+        setView(home === todayLocal() ? { kind: "daily" } : { kind: "daily", day: home });
       }
       if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
@@ -254,16 +260,26 @@ export function Shell() {
     [openDay, setView],
   );
 
-  // Dev stand-in (step 10 owns the real switch): re-apply the persisted
-  // reduce-effects choice at launch. DEV-gated on purpose — a stale flag in a
-  // production build would degrade effects with no control to undo it.
+  // (The reduce-effects launch re-apply moved to settings/local.ts's
+  // initLocalSettings, main.tsx — the DEV gate died with the real control.)
+
+  // The day-cutoff home shift, launch half: the initial view is built before
+  // the settings cache can load, so a pre-cutoff launch lands on today and is
+  // REPLACED (never pushed — the archived-habit precedent) once the cache
+  // resolves. After the cutoff hour this effect never fires, and it never
+  // touches a view the user has already navigated away to.
+  const viewRef = useRef(view);
+  viewRef.current = view;
   useEffect(() => {
-    try {
-      if (import.meta.env.DEV && localStorage.getItem(REDUCE_KEY) === "1")
-        document.documentElement.classList.add("reduce-effects");
-    } catch {
-      /* per-device sugar */
-    }
+    const t = window.setTimeout(() => {
+      const v = viewRef.current;
+      if (v.kind !== "daily" || v.day != null) return;
+      const home = defaultLogDay();
+      if (home !== todayLocal()) replaceView({ kind: "daily", day: home });
+    }, 400);
+    return () => window.clearTimeout(t);
+    // Once, at mount — the launch correction only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const title = viewTitle(view, active, today);
@@ -396,9 +412,13 @@ export function Shell() {
             clock it used to host was RETIRED 2026-08-01 (step 9's open) */}
         <div className="ambience" />
 
-        {/* 4 · Settings (step 10) */}
+        {/* 4 · Settings — live since step 10; the health dot joins with the
+            health home (it ORs into the titlebar attention dot then too) */}
         <div className="sec settings">
-          <button className="settings-row" disabled title="Step 10">
+          <button
+            className={`settings-row${view.kind === "settings" ? " active" : ""}`}
+            onClick={() => setView({ kind: "settings", section: "habits" })}
+          >
             <Ico d={["M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z", "M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 6 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H2a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 3.3 6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 3.3V2a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9z"]} />
             <span className="name">Settings</span>
           </button>
@@ -470,6 +490,11 @@ export function Shell() {
               openHabit: (key) => setView({ kind: "habit", key }),
               openEntry: (id, habitKey) => setView({ kind: "entry", id, habitKey }),
             }}
+          />
+        ) : view.kind === "settings" ? (
+          <SettingsScreen
+            section={view.section}
+            onSection={(section) => setView({ kind: "settings", section })}
           />
         ) : view.kind === "daily" ? (
           <Daily

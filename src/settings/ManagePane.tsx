@@ -16,8 +16,8 @@
  * the definition rows (vocab chips + quick-add), derived rules read-only, and
  * — simple/range only — the KEEPSAKE SNIPPET SLOT (the creator's cosmetics
  * anatomy; the editor is KeepsakeEditor.tsx). Count-unit / wave-gap / ladder
- * OVERRIDES live in the habit EDITOR (the mname door), which is slice 3's —
- * mname renders inert until then.
+ * OVERRIDES live in the habit EDITOR, opened by the row's name (the mname
+ * door, live since slice 3).
  *
  * Unfinished-habit marks (`missing soft` — informational, never the attention
  * dot): the one live condition is a simple/range habit on the fallback tile.
@@ -32,9 +32,11 @@ import { Ico } from "../shell/icons";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { DangerConfirm } from "../shell/DangerConfirm";
 import { showErrorToast } from "../shell/toast";
-import { parseDerivedRules } from "../db/schema";
+import { parseDerivedRules, type EntryAttribute } from "../db/schema";
 import { ColourPicker, IconPicker } from "./pickers";
 import { KeepsakeEditor } from "./KeepsakeEditor";
+import { HabitCreator, type EditTarget } from "./HabitCreator";
+import { entryAttributesFromJson } from "../db/schema";
 
 // ── queries ──────────────────────────────────────────────────────────────────
 
@@ -45,6 +47,8 @@ const manageHabitsQuery = evolu.createQuery((db) =>
       "id", "key", "name", "kind", "sub_type", "colour_slot", "icon",
       "archived", "sort_order", "measures_time", "measures_count",
       "count_unit", "keepsake_snippet", "derived_rules",
+      // the editor's own columns (slice 3)
+      "range_max_midnights", "entry_attributes", "wave_gap_days",
     ])
     .where("isDeleted", "is not", 1)
     .orderBy("sort_order"),
@@ -69,7 +73,16 @@ type HabitRow = (typeof manageHabitsQuery)["Row"];
 
 // ── the pane ─────────────────────────────────────────────────────────────────
 
-export function ManagePane() {
+export function ManagePane({
+  creating,
+  onCloseCreator,
+  onOpenHabit,
+}: {
+  /** The pane header's "+ New habit" owns the flag; the modal lives here. */
+  creating: boolean;
+  onCloseCreator: () => void;
+  onOpenHabit?: (habitKey: string) => void;
+}) {
   const habits = useQuery(manageHabitsQuery);
   const defs = useQuery(defsQuery);
   const vocab = useQuery(vocabQuery);
@@ -100,6 +113,7 @@ export function ManagePane() {
     | null
   >(null);
   const [keepsakeFor, setKeepsakeFor] = useState<HabitRow | null>(null);
+  const [editing, setEditing] = useState<EditTarget | null>(null);
   const [deleting, setDeleting] = useState<{
     habit: HabitRow;
     entries: number;
@@ -219,6 +233,60 @@ export function ManagePane() {
 
   const pickerHabit = picker != null ? habits.find((h) => String(h.id) === picker.habitId) : null;
 
+  /**
+   * The "Edit habit" door. `hasSessions` is resolved HERE rather than in the
+   * modal because it decides a LOCK — kind cannot change once any session
+   * exists ("conversion changes what a session is") — and a lock resolved
+   * after the form paints would let the user pick a kind and then have it
+   * taken away.
+   */
+  const openEditor = async (h: HabitRow) => {
+    const sessions = await evolu.loadQuery(
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("sessions")
+          .select(["id"])
+          .where("habit_fk", "=", h.id as never)
+          .where("isDeleted", "is not", 1)
+          .limit(1),
+      ),
+    );
+    let attrs: EntryAttribute[] = [];
+    try {
+      if (h.entry_attributes != null)
+        attrs = entryAttributesFromJson(h.entry_attributes as never) as unknown as EntryAttribute[];
+    } catch {
+      attrs = [];
+    }
+    setEditing({
+      id: String(h.id),
+      key: String(h.key),
+      name: String(h.name ?? ""),
+      kind: h.kind as "simple" | "project" | "range",
+      subType: (h.sub_type as "consumption" | "creation" | null) ?? null,
+      colourSlot: String(h.colour_slot ?? "habit-1"),
+      icon: (h.icon as string | null) ?? null,
+      measuresTime: h.measures_time === 1,
+      measuresCount: h.measures_count === 1,
+      countUnit: (h.count_unit as string | null) ?? null,
+      maxMidnights: (h.range_max_midnights as number | null) ?? null,
+      entryAttrs: attrs,
+      derivedRules: parseDerivedRules(h.derived_rules),
+      waveGapDays: (h.wave_gap_days as number | null) ?? null,
+      hasSessions: sessions.length > 0,
+    });
+  };
+
+  // Names are hard-unique case-insensitively; the edit target's own name must
+  // not count against itself.
+  const namesExcept = (id: string | null): Set<string> =>
+    new Set(
+      habits
+        .filter((h) => String(h.id) !== id)
+        .map((h) => String(h.name ?? "").trim().toLowerCase())
+        .filter((n) => n !== ""),
+    );
+
   return (
     <>
       <div className="mscroll">
@@ -235,6 +303,7 @@ export function ManagePane() {
           onDelete={(h) => void askDelete(h)}
           onKeepsake={setKeepsakeFor}
           onAddVocab={addVocab}
+          onEdit={(h) => void openEditor(h)}
         />
 
         <p className="mgroup-lbl">Daily</p>
@@ -250,6 +319,7 @@ export function ManagePane() {
           onDelete={(h) => void askDelete(h)}
           onKeepsake={setKeepsakeFor}
           onAddVocab={addVocab}
+          onEdit={(h) => void openEditor(h)}
         />
 
         {shelf.length > 0 && (
@@ -311,6 +381,19 @@ export function ManagePane() {
         />
       )}
 
+      {(creating || editing != null) && (
+        <HabitCreator
+          edit={editing ?? undefined}
+          takenSlots={takenSlots}
+          takenNames={namesExcept(editing?.id ?? null)}
+          onClose={() => {
+            setEditing(null);
+            onCloseCreator();
+          }}
+          onCreated={(key) => onOpenHabit?.(key)}
+        />
+      )}
+
       {keepsakeFor != null && (
         <KeepsakeEditor
           habitId={String(keepsakeFor.id)}
@@ -363,6 +446,7 @@ function Group({
   onDelete,
   onKeepsake,
   onAddVocab,
+  onEdit,
 }: {
   rows: HabitRow[];
   openIds: Set<string>;
@@ -375,6 +459,7 @@ function Group({
   onDelete: (h: HabitRow) => void;
   onKeepsake: (h: HabitRow) => void;
   onAddVocab: (defId: unknown, value: string) => void;
+  onEdit: (h: HabitRow) => void;
 }) {
   const dragId = useRef<string | null>(null);
   return (
@@ -418,9 +503,10 @@ function Group({
                 )}
               </span>
               <span className="mid">
-                {/* The "Edit habit" door opens the editor — slice 3 (the
-                    creator's edit mode); inert text until then. */}
-                <span className="mname">{h.name}</span>
+                {/* The "Edit habit" door — the creator in edit mode (slice 3). */}
+                <button className="mname door" data-tip="Edit habit" onClick={() => onEdit(h)}>
+                  {h.name}
+                </button>
                 {fallbackTile && (
                   <span className="missing soft">
                     <Ico d={["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z", "M12 16v-4", "M12 8h.01"]} />

@@ -1,0 +1,269 @@
+/* == THE HABIT CREATOR — `kit-modal-habit-creator` (Build step 10, slice 3) ==
+   Claimed from `Final/habit-creator.html` 2026-08-02 and re-scoped under `.hc`,
+   which is the modal's own root — so every name below is contained by the
+   component that owns it. That matters more here than usual: `.fld` · `.lbl` ·
+   `.tin` · `.chk` · `.opt` · `.box` are among the most generic names in the
+   corpus, and the creator mounts INSIDE `.setscreen` (step 8's lesson — an
+   overlay inside its host is not scope-isolated by the host's own scope).
+
+   DELIBERATE ADAPTATIONS, each named:
+   - The frozen sheet reveals fields with `.hc[data-kind=…] .f-* { display:flex }`
+     and hides them otherwise. React mounts what applies, so the display
+     switches are gone; the REVEAL ANIMATION is kept and moved onto `.fld`
+     itself, since a field appearing is exactly what the keyframe drew.
+   - `.medrm`/`.derrm` (the builder remove buttons) are NOT re-declared: the
+     FINAL's own token sheet argues them as "the Settings host's `.iconbtn`
+     idiom", which settings.css already owns, so the markup uses `.iconbtn`.
+   - The `--hc-col` local dial drove the lettermark and suggested swatch from
+     one place while the mockup had no live habit; the app passes the picked
+     slot inline instead, so the dial has no tenant and is not carried.
+   - `.cosslot.art`/`.art2` (masthead + banner + the keepsake slot) are NOT
+     built: habit artwork has no file pipeline until the cloud root exists
+     (step 14), and the keepsake slot's real home is the Manage disclosure,
+     which slice 2 built. The icon slot is the row that has a live tenant. */
+
+.hc { display: flex; flex-direction: column; width: var(--modal-confirm-w); max-width: 100%; max-height: 100%;
+      background: var(--raised-background); -webkit-backdrop-filter: var(--backdrop-blur); backdrop-filter: var(--backdrop-blur);
+      border: var(--border-hairline) solid var(--border); border-radius: var(--radius-large);
+      box-shadow: var(--shadow-high); padding: calc(var(--frame-clear-modal) + var(--space-5)); overflow: hidden; }
+.reduce-effects .hc { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--panel-background); box-shadow: var(--shadow-low); }
+
+/* header — title only (the sweep law) */
+.hc .hc-head { flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-6);
+               padding: var(--space-7) var(--space-8); border-bottom: var(--border-hairline) solid var(--divider); }
+.hc .hc-title { font-family: var(--font-heading); font-size: var(--size-heading); font-weight: var(--weight-bold);
+                line-height: var(--line-tight); white-space: nowrap; }
+.hc .hc-close { margin-left: auto; }
+
+/* body — the ONE scrolling form */
+.hc .hc-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--space-7) var(--space-8);
+               display: flex; flex-direction: column; gap: var(--space-7); }
+
+.hc .fld { display: flex; flex-direction: column; gap: var(--space-4);
+           animation: hc-reveal var(--motion-standard) var(--ease-entering); }
+@keyframes hc-reveal { from { opacity: 0; transform: translateY(calc(-1 * var(--space-3))); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .hc .fld { animation: none; } }
+.reduce-effects .hc .fld { animation: none; }
+.hc .fld .lbl { display: flex; align-items: baseline; gap: var(--space-4); }
+.hc .fld .lbl .l { font-size: var(--size-subheading); font-weight: var(--weight-medium); color: var(--text-strong); }
+.hc .fld .lbl .req { font-size: var(--size-caption); font-weight: var(--weight-medium); color: var(--text-muted); }
+.hc .fld .lbl .opt { font-size: var(--size-caption); color: var(--text-muted); margin-left: auto; }
+.hc .fieldnote { font-size: var(--size-small); color: var(--text-secondary); line-height: var(--line-normal); margin: 0; }
+.hc .fieldnote .immut { color: var(--text-muted); }
+/* the "what you're making" summary — a settled consequence of the picks above
+   it, so it reads as a quiet inset rather than another control (build-side:
+   the frozen face named the flavor in one line and explained nothing) */
+.hc .kindsum { padding: var(--space-4) var(--space-5); background: var(--inset-background);
+               border-radius: var(--radius-small); text-wrap: pretty; }
+.hc .kindsum strong { color: var(--text-strong); font-weight: var(--weight-medium); }
+.hc .ceilnote { padding-top: var(--space-6); border-top: var(--border-hairline) solid var(--divider);
+                font-size: var(--size-small); color: var(--text-muted); line-height: var(--line-normal); margin: 0; text-wrap: pretty; }
+.hc .ceilnote strong { color: var(--text-secondary); font-weight: var(--weight-medium); }
+
+/* name input + the inline error tier (reported where the user caused it) */
+.hc .tin { font-family: var(--font-ui); font-size: var(--size-body); color: var(--text-strong); width: 100%;
+           background: var(--inset-background); border: var(--border-standard) solid var(--border); box-shadow: var(--shadow-inset);
+           border-radius: var(--radius-small); padding: var(--space-5); outline: none;
+           transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard); }
+.hc .tin::placeholder { color: var(--text-muted); }
+.hc .tin:focus { border-color: var(--accent); box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring); }
+.hc .tin.err { border-color: var(--danger); box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring-danger); }
+.hc .err-line { display: flex; align-items: center; gap: var(--space-3); font-size: var(--size-small); color: var(--danger); }
+.hc .err-line .ico { width: var(--icon-size-small); height: var(--icon-size-small); flex: 0 0 auto; }
+
+/* descriptive radio-cards — kit-cardset-radio (the kind + sub-type picks) */
+.hc .cardset { display: grid; gap: var(--space-4); }
+.hc .cardset.k3 { grid-template-columns: repeat(3, 1fr); }
+.hc .cardset.k2 { grid-template-columns: repeat(2, 1fr); }
+.hc .rcard { text-align: left; display: flex; flex-direction: column; gap: var(--space-2); font-family: var(--font-ui);
+             padding: var(--space-5); background: var(--panel-background);
+             border: var(--border-standard) solid var(--border); border-radius: var(--radius-medium); cursor: pointer;
+             transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
+.hc .rcard:hover { background: var(--hover-wash); }
+.hc .rcard .rt { font-size: var(--size-body); font-weight: var(--weight-bold); color: var(--text-strong); }
+.hc .rcard .rd { font-size: var(--size-caption); color: var(--text-secondary); line-height: var(--line-normal); }
+.hc .rcard.sel { border-color: var(--accent); background: var(--selected-wash); }
+.hc .rcard:disabled { cursor: not-allowed; opacity: .55; }
+.hc .rcard:disabled:hover { background: var(--panel-background); }
+
+/* measure checkboxes */
+.hc .checkset { display: flex; flex-direction: column; gap: var(--space-4); }
+.hc .chk { display: flex; align-items: flex-start; gap: var(--space-5); padding: var(--space-5); font-family: var(--font-ui);
+           background: var(--panel-background); border: var(--border-hairline) solid var(--divider);
+           border-radius: var(--radius-medium); box-shadow: var(--shadow-low); cursor: pointer; text-align: left;
+           transition: background var(--motion-fast) var(--ease-standard); }
+.hc .chk:hover { background: var(--hover-wash); }
+.hc .chk .box { flex: 0 0 auto; width: var(--check-size); height: var(--check-size); border-radius: var(--radius-small);
+                border: var(--border-standard) solid var(--border); background: var(--inset-background);
+                display: flex; align-items: center; justify-content: center; color: var(--text-on-filled);
+                transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
+.hc .chk .box .ico { width: var(--icon-size-small); height: var(--icon-size-small); stroke-width: 3; }
+.hc .chk.on .box { background: var(--accent); border-color: var(--accent); }
+.hc .chk .ctext { display: flex; flex-direction: column; gap: var(--space-1); }
+.hc .chk .cn { font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong); }
+.hc .chk .cs { font-size: var(--size-caption); color: var(--text-secondary); line-height: var(--line-normal); }
+.hc .unitwrap { display: flex; margin-top: var(--space-4); padding-left: calc(var(--check-size) + var(--space-5));
+                flex-direction: column; gap: var(--space-3); }
+.hc .unitwrap .ulbl { font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-strong); }
+.hc .unitwrap .ulbl .req { color: var(--danger); }
+.hc .unitwrap .tin { padding: var(--space-4) var(--space-5); font-size: var(--size-small); }
+
+/* the mediums builder — kit-editor-definition */
+.hc .medlist { display: flex; flex-direction: column; gap: var(--space-5); }
+.hc .medlist:empty { display: none; }
+.hc .medcard { display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-5);
+               background: var(--panel-background); border: var(--border-hairline) solid var(--divider);
+               border-radius: var(--radius-medium); box-shadow: var(--shadow-low); }
+.hc .medhead { display: flex; align-items: center; gap: var(--space-4); }
+.hc .medhead .medname { flex: 1 1 auto; font-weight: var(--weight-medium); }
+.hc .medvals { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.hc .valchip { display: inline-flex; align-items: center; gap: var(--space-3); font-size: var(--size-small);
+               color: var(--text-strong); background: var(--inset-background); border: var(--border-hairline) solid var(--border);
+               border-radius: var(--radius-full); padding: var(--space-2) var(--space-3) var(--space-2) var(--space-5); }
+.hc .valchip button { display: flex; align-items: center; justify-content: center; padding: var(--space-1);
+                      border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: var(--radius-full); }
+.hc .valchip button:hover { background: var(--hover-wash); color: var(--danger); }
+.hc .valchip button .ico { width: var(--icon-size-small); height: var(--icon-size-small); stroke-width: 2.5; }
+.hc .valin { flex: 1 1 var(--input-inline-w); min-width: var(--input-inline-w); border: none; background: transparent; outline: none;
+             font-family: var(--font-ui); font-size: var(--size-small); color: var(--text-strong); padding: var(--space-2) var(--space-3); }
+.hc .valin::placeholder { color: var(--text-muted); }
+.hc .medadd, .hc .deradd { display: inline-flex; align-items: center; gap: var(--space-3); align-self: flex-start;
+            font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary);
+            background: transparent; border: var(--border-standard) dashed var(--border); border-radius: var(--radius-small);
+            padding: var(--space-4) var(--space-5); cursor: pointer;
+            transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.hc .medadd:hover, .hc .deradd:hover { background: var(--hover-wash); color: var(--text-strong); }
+.hc .medadd .ico, .hc .deradd .ico { width: var(--icon-size-small); height: var(--icon-size-small); }
+
+/* the vocab anchor (project) */
+.hc .vanchor { display: flex; flex-wrap: wrap; gap: var(--space-4); }
+.hc .vocchip { display: inline-flex; align-items: center; gap: var(--space-4); font-family: var(--font-ui); cursor: pointer;
+               font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary);
+               background: var(--panel-background); border: var(--border-standard) solid var(--border); border-radius: var(--radius-full);
+               padding: var(--space-3) var(--space-5) var(--space-3) var(--space-4);
+               transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.hc .vocchip:hover { background: var(--hover-wash); }
+.hc .vocchip .vbox { flex: 0 0 auto; width: var(--check-size); height: var(--check-size); border-radius: var(--radius-full);
+                     border: var(--border-standard) solid var(--border); background: var(--inset-background);
+                     display: flex; align-items: center; justify-content: center; color: var(--text-on-filled);
+                     transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
+.hc .vocchip .vbox .ico { width: var(--icon-size-small); height: var(--icon-size-small); stroke-width: 3; }
+.hc .vocchip .vlbl { white-space: nowrap; }
+.hc .vocchip.on { color: var(--text-strong); border-color: var(--accent); background: var(--selected-wash); }
+.hc .vocchip.on .vbox { background: var(--accent); border-color: var(--accent); }
+
+/* max-span (range) + the editor's wave-gap override, one anatomy */
+.hc .spanrow { display: flex; align-items: center; gap: var(--space-5); }
+.hc .spanval { font-family: var(--font-mono); font-size: var(--size-subheading); font-weight: var(--weight-bold);
+               color: var(--text-strong); min-width: 2ch; text-align: center; }
+.hc .spanunit { font-size: var(--size-body); color: var(--text-secondary); }
+/* the stepper the span row borrows — settings.css scopes its own to .setscreen,
+   and this modal is a sibling of that root, so it carries its own copy */
+.hc .stepper { display: inline-flex; align-items: center; gap: var(--space-4); }
+.hc .stepbtn { display: flex; align-items: center; justify-content: center; width: var(--step-btn-size); height: var(--step-btn-size);
+               border: var(--border-hairline) solid var(--border); background: var(--panel-background); border-radius: var(--radius-small);
+               color: var(--text-secondary); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard); }
+.hc .stepbtn:hover { background: var(--hover-wash); color: var(--text-strong); }
+.hc .stepbtn .ico { width: var(--icon-size-small); height: var(--icon-size-small); }
+.hc .stepval { font-family: var(--font-mono); font-size: var(--size-subheading); font-weight: var(--weight-bold);
+               color: var(--text-strong); min-width: 3ch; text-align: center; }
+
+/* checks & flags (range) — the rule cards read as sentences */
+.hc .derlist { display: flex; flex-direction: column; gap: var(--space-5); }
+.hc .derlist:empty { display: none; }
+.hc .dercard { display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-5);
+               background: var(--panel-background); border: var(--border-hairline) solid var(--divider);
+               border-radius: var(--radius-medium); box-shadow: var(--shadow-low); }
+.hc .derhead { display: flex; align-items: center; gap: var(--space-4); }
+.hc .derhead .dertype { display: inline-flex; align-items: center; gap: var(--space-3); font-size: var(--size-caption);
+                        font-weight: var(--weight-medium); color: var(--text-secondary); background: var(--inset-background);
+                        border-radius: var(--radius-full); padding: var(--space-1) var(--space-4); white-space: nowrap; }
+.hc .derhead .dername { flex: 1 1 auto; }
+.hc .derrule { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+               font-size: var(--size-small); color: var(--text-secondary); }
+.hc .dsel { font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-strong);
+            background: var(--inset-background); border: var(--border-hairline) solid var(--border); box-shadow: var(--shadow-inset);
+            border-radius: var(--radius-small); padding: var(--space-2) var(--space-4); cursor: pointer; outline: none; }
+.hc .dsel:focus { border-color: var(--accent); box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring); }
+.hc .dval { font-family: var(--font-ui); font-size: var(--size-small); color: var(--text-strong); width: var(--input-inline-w);
+            background: var(--inset-background); border: var(--border-hairline) solid var(--border); box-shadow: var(--shadow-inset);
+            border-radius: var(--radius-small); padding: var(--space-2) var(--space-4); outline: none; }
+.hc .dval:focus { border-color: var(--accent); box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring); }
+.hc .derrule .rword { color: var(--text-muted); }
+.hc .dermenu { position: relative; align-self: flex-start; }
+.hc .dermenu .pop { position: absolute; z-index: 5; top: calc(100% + var(--space-3)); left: 0; min-width: var(--popover-width);
+                    background: var(--raised-background); -webkit-backdrop-filter: var(--backdrop-blur); backdrop-filter: var(--backdrop-blur);
+                    border: var(--border-hairline) solid var(--border); border-radius: var(--radius-medium); box-shadow: var(--shadow-high);
+                    padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2);
+                    animation: hc-reveal var(--motion-fast) var(--ease-entering); }
+.reduce-effects .hc .dermenu .pop { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--panel-background); box-shadow: var(--shadow-low); animation: none; }
+.hc .dermenu .opt { text-align: left; display: flex; flex-direction: column; gap: var(--space-1); font-family: var(--font-ui);
+                    padding: var(--space-4) var(--space-5); background: transparent; border: none; border-radius: var(--radius-small); cursor: pointer;
+                    transition: background var(--motion-fast) var(--ease-standard); }
+.hc .dermenu .opt:hover { background: var(--hover-wash); }
+.hc .dermenu .opt .ot { font-size: var(--size-small); font-weight: var(--weight-bold); color: var(--text-strong); }
+.hc .dermenu .opt .od { font-size: var(--size-caption); color: var(--text-secondary); line-height: var(--line-normal); }
+
+/* the cosmetics row — icon only (see the header on the art slots) */
+.hc .cosrow { display: grid; grid-template-columns: 1fr; gap: var(--space-5); }
+.hc .cosslot { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-5); font-family: var(--font-ui);
+               background: var(--panel-background); border: var(--border-hairline) solid var(--divider);
+               border-radius: var(--radius-medium); box-shadow: var(--shadow-low); text-align: left;
+               cursor: pointer; transition: background var(--motion-fast) var(--ease-standard); }
+.hc .cosslot:hover { background: var(--hover-wash); }
+.hc .lettermark { flex: 0 0 auto; width: var(--art-slot-h); height: var(--art-slot-h); border-radius: var(--radius-small);
+                  color: var(--text-on-filled); display: flex; align-items: center; justify-content: center;
+                  font-family: var(--font-heading); font-size: var(--size-subheading); font-weight: var(--weight-bold); }
+.hc .lettermark .ico { width: calc(var(--art-slot-h) * 0.55); height: calc(var(--art-slot-h) * 0.55); color: var(--text-on-filled); }
+.hc .cosmeta { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.hc .cosmeta .cosn { font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong); }
+.hc .cosmeta .coss { font-size: var(--size-caption); color: var(--text-secondary); line-height: var(--line-normal); }
+.hc .cosact { margin-left: auto; font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--accent); flex: 0 0 auto; white-space: nowrap; }
+
+/* colour — the suggested slot, expanding to the 12-slot grid */
+.hc .colpick { display: flex; flex-direction: column; gap: var(--space-5); }
+.hc .colsug { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-5);
+              background: var(--panel-background); border: var(--border-hairline) solid var(--divider);
+              border-radius: var(--radius-medium); box-shadow: var(--shadow-low); }
+.hc .sugsw { flex: 0 0 auto; width: var(--swatch-size); height: var(--swatch-size); border-radius: var(--radius-small); }
+.hc .sugmeta { display: flex; flex-direction: column; gap: var(--space-1); }
+.hc .sugmeta .sn { font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong); }
+.hc .sugmeta .sh { font-family: var(--font-mono); font-size: var(--size-caption); color: var(--text-muted); }
+.hc .colsug .btn-plain { margin-left: auto; }
+.hc .colgrid { padding: var(--space-6); background: var(--inset-background); border-radius: var(--radius-medium);
+               animation: hc-reveal var(--motion-standard) var(--ease-entering); }
+.hc .colgridnote { font-size: var(--size-caption); color: var(--text-muted); margin: var(--space-5) 0 0; }
+/* the swatch grid + custom-hex row are the pickers' anatomy, re-declared here
+   because settings.css scopes its copy to .setscreen and this modal is not
+   inside that root */
+.hc .pk-swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-4); }
+.hc .pksw { position: relative; aspect-ratio: 1 / 1; border-radius: var(--radius-small); border: none; cursor: pointer; padding: 0; }
+.hc .pksw.sel { box-shadow: 0 0 0 var(--border-heavy) var(--panel-background), 0 0 0 calc(var(--border-heavy) * 2) var(--accent); }
+.hc .pksw.taken { cursor: not-allowed; }
+.hc .pksw.taken::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--panel-background); opacity: .7; }
+.hc .pksw .lk { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1;
+                width: var(--icon-size-small); height: var(--icon-size-small); color: var(--text-muted); }
+.hc .pk-custom { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-5);
+                 padding-top: var(--space-5); border-top: var(--border-hairline) solid var(--divider); }
+.hc .pk-custom .cs { width: var(--space-8); height: var(--space-8); border-radius: var(--radius-small);
+                     border: var(--border-standard) dashed var(--border); display: flex; align-items: center; justify-content: center;
+                     color: var(--text-muted); flex: 0 0 auto; }
+.hc .pk-custom .cs .ico { width: var(--icon-size-small); height: var(--icon-size-small); }
+.hc .pk-custom .cl { font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-strong); }
+.hc .pk-custom .hxin { margin-left: auto; width: 9ch; font-family: var(--font-mono); font-size: var(--size-caption);
+                       color: var(--text-strong); background: var(--panel-background); border: var(--border-hairline) solid var(--border);
+                       border-radius: var(--radius-small); padding: var(--space-2) var(--space-3); outline: none; }
+
+/* the icon button the creator borrows from the Settings host's idiom */
+.hc .iconbtn { display: flex; align-items: center; justify-content: center; padding: var(--space-3);
+               border: var(--border-hairline) solid transparent; background: transparent; border-radius: var(--radius-small);
+               color: var(--text-secondary); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard); }
+.hc .iconbtn:hover { background: var(--hover-wash); color: var(--text-strong); border-color: var(--divider); }
+.hc .iconbtn.danger:hover { color: var(--danger); border-color: color-mix(in oklch, var(--danger), var(--panel-background) var(--tint-border)); }
+.hc .iconbtn .ico { width: var(--icon-size-small); height: var(--icon-size-small); }
+
+/* footer — Cancel is PLAIN (never ghost); no danger action, creation is safe */
+.hc .hc-foot { flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-5);
+               padding: var(--space-6) var(--space-8); border-top: var(--border-hairline) solid var(--divider); }
+.hc .hc-foot .escnote { font-size: var(--size-caption); color: var(--text-muted); white-space: nowrap; }
+.hc .hc-foot .foot-actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-4); }

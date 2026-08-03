@@ -143,10 +143,18 @@
                   font-family: var(--font-heading); font-size: var(--size-small); font-weight: var(--weight-bold); }
 .setscreen .msw .ico { color: var(--text-on-filled); }
 .setscreen .mid { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.setscreen .mname { font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong); width: fit-content; }
-/* claimed dormant with the pair (slice 3 wakes them — the "Edit habit" door):
-   .setscreen .mname { cursor: pointer; }
-   .setscreen .mname:hover { color: var(--accent); } */
+/* The name is a BUTTON (the "Edit habit" door, live since slice 3), so it has
+   to shed the UA's own button chrome — background, border, padding, centring.
+   Without that reset it renders as a native grey box, which on a dark theme is
+   a white slab under white text (caught at the slice-3 GUI pass). */
+.setscreen .mname { font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong);
+                    width: fit-content; background: transparent; border: none; padding: 0;
+                    font-family: var(--font-ui); text-align: left; cursor: pointer;
+                    transition: color var(--motion-fast) var(--ease-standard); }
+.setscreen .mname:hover { color: var(--accent); }
+/* the archive shelf's name is a span, not a door */
+.setscreen .mname.arch { cursor: default; }
+.setscreen .mname.arch:hover { color: var(--text-secondary); }
 .setscreen .macts { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); flex: 0 0 auto; }
 .setscreen .iconbtn { display: flex; align-items: center; justify-content: center; padding: var(--space-3);
                       border: var(--border-hairline) solid transparent; background: transparent; border-radius: var(--radius-small);

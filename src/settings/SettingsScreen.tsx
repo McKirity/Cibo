@@ -110,9 +110,12 @@ const PENDING: Partial<Record<SettingsSection, string>> = {
 export function SettingsScreen({
   section,
   onSection,
+  onOpenHabit,
 }: {
   section: SettingsSection;
   onSection: (s: SettingsSection) => void;
+  /** Post-creation flow: "land on the new habit's dashboard" (ruled). */
+  onOpenHabit?: (habitKey: string) => void;
 }) {
   return (
     <div className="setscreen">
@@ -132,7 +135,7 @@ export function SettingsScreen({
           ))}
         </div>
         {section === "habits" ? (
-          <HabitsPane />
+          <HabitsPane onOpenHabit={onOpenHabit} />
         ) : section === "tracking" ? (
           <TrackingPane />
         ) : section === "appearance" ? (
@@ -309,15 +312,22 @@ function PendingPane({ section }: { section: SettingsSection }) {
 
 // ── Habits — Manage · Vocabulary ─────────────────────────────────────────────
 
-function HabitsPane() {
+function HabitsPane({ onOpenHabit }: { onOpenHabit?: (habitKey: string) => void }) {
   const [tab, setTab] = useState<"manage" | "vocab" | "icons">("manage");
+  const [creating, setCreating] = useState(false);
   return (
     <section className="pane">
       <div className="phead">
         <h2>Habits</h2>
         <div className="pact">
-          {/* The creator modal is slice 3's — the door is drawn, not yet open. */}
-          <button className="btn-accent" aria-disabled="true" data-tip="Arrives with the habit creator">
+          <button
+            className="btn-accent"
+            data-tip="New habit"
+            onClick={() => {
+              setTab("manage");
+              setCreating(true);
+            }}
+          >
             <Ico d={["M12 5v14", "M5 12h14"]} />
             New habit
           </button>
@@ -338,7 +348,11 @@ function HabitsPane() {
       </div>
       <div className="pbody">
         {tab === "manage" ? (
-          <ManagePane />
+          <ManagePane
+            creating={creating}
+            onCloseCreator={() => setCreating(false)}
+            onOpenHabit={onOpenHabit}
+          />
         ) : tab === "icons" ? (
           <IconsTab />
         ) : (

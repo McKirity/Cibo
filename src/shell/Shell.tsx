@@ -495,6 +495,9 @@ export function Shell() {
           <SettingsScreen
             section={view.section}
             onSection={(section) => setView({ kind: "settings", section })}
+            // "Land on the new habit's dashboard — it's live and loggable
+            // immediately" ([[Habit Creator]] § Post-creation flow).
+            onOpenHabit={(key) => setView({ kind: "habit", key })}
           />
         ) : view.kind === "daily" ? (
           <Daily

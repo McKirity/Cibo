@@ -16,14 +16,54 @@
   background: var(--window-background);
   display: grid;
   grid-template-rows: var(--titlebar-height) 1fr;
-  grid-template-columns: var(--rail-width) 1fr;
+  /* the COLUMNS are declared with the animated track below, not here */
   font-family: var(--font-ui);
   color: var(--text-strong);
   font-size: var(--size-body);
   line-height: var(--line-normal);
 }
-.app-frame.rail-collapsed {
-  grid-template-columns: 0 1fr;
+/* RAIL COLLAPSE/RESTORE is a REQUIRED motion, not decoration —
+   [[Motion & Animation]]'s census lists it by name (ruled 2026-07-04); it was
+   built instant at first, which was an under-build against that ruling. The
+   column itself animates, which is what makes the content
+   canvas GROW with the rail rather than snap at the end (the 2180 → 2560
+   reflow ruling, seen happening).
+   DURATION: the DELIBERATE dial, not standard — user-ruled 2026-08-01 ("rail
+   closing is still too fast and feels instantaneous, I really want to see it
+   slide closed"). [[Motion & Animation]]'s census files rail collapse/restore
+   under STANDARD, so this supersedes that placement; 320ms is the slowest of
+   the three ruled dials, and no new dial was minted for it.
+   Known cost, taken knowingly: interpolating a grid track relayouts the pane
+   every frame, and this app has ResizeObservers on every chart (`useBox`), the
+   cover wall's masonry packer and the entry dashboard — so they re-measure
+   throughout. Measured on the real app rather than argued from theory, and the
+   user's verdict on the Windows machine was "no lag". If it
+   ever stutters (the 14" is the likely place), the fallback is to transform
+   the rail and let the column change once at the end — cheap, but the content
+   jumps. */
+/* THE GRID DOES NOT ANIMATE — the CONTENT PANE'S MARGIN DOES.
+   Two mechanisms were tried and neither moved a pixel here (2026-08-01):
+   transitioning `grid-template-columns` (the track snapped to zero on frame 1)
+   and then a typed `@property` custom property feeding the track. Both left
+   the content jumping to full width while only the rail's transform animated —
+   which is also why the first "no lag" verdict was cheap: nothing that costs
+   anything was running.
+   So the grid columns are STATIC, and the pane slides into the vacated column
+   on `margin-left`, which is the most ordinary animatable property in CSS and
+   cannot quietly not-work. A grid item stretches to its area, so pulling its
+   left edge out by the rail's width widens it by exactly that much — the same
+   2180 → 2560 reflow, arrived at by a mechanism that actually runs. */
+.app-frame {
+  grid-template-columns: var(--rail-width) 1fr;
+}
+.content {
+  transition: margin-left var(--motion-deliberate) var(--ease-standard);
+}
+.app-frame.rail-collapsed .content {
+  margin-left: calc(-1 * var(--rail-width));
+}
+.reduce-effects .content {
+  transition: none;
 }
 
 .ico {
@@ -99,8 +139,16 @@
 .tb .winbtns {
   margin-left: auto;
 }
+/* The rail toggle. The frozen face hides this button unless the rail is
+   collapsed (`display:none` + a collapsed-state override) because it drew a
+   restore-only control; live it is ONE always-visible toggle — see
+   Titlebar.tsx for why that gap was filled this way. `.on` = rail hidden. */
 .restore {
   position: relative;
+}
+.restore.on {
+  color: var(--text-strong);
+  background: var(--selected-wash);
 }
 .restore .dot {
   position: absolute;
@@ -123,16 +171,55 @@
   border-right: var(--border-hairline) solid var(--rail-border);
   overflow: hidden auto;
   min-height: 0;
+  /* The rail TRAVELS as the column shrinks (2026-08-01, user: "I really want
+     to see it slide closed"). Without this the column narrows while the rail's
+     contents stay put, so the rail is CLIPPED from its right edge — which
+     reads as being cut off, not as sliding away, however long you make it.
+     Transform is compositor-only, so the slide itself costs nothing on top of
+     the column animation already being paid for.
+
+     WIDTH IS PINNED to the dial, and that is what makes the slide work at all
+     (fixed 2026-08-01 — "It slides when appearing, but not when closing").
+     The rail's box would otherwise be sized by the grid column that is
+     animating to zero, so it SQUEEZED instead of travelling — and worse, a
+     percentage transform resolves against the element's own width, so
+     `translateX(-100%)` of a box collapsing to 0 is a slide of nothing. Pinned
+     width → a stable box that moves a real 380px. Restore looked right only
+     because the box grew back while the transform ran.
+     `z-index` is content-local and unnamed (the ladder's own carve-out): the
+     content pane follows the rail in DOM order, so without it the rail slides
+     UNDER the growing pane instead of over it. */
+  width: var(--rail-width);
+  position: relative;
+  z-index: 1;
+  transition: transform var(--motion-deliberate) var(--ease-standard);
 }
+/* NOT `display:none` any more: that vanishes the rail on frame 1 and there is
+   nothing left to animate. The zero-width column plus the rail's own
+   `overflow-x: hidden` clips it smoothly instead. `visibility` then hides it
+   for real — DELAYED by exactly the transition, so it stays visible while it
+   slides and only leaves the tab order once collapsed (an invisible-but-
+   focusable rail would be a keyboard trap). Restoring is instant in reverse:
+   the delay lives only on the collapsed rule. */
 .app-frame.rail-collapsed .rail {
-  display: none;
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition:
+    transform var(--motion-deliberate) var(--ease-standard),
+    visibility 0s linear var(--motion-deliberate);
+}
+.reduce-effects .app-frame.rail-collapsed .rail {
+  transition: none;
 }
 .rail .sec {
   padding: var(--space-4) var(--space-6);
   flex: 0 0 auto;
 }
 .rail .sec + .sec {
-  border-top: var(--border-hairline) solid var(--divider);
+  /* --divider → --rail-border, wired 2026-08-01 at the UT/DR mint: the rail's
+     interior lines belong to the rail's register (render-neutral for the
+     single-register themes, whose --rail-border == --divider by reference). */
+  border-top: var(--border-hairline) solid var(--rail-border);
 }
 .overline {
   font-size: var(--size-caption);
@@ -142,8 +229,23 @@
   color: var(--text-muted);
   margin: 0 0 var(--space-4);
 }
+.rail .overline {
+  /* the rail's own secondary ink — --rail-muted, minted 2026-08-01 (the UT/DR
+     seat, roster 247 → 249). Every .overline tenant today lives in the rail;
+     the base rule above stays for any future pane tenant. */
+  color: var(--rail-muted);
+}
 
-/* nav calendar — header only; the month grid is step 9 (placeheld) */
+/* nav calendar — the month grid LANDED 2026-08-01 (step 9), claimed from
+   `Final/frame.html` § nav calendar. Everything below is the frozen face; the
+   two deliberate departures are marked DEVIATION in place.
+
+   SCOPING: the grid's own rules are scoped under `.rail` even though the rest
+   of this file's rail rules are not. `.cal .d`, `.m`, `.wk`, `.dow` are the
+   most generic class names in the app, and the borrowed-`.gcap` collision paid
+   for that morning (the import modal, § Closure of step 8) is the same shape of
+   bug one screen away. The mockup could afford bare names; a live app sharing
+   one document cannot. */
 .calhead {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -172,9 +274,19 @@ button.doorlink {
 button.doorlink:hover {
   color: var(--accent);
 }
-.calhead .month {
+/* The month row — the label flanked by its steppers (user-ruled 2026-08-01,
+   reversing the frozen face's Jump-only month navigation). The row inherits
+   the grid placement and the negative top margin the bare label used to carry,
+   so the header's geometry is unchanged; only its middle child grew arms. */
+.calhead .monthrow {
   grid-column: 1 / -1;
   margin-top: calc(-1 * var(--space-5));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+.calhead .month {
   text-align: center;
   font-family: var(--font-heading);
   font-size: var(--size-heading);
@@ -182,16 +294,443 @@ button.doorlink:hover {
   line-height: var(--line-tight);
   color: var(--text-strong);
 }
-.cal-placeholder {
+.calhead .month:hover {
+  color: var(--accent);
+}
+/* Jump — LIVE since 2026-08-01. It is the FAR-target control (the ruled
+   year → month narrowing prompt); the month row's chevrons above handle the
+   near ones. The `:disabled` rule below is kept: nothing renders it today, and
+   it costs one selector to keep the not-yet-built idiom available. */
+.rail .jump {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-small);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--size-caption);
+  font-weight: var(--weight-medium);
   cursor: pointer;
-  border: var(--border-standard) dashed
-    color-mix(in oklch, var(--border), var(--window-background) 35%); /* ratified as drawn (2026-07-31 orphan batch, family E) */
-  border-radius: var(--radius-medium);
-  padding: var(--space-6) var(--space-5);
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.rail .jump:hover:not(:disabled) {
+  background: var(--hover-wash);
+  color: var(--text-strong);
+}
+.rail .jump:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.rail .cal {
+  display: grid;
+  grid-template-columns: var(--week-col-width) repeat(7, 1fr);
+  gap: var(--space-1);
+  align-items: stretch;
+}
+/* MONTH CHANGE rides the STANDARD dial — the census lists "nav calendar month
+   change (advance + jump)" beside the rail collapse. Stepping is DIRECTIONAL
+   (the new month enters from the side you travelled toward); a Jump is not a
+   direction, so it cross-fades instead. The offset is `--space-4`, a dial —
+   the derivation law bars a raw px here even for a keyframe. Cheap by
+   construction: transform + opacity only, no layout, and the grid is small. */
+@keyframes cal-next {
+  from {
+    opacity: 0;
+    transform: translateX(var(--space-4));
+  }
+}
+@keyframes cal-prev {
+  from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--space-4)));
+  }
+}
+@keyframes cal-jump {
+  from {
+    opacity: 0;
+  }
+}
+.rail .cal.step-next {
+  animation: cal-next var(--motion-standard) var(--ease-entering);
+}
+.rail .cal.step-prev {
+  animation: cal-prev var(--motion-standard) var(--ease-entering);
+}
+.rail .cal.step-jump {
+  animation: cal-jump var(--motion-standard) var(--ease-entering);
+}
+.reduce-effects .rail .cal {
+  animation: none;
+}
+.rail .cal .dow {
   text-align: center;
-  font-family: var(--font-mono);
   font-size: var(--size-caption);
   color: var(--text-muted);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-hairline) solid var(--divider);
+}
+.rail .cal .wk {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--size-caption);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding-right: var(--space-3);
+  border-right: var(--border-hairline) solid var(--divider);
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-bottom: none;
+  font-family: var(--font-ui);
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+.rail .cal .wk:empty {
+  border-right: none;
+  cursor: default;
+}
+.rail .cal .wk:hover {
+  color: var(--accent);
+}
+.rail .cal .wk.cur {
+  color: var(--accent);
+  font-weight: var(--weight-bold);
+}
+/* borderless day cells — a mark appears ONLY where there's bookkeeping, so the
+   grid never reads as a wall. */
+.rail .cal .d {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: var(--cal-cell-min-h);
+  aspect-ratio: 1/1;
+  border-radius: var(--radius-small);
+  font-size: var(--size-small);
+  color: var(--text-strong);
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-ui);
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.rail .cal .d .m {
+  width: var(--marker-size);
+  height: var(--marker-size);
+  border-radius: var(--radius-full);
+} /* marker slot */
+/* empty = a PAST day with nothing logged. It IS a door — back-dating is
+   first-class, so it is reachable and hoverable. */
+.rail .cal .d.empty {
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+/* future = a day ahead of today: a DEAD ROUTE. Not a door — faintest live
+   number, no hover, not clickable. */
+.rail .cal .d.future {
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.rail .cal .d.out {
+  color: color-mix(in oklch, var(--text-muted), var(--panel-background) var(--fade));
+}
+.rail .cal .d.fin .m {
+  background: var(--finalize-mark);
+} /* finalized = filled mark */
+.rail .cal .d.fin:hover,
+.rail .cal .d.today:hover,
+.rail .cal .d.unf:hover,
+.rail .cal .d.empty:hover {
+  background: var(--hover-wash);
+  cursor: pointer;
+}
+.rail .cal .d.today {
+  color: var(--accent);
+  font-weight: var(--weight-bold);
+  background: var(--today-wash);
+  box-shadow: inset 0 0 0 var(--border-heavy) var(--accent);
+  cursor: pointer;
+}
+/* DEVIATION (mechanics, not ruling): the frozen face gates these two rules
+   behind `#frame[data-frame-state="catchup"]` and marks unfinalized cells
+   `.fin.unf` — a mockup switch for photographing the catch-up state. Live,
+   the state IS the data: a `.unf` cell exists only when an unfinalized day
+   exists, so the gate would be a tautology. Same pixels, no state attribute.
+   The RULING is unchanged — in-month unfinalized days outline in the attention
+   slot and their marker is a hollow ring (open, never colour alone). */
+.rail .cal .d.unf {
+  box-shadow: inset 0 0 0 var(--border-standard) var(--attention-dot);
+}
+.rail .cal .d.unf .m {
+  background: transparent;
+  box-shadow: inset 0 0 0 var(--border-standard) var(--attention-dot);
+}
+
+/* the catch-up flag — a LABELLED button, never a bare dot (ruled 2026-07-09);
+   it shares only the DOT TOKEN with the titlebar's restore badge. Rendered
+   only while the queue is non-empty, so the frozen face's display:none/flip is
+   a mount, not a style. */
+.rail .catch-flag {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  margin-top: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-mix));
+  border: var(--border-hairline) solid
+    color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-border));
+  border-radius: var(--radius-small);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-ui);
+  color: var(--text-strong);
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.rail .catch-flag:hover {
+  background: color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-hover));
+}
+.rail .catch-flag .dot {
+  width: var(--dot-size);
+  height: var(--dot-size);
+  border-radius: var(--radius-full);
+  background: var(--attention-dot);
+  flex: 0 0 auto;
+}
+.rail .catch-flag .lbl {
+  font-size: var(--size-small);
+  font-weight: var(--weight-medium);
+}
+.rail .catch-flag .cnt {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--size-small);
+  color: var(--text-secondary);
+}
+
+/* Jump — the year→month re-anchor picker (kit-popover tenant), claimed from
+   the frozen face. Positioned `fixed` off the Jump button's rect for the same
+   reason the catch-up panel is: the rail clips. The drawn live instance hangs
+   BELOW its button, so the pointer sits on top. */
+.jumppop {
+  position: fixed;
+  z-index: 12;
+  width: var(--popover-width);
+  background: var(--raised-background);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  backdrop-filter: var(--backdrop-blur);
+  border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-medium);
+  box-shadow: var(--shadow-high);
+  padding: var(--space-5);
+  animation: catchpop-in var(--motion-standard) var(--ease-entering);
+}
+.jumppop::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 22px;
+  width: var(--popover-pointer);
+  height: var(--popover-pointer);
+  background: var(--raised-background);
+  border-top: var(--border-hairline) solid var(--border);
+  border-left: var(--border-hairline) solid var(--border);
+  transform: rotate(45deg);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  backdrop-filter: var(--backdrop-blur);
+}
+.jumppop .jump-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+.jumppop .jump-head .yr {
+  font-family: var(--font-heading);
+  font-size: var(--size-subheading);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  text-decoration: underline dotted var(--border);
+  text-underline-offset: 3px;
+}
+.jumppop .jump-head .yr:hover {
+  color: var(--accent);
+}
+/* ONE stepper recipe, two tenants: the jump picker's year arrows (drawn) and
+   the month row's chevrons (ruled 2026-08-01). Same control, same size dial —
+   grouped rather than copied. */
+.jumppop .jump-step,
+.calhead .mstep {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--step-btn-size);
+  height: var(--step-btn-size);
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+.jumppop .jump-step:hover,
+.calhead .mstep:hover {
+  background: var(--hover-wash);
+  color: var(--text-strong);
+}
+.jumppop .jump-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+.jumppop .jump-m {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-hairline) solid var(--divider);
+  background: var(--panel-background);
+  border-radius: var(--radius-small);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: var(--size-small);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  transition: background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+.jumppop .jump-m:hover {
+  background: var(--hover-wash);
+  color: var(--text-strong);
+}
+.jumppop .jump-m .md {
+  width: var(--space-4);
+  height: var(--space-4);
+  border-radius: var(--radius-full);
+  flex: 0 0 auto;
+}
+.jumppop .jump-m.cur {
+  background: var(--selected-wash);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: var(--weight-bold);
+}
+.reduce-effects .jumppop {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: var(--panel-background);
+  box-shadow: var(--shadow-low);
+  animation: none;
+}
+.reduce-effects .jumppop::before {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: var(--panel-background);
+}
+
+/* the catch-up queue popover (kit-popover's first tenant) — z 12 = z-raised on
+   the named ladder: raised chrome that dims nothing.
+   POSITION is `fixed`, not the frozen face's absolute rail-offset: the live
+   rail scrolls and CLIPS (`overflow: hidden auto`), so an absolutely-positioned
+   child would be cut off at its edge. The coordinates come from the flag's
+   measured rect, so the placement is the drawn one and the mechanics are
+   honest. Named `.catchpop`, not `.popover` — see the scoping note above. */
+.catchpop {
+  position: fixed;
+  z-index: 12;
+  /* HUGS its dates (user-ruled 2026-08-01, with the dates-only trim): the
+     drawn --popover-width was sized for a titled panel with a footer, and a
+     bare date list rattles around inside it. `max-content` takes the widest
+     row; the dial stays as the CEILING, so a long locale format can never run
+     the panel off into the pane. No raw width — the derivation law holds. */
+  width: max-content;
+  max-width: var(--popover-width);
+  padding: var(--space-4);
+  background: var(--raised-background);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  backdrop-filter: var(--backdrop-blur);
+  border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-medium);
+  box-shadow: var(--shadow-high);
+  animation: catchpop-in var(--motion-standard) var(--ease-entering);
+}
+@keyframes catchpop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.catchpop::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 22px;
+  width: var(--popover-pointer);
+  height: var(--popover-pointer);
+  background: var(--raised-background);
+  border-left: var(--border-hairline) solid var(--border);
+  border-bottom: var(--border-hairline) solid var(--border);
+  transform: rotate(45deg);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  backdrop-filter: var(--backdrop-blur);
+}
+/* The title, the per-row "open entry form" hint and the explanatory footer
+   were STRUCK 2026-08-01 (user-ruled: "All i need are the dates, everything
+   else is extraneous"), superseding the frozen face which draws all three.
+   Their rules are deleted rather than left orphaned — the panel is a list of
+   dates and nothing else, so it takes the tighter padding to match. */
+.catchpop .prow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-ui);
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.catchpop .prow:hover {
+  background: var(--hover-wash);
+}
+.catchpop .prow .pd {
+  font-size: var(--size-small);
+  font-weight: var(--weight-medium);
+  color: var(--text-strong);
+}
+/* reduce-effects — the frozen face's own rule: blur off, shadow flattened */
+.reduce-effects .catchpop {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: var(--panel-background);
+  box-shadow: var(--shadow-low);
+}
+.reduce-effects .catchpop::before {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: var(--panel-background);
+}
+.reduce-effects .catchpop {
+  animation: none;
 }
 
 /* Habits — two per row, grouped (Projects / Daily) */
@@ -264,15 +803,19 @@ button.doorlink:hover {
   justify-content: center;
   gap: var(--space-3);
   padding: calc(var(--frame-clear-tool) + var(--space-4));
-  background: var(--window-background);
-  border: var(--border-hairline) solid var(--divider);
+  /* --window-background → --rail-inset, wired 2026-08-01 at the UT/DR mint: the
+     tool card's ground is the RAIL'S card ground. The half-wired split-register
+     finding is now CLOSED for real — UT/DR's one-ground #000 rail made the cards
+     vanish into the wall (a legibility failure, not a warmth one), which is what
+     finally forced the deferred dial pair. Single-register themes set
+     --rail-inset: var(--window-background), so nothing changes for them. */
+  background: var(--rail-inset);
+  border: var(--border-hairline) solid var(--rail-border);
   border-radius: var(--radius-medium);
   cursor: pointer;
   /* --text-secondary → --text-strong, ruled 2026-07-31 at the Blame! mint: a tool card
      is a door with a one-word label, and on a rail whose register differs from the pane
-     the secondary step read as disabled. This is also the practical half of the
-     "half-wired split-register rail" finding — the other half (minting --rail-inset /
-     --rail-muted) is still open; see [[Blame!]] § Minted state. */
+     the secondary step read as disabled. */
   color: var(--text-strong);
   font-family: var(--font-ui);
   font-size: var(--size-small);
@@ -291,30 +834,20 @@ button.doorlink:hover {
   color: var(--text-strong);
 }
 
-/* Ambience band — the flex absorber; hosts the Default's vignette clock */
+/* The flex absorber — what pushes Settings to the rail's foot.
+   THE VIGNETTE CLOCK WAS RETIRED HERE 2026-08-01 (user-ruled at step 9's open:
+   "retire the clock now"), and with it `VignetteClock.tsx`, the `.clockwrap`
+   sizing, and the `--clock-max` dial (roster −1 → 248 after reconciling with the
+   same day's 6b rail mint; parity swept across all nine sheets). The band
+   itself STAYS: it is structural, not ambience — the vignette it was named for
+   was abandoned 2026-07-26, and the clock was the last tenant of a region that
+   had already outlived its purpose. It keeps its name because the frozen corpus
+   still draws it (37 FINALs carry the clock, ruled deliberately un-swept), so a
+   rename would put this file further from the drawing, not closer.
+   Step 9's month grid grows into the space above it. */
 .ambience {
   flex: 1 1 auto;
   min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-3);
-}
-/* Two stacked layers since 2026-07-29 (the hover-lag fix): the FACE svg and
-   the SWEEP svg overlay. The wrap owns the old sizing; the layers fill it. */
-.ambience .clockwrap {
-  height: 100%;
-  max-height: var(--clock-max);
-  max-width: 100%;
-  aspect-ratio: 1 / 1;
-  position: relative;
-}
-.clockwrap .clock {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
 }
 
 /* Settings — anchored bottom */

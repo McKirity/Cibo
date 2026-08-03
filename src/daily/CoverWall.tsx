@@ -354,7 +354,9 @@ const tileClass = (t: WallTile): string => {
   const b = t.body;
   switch (b.kind) {
     case "cover":
-      return b.square ? "yt" : `cover${b.big ? " big" : ""}`;
+      // `yt` is now only a SHAPE hook (2×2, set in wallSpec) — the look is
+      // `cover`'s, one composition for both since 2026-08-02.
+      return b.square ? "cover yt" : `cover${b.big ? " big" : ""}`;
     case "banner":
       return "banner";
     case "keepsake":
@@ -429,17 +431,15 @@ function TileBody({
 // ── Habit tiles ──────────────────────────────────────────────────────────────
 
 function Cover({ t }: { t: CoverTile }) {
-  // Square-source entries render square — shape follows content.
-  if (t.square)
-    return (
-      <>
-        <span className="pfp">{t.title.slice(0, 1).toUpperCase()}</span>
-        <span className="ch">{t.title}</span>
-        <span className="sub">
-          {t.eyebrow} · {t.duration}
-        </span>
-      </>
-    );
+  // ONE composition for portrait and square alike (user-ruled 2026-08-02:
+  // "Fill with the avatar"). The square branch used to draw its own thing — a
+  // 64px avatar badge centred on the habit's colour, with the name and
+  // duration beneath — which was the frozen face's own design, drawn when the
+  // circle could only ever hold a LETTER. Given real art it read as an empty
+  // tile with a sticker on it, beside neighbours whose art fills them.
+  // So `square` now decides only the tile's SHAPE (a 2×2 span, set in
+  // wallSpec) and no longer its anatomy: the art fills, the wash band carries
+  // the caption, exactly as every other cover tile on the wall.
   return (
     <>
       {/* Real cover art at runtime; the typographic keepsake underneath is the

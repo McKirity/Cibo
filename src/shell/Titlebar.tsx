@@ -13,16 +13,47 @@ export function Titlebar({
   canForward,
   onBack,
   onForward,
+  railCollapsed,
+  onToggleRail,
+  attention,
 }: {
   title: string;
   canBack: boolean;
   canForward: boolean;
   onBack: () => void;
   onForward: () => void;
+  railCollapsed: boolean;
+  onToggleRail: () => void;
+  /** Something the hidden rail would have been signalling (today: unfinalized
+   *  days; the health dot joins at step 10). */
+  attention: boolean;
 }) {
   return (
     <div className="tb">
       <div className="cluster">
+        {/* THE RAIL TOGGLE — 2026-08-01, step 9.
+            The frozen frame draws this button as RESTORE-ONLY (`display:none`
+            until collapsed), and draws no collapse control anywhere; the
+            palette's ten verbs are a closed set that doesn't include one
+            either. So "what collapses the rail" was never ruled — a gap, not a
+            conflict. Filled the minimal way: ONE always-visible toggle, whose
+            drawn icon is already a sidebar glyph. Flagged for ratification;
+            the alternatives were undrawn rail chrome (on a rail that already
+            overflows the 14") or a fifth hotkey (the four-hotkey set is
+            closed).
+            The DOT is not merely "collapsed" — it means the hidden rail is
+            holding a signal you can no longer see ([[Nav Rail]]: the ambient
+            glances "stay signalled in collapse"), so it needs both. */}
+        <button
+          className={`tb-btn restore${railCollapsed ? " on" : ""}`}
+          title={railCollapsed ? "Show nav rail" : "Hide nav rail"}
+          aria-label={railCollapsed ? "Show nav rail" : "Hide nav rail"}
+          aria-pressed={railCollapsed}
+          onClick={onToggleRail}
+        >
+          <Ico d={["M3 3h18v18H3z", "M9 3v18"]} />
+          {railCollapsed && attention && <span className="dot" />}
+        </button>
         <button
           className={`tb-btn${canBack ? "" : " disabled"}`}
           title="Back (Alt+←)"

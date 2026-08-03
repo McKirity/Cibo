@@ -60,6 +60,7 @@ import { anniversariesFor, trackingAnniversary } from "./almanac";
 import { appAnniversary, ensureAppStartDate } from "../db/appStart";
 import { loadWhimsyConfig, saveWhimsyConfig, type WhimsyConfig } from "./whimsyConfig";
 import { parseFeedSnapshot } from "./feedData";
+import { catchUpDays, unfinalizedQuery } from "./catchUp";
 import { ensureTodayFeeds } from "./feeds";
 import "./daily.css";
 
@@ -102,18 +103,10 @@ const entryCountQuery = evolu.createQuery((db) =>
  *
  * The queue's membership is exactly the `days` rows whose `finalized` is
  * false — the ledger is SPARSE, so a day never touched has no row and never
- * enters the queue; it stays a door on the nav calendar. The first door, the
- * rail's catch-up FLAG and its popover, belongs to step 9's nav calendar and is
- * deliberately not built here.
+ * enters the queue; it stays a door on the nav calendar. **The other door, the
+ * rail's catch-up FLAG and popover, landed 2026-08-01** (step 9), and the query
+ * they share moved to `catchUp.ts` with it — one queue, seen twice.
  */
-const unfinalizedQuery = evolu.createQuery((db) =>
-  db
-    .selectFrom("days")
-    .select(["date"])
-    .where("isDeleted", "is not", 1)
-    .where("finalized", "=", 0)
-    .orderBy("date", "desc"),
-);
 
 /**
  * The app's own start date — written once at launch (main.tsx) and never
@@ -329,10 +322,7 @@ function WorkingDay({
   // the card's whole job is naming WHICH days (re-ruled 2026-07-31; the old
   // slice(0,4) silently dropped the tail), and the chips wrap.
   const unfinalizedRows = useQuery(unfinalizedQuery);
-  const catchUp = useMemo(
-    () => unfinalizedRows.map((r) => String(r.date)).filter((d) => d < dayKey),
-    [unfinalizedRows, dayKey],
-  );
+  const catchUp = useMemo(() => catchUpDays(unfinalizedRows, dayKey), [unfinalizedRows, dayKey]);
 
   return (
     <div className="daily">

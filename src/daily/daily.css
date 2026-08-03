@@ -456,6 +456,14 @@
              grid-template-columns:minmax(0,2.3fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);
              gap:var(--space-6); }
   .horo .body { display:flex; gap:var(--space-7); min-height:0; align-items:center; }
+  /* The reading SCROLLS instead of growing the shelf row — user-ruled 2026-08-01
+     at the UT/DR live walk: "cap the height of the horoscope row by forcing a
+     scrollbar onto the horoscope card." The cap derives from the shelf's own
+     floor dial (never a raw px); the app-wide overlay-minimal scrollbar chrome
+     does the rest. NOTE the cover wall's .whim-horo tile is deliberately NOT
+     capped — its 2026-07-27 "flexes to include the entire text" ruling stands;
+     the two surfaces now carry opposite, each-ruled behaviours. */
+  .horo p { max-height: calc(var(--shelf-height) - 2 * var(--space-7)); overflow-y: auto; }
   .horo .sign { flex:0 0 auto; text-align:center; width:104px; }
   .horo .sign .disc2 { width:88px; height:88px; margin:0 auto; border-radius:var(--radius-full);
                          background:var(--whimsy-night); display:flex; align-items:center; justify-content:center; }
@@ -1118,15 +1126,13 @@
                  color:var(--text-on-filled); }
   .cover .dur { font-weight:var(--weight-bold); }
   .cover .stars { letter-spacing:.12em; color:var(--text-on-filled); }
-  /* the square-source entry — shape follows content (a channel pfp) */
-  .yt { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--space-4);
-        padding:var(--space-5); background:var(--slot); color:var(--text-on-filled); text-align:center; }
-  .yt .pfp { width:64px; height:64px; border-radius:var(--radius-full); flex:0 0 auto;
-             background: color-mix(in oklch, var(--slot), var(--text-on-filled) 24%);
-             display:flex; align-items:center; justify-content:center;
-             font-family:var(--font-heading); font-weight:var(--weight-bold); font-size:var(--size-heading); }
-  .yt .ch { font-size:var(--size-small); font-weight:var(--weight-medium); line-height:var(--line-tight); }
-  .yt .sub { font-family:var(--font-mono); font-size:var(--size-caption); opacity:.82; }
+  /* The square-source entry (a channel) wears `.cover yt`: the COVER
+     composition, with `.yt` left as a shape hook only. Its old face — a 64px
+     avatar centred on the habit colour with the name beneath — was struck
+     2026-08-02 (user: "Fill with the avatar"); it was the frozen design, drawn
+     when that circle could only hold a letter, and it read as a sticker on an
+     empty tile once real avatars existed. The `.pfp`/`.ch`/`.sub` rules died
+     with the markup that used them. */
   .cover, .yt, .banner { cursor:pointer; }
 
   /* ---- keepsake host (kit-tile-keepsake). The snippet fills it and never

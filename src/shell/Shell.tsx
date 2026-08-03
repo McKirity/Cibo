@@ -3,11 +3,11 @@
  * rail + content pane from the frozen `Final/frame.html`, with the Habits
  * section WIRED to the seeded active habits (click a habit → its dashboard).
  *
- * Deliberately partial — this is the container step 6's dashboards live in, not
- * step 9 (nav calendar + whimsy) or step 6a (theme/ambience). Placeheld here:
- * the month grid, the Tools destinations (Timers/Statistics/Search/Map),
- * Settings, and the live vignette (a static face stands in). Window controls
- * are visual only until the custom-titlebar/decorations pass.
+ * Deliberately partial — this is the container step 6's dashboards live in.
+ * Still placeheld: **the month grid** (step 9, in progress) and **Settings**
+ * (step 10). The Tools destinations all landed; the rail's ambience band is now
+ * a bare flex absorber — **the vignette clock was retired 2026-08-01** at step
+ * 9's open (user-ruled), taking `VignetteClock.tsx` and `--clock-max` with it.
  *
  * The dev seed/activation panels ride the Log view — the working loop that
  * turns seeds into rail habits: seed rich → activate → click → dashboard.
@@ -42,11 +42,12 @@ import { useHistory } from "./useHistory";
 import { HabitIcon, hasIcon } from "./habitIcons";
 import { Ico } from "./icons";
 import { Titlebar } from "./Titlebar";
-import { VignetteClock } from "./VignetteClock";
+import { NavCalendar } from "./NavCalendar";
 import { Ambience } from "../theme/Ambience";
 import { NotYetDashboard } from "./NotYetDashboard";
 import { LogView, REDUCE_KEY } from "./DevPanels";
 import { viewTitle, type View } from "./views";
+import { catchUpDays, unfinalizedQuery } from "../daily/catchUp";
 import { todayLocal } from "../metrics/clock";
 import "./shell.css";
 // Routing reads the habit row's kind/sub_type (chunk 3) — the key sets are
@@ -110,6 +111,10 @@ export function Shell() {
   // The palette is NEVER summoned over a modal holding input (the overlay
   // policy) — the `.dimlayer` probe is the pragmatic gate: every modal tenant
   // mounts on that chassis.
+  // Rail collapse is SESSION-ONLY by ruling ([[Nav Rail]] 2026-07-04): plain
+  // state, deliberately not localStorage — the app always launches expanded,
+  // consistent with always-opening-to-Daily.
+  const [railCollapsed, setRailCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   useEffect(() => {
     const onHome = (e: KeyboardEvent) => {
@@ -195,6 +200,13 @@ export function Shell() {
   };
 
   const today = todayLocal();
+
+  // What the hidden rail would still be signalling. Today that is the catch-up
+  // queue; the health dot joins it at step 10, and this is the one place to
+  // OR it in when it does.
+  const unfinalized = useQuery(unfinalizedQuery);
+  const catchUpWaiting = catchUpDays(unfinalized, today).length > 0;
+
   /**
    * The one day door every surface routes through. The FUTURE is a dead route
    * (no target until the date arrives), so it is refused here rather than in
@@ -255,10 +267,10 @@ export function Shell() {
   }, []);
 
   const title = viewTitle(view, active, today);
-  const monthName = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(today.slice(5, 7)) - 1];
+  // (the month-name table moved into NavCalendar with the grid, 2026-08-01)
 
   return (
-    <div className="app-frame">
+    <div className={`app-frame${railCollapsed ? " rail-collapsed" : ""}`}>
       {/* step 6a — the whole-window ambience layer (backdrop · timer backdrop);
           silent (null) for the art-free bundled pair */}
       <Ambience timers={view.kind === "timers"} />
@@ -268,34 +280,30 @@ export function Shell() {
         canForward={canForward}
         onBack={back}
         onForward={forward}
+        railCollapsed={railCollapsed}
+        onToggleRail={() => setRailCollapsed((c) => !c)}
+        attention={catchUpWaiting}
       />
 
       <nav className="rail">
-        {/* 1 · nav calendar (header only — the grid is step 9; the chain +
-            month label are LIVE cadence doors since chunk 4) */}
+        {/* 1 · THE NAV CALENDAR — live since 2026-08-01 (step 9). It owns its
+            own header now (chain · Jump · month), so the chunk-4 stand-in
+            header went with the placeholder. No "Today" door: the highlighted
+            cell IS the way home, and a separate button was ruled redundant
+            ([[Calendar & Whimsy]] § the month grid). */}
         <div className="sec">
-          <div className="calhead">
-            <div className="chain">
-              <button className="doorlink" onClick={() => setView({ kind: "cadence", scale: "year", anchor: today })}>
-                {today.slice(0, 4)}
-              </button>
-              <button className="doorlink" onClick={() => setView({ kind: "cadence", scale: "quarter", anchor: today })}>
-                Q{Math.floor((Number(today.slice(5, 7)) - 1) / 3) + 1}
-              </button>
-            </div>
-            <button className="month doorlink" onClick={() => setView({ kind: "cadence", scale: "month", anchor: today })}>
-              {monthName}
+          <NavCalendar
+            today={today}
+            openDay={openDay}
+            onCadence={(scale, anchor) => setView({ kind: "cadence", scale, anchor })}
+          />
+          {/* The dev tooling's only door until step 15's first-run setup
+              replaces it — never drawn, and it compiles out of a release. */}
+          {import.meta.env.DEV && (
+            <button className="cal-placeholder" onClick={() => setView({ kind: "log" })}>
+              dev log view
             </button>
-          </div>
-          <button className="cal-placeholder" onClick={() => setView({ kind: "cadence", scale: "week", anchor: today })}>
-            month grid · step 9 — click for this week
-          </button>
-          <button className="cal-placeholder" onClick={() => setView({ kind: "daily" })}>
-            Today
-          </button>
-          <button className="cal-placeholder" onClick={() => setView({ kind: "log" })}>
-            dev log view
-          </button>
+          )}
         </div>
 
         {/* 2 · Habits */}
@@ -384,10 +392,9 @@ export function Shell() {
           </div>
         </div>
 
-        {/* flex band · vignette clock (static — the live face is step 6a) */}
-        <div className="ambience">
-          <VignetteClock />
-        </div>
+        {/* the flex absorber that pushes Settings to the foot — the vignette
+            clock it used to host was RETIRED 2026-08-01 (step 9's open) */}
+        <div className="ambience" />
 
         {/* 4 · Settings (step 10) */}
         <div className="sec settings">

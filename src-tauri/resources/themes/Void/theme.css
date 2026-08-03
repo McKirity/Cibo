@@ -18,7 +18,10 @@
    regression coverage; this file is its shipping fork. The two are free to
    diverge from here — a change to one is not a change to the other.
 
-   247 dials, declaration-parity exact with the Default (244 → 247 at the 2026-07-31 step-6a
+   252 dials, declaration-parity exact with the Default (248 → 252 at the 2026-08-01 scrollbar
+   mint — --scrollbar-thumb · --scrollbar-thumb-hover · --scrollbar-width · --scrollbar-radius;
+   the header total was stale at 247 through three same-day events, now reconciled: 247 → 249 at
+   the 6b rail mint, 249 → 248 at the --clock-max retirement, 248 → 252 here; 244 → 247 at the 2026-07-31 step-6a
    orphan-amount mint — --cover-scrim · --scrim-ink · --pill-ink-shift, Default values pending
    Void's own pass; --band-wash minted AND retired 2026-07-28, tenantless — the modal appearance pass ruled the SURFACE LADDER instead (kit.css § the ladder): Void's shell/dim/shadow/blur values are ITS OWN and its ladder re-value is OWED at its next pass, with its stale ramps; 233 → 241 at the 2026-07-24 wave-zone mint; 234 → 233 at the
    2026-07-19 --mini-verdict-cell retirement, tenantless; count corrected
@@ -313,12 +316,26 @@
   --art-slot-h:        44px;
   --focus-ring-danger: rgba(255,95,82,.38);  /* follows the lifted --danger */
 
-  /* -- Rail chrome (5) · SINGLE-REGISTER ------------------------------- */
+  /* -- Rail chrome (7) · SINGLE-REGISTER ------------------------------- */
   --rail-background: var(--panel-background);
   --rail-text:       var(--text-strong);
   --rail-border:     var(--divider);
+  --rail-inset:      var(--window-background);  /* MINTED 2026-08-01 (the UT/DR seat, step 6b) —
+                                                   render-neutral: what the tool cards read pre-mint */
+  --rail-muted:      var(--text-muted);         /* MINTED 2026-08-01 — render-neutral, same reason */
   --shadow-direction:  0 1px;
   --focus-ring-weight: 3px;
+
+  /* -- Scrollbar chrome (4) — MINTED 2026-08-01 (Build) ----------------
+     The DIAL half of the 2026-07-18 behaviour ruling (overlay-minimal,
+     app-wide). Recipe: src/kit.css § Scrollbars. Roster 248 → 252.
+     THE THUMB TAKES A TEXT-WEIGHT DIAL, NEVER --border — which matters
+     doubly here: Void's --border was deliberately lifted ABOVE
+     --text-muted 2026-07-31, so a border-weight bar would shout. */
+  --scrollbar-thumb:       var(--text-muted);      /* the revealed thumb, at rest */
+  --scrollbar-thumb-hover: var(--text-secondary);  /* pointer ON the bar */
+  --scrollbar-width:       10px;                   /* the reserved gutter (the ruling's 8–10px) */
+  --scrollbar-radius:      var(--radius-full);
 
   /* -- Theme-owned whimsy palette (10) — Void's dark-world art ---------
      A dim world under an eclipse: daylight is a low indigo haze, the sun
@@ -371,8 +388,17 @@
   --shelf-height:   168px;
   --triptych-min:   1115px;
 
-  /* -- Theme-owned ambience sizing (1) --------------------------------
-     Void inherits the Default's code-drawn vignette clock, so this dial
-     is live here too — the face draws in Void's chrome ramp. */
-  --clock-max: 340px;
+  /* -- Theme-owned ambience sizing (0) ---------------------------------
+     --clock-max was RETIRED here 2026-08-01 (user-ruled at Build step 9's
+     open: "retire the clock now"). It sized the Default's code-drawn vignette
+     clock, the last tenant of a surface abandoned 2026-07-26 — the clock had
+     been kept alive only by the ruling "leave the clock until the calendar
+     comes into play", and step 9's nav calendar is that calendar. The rail's
+     flex band survives as a plain absorber; no theme authors ambience sizing
+     any more. Roster: MINUS ONE from this retirement. The absolute total is
+     deliberately not asserted here — the 6b rail mint (--rail-inset ·
+     --rail-muted) landed the same day from a parallel session, so the two
+     deltas must be reconciled together rather than each claiming a number.
+     Mechanically, at the moment of this edit: 248, parity verified across all
+     nine sheets. */
 }

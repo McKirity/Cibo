@@ -9,7 +9,11 @@
    Ambience: backdrop + timer backdrop SILENT; the vignette is the
    code-drawn tick-face clock (the data-bearing carve-out — no files).
    ---------------------------------------------------------------------
-   247 dials (244 → 247 at the 2026-07-31 step-6a orphan-amount mint — --cover-scrim ·
+   252 dials (248 → 252 at the 2026-08-01 scrollbar mint — --scrollbar-thumb ·
+   --scrollbar-thumb-hover · --scrollbar-width · --scrollbar-radius; the header total was
+   stale at 247 through three same-day events, now reconciled: 247 → 249 at the 6b rail
+   mint (--rail-inset · --rail-muted), 249 → 248 at the --clock-max retirement, 248 → 252 here;
+   244 → 247 at the 2026-07-31 step-6a orphan-amount mint — --cover-scrim ·
    --scrim-ink · --pill-ink-shift; --band-wash was minted and retired on 2026-07-28, same day, tenantless — the modal
    appearance pass ruled ROLES instead of a wash amount; net zero. Four values moved at that pass:
    --raised-background · --backdrop-blur · --overlay-dim · --shadow-high, each annotated in place;
@@ -330,15 +334,36 @@
   --art-slot-h:        44px;
   --focus-ring-danger: rgba(255,59,48,.34);  /* a Group-1 chrome colour, sibling of --focus-ring */
 
-  /* -- Rail chrome (5) · the split-register device --------------------
+  /* -- Rail chrome (7) · the split-register device --------------------
      THE RAIL IS TOKENS, NEVER ART. A theme gives the rail its own
      register here (colour, line weight) or sets it equal to the window/
      panel values for a single-register read. The Default is SINGLE. */
   --rail-background: var(--panel-background);
   --rail-text:       var(--text-strong);
   --rail-border:     var(--divider);
+  --rail-inset:      var(--window-background);  /* MINTED 2026-08-01 (the UT/DR seat, step 6b) — the
+                                                   rail's own card ground (tool cards). Single-register
+                                                   themes point it at what the cards read before the
+                                                   mint, so the wiring lands render-neutral. */
+  --rail-muted:      var(--text-muted);         /* MINTED 2026-08-01 — the rail's secondary ink
+                                                   (overlines). Render-neutral here, same reason. */
   --shadow-direction:  0 1px;   /* neutral downward cast (x=0) */
   --focus-ring-weight: 3px;
+
+  /* -- Scrollbar chrome (4) — MINTED 2026-08-01 (Build) ----------------
+     The DIAL half of the 2026-07-18 behaviour ruling (overlay-minimal,
+     app-wide), an IOU since 2026-07-11: the scrollbar was the one visible
+     chrome surface with no dial coverage, so WebView2 drew its own light
+     bar on every theme — found on a dark seat ("it's very jarring bc it's
+     very white"). The recipe and its mechanics live in src/kit.css
+     § Scrollbars. Roster 248 → 252.
+     THE THUMB TAKES A TEXT-WEIGHT DIAL, NEVER --border — the wave band's
+     recorded trap b, and the reason a near-white --border (UT/DR's white
+     box rule) can never leak into chrome. */
+  --scrollbar-thumb:       var(--text-muted);      /* the revealed thumb, at rest */
+  --scrollbar-thumb-hover: var(--text-secondary);  /* pointer ON the bar */
+  --scrollbar-width:       10px;                   /* the reserved gutter (the ruling's 8–10px) */
+  --scrollbar-radius:      var(--radius-full);
 
   /* -- Theme-owned whimsy palette (10) — ART, not the semantic layer --
      Whimsy card SHELLS are kit (--panel-background, --border, the type
@@ -405,8 +430,17 @@
   --shelf-height:   168px;  /* the mystical-shelf band's flex FLOOR */
   --triptych-min:   1115px;  /* Daily's triptych row MIN height — columns never scroll internally; the PANE scrolls. 1060→1115 2026-07-31: the tonight card's floor re-ruled 175→230 */
 
-  /* -- Theme-owned ambience sizing (1) — NOT structural ---------------
-     A theme with no vignette inherits a dead dial and may ignore or
-     repurpose it. Here it sizes the Default's one piece of ambience. */
-  --clock-max: 340px;  /* the vignette clock's max diameter in the rail's flex band */
+  /* -- Theme-owned ambience sizing (0) ---------------------------------
+     --clock-max was RETIRED here 2026-08-01 (user-ruled at Build step 9's
+     open: "retire the clock now"). It sized the Default's code-drawn vignette
+     clock, the last tenant of a surface abandoned 2026-07-26 — the clock had
+     been kept alive only by the ruling "leave the clock until the calendar
+     comes into play", and step 9's nav calendar is that calendar. The rail's
+     flex band survives as a plain absorber; no theme authors ambience sizing
+     any more. Roster: MINUS ONE from this retirement. The absolute total is
+     deliberately not asserted here — the 6b rail mint (--rail-inset ·
+     --rail-muted) landed the same day from a parallel session, so the two
+     deltas must be reconciled together rather than each claiming a number.
+     Mechanically, at the moment of this edit: 248, parity verified across all
+     nine sheets. */
 }

@@ -19,6 +19,8 @@ import { initScrollReveal } from "./shell/scrollReveal";
 import { initLocalSettings } from "./settings/local";
 import { initSyncedSettings } from "./settings/store";
 import { initCustomColours } from "./settings/customColours";
+import { initCuration } from "./settings/curation";
+import { initGlobalLadders } from "./settings/ladderStore";
 import App from "./App";
 // AFTER the App import on purpose: the role → kit-target decoration wiring
 // must follow every screen sheet in the bundle so its attachments win the
@@ -59,6 +61,10 @@ initSyncedSettings();
 // Custom habit colours (the 12-slot palette's overflow) publish as root vars
 // so the 43 `var(--slot)` render sites work unchanged — settings/customColours.
 initCustomColours();
+// Palette curation + the global milestone ladders — both synced settings read
+// synchronously by surfaces that cannot await (settings/curation · ladderStore).
+initCuration();
+initGlobalLadders();
 
 let booted = false;
 evolu.subscribeError(() => {

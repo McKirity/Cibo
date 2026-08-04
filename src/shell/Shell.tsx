@@ -118,6 +118,9 @@ export function Shell() {
   // consistent with always-opening-to-Daily.
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // The palette's "New habit" verb navigates to Settings AND asks it to open
+  // the creator; the flag is consumed on arrival so a later visit is clean.
+  const [creatorPending, setCreatorPending] = useState(false);
   useEffect(() => {
     const onHome = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Home") {
@@ -256,6 +259,10 @@ export function Shell() {
       openCompare: () => setView({ kind: "compare" }),
       openTimers: () => setView({ kind: "timers" }),
       openMap: () => setView({ kind: "map" }),
+      openHabitCreator: () => {
+        setCreatorPending(true);
+        setView({ kind: "settings", section: "habits" });
+      },
     }),
     [openDay, setView],
   );
@@ -498,6 +505,8 @@ export function Shell() {
             // "Land on the new habit's dashboard — it's live and loggable
             // immediately" ([[Habit Creator]] § Post-creation flow).
             onOpenHabit={(key) => setView({ kind: "habit", key })}
+            openCreator={creatorPending}
+            onCreatorOpened={() => setCreatorPending(false)}
           />
         ) : view.kind === "daily" ? (
           <Daily

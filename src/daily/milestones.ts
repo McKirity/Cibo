@@ -100,11 +100,25 @@ export const ladderCrossings = (
   return [...new Set(hits)].sort((a, b) => a - b);
 };
 
-/** A habit's ladder for a subject: its own override, else the global default. */
+/**
+ * THE LIVE GLOBAL — set from the stored Settings row at launch (step 10, slice
+ * 4), and the ruled constants above stay the fallback under it. A module-level
+ * cache rather than a parameter because every `ladderFor` call sits inside the
+ * pure derivation, and threading a fifth input through it would change every
+ * shape's signature to carry a value that is the same for all of them.
+ */
+let globalOverride: Partial<Record<LadderSubject, Ladder>> = {};
+export const setGlobalLadders = (next: Partial<Record<LadderSubject, Ladder>>): void => {
+  globalOverride = next;
+};
+export const globalLadderFor = (subject: LadderSubject): Ladder =>
+  globalOverride[subject] ?? DEFAULT_LADDERS[subject];
+
+/** A habit's ladder for a subject: its own override, else the global. */
 export const ladderFor = (
   overrides: LadderOverrides | null,
   subject: LadderSubject,
-): Ladder => overrides?.[subject] ?? DEFAULT_LADDERS[subject];
+): Ladder => overrides?.[subject] ?? globalLadderFor(subject);
 
 // ── The subject swap (code-side, ruled) ──────────────────────────────────────
 
@@ -595,7 +609,7 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
   // ── Thresholds · Nth session logged, APP-WIDE ("ALL sessions accumulating")
   const allBefore = input.sessions.filter((s) => s.day < day).length;
   const allNow = input.sessions.filter((s) => s.day <= day).length;
-  for (const v of ladderCrossings(DEFAULT_LADDERS.sessions, allBefore, allNow))
+  for (const v of ladderCrossings(globalLadderFor("sessions"), allBefore, allNow))
     items.push(item("threshold", ordinal(v), "session logged", "count"));
 
   // ── Lifecycle · Nth entry finished ──────────────────────────────────────────

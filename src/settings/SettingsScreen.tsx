@@ -72,6 +72,12 @@ import {
   AUTOSAVE_DEFAULT_MINUTES,
 } from "../daily/autosave";
 import { ManagePane } from "./ManagePane";
+import { VocabularyPane } from "./VocabularyPane";
+import { ImportersPane } from "./ImportersPane";
+import { PresetsPane, PalettePane } from "./PresetsPalettePane";
+import { WhimsyPane } from "./WhimsyPane";
+import { LadderEditor } from "./LadderEditor";
+import { globalLaddersQuery, laddersFrom, writeGlobalLadders } from "./ladderStore";
 import { iconStats, LUCIDE_VERSION } from "../shell/habitIcons";
 import { getLucideSeen } from "./local";
 import type { SettingsSection } from "../shell/views";
@@ -97,12 +103,8 @@ const SECTIONS: { key: SettingsSection; name: string; icon: string[] }[] = [
 
 /** What each pending section will hold — the door's one honest line. */
 const PENDING: Partial<Record<SettingsSection, string>> = {
-  whimsy: "Location · birthdate · sun sign · country · countdowns · per-card toggles.",
-  importers: "API keys (TMDB · YouTube) and the Calibre library path.",
   backups: "Restore from backup… and the retention dials (arrives with step 12).",
   storage: "The cloud root picker (arrives with step 14's readiness checkpoint).",
-  presets: "Comparing Statistics · Advanced Search — rename, delete, inspect.",
-  palette: "Enable/disable toggles for the pinned ten-action inventory.",
   health: "System · Data — status rows, per-importer Test connection, the data checks.",
   help: "Manual (the 22 articles) · Hotkeys · About.",
 };
@@ -111,11 +113,16 @@ export function SettingsScreen({
   section,
   onSection,
   onOpenHabit,
+  openCreator = false,
+  onCreatorOpened,
 }: {
   section: SettingsSection;
   onSection: (s: SettingsSection) => void;
   /** Post-creation flow: "land on the new habit's dashboard" (ruled). */
   onOpenHabit?: (habitKey: string) => void;
+  /** Arrived from the palette's "New habit" verb — open the creator on mount. */
+  openCreator?: boolean;
+  onCreatorOpened?: () => void;
 }) {
   return (
     <div className="setscreen">
@@ -135,7 +142,11 @@ export function SettingsScreen({
           ))}
         </div>
         {section === "habits" ? (
-          <HabitsPane onOpenHabit={onOpenHabit} />
+          <HabitsPane
+            onOpenHabit={onOpenHabit}
+            openCreator={openCreator}
+            onCreatorOpened={onCreatorOpened}
+          />
         ) : section === "tracking" ? (
           <TrackingPane />
         ) : section === "appearance" ? (
@@ -144,6 +155,30 @@ export function SettingsScreen({
           <TimersPane />
         ) : section === "developer" ? (
           <DeveloperPane />
+        ) : section === "importers" ? (
+          <Pane title="Importers">
+            <div className="pbody">
+              <ImportersPane />
+            </div>
+          </Pane>
+        ) : section === "presets" ? (
+          <Pane title="Presets">
+            <div className="pbody">
+              <PresetsPane />
+            </div>
+          </Pane>
+        ) : section === "palette" ? (
+          <Pane title="Palette">
+            <div className="pbody">
+              <PalettePane />
+            </div>
+          </Pane>
+        ) : section === "whimsy" ? (
+          <Pane title="Whimsy">
+            <div className="pbody">
+              <WhimsyPane />
+            </div>
+          </Pane>
         ) : (
           <PendingPane section={section} />
         )}
@@ -312,9 +347,23 @@ function PendingPane({ section }: { section: SettingsSection }) {
 
 // ── Habits — Manage · Vocabulary ─────────────────────────────────────────────
 
-function HabitsPane({ onOpenHabit }: { onOpenHabit?: (habitKey: string) => void }) {
+function HabitsPane({
+  onOpenHabit,
+  openCreator = false,
+  onCreatorOpened,
+}: {
+  onOpenHabit?: (habitKey: string) => void;
+  openCreator?: boolean;
+  onCreatorOpened?: () => void;
+}) {
   const [tab, setTab] = useState<"manage" | "vocab" | "icons">("manage");
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(openCreator);
+  useEffect(() => {
+    if (!openCreator) return;
+    setTab("manage");
+    setCreating(true);
+    onCreatorOpened?.();
+  }, [openCreator, onCreatorOpened]);
   return (
     <section className="pane">
       <div className="phead">
@@ -356,11 +405,7 @@ function HabitsPane({ onOpenHabit }: { onOpenHabit?: (habitKey: string) => void 
         ) : tab === "icons" ? (
           <IconsTab />
         ) : (
-          <p className="pending">
-            Not built yet — the Vocabulary tab arrives with a later slice. It will hold: the
-            global status list · the fixed Rating/Priority scales (read-only) · the per-habit
-            entry-level Mediums (Type / Genre).
-          </p>
+          <VocabularyPane />
         )}
       </div>
     </section>
@@ -416,6 +461,7 @@ function IconsTab() {
 function TrackingPane() {
   const rows = useQuery(syncedSettingsQuery);
   const autosaveRows = useQuery(autosaveQuery);
+  const ladderRows = useQuery(globalLaddersQuery);
   const [tab, setTab] = useState<"periods" | "metrics" | "logging">("periods");
 
   const get = (key: string): string | null => {
@@ -497,8 +543,17 @@ function TrackingPane() {
                   />
                 </span>
               </div>
-              {/* Milestone threshold ladders (global) land with the Manage
-                  slice — the editor is shared with the per-habit overrides. */}
+              <div className="ladderblock">
+                <p className="hglbl">Milestone ladders</p>
+                <p className="vnote">
+                  When a threshold milestone fires. Habits can override any of these on their own
+                  row.
+                </p>
+                <LadderEditor
+                  value={laddersFrom(ladderRows)}
+                  onChange={(next) => writeGlobalLadders(ladderRows, next)}
+                />
+              </div>
             </div>
           ) : (
             <div className="ctrlstack">

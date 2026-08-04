@@ -108,6 +108,141 @@
 .setscreen .pomopair { display: flex; gap: var(--space-7); align-items: center; }
 .setscreen .pomoside { display: flex; gap: var(--space-4); align-items: center; }
 
+/* == slice 4 (2026-08-02) — Vocabulary · Importers · Presets · Palette ·
+   Whimsy · the milestone-ladder editor. Mostly re-uses the anatomies above
+   (.crow · .subchip · .mrow · .hgroup); what follows is only what those five
+   panes genuinely added. == */
+
+/* a locked vocab value — the five status anchors, which never move */
+.setscreen .subchip.locked { color: var(--text-muted); }
+.setscreen .subchip.locked .ico { color: var(--text-muted); }
+.setscreen .subchip.on { color: var(--text-strong); background: var(--selected-wash);
+                         box-shadow: inset 0 0 0 var(--border-hairline) var(--accent); cursor: pointer; }
+.setscreen .subadd-in.wide { width: 22ch; }
+/* == VOCABULARY — master/detail (user-ruled 2026-08-03, replacing the frozen
+   face's flat chip wrap once Calibre tags and AO3 fandoms made a single genre
+   list run to hundreds). The chassis is kit-viewer-manual's, CLAIMED here from
+   `Final/manual-viewer.html` and re-scoped: a door-list at --settings-pane-w
+   beside a content surface, in this same settings pane. `.vocab` marks this
+   tenant; the manual reader itself lands at slice 6 on the same rules. == */
+.setscreen .manual { display: grid; grid-template-columns: var(--settings-pane-w) 1fr; gap: var(--space-7);
+                     height: 100%; min-height: 0; }
+.setscreen .mroster { display: flex; flex-direction: column; min-height: 0;
+                      border-right: var(--border-hairline) solid var(--divider); padding-right: var(--space-6); }
+.setscreen .mtoc { display: flex; flex-direction: column; gap: var(--space-1); overflow: auto; min-height: 0; }
+.setscreen .mgrp { display: flex; align-items: center; font-size: var(--size-caption); font-weight: var(--weight-bold);
+                   letter-spacing: .09em; text-transform: uppercase; color: var(--text-muted);
+                   margin: var(--space-5) 0 var(--space-2); padding: 0 var(--space-5); }
+.setscreen .mtoc > div:first-child .mgrp { margin-top: 0; }
+.setscreen .mdoc { display: flex; align-items: center; gap: var(--space-5); width: 100%; padding: var(--space-4) var(--space-5);
+                   border: none; background: transparent; border-radius: var(--radius-small); cursor: pointer; text-align: left;
+                   font-family: var(--font-ui); color: var(--text-strong);
+                   transition: background var(--motion-fast) var(--ease-standard); }
+.setscreen .mdoc:hover { background: var(--hover-wash); }
+.setscreen .mdoc.active { background: var(--selected-wash); box-shadow: inset var(--border-heavy) 0 0 var(--accent); }
+.setscreen .mdoc .mt { font-size: var(--size-body); font-weight: var(--weight-medium); }
+.setscreen .mtoc-note { margin-top: var(--space-6); padding-top: var(--space-5);
+                        border-top: var(--border-hairline) solid var(--divider);
+                        font-size: var(--size-small); color: var(--text-muted); line-height: var(--line-normal); text-wrap: pretty; }
+.setscreen .mread { min-height: 0; overflow: auto; padding-right: var(--space-6); }
+/* the roster row's tally — how many values a list holds, so the size of a
+   list is visible before opening it */
+.setscreen .vcount { margin-left: auto; font-family: var(--font-mono); font-size: var(--size-caption);
+                     color: var(--text-muted); flex: 0 0 auto; }
+.setscreen .mdoc.active .vcount { color: var(--accent); }
+
+/* the detail surface */
+.setscreen .vhead { display: flex; align-items: baseline; gap: var(--space-5); margin-bottom: var(--space-6); }
+.setscreen .vtitle { font-family: var(--font-heading); font-size: var(--size-heading); font-weight: var(--weight-bold);
+                     line-height: var(--line-tight); margin: 0; }
+.setscreen .vowner { color: var(--text-muted); font-weight: var(--weight-regular); }
+.setscreen .vtally { font-family: var(--font-mono); font-size: var(--size-caption); color: var(--text-muted); }
+.setscreen .vsearch { margin-left: auto; min-width: 14rem; }
+/* values as a wrapped list of rows rather than free-floating chips: at 200
+   values a chip wrap has no reading order, and a row has somewhere to put the
+   remove control */
+.setscreen .vlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--space-2); }
+.setscreen .vrow { display: flex; align-items: center; gap: var(--space-4); min-width: 0;
+                   padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5);
+                   background: var(--panel-background); border: var(--border-hairline) solid var(--divider);
+                   border-radius: var(--radius-small); }
+.setscreen .vrow .vval { font-size: var(--size-small); color: var(--text-strong); overflow: hidden;
+                         text-overflow: ellipsis; white-space: nowrap; }
+.setscreen .vrow .iconbtn { margin-left: auto; flex: 0 0 auto; }
+.setscreen .vrow.locked { background: var(--window-background); border-style: dashed; }
+.setscreen .vrow.locked .vval { color: var(--text-secondary); }
+.setscreen .vrow.locked .ico { margin-left: auto; color: var(--text-muted); flex: 0 0 auto; }
+.setscreen .vadd { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-6);
+                   padding-top: var(--space-6); border-top: var(--border-hairline) solid var(--divider); }
+
+/* the habit swatch on a vocabulary group header */
+.setscreen .vsw { width: var(--icon-size); height: var(--icon-size); border-radius: var(--radius-small);
+                  display: inline-flex; align-items: center; justify-content: center; margin-right: var(--space-3);
+                  color: var(--text-on-filled); font-family: var(--font-heading); font-size: var(--size-caption);
+                  font-weight: var(--weight-bold); vertical-align: middle; }
+.setscreen .vsw .ico { width: 12px; height: 12px; color: var(--text-on-filled); }
+.setscreen .vgrp { margin-top: var(--space-5); }
+/* the explanatory line a settings row is allowed (Help is the only OTHER
+   surface where prose is legitimate; these state a consequence, not a feature) */
+.setscreen .vnote { max-width: 68ch; margin: var(--space-4) 0 0; font-size: var(--size-small);
+                    color: var(--text-secondary); line-height: var(--line-normal); text-wrap: pretty; }
+.setscreen .vnote.foot { margin-top: var(--space-7); color: var(--text-muted); }
+
+/* free-text settings inputs (API keys · coordinates · dates · ladder numbers) */
+.setscreen .keyin { font-family: var(--font-mono); font-size: var(--size-small); color: var(--text-strong);
+                    background: var(--inset-background); border: var(--border-hairline) solid var(--border);
+                    border-radius: var(--radius-small); padding: var(--space-3) var(--space-4); outline: none;
+                    min-width: 18rem; }
+.setscreen .keyin:focus { border-color: var(--accent); box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring); }
+.setscreen .keyin.num { min-width: 0; width: 8ch; text-align: right; }
+.setscreen .keyin.wide { min-width: 28rem; }
+.setscreen .field.none { color: var(--text-muted); }
+/* the quiet aside on a row heading ("keyless · no setup", "archived").
+   CLAIMED 2026-08-03 — slices 1–4 used this class nine times without it ever
+   being claimed, so every one of them rendered as unstyled inline text butted
+   against the label ("Genremulti-value"). */
+.setscreen .mgtag { font-weight: var(--weight-regular); letter-spacing: 0; text-transform: none;
+                    color: var(--text-muted); font-size: var(--size-caption); margin-left: var(--space-4); }
+.setscreen .mgtag.err { color: var(--danger); }
+.setscreen .numfield { display: inline-flex; align-items: center; gap: var(--space-3); }
+.setscreen .numfield .nflbl { font-size: var(--size-caption); color: var(--text-muted); }
+
+/* the milestone ladders — a list of subjects, each expanding to its rule */
+.setscreen .ladderblock { margin-top: var(--space-8); padding-top: var(--space-7);
+                          border-top: var(--border-hairline) solid var(--divider); }
+.setscreen .ladders, .hc .ladders { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-5); }
+.setscreen .ladrow, .hc .ladrow { background: var(--panel-background); border: var(--border-hairline) solid var(--divider);
+                                  border-radius: var(--radius-medium); box-shadow: var(--shadow-low); }
+.setscreen .ladhead, .hc .ladhead { display: flex; align-items: center; gap: var(--space-4);
+                                    padding: var(--space-4) var(--space-5); }
+.setscreen .ladrow.open .disc, .hc .ladrow.open .disc { transform: rotate(90deg); color: var(--text-strong); }
+.setscreen .ladmeta, .hc .ladmeta { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.setscreen .ladname, .hc .ladname { font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong); }
+.setscreen .ladsum, .hc .ladsum { font-family: var(--font-mono); font-size: var(--size-caption); color: var(--text-secondary); }
+.setscreen .ladsum.inherit, .hc .ladsum.inherit { color: var(--text-muted); }
+.setscreen .ladtag, .hc .ladtag { margin-left: auto; flex: 0 0 auto; }
+.setscreen .ladbody, .hc .ladbody { display: flex; flex-direction: column; gap: var(--space-5);
+                                    padding: 0 var(--space-6) var(--space-6) calc(var(--icon-size) + var(--space-7)); }
+.setscreen .ladfield, .hc .ladfield { display: flex; flex-direction: column; gap: var(--space-3); }
+.setscreen .ladband, .hc .ladband { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+                                    font-size: var(--size-small); color: var(--text-secondary); }
+.setscreen .ladband .rword, .hc .ladband .rword { color: var(--text-muted); }
+.setscreen .ladnote, .hc .ladnote { padding: 0 var(--space-6) var(--space-6) calc(var(--icon-size) + var(--space-7)); margin: 0; }
+/* the creator's copies of the shared bits the ladder editor leans on */
+.hc .keyin { font-family: var(--font-mono); font-size: var(--size-small); color: var(--text-strong);
+             background: var(--inset-background); border: var(--border-hairline) solid var(--border);
+             border-radius: var(--radius-small); padding: var(--space-3) var(--space-4); outline: none; }
+.hc .keyin.num { width: 8ch; text-align: right; }
+.hc .keyin.wide { width: 100%; }
+.hc .keyin:focus { border-color: var(--accent); box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring); }
+.hc .vnote { font-size: var(--size-small); color: var(--text-secondary); line-height: var(--line-normal); margin: 0; }
+.hc .sglbl { font-size: var(--size-caption); font-weight: var(--weight-bold); letter-spacing: .06em;
+             text-transform: uppercase; color: var(--text-muted); }
+.hc .disc { display: flex; align-items: center; justify-content: center; padding: var(--space-2); border: none;
+            background: transparent; color: var(--text-muted); cursor: pointer; border-radius: var(--radius-small);
+            flex: 0 0 auto; transition: transform var(--motion-fast) var(--ease-standard); }
+.hc .disc .ico { width: var(--icon-size-small); height: var(--icon-size-small); }
+
 /* build glue — the pending panes' one-line note (dies as slices land) */
 .setscreen .pending { max-width: 68ch; font-size: var(--size-body); color: var(--text-secondary);
                       line-height: var(--line-normal); margin: 0; text-wrap: pretty; }

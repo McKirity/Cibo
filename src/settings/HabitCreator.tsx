@@ -33,6 +33,9 @@ import { HabitIcon } from "../shell/habitIcons";
 import { useOverlayEsc } from "../shell/overlayHooks";
 import { showErrorToast } from "../shell/toast";
 import { IconPicker } from "./pickers";
+import { LadderEditor } from "./LadderEditor";
+import { globalLadders, globalLaddersQuery } from "./ladderStore";
+import { milestoneLaddersToJson, type MilestoneLadders } from "../db/schema";
 import { customSlotName, isValidHex, writeCustomColour } from "./customColours";
 import {
   canCommit,
@@ -122,6 +125,7 @@ export interface EditTarget {
   entryAttrs: EntryAttribute[];
   derivedRules: import("../db/schema").DerivedRule[];
   waveGapDays: number | null;
+  ladders: import("../daily/milestones").LadderOverrides;
   /** True once ANY session exists — kind locks. */
   hasSessions: boolean;
 }
@@ -168,8 +172,10 @@ export function HabitCreator({
           icon: edit.icon,
           colourSlot: edit.colourSlot,
           waveGapDays: edit.waveGapDays,
+          ladders: edit.ladders,
         },
   );
+  const ladderRows = useQuery(globalLaddersQuery);
   const set = <K extends keyof HabitDraft>(k: K, v: HabitDraft[K]) =>
     setDraft((d) => ({ ...d, [k]: v }));
 
@@ -259,6 +265,10 @@ export function HabitCreator({
         entry_attributes: attrs.length > 0 ? entryAttributesToJson(attrs) : null,
         derived_rules: rules.length > 0 ? derivedRulesToJson(rules) : null,
         wave_gap_days: draft.waveGapDays != null ? (draft.waveGapDays as never) : null,
+        milestone_ladders:
+          Object.keys(draft.ladders).length > 0
+            ? milestoneLaddersToJson(draft.ladders as unknown as MilestoneLadders)
+            : null,
       };
 
       let habitId: string;
@@ -293,7 +303,6 @@ export function HabitCreator({
           kind: draft.kind,
           sub_type: isProject ? draft.subType : null,
           ...shared,
-          milestone_ladders: null,
           keepsake_snippet: null,
           // Created habits arrive LIVE — "land on the new habit's dashboard,
           // it's loggable immediately". Only seeds arrive archived.
@@ -817,6 +826,22 @@ export function HabitCreator({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Milestone ladders — EDITOR-only per-habit overrides (the wave
+              gap's own rule: absent = follow the global) */}
+          {edit != null && (
+            <div className="fld">
+              <div className="lbl">
+                <span className="l">Milestone ladders</span>
+                <span className="opt">overrides — blank follows the global</span>
+              </div>
+              <LadderEditor
+                value={draft.ladders}
+                onChange={(next) => set("ladders", next)}
+                overrideOf={globalLadders(ladderRows)}
+              />
             </div>
           )}
 

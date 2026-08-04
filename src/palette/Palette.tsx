@@ -43,6 +43,8 @@ import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { AdvancedSearch } from "./AdvancedSearch";
 import { useOverlayEsc } from "../shell/overlayHooks";
 import { rankPalette, type PalIndexItem, type RankedGroup } from "./paletteSpec";
+import { PALETTE_VERBS, type VerbId, type VerbMeta } from "./verbs";
+import { verbHidden } from "../settings/curation";
 import { monthVar, parsePeriods, periodDisplay, type PeriodScale, type PlaceMatch } from "./periodGrammar";
 import {
   placeId,
@@ -64,28 +66,11 @@ export interface PaletteNav {
   openCompare(): void;
   openTimers(): void;
   openMap(): void;
+  /** Settings → Habits with the creator open (the New habit verb). */
+  openHabitCreator(): void;
 }
 
 // ── The pinned ten-verb inventory (CLOSED — [[Palette]]; never re-litigate) ──
-
-type VerbId =
-  | "new-habit" | "new-entry" | "backup" | "test-connection" | "data-checks"
-  | "run-import" | "updates" | "theme" | "backups-folder" | "advanced";
-
-interface Verb {
-  id: VerbId;
-  title: string;
-  meta?: string;
-  aliases: string[];
-  /** false = the target's step hasn't landed — drawn disabled. */
-  live: boolean;
-  /**
-   * The domain an unlanded verb belongs to — shown in its meta INSTEAD of
-   * "later" (user-ruled 2026-07-29: "show what it's 'grouped' under").
-   */
-  group?: string;
-  icon: ReactNode;
-}
 
 type PalAction =
   | { t: "habit"; key: string }
@@ -148,18 +133,32 @@ const I = {
   ),
 };
 
-const VERBS: Verb[] = [
-  { id: "new-habit", title: "New habit", aliases: ["habit creator", "create habit"], live: false, group: "Habits", icon: I.plus },
-  { id: "new-entry", title: "New entry", aliases: ["create entry"], live: true, icon: I.newEntry },
-  { id: "backup", title: "Back up now", aliases: ["backup"], live: false, group: "Backups", icon: I.backup },
-  { id: "test-connection", title: "Test connection", meta: "per importer + all", aliases: ["importer test"], live: false, group: "Health", icon: I.test },
-  { id: "data-checks", title: "Run data checks", aliases: ["data doctor", "health"], live: false, group: "Health", icon: I.checks },
-  { id: "run-import", title: "Run import now", meta: "per importer", aliases: ["import"], live: false, group: "Importers", icon: I.imp },
-  { id: "updates", title: "Check for updates", aliases: ["update"], live: false, group: "Updates", icon: I.upd },
-  { id: "theme", title: "Switch theme", aliases: ["appearance"], live: false, group: "Appearance", icon: I.theme },
-  { id: "backups-folder", title: "Open backups folder", aliases: ["reveal backups"], live: false, group: "Backups", icon: I.folder },
-  { id: "advanced", title: "Advanced Search", meta: "filters this palette", aliases: ["search sets", "query"], live: true, icon: I.adv },
-];
+/** The roster moved to ./verbs 2026-08-02 (step 10, slice 4) so Settings →
+ *  Palette can curate it without importing this overlay. Icons stay here —
+ *  they are JSX and only the palette draws them. */
+interface Verb extends VerbMeta {
+  icon: ReactNode;
+}
+
+const VERB_ICON: Record<VerbId, ReactNode> = {
+  "new-habit": I.plus,
+  "new-entry": I.newEntry,
+  backup: I.backup,
+  "test-connection": I.test,
+  "data-checks": I.checks,
+  "run-import": I.imp,
+  updates: I.upd,
+  theme: I.theme,
+  "backups-folder": I.folder,
+  advanced: I.adv,
+};
+
+/** Curated: a verb the user switched off in Settings is ABSENT, never greyed
+ *  ([[Palette]] — "disabling hides, never deletes"). */
+const VERBS: Verb[] = PALETTE_VERBS.filter((v) => !verbHidden(v.id)).map((v) => ({
+  ...v,
+  icon: VERB_ICON[v.id],
+}));
 
 // ── Row descriptors (one flat keyboard order over whatever the body draws) ───
 
@@ -289,6 +288,9 @@ export function PaletteOverlay({
       if (!a.live) return;
       recordLastVerb(a.v);
       if (a.v === "advanced") return setMode({ m: "advanced" });
+      // The creator's ruled SECOND door ("+ New habit lives on Settings →
+      // Habits only, plus a palette action") — live since step 10 slice 3.
+      if (a.v === "new-habit") return go(() => nav.openHabitCreator());
       if (a.v === "new-entry") {
         // the verb path: no unmatched title to carry — straight to the pick
         setQuery("");

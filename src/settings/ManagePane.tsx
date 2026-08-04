@@ -32,7 +32,19 @@ import { Ico } from "../shell/icons";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { DangerConfirm } from "../shell/DangerConfirm";
 import { showErrorToast } from "../shell/toast";
-import { parseDerivedRules, type EntryAttribute } from "../db/schema";
+import { milestoneLaddersFromJson, parseDerivedRules, type EntryAttribute } from "../db/schema";
+import type { LadderOverrides } from "../daily/milestones";
+
+/** Never-throwing decode of a habit's ladder overrides (the parseDerivedRules
+ *  stanza, which the schema does not ship for this column). */
+const milestoneLaddersFromJson2 = (raw: unknown): LadderOverrides => {
+  if (raw == null) return {};
+  try {
+    return milestoneLaddersFromJson(raw as never) as unknown as LadderOverrides;
+  } catch {
+    return {};
+  }
+};
 import { ColourPicker, IconPicker } from "./pickers";
 import { KeepsakeEditor } from "./KeepsakeEditor";
 import { HabitCreator, type EditTarget } from "./HabitCreator";
@@ -48,7 +60,7 @@ const manageHabitsQuery = evolu.createQuery((db) =>
       "archived", "sort_order", "measures_time", "measures_count",
       "count_unit", "keepsake_snippet", "derived_rules",
       // the editor's own columns (slice 3)
-      "range_max_midnights", "entry_attributes", "wave_gap_days",
+      "range_max_midnights", "entry_attributes", "wave_gap_days", "milestone_ladders",
     ])
     .where("isDeleted", "is not", 1)
     .orderBy("sort_order"),
@@ -273,6 +285,7 @@ export function ManagePane({
       entryAttrs: attrs,
       derivedRules: parseDerivedRules(h.derived_rules),
       waveGapDays: (h.wave_gap_days as number | null) ?? null,
+      ladders: milestoneLaddersFromJson2(h.milestone_ladders),
       hasSessions: sessions.length > 0,
     });
   };

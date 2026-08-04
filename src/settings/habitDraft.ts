@@ -8,6 +8,7 @@
  * `Final/habit-creator.html` (the drawn face this fills).
  */
 import type { DerivedRule, EntryAttribute } from "../db/schema";
+import type { LadderOverrides } from "../daily/milestones";
 
 export type HabitKind = "simple" | "project" | "range";
 export type SubType = "consumption" | "creation";
@@ -45,6 +46,8 @@ export interface HabitDraft {
   keepsakeSnippet: string | null;
   /** Per-habit override of the global wave gap (editor only; null = inherit). */
   waveGapDays: number | null;
+  /** Per-subject ladder overrides (editor only; an absent subject inherits). */
+  ladders: LadderOverrides;
 }
 
 export const emptyDraft = (colourSlot: string): HabitDraft => ({
@@ -63,6 +66,7 @@ export const emptyDraft = (colourSlot: string): HabitDraft => ({
   colourSlot,
   keepsakeSnippet: null,
   waveGapDays: null,
+  ladders: {},
 });
 
 // ── derivations ──────────────────────────────────────────────────────────────

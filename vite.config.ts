@@ -14,14 +14,16 @@ const host = process.env.TAURI_DEV_HOST;
  * the thing [[Iconography]] § Versioning rules must be locked. If a caret ever
  * creeps back in, this readout shows it, which is a useful accident.
  */
-const lucideVersion = (() => {
+const pkg = (() => {
   try {
-    const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
-    return String(pkg.dependencies?.lucide ?? "unknown");
+    return JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
   } catch {
-    return "unknown";
+    return {};
   }
 })();
+const lucideVersion = String(pkg.dependencies?.lucide ?? "unknown");
+/** The app's own version — Settings → Health's identity row, and About's. */
+const appVersion = String(pkg.version ?? "0.0.0");
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
@@ -29,6 +31,7 @@ export default defineConfig(async () => ({
 
   define: {
     __LUCIDE_VERSION__: JSON.stringify(lucideVersion),
+    __APP_VERSION__: JSON.stringify(appVersion),
   },
 
   // Evolu: its workers/WASM must not be pre-bundled, and workers need ES format.

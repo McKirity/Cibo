@@ -14,7 +14,7 @@ import { calibreSource } from "./calibre";
 import { ao3Source } from "./ao3";
 
 /** Live sources, in area-switch order per habit. */
-const SOURCES: ImporterSource[] = [
+export const SOURCES: ImporterSource[] = [
   steamSource,
   tmdbMovieSource,
   tmdbTvSource,
@@ -27,6 +27,20 @@ const SOURCES: ImporterSource[] = [
 
 export const sourcesForHabit = (habitKey: string): ImporterSource[] =>
   SOURCES.filter((s) => s.habitKey === habitKey);
+
+/**
+ * One entry per SERVICE, for the health home's "per importer" rows — the
+ * eight sources collapse to six services (TMDB's movie/TV split and AniList's
+ * anime/manga split are one endpoint and one key each, so probing both would
+ * ask the same question twice).
+ */
+export const importerServices = (): { name: string; probe: ImporterSource }[] => {
+  const out: { name: string; probe: ImporterSource }[] = [];
+  for (const s of SOURCES) {
+    if (!out.some((x) => x.name === s.sourceName)) out.push({ name: s.sourceName, probe: s });
+  }
+  return out;
+};
 
 /**
  * ONE "Import" door per library (user-ruled 2026-08-01 — the per-source

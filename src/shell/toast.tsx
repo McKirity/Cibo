@@ -15,6 +15,7 @@
  * count-carrying danger confirm. The toast never carries a count.
  */
 import { useEffect, useState } from "react";
+import { logError } from "../settings/errorLog";
 
 export interface ToastMessage {
   /** Monotonic — a new toast replaces the one on screen (one slot). */
@@ -45,9 +46,16 @@ export const showUndoToast = (message: string, onUndo: () => void, ms = 10_000):
   return id;
 };
 
-/** Tier 3 — a failure with no inline home. No action, no retry. */
-export const showErrorToast = (message: string, ms = 6_000): number => {
+/**
+ * Tier 3 — a failure with no inline home. No action, no retry.
+ *
+ * Every one also ACCUMULATES in the health home's recent-errors list (step 10,
+ * slice 5): the toast is the moment, that list is the standing record, and it
+ * is what the rail's health dot summarizes.
+ */
+export const showErrorToast = (message: string, source = "App", ms = 6_000): number => {
   const id = nextId++;
+  logError(message, source);
   publish({ id, kind: "error", message, ms });
   return id;
 };

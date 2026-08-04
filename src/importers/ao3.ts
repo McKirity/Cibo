@@ -169,6 +169,12 @@ const probe = async (): Promise<{ ok: boolean; detail: string }> => {
       : { ok: false, detail: "AO3 responded but the page was unexpected" };
   } catch (e) {
     const msg = String(e);
+    // A REFUSAL is not unreachability, and saying so sent the last diagnosis
+    // the wrong way (2026-08-03): AO3 was up in a browser on the same machine
+    // while every app request 403'd for want of a User-Agent. The three-way
+    // diagnosis calls this "our side" — something to fix here, not there.
+    if (/HTTP 403/.test(msg))
+      return { ok: false, detail: "AO3 refused the request (403) — the archive is up, but it is turning this app away" };
     return {
       ok: false,
       detail: /HTTP 429/.test(msg)

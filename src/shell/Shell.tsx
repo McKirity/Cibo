@@ -50,6 +50,7 @@ import { SettingsScreen } from "../settings/SettingsScreen";
 import { defaultLogDay } from "../settings/store";
 import { viewTitle, type View } from "./views";
 import { catchUpDays, unfinalizedQuery } from "../daily/catchUp";
+import { hasErrors, subscribeErrors } from "../settings/errorLog";
 import { todayLocal } from "../metrics/clock";
 import "./shell.css";
 // Routing reads the habit row's kind/sub_type (chunk 3) — the key sets are
@@ -210,11 +211,16 @@ export function Shell() {
 
   const today = todayLocal();
 
-  // What the hidden rail would still be signalling. Today that is the catch-up
-  // queue; the health dot joins it at step 10, and this is the one place to
-  // OR it in when it does.
+  // What the hidden rail would still be signalling: the catch-up queue, and —
+  // since step 10 slice 5 — the health dot, ORed in here as the comment that
+  // stood in this spot always said it would be.
   const unfinalized = useQuery(unfinalizedQuery);
   const catchUpWaiting = catchUpDays(unfinalized, today).length > 0;
+  // The health dot lights on ERROR SEVERITY only ("warnings wait quietly in
+  // the surface" — [[App Health & Diagnostics]]). Evaluated at launch and
+  // whenever the log changes; no polling, per the ruled run model.
+  const [healthWarn, setHealthWarn] = useState(() => hasErrors());
+  useEffect(() => subscribeErrors((rows) => setHealthWarn(rows.length > 0)), []);
 
   /**
    * The one day door every surface routes through. The FUTURE is a dead route
@@ -305,7 +311,7 @@ export function Shell() {
         onForward={forward}
         railCollapsed={railCollapsed}
         onToggleRail={() => setRailCollapsed((c) => !c)}
-        attention={catchUpWaiting}
+        attention={catchUpWaiting || healthWarn}
       />
 
       <nav className="rail">
@@ -400,8 +406,17 @@ export function Shell() {
               Statistics
             </button>
             {/* The ONE rail entry that opens an overlay, not a screen — the
-                recorded exception ([[Nav Rail]] · [[Search & Quick-Find]]). */}
-            <button className="tool" onClick={() => setPaletteOpen(true)}>
+                recorded exception ([[Nav Rail]] · [[Search & Quick-Find]]).
+                It marks `.active` WHILE THE PALETTE IS UP: every other tool's
+                active state means "this is the current view", and this one
+                means "this overlay is open" — the same claim the rail is
+                making in both cases, which is where you are. Added 2026-08-03
+                so a theme can light it momentarily; render-neutral, since app
+                CSS styles `.tool.active` nowhere. */}
+            <button
+              className={`tool${paletteOpen ? " active" : ""}`}
+              onClick={() => setPaletteOpen(true)}
+            >
               <Ico d={["M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16z", "m21 21-4.3-4.3"]} />
               Search
             </button>
@@ -424,10 +439,15 @@ export function Shell() {
         <div className="sec settings">
           <button
             className={`settings-row${view.kind === "settings" ? " active" : ""}`}
-            onClick={() => setView({ kind: "settings", section: "habits" })}
+            onClick={() =>
+              // The glance-dot DEEP-LINKS to the health home, as ruled; the
+              // plain row still opens Habits.
+              setView({ kind: "settings", section: healthWarn ? "health" : "habits" })
+            }
           >
             <Ico d={["M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z", "M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 6 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H2a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 3.3 6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 3.3V2a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9z"]} />
             <span className="name">Settings</span>
+            {healthWarn && <span className="hdot" title="Something needs attention" />}
           </button>
         </div>
       </nav>
@@ -590,9 +610,18 @@ function HabitButton({
 }) {
   // Icon-in-swatch = the drawn frame face (seed batch 7 planted the names);
   // the lettermark stays the ruled fallback for icon-less habits.
+  //
+  // THE HUE HANDOFF (2026-08-03, the Blame! v5 port). The swatch used to set
+  // `background` inline, and AN INLINE STYLE CANNOT BE OVERRIDDEN BY ANY
+  // STYLESHEET — so no theme could ever repaint this surface, only recolour it.
+  // It now hands the hue over as `--habit-hue` and the ground is painted in
+  // shell.css, which leaves the resting render pixel-identical while letting a
+  // theme's own rules restyle the plate entirely (Blame! turns it into an
+  // indicator lens). Same template as `--series` (bar fills) and `--pal-hue`
+  // (palette rows). Owning record: [[Theme Package Format]] § Rules.
   return (
     <button className={`entry${active ? " active" : ""}`} onClick={onClick}>
-      <span className="swatch" style={{ background: `var(--${colour})` }}>
+      <span className="swatch" style={{ ["--habit-hue" as string]: `var(--${colour})` }}>
         {hasIcon(icon) ? <HabitIcon icon={icon} /> : name[0]?.toUpperCase()}
       </span>
       <span className="name">{name}</span>

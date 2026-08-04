@@ -772,6 +772,14 @@ button.doorlink:hover {
   background: var(--selected-wash);
   box-shadow: inset var(--border-heavy) 0 0 var(--accent);
 }
+/* THE HUE HANDOFF (2026-08-03, the Blame! v5 port): the component hands over
+   `--habit-hue` and the ground is painted HERE, instead of the component
+   setting `background` inline. An inline style cannot be overridden by any
+   stylesheet, so the old form left this surface unthemeable — a theme could
+   pick the hue but never restyle the plate. Render is unchanged for every
+   theme that does not opt in. Siblings: `--series` (bar fills, dashboard.css)
+   and `--pal-hue` (palette rows). Owning record: [[Theme Package Format]]
+   § Rules — the theme-rules capability, user-ruled 2026-08-02. */
 .entry .swatch {
   width: var(--swatch-size);
   height: var(--swatch-size);
@@ -780,14 +788,25 @@ button.doorlink:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--habit-hue, var(--accent));
   color: var(--text-on-filled);
   font-family: var(--font-heading);
   font-size: var(--size-small);
   font-weight: var(--weight-bold);
 }
+/* CAPS — user-ruled 2026-08-01 at the Blame! exhibit, re-affirmed 2026-08-02
+   ("Yes caps") after the record was found to say STRUCK in error. Case and
+   tracking had no dial in the roster, so this was ruled as a KIT change every
+   theme inherits, the Default included, with that understood.
+   The overruled recommendation is kept as the ruling's KNOWN COST: these caps
+   sit directly under the `.overline` group labels, which are also caps, so the
+   rail's two-level hierarchy now rides size and colour alone. If the rail ever
+   reads as one shouting register, THE OVERLINE IS THE HALF TO MOVE. */
 .entry .name {
-  font-size: var(--size-body);
-  font-weight: var(--weight-medium);
+  font-size: var(--size-small);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: .05em;
 }
 
 /* Tools — 2×2 tile grid (destinations are step 7/8/9) */
@@ -875,6 +894,17 @@ button.doorlink:hover {
 .settings-row .name {
   font-size: var(--size-body);
   font-weight: var(--weight-medium);
+}
+/* the health GLANCE-DOT — the frozen frame's `.settings-row .hdot`, claimed at
+   step 10 slice 5 when the health home gave it something to report. It lights
+   on ERROR SEVERITY only, and the row then deep-links to Health. */
+.settings-row .hdot {
+  margin-left: auto;
+  width: var(--dot-size);
+  height: var(--dot-size);
+  border-radius: var(--radius-full);
+  background: var(--attention-dot);
+  flex: 0 0 auto;
 }
 .settings-row .ico {
   color: var(--text-secondary);

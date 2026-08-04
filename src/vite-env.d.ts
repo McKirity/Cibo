@@ -6,3 +6,6 @@
  * lucide's own package.json, is the source). Read by Settings → Habits → Icons.
  */
 declare const __LUCIDE_VERSION__: string;
+
+/** The app's own version, from package.json — Health's identity row + About. */
+declare const __APP_VERSION__: string;

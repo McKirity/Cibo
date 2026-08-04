@@ -25,11 +25,35 @@ export class HttpFail extends Error {
   }
 }
 
+/**
+ * THE IDENTIFYING USER-AGENT (added 2026-08-03, at the health home's first
+ * live probe run).
+ *
+ * `tauri-plugin-http` is reqwest underneath, and **reqwest sends no
+ * User-Agent at all** — unlike curl or a browser, which always do. **AO3
+ * answers a UA-less request with a flat 403**, so every AO3 fetch this app
+ * made was refused: the probe reported "unreachable" while the site was open
+ * in a browser on the same machine, which is what surfaced it. Verified both
+ * ways from this machine — no UA → 403, identifying UA → 200.
+ *
+ * It is set for EVERY importer request, not just AO3's: identifying yourself
+ * is the polite convention for anything scraping or calling an API, AO3's own
+ * guidance asks for it, and a header the other seven sources ignore costs
+ * nothing. Honest rather than a browser impersonation — a spoofed Chrome
+ * string would be a lie told to the service that would then be unmaintainable
+ * (it dates, and it hides who is actually calling).
+ */
+const USER_AGENT = `Cibo/${__APP_VERSION__} (personal habit tracker; +https://github.com/McKirity/Cibo)`;
+
 const rustFetch = async (url: string, init?: RequestInit): Promise<Response> => {
   // Lazy import — the feeds.ts precedent: top-level import crashes outside a
   // Tauri runtime (tests, plain Vite).
   const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
-  return tauriFetch(url, { signal: AbortSignal.timeout(15_000), ...init });
+  // Merge rather than overwrite: AniList's POST sets its own content-type, and
+  // a caller that names a UA explicitly keeps it.
+  const headers = new Headers(init?.headers);
+  if (!headers.has("user-agent")) headers.set("user-agent", USER_AGENT);
+  return tauriFetch(url, { signal: AbortSignal.timeout(15_000), ...init, headers });
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

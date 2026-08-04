@@ -71,7 +71,11 @@ evolu.subscribeError(() => {
   const err = evolu.getError();
   console.error("Evolu error:", err);
   if (!booted) mountFatalLaunch(err);
-  else showErrorToast("A background data write failed — the last change may not have saved.");
+  else
+    showErrorToast(
+      "A background data write failed — the last change may not have saved.",
+      "Database",
+    );
 });
 
 // The version-gated seed append — runs at every launch, applies only newer batches.

@@ -243,6 +243,38 @@
             flex: 0 0 auto; transition: transform var(--motion-fast) var(--ease-standard); }
 .hc .disc .ico { width: var(--icon-size-small); height: var(--icon-size-small); }
 
+/* == slice 5 (2026-08-03) — the health home. `kit-row-status` (minted
+   2026-07-13) is the whole vocabulary: an indicator pip + label + state word +
+   trailing action, serving both the System rows and the Data findings list.
+   Claimed from `Final/settings.html` § PANE 3 · Health. == */
+.setscreen .hlist { display: flex; flex-direction: column; gap: var(--space-3); }
+.setscreen .srow { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-4) var(--space-5);
+                   background: var(--panel-background); border: var(--border-hairline) solid var(--divider);
+                   border-radius: var(--radius-medium); }
+/* the dormant tier — drawn quiet, never omitted (the sync row) */
+.setscreen .srow.dormant { background: var(--window-background); border-style: dashed; }
+/* a finding tints toward danger without ever being colour ALONE — the pip and
+   the state word carry it too */
+.setscreen .srow.finding { background: color-mix(in oklch, var(--danger), var(--window-background) var(--tint-mix));
+                           border-color: color-mix(in oklch, var(--danger), var(--panel-background) var(--tint-border)); }
+.setscreen .pip { display: flex; align-items: center; justify-content: center;
+                  width: var(--icon-size); height: var(--icon-size); flex: 0 0 auto; }
+.setscreen .pip .ico { width: var(--icon-size); height: var(--icon-size); }
+.setscreen .pip.ok { color: var(--verdict-done); }
+.setscreen .pip.err { color: var(--danger); }
+.setscreen .pip.idle { color: var(--text-muted); }
+.setscreen .sinfo { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.setscreen .slabel { font-size: var(--size-body); font-weight: var(--weight-medium); color: var(--text-strong); }
+.setscreen .sstate { font-size: var(--size-small); color: var(--text-secondary); text-wrap: pretty; }
+.setscreen .sstate.err { color: var(--danger); }
+.setscreen .sact { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); flex: 0 0 auto; }
+.setscreen .sword { font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary); }
+.setscreen .sword.ok { color: var(--verdict-done); }
+.setscreen .sword.err { color: var(--danger); }
+.setscreen .hglbl .runline { margin-left: auto; font-weight: var(--weight-regular); letter-spacing: 0;
+                             text-transform: none; font-family: var(--font-mono); color: var(--text-muted);
+                             font-size: var(--size-caption); }
+
 /* build glue — the pending panes' one-line note (dies as slices land) */
 .setscreen .pending { max-width: 68ch; font-size: var(--size-body); color: var(--text-secondary);
                       line-height: var(--line-normal); margin: 0; text-wrap: pretty; }

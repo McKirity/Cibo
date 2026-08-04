@@ -76,10 +76,12 @@ import { VocabularyPane } from "./VocabularyPane";
 import { ImportersPane } from "./ImportersPane";
 import { PresetsPane, PalettePane } from "./PresetsPalettePane";
 import { WhimsyPane } from "./WhimsyPane";
+import { HealthPane } from "./HealthPane";
 import { LadderEditor } from "./LadderEditor";
 import { globalLaddersQuery, laddersFrom, writeGlobalLadders } from "./ladderStore";
 import { iconStats, LUCIDE_VERSION } from "../shell/habitIcons";
 import { getLucideSeen } from "./local";
+import { hasErrors, subscribeErrors } from "./errorLog";
 import type { SettingsSection } from "../shell/views";
 import "./settings.css";
 
@@ -105,7 +107,6 @@ const SECTIONS: { key: SettingsSection; name: string; icon: string[] }[] = [
 const PENDING: Partial<Record<SettingsSection, string>> = {
   backups: "Restore from backup… and the retention dials (arrives with step 12).",
   storage: "The cloud root picker (arrives with step 14's readiness checkpoint).",
-  health: "System · Data — status rows, per-importer Test connection, the data checks.",
   help: "Manual (the 22 articles) · Hotkeys · About.",
 };
 
@@ -124,6 +125,9 @@ export function SettingsScreen({
   openCreator?: boolean;
   onCreatorOpened?: () => void;
 }) {
+  // The left pane's own copy of the glance dot — same rule as the rail's.
+  const [healthWarn, setHealthWarn] = useState(() => hasErrors());
+  useEffect(() => subscribeErrors((rows) => setHealthWarn(rows.length > 0)), []);
   return (
     <div className="setscreen">
       <div className="setgrid">
@@ -137,7 +141,7 @@ export function SettingsScreen({
             >
               <Ico d={s.icon} />
               <span className="name">{s.name}</span>
-              {/* the health dot joins the Health row with the health home */}
+              {s.key === "health" && healthWarn && <span className="hdot" />}
             </button>
           ))}
         </div>
@@ -178,6 +182,10 @@ export function SettingsScreen({
             <div className="pbody">
               <WhimsyPane />
             </div>
+          </Pane>
+        ) : section === "health" ? (
+          <Pane title="Health">
+            <HealthPane />
           </Pane>
         ) : (
           <PendingPane section={section} />

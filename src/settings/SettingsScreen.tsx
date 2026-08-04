@@ -88,7 +88,7 @@ import "./settings.css";
 
 // ── the section roster (ruled order — [[Settings & Configuration]]) ──────────
 
-const SECTIONS: { key: SettingsSection; name: string; icon: string[] }[] = [
+export const SECTIONS: { key: SettingsSection; name: string; icon: string[] }[] = [
   { key: "habits", name: "Habits", icon: ["M8 6h13", "M8 12h13", "M8 18h13", "M3 6h.01", "M3 12h.01", "M3 18h.01"] },
   { key: "tracking", name: "Tracking", icon: ["M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z", "M16 2v4", "M8 2v4", "M3 10h18"] },
   { key: "appearance", name: "Appearance", icon: ["M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z", "M12 2v2", "M12 20v2", "m4.9 4.9 1.4 1.4", "m17.7 17.7 1.4 1.4", "M2 12h2", "M20 12h2", "m6.3 17.7-1.4 1.4", "m19.1 4.9-1.4 1.4"] },

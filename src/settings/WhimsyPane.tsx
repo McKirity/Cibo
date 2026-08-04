@@ -61,13 +61,8 @@ export function WhimsyPane() {
     setCfg(next);
   };
   const sign = sunSign(cfg.birthdate);
-  // Per-card toggles have no field on WhimsyConfig yet; they ride the same
-  // object under `cards`, defaulting to on. Declared here rather than in the
-  // config module because the roster is this pane's, and the cards read it
-  // through the same loader.
-  const cards = ((cfg as unknown as { cards?: Record<string, boolean> }).cards ?? {}) as Record<string, boolean>;
-  const setCard = (key: string, on: boolean) =>
-    write({ ...cfg, ...({ cards: { ...cards, [key]: on } } as object) } as WhimsyConfig);
+  const cards = cfg.cards ?? {};
+  const setCard = (key: string, on: boolean) => write({ ...cfg, cards: { ...cards, [key]: on } });
 
   return (
     <div className="hscroll">

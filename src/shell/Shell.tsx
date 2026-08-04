@@ -48,7 +48,8 @@ import { NotYetDashboard } from "./NotYetDashboard";
 import { LogView } from "./DevPanels";
 import { SettingsScreen } from "../settings/SettingsScreen";
 import { defaultLogDay } from "../settings/store";
-import { viewTitle, type View } from "./views";
+import { viewTitle, type SettingsSection, type View } from "./views";
+import { requestManualArticle } from "../settings/manualContent";
 import { catchUpDays, unfinalizedQuery } from "../daily/catchUp";
 import { hasErrors, subscribeErrors } from "../settings/errorLog";
 import { todayLocal } from "../metrics/clock";
@@ -273,6 +274,13 @@ export function Shell() {
       openHabitCreator: () => {
         setCreatorPending(true);
         setView({ kind: "settings", section: "habits" });
+      },
+      openSettings: (section: SettingsSection) => setView({ kind: "settings", section }),
+      // The manual deep-link — the creator-pending pattern: park the article,
+      // then navigate; HelpPane consumes it on mount or via the event.
+      openManual: (articleId: string) => {
+        requestManualArticle(articleId);
+        setView({ kind: "settings", section: "help" });
       },
     }),
     [openDay, setView],

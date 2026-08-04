@@ -1,19 +1,31 @@
 /**
  * SETTINGS → HELP (Build step 10, slice 6) — Manual · Hotkeys · About.
  *
- * SPLIT AT THE USER'S CALL, 2026-08-03: Hotkeys and About build now; **the
- * MANUAL waits for the author's own pass over its content**. That is the right
- * order — the 22 articles are prose in the author's voice ([[User Manual
- * Content]], including "Why I made it", explicitly "not Claude's to invent"),
- * and the reader is a day's wiring once the words are settled. The tab renders
- * its door and says so rather than pretending to be empty.
+ * THE MANUAL READER LANDED 2026-08-03 (user-ruled the same day — the accuracy
+ * pass over the 22 articles ran first, and "just code it in now" closed the
+ * hold; the author's voice pass stays free: the content is `manual.md`, prose,
+ * never code). The reader is `kit-viewer-manual` — the roster/detail chassis
+ * the Vocabulary pane claimed early, now serving its DRAWN first tenant: a
+ * grouped 22-door roster beside the reading surface on the pane's type ramp
+ * (`.helpart`, the frozen specimen's own family). Door icons are transcribed
+ * from the frozen FINAL's 22 rows. A palette deep-link lands with its article
+ * open (the creator-pending pattern); the rest state opens the first article,
+ * never a blank reader.
  *
  * HELP IS THE ONE SURFACE WHERE EXPLANATORY PROSE IS LEGITIMATE (the frozen
- * Settings note's own words), which is why these two tabs read differently
- * from every other pane in this screen.
+ * Settings note's own words), which is why these tabs read differently from
+ * every other pane in this screen.
  */
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Ico } from "../shell/icons";
+import {
+  ArticleBody,
+  MANUAL_ARTICLE_EVENT,
+  MANUAL_GROUPS,
+  findArticle,
+  peekManualArticle,
+  takeManualArticle,
+} from "./manualContent";
 
 type Tab = "manual" | "hotkeys" | "about";
 
@@ -57,7 +69,27 @@ const HOSTS: { host: string; why: string }[] = [
 ];
 
 export function HelpPane() {
-  const [tab, setTab] = useState<Tab>("hotkeys");
+  // A palette deep-link parks its article before navigating here; a fresh
+  // mount PEEKS it (StrictMode double-runs initializers, so consuming here
+  // would lose it) and clears it in the mount effect below.
+  const [deepLink] = useState(() => peekManualArticle());
+  const [tab, setTab] = useState<Tab>(deepLink != null ? "manual" : "hotkeys");
+  const [articleId, setArticleId] = useState<string>(
+    deepLink ?? MANUAL_GROUPS[0]?.articles[0]?.id ?? "",
+  );
+  // …and an already-mounted pane hears the event instead (same one-shot).
+  useEffect(() => {
+    takeManualArticle(); // consumed by this mount
+    const onLink = () => {
+      const id = takeManualArticle();
+      if (id != null) {
+        setTab("manual");
+        setArticleId(id);
+      }
+    };
+    window.addEventListener(MANUAL_ARTICLE_EVENT, onLink);
+    return () => window.removeEventListener(MANUAL_ARTICLE_EVENT, onLink);
+  }, []);
   return (
     <>
       <div className="ttabs">
@@ -74,19 +106,82 @@ export function HelpPane() {
         ))}
       </div>
       <div className="pbody">
-        {tab === "manual" ? <ManualTab /> : tab === "hotkeys" ? <HotkeysTab /> : <AboutTab />}
+        {tab === "manual" ? (
+          <ManualTab articleId={articleId} onOpen={setArticleId} />
+        ) : tab === "hotkeys" ? (
+          <HotkeysTab />
+        ) : (
+          <AboutTab />
+        )}
       </div>
     </>
   );
 }
 
-function ManualTab() {
+/** The 22 door icons, transcribed from the frozen FINAL's roster rows. */
+const ARTICLE_ICONS: Record<string, ReactNode> = {
+  "why-i-made-it": <svg className="ico" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>,
+  "how-it-works": <svg className="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></svg>,
+  "general-app-layout": <svg className="ico" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /></svg>,
+  data: <svg className="ico" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" /></svg>,
+  "getting-started": <svg className="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></svg>,
+  "what-are-habits": <svg className="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" x2="12.01" y1="17" y2="17" /></svg>,
+  "how-to-log-your-habits": <svg className="ico" viewBox="0 0 24 24"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>,
+  "visualizing-your-habits": <svg className="ico" viewBox="0 0 24 24"><line x1="6" x2="6" y1="20" y2="16" /><line x1="12" x2="12" y1="20" y2="10" /><line x1="18" x2="18" y1="20" y2="4" /></svg>,
+  "archiving-your-habits": <svg className="ico" viewBox="0 0 24 24"><rect width="20" height="5" x="2" y="3" rx="1" /><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" /><path d="M10 12h4" /></svg>,
+  "creating-new-habits": <svg className="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M8 12h8" /><path d="M12 8v8" /></svg>,
+  themes: <svg className="ico" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle cx="17.5" cy="10.5" r=".5" fill="currentColor" /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle cx="6.5" cy="12.5" r=".5" fill="currentColor" /><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" /></svg>,
+  timers: <svg className="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
+  importers: <svg className="ico" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>,
+  backups: <svg className="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg>,
+  "data-doctor": <svg className="ico" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>,
+  palette: <svg className="ico" viewBox="0 0 24 24"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" /></svg>,
+  "comparing-statistics": <svg className="ico" viewBox="0 0 24 24"><path d="M3 3v18h18" /><path d="m7 14 4-4 4 4 5-5" /></svg>,
+  search: <svg className="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>,
+  map: <svg className="ico" viewBox="0 0 24 24"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" x2="9" y1="3" y2="18" /><line x1="15" x2="15" y1="6" y2="21" /></svg>,
+  library: <svg className="ico" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>,
+  "bulk-editor": <svg className="ico" viewBox="0 0 24 24"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4" /><path d="M12 2v13" /><path d="m9 5 3-3 3 3" /></svg>,
+  "whimsy-the-calendar": <svg className="ico" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></svg>,
+};
+
+function ManualTab({ articleId, onOpen }: { articleId: string; onOpen: (id: string) => void }) {
+  const article = findArticle(articleId) ?? MANUAL_GROUPS[0]?.articles[0];
+  if (article == null) return null;
   return (
-    <div className="hscroll">
-      <p className="pending">
-        Not built yet — the manual's 22 articles are written but want a read-through before they
-        go in. The reader itself is the roster-and-page layout the Vocabulary tab already uses.
-      </p>
+    <div className="manual">
+      <aside className="mroster">
+        <nav className="mtoc">
+          {MANUAL_GROUPS.map((g) => (
+            <div key={g.name}>
+              <div className="mgrp">{g.name}</div>
+              {g.articles.map((a) => (
+                <button
+                  key={a.id}
+                  className={`mdoc${a.id === article.id ? " active" : ""}`}
+                  onClick={() => onOpen(a.id)}
+                >
+                  {ARTICLE_ICONS[a.id]}
+                  <span className="mt">{a.title}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <p className="mtoc-note">
+          Every article is a place — the palette teleports straight to any of these pages
+          (<strong>Ctrl K</strong> → type a title).
+        </p>
+      </aside>
+      {/* keyed so switching articles remounts the reader at the top */}
+      <article className="mread" key={article.id}>
+        <div className="mread-crumb">
+          User manual <b>›</b> {article.group} <b>›</b> {article.title}
+        </div>
+        <div className="helpart">
+          <h3>{article.title}</h3>
+          <ArticleBody article={article} />
+        </div>
+      </article>
     </div>
   );
 }

@@ -58,7 +58,7 @@ import {
 } from "./cards";
 import { anniversariesFor, trackingAnniversary } from "./almanac";
 import { appAnniversary, ensureAppStartDate } from "../db/appStart";
-import { loadWhimsyConfig, saveWhimsyConfig, type WhimsyConfig } from "./whimsyConfig";
+import { cardOn, loadWhimsyConfig, saveWhimsyConfig, type WhimsyConfig } from "./whimsyConfig";
 import { parseFeedSnapshot } from "./feedData";
 import { catchUpDays, unfinalizedQuery } from "./catchUp";
 import { ensureTodayFeeds } from "./feeds";
@@ -324,49 +324,72 @@ function WorkingDay({
   const unfinalizedRows = useQuery(unfinalizedQuery);
   const catchUp = useMemo(() => catchUpDays(unfinalizedRows, dayKey), [unfinalizedRows, dayKey]);
 
+  // Per-card toggles (Settings → Whimsy). `sky` governs the sky column's four
+  // ambient cards, `moon` its own; `almanac` the fact/holiday/progress trio.
+  // A column whose every card is off is not rendered at all — an empty stack
+  // would read as broken, and the flex row redistributes the room.
+  const skyOn = cardOn(config, "sky");
+  const moonOn = cardOn(config, "moon");
+  const almOn = cardOn(config, "almanac");
+  const otdOn = cardOn(config, "otd");
+  const quoteOn = cardOn(config, "quote");
+  const wordOn = cardOn(config, "word");
+  const showSkyCol = skyOn || moonOn;
+  const showAlmanacCol = catchUp.length > 0 || quoteOn || wordOn || almOn || otdOn;
+
   return (
     <div className="daily">
       <div className="triptych">
         {/* The sky column: stable geometry, the same cards every day. Its inner
             .sky-stack is what the FINAL flexes the cards inside. */}
-        <div className="col sky">
-          <div className="sky-stack">
-            <SunCard sun={sun} lon={config.lon} now={now} />
-            <WeatherCard
-              snap={snapshot.weather ?? null}
-              unit={config.tempUnit}
-              isToday={isToday}
-              now={now}
-            />
-            <SeasonCard dayKey={dayKey} lat={config.lat} />
-            <MoonCard moon={moon} />
-            <TonightSkyCard dayKey={dayKey} lat={config.lat} />
+        {showSkyCol && (
+          <div className="col sky">
+            <div className="sky-stack">
+              {skyOn && <SunCard sun={sun} lon={config.lon} now={now} />}
+              {skyOn && (
+                <WeatherCard
+                  snap={snapshot.weather ?? null}
+                  unit={config.tempUnit}
+                  isToday={isToday}
+                  now={now}
+                />
+              )}
+              {skyOn && <SeasonCard dayKey={dayKey} lat={config.lat} />}
+              {moonOn && <MoonCard moon={moon} />}
+              {skyOn && <TonightSkyCard dayKey={dayKey} lat={config.lat} />}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="col spine">
           <Spine dayKey={dayKey} onFinalized={onFinalized} />
         </div>
 
-        <div className="col almanac">
-          {catchUp.length > 0 && <CatchUpCard days={catchUp} onOpenDay={onOpenDay} />}
-          <QuoteCard dayKey={dayKey} />
-          <WordCard dayKey={dayKey} />
-          <FactCard dayKey={dayKey} />
-          <OnThisDayCard
-            dayKey={dayKey}
-            anniversaries={anniversaries}
-            trackingYears={trackingYears}
-            appYears={appYears}
-          />
-          <HolidayCard dayKey={dayKey} />
-          <TimeProgressCard dayKey={dayKey} now={now} />
-        </div>
+        {showAlmanacCol && (
+          <div className="col almanac">
+            {catchUp.length > 0 && <CatchUpCard days={catchUp} onOpenDay={onOpenDay} />}
+            {quoteOn && <QuoteCard dayKey={dayKey} />}
+            {wordOn && <WordCard dayKey={dayKey} />}
+            {almOn && <FactCard dayKey={dayKey} />}
+            {otdOn && (
+              <OnThisDayCard
+                dayKey={dayKey}
+                anniversaries={anniversaries}
+                trackingYears={trackingYears}
+                appYears={appYears}
+              />
+            )}
+            {almOn && <HolidayCard dayKey={dayKey} />}
+            {almOn && <TimeProgressCard dayKey={dayKey} now={now} />}
+          </div>
+        )}
       </div>
 
       <div className="shelf">
-        <HoroscopeCard config={config} reading={snapshot.horoscope ?? null} isToday={isToday} />
-        <TarotCard draw={snapshot.tarot ?? null} isToday={isToday} />
+        {cardOn(config, "horoscope") && (
+          <HoroscopeCard config={config} reading={snapshot.horoscope ?? null} isToday={isToday} />
+        )}
+        {cardOn(config, "tarot") && <TarotCard draw={snapshot.tarot ?? null} isToday={isToday} />}
         {/* "Upgraded in the new model: a DOOR to that day's cover wall" — live
             since the wall exists. */}
         <RediscoverCard dayKey={dayKey} pastDays={pastDays} onOpenDay={onOpenDay} />

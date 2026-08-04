@@ -86,7 +86,10 @@
 .pal-lead.sw{color:var(--text-on-filled);}
 .pal-lead .ico{width:var(--icon-size); height:var(--icon-size);}
 .pal-lead.sw .ico{width:var(--icon-size-small); height:var(--icon-size-small);}
-.pal-lead .pal-dot{width:var(--dot-size); height:var(--dot-size); border-radius:var(--radius-full);}
+/* the dot's colour arrives as `--pal-hue` and is painted here (the 2026-08-03
+   hue handoff — an inline background is unthemeable; see shell.css § the hue
+   handoff). Render-identical; a theme's rules can now restyle the dot. */
+.pal-lead .pal-dot{width:var(--dot-size); height:var(--dot-size); border-radius:var(--radius-full); background:var(--pal-hue, var(--accent));}
 /* LEAD RULING (2026-07-29, user-ruled): three leads, by what the row IS.
    · HABIT   — icon-in-swatch (.sw): the habit's own badge, its colour as a FILL.
    · ENTRY   — the owning habit's GLYPH, tinted with the habit colour inline

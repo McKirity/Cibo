@@ -39,7 +39,18 @@ export interface WhimsyConfig {
    */
   tempUnit: "F" | "C";
   events: DatedEvent[];
+  /**
+   * Per-card visibility, keyed by the Settings → Whimsy roster: `sky` (sun ·
+   * weather · season · tonight), `almanac` (fact · holiday · time progress),
+   * `moon` · `tarot` · `horoscope` · `otd` · `quote` · `word`. An absent key
+   * is ON — only an explicit `false` hides a card, so configs written before
+   * the field existed change nothing.
+   */
+  cards?: Record<string, boolean>;
 }
+
+/** The one read the cards go through — absent key = on. */
+export const cardOn = (cfg: WhimsyConfig, key: string): boolean => cfg.cards?.[key] !== false;
 
 const KEY = "cibo.dev.whimsyConfig";
 

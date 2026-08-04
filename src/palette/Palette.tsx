@@ -28,14 +28,12 @@
  * standing ruling); AdvancedSearch.tsx owns it. The morph replaces this face
  * in place: one overlay, two states, no separate screen, no route.
  *
- * Stand-ins, flagged: verbs whose targets belong to later steps (importers 8 ·
- * creator/settings/theme 10+ · backups · updater) render DISABLED with a
- * "later" meta — the nav rail's disabled-Tools precedent. Per the curation
- * ruling a HIDDEN verb is absent, but curation itself is step 10's Settings
- * section; until it exists the drawn inventory renders whole. The Settings-
- * sections and manual-pages teleport groups are absent for the same reason —
- * their screens don't exist yet. (The Map row joined 2026-07-30 when the Map
- * landed.)
+ * Stand-ins, flagged: verbs whose targets belong to later steps (backups 12 ·
+ * updater at Hardening) render DISABLED with a "later" meta — the nav rail's
+ * disabled-Tools precedent. A verb hidden by Settings → Palette curation is
+ * ABSENT, never greyed. (The Map row joined 2026-07-30 when the Map landed;
+ * the Settings-sections + manual-pages tier joined 2026-08-03 with the manual
+ * reader — the last absent teleport group.)
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { EntryCreationModal } from "../library/EntryCreationModal";
@@ -45,6 +43,10 @@ import { useOverlayEsc } from "../shell/overlayHooks";
 import { rankPalette, type PalIndexItem, type RankedGroup } from "./paletteSpec";
 import { PALETTE_VERBS, type VerbId, type VerbMeta } from "./verbs";
 import { verbHidden } from "../settings/curation";
+import { SECTIONS } from "../settings/SettingsScreen";
+import { MANUAL_GROUPS } from "../settings/manualContent";
+import { Ico } from "../shell/icons";
+import type { SettingsSection } from "../shell/views";
 import { monthVar, parsePeriods, periodDisplay, type PeriodScale, type PlaceMatch } from "./periodGrammar";
 import {
   placeId,
@@ -68,6 +70,10 @@ export interface PaletteNav {
   openMap(): void;
   /** Settings → Habits with the creator open (the New habit verb). */
   openHabitCreator(): void;
+  /** A settings section — the Settings & manual teleport tier (joined 2026-08-03). */
+  openSettings(section: SettingsSection): void;
+  /** A manual page — Settings → Help with that article open. */
+  openManual(articleId: string): void;
 }
 
 // ── The pinned ten-verb inventory (CLOSED — [[Palette]]; never re-litigate) ──
@@ -77,7 +83,9 @@ type PalAction =
   | { t: "library"; key: string }
   | { t: "entry"; id: string; habitKey: string }
   | { t: "screen"; s: "daily" | "timers" | "compare" | "map" }
-  | { t: "verb"; v: VerbId; live: boolean };
+  | { t: "verb"; v: VerbId; live: boolean }
+  | { t: "setting"; section: SettingsSection }
+  | { t: "manual"; id: string };
 
 // Icons transcribed from the frozen FINAL's rows (lucide, 24×24 stroke).
 const I = {
@@ -263,6 +271,28 @@ export function PaletteOverlay({
         action: { t: "entry", id: e.id, habitKey: h.key },
       });
     }
+    // The Settings & manual tier — the last absent teleport group, joined
+    // 2026-08-03 when the manual reader landed ("every article is a place").
+    for (const s of SECTIONS) {
+      items.push({
+        group: "settings",
+        title: s.name,
+        sub: "settings",
+        aliases: ["settings"],
+        action: { t: "setting", section: s.key },
+      });
+    }
+    for (const g of MANUAL_GROUPS) {
+      for (const a of g.articles) {
+        items.push({
+          group: "settings",
+          title: a.title,
+          sub: "manual page",
+          aliases: ["manual", "help"],
+          action: { t: "manual", id: a.id },
+        });
+      }
+    }
     return items;
   }, [data]);
 
@@ -284,6 +314,8 @@ export function PaletteOverlay({
         if (a.s === "map") return go(() => nav.openMap());
         return go(() => nav.openCompare());
       }
+      if (a.t === "setting") return go(() => nav.openSettings(a.section));
+      if (a.t === "manual") return go(() => nav.openManual(a.id));
       // verbs — a fired verb becomes the alphabetical list's one lifted row
       if (!a.live) return;
       recordLastVerb(a.v);
@@ -386,9 +418,13 @@ export function PaletteOverlay({
         {hasIcon(icon) ? <HabitIcon icon={icon} /> : <span className="pal-letter">{name[0] ?? "?"}</span>}
       </span>
     );
+    // The hue handoff (2026-08-03) — `--pal-hue` rather than an inline
+    // background, so a theme's rules can restyle the dot (Blame! turns it into
+    // an indicator lens). Render-identical by default. See shell.css § the hue
+    // handoff for the pattern and its reasoning.
     const dotLead = (colourVar: string) => (
       <span className="pal-lead">
-        <span className="pal-dot" style={{ background: `var(${colourVar})` }} />
+        <span className="pal-dot" style={{ ["--pal-hue" as string]: `var(${colourVar})` }} />
       </span>
     );
     const habitById = new Map(data.habits.map((h) => [h.id, h]));
@@ -538,7 +574,15 @@ export function PaletteOverlay({
                       {a.s === "timers" ? I.timer : a.s === "compare" ? I.chart : a.s === "map" ? I.map : I.sun}
                     </span>
                   )
-                : verbLead(verbsById.get(a.v) as Verb);
+                : a.t === "setting"
+                  ? (
+                      <span className="pal-lead">
+                        <Ico d={SECTIONS.find((s) => s.key === a.section)?.icon ?? []} />
+                      </span>
+                    )
+                  : a.t === "manual"
+                    ? <span className="pal-lead">{I.book}</span>
+                    : verbLead(verbsById.get(a.v) as Verb);
         const disabled = a.t === "verb" && !a.live;
         const verb = a.t === "verb" ? verbsById.get(a.v) : undefined;
         out.push(

@@ -145,6 +145,54 @@
                         border-top: var(--border-hairline) solid var(--divider);
                         font-size: var(--size-small); color: var(--text-muted); line-height: var(--line-normal); text-wrap: pretty; }
 .setscreen .mread { min-height: 0; overflow: auto; padding-right: var(--space-6); }
+/* == slice 6 (2026-08-03) — the MANUAL READER, kit-viewer-manual's drawn first
+   tenant on the chassis above. The door-icon and crumb rules + the `.helpart`
+   reading ramp are the frozen `Final/manual-viewer.html` rules verbatim; the
+   list/quote/table/pre idioms below them are build glue for block shapes the
+   22 articles use that the frozen specimen never drew — all on the same ramp,
+   dial-only. == */
+.setscreen .mdoc .ico { color: var(--text-secondary); flex: 0 0 auto; }
+.setscreen .mdoc.active .ico { color: var(--accent); }
+.setscreen .mdoc.active .mt { color: var(--text-strong); }
+.setscreen .mread-crumb { font-size: var(--size-caption); color: var(--text-muted);
+                          margin-bottom: var(--space-6); font-weight: var(--weight-medium); }
+.setscreen .mread-crumb b { color: var(--text-secondary); font-weight: var(--weight-bold); padding: 0 var(--space-2); }
+.setscreen .helpart { max-width: 68ch; display: flex; flex-direction: column; gap: var(--space-6); }
+.setscreen .helpart h3 { font-family: var(--font-heading); font-size: var(--size-heading);
+                         font-weight: var(--weight-bold); line-height: var(--line-tight); margin: 0; }
+.setscreen .helpart p { font-size: var(--size-body); color: var(--text-secondary);
+                        line-height: var(--line-normal); margin: 0; text-wrap: pretty; }
+.setscreen .helpart p strong, .setscreen .helpart li strong, .setscreen .helpart blockquote strong,
+.setscreen .helpart td strong { color: var(--text-strong); font-weight: var(--weight-medium); }
+/* #### subheads render on the .sglbl overline idiom — how the frozen specimen
+   draws its inner sections */
+.setscreen .helpart h4 { font-size: var(--size-caption); font-weight: var(--weight-bold);
+                         letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted);
+                         margin: var(--space-3) 0 0; }
+.setscreen .helpart ul { margin: 0; padding-left: var(--space-7); display: flex;
+                         flex-direction: column; gap: var(--space-3); }
+.setscreen .helpart li { font-size: var(--size-body); color: var(--text-secondary);
+                         line-height: var(--line-normal); text-wrap: pretty; }
+.setscreen .helpart blockquote { margin: 0; padding: var(--space-3) 0 var(--space-3) var(--space-6);
+                                 border-left: var(--border-heavy) solid var(--border);
+                                 font-size: var(--size-body); color: var(--text-secondary);
+                                 line-height: var(--line-normal); text-wrap: pretty; }
+.setscreen .helpart pre { margin: 0; padding: var(--space-5) var(--space-6);
+                          background: var(--inset-background); border: var(--border-hairline) solid var(--border);
+                          border-radius: var(--radius-small); font-family: var(--font-mono);
+                          font-size: var(--size-small); color: var(--text-secondary);
+                          line-height: var(--line-normal); overflow-x: auto; }
+.setscreen .helpart code { font-family: var(--font-mono); font-size: var(--size-small);
+                           background: var(--inset-background); border-radius: var(--radius-small);
+                           padding: 0 var(--space-2); }
+.setscreen .helpart table { border-collapse: collapse; width: 100%; }
+.setscreen .helpart th { font-size: var(--size-caption); font-weight: var(--weight-bold);
+                         letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted);
+                         text-align: left; padding: var(--space-3) var(--space-5) var(--space-3) 0;
+                         border-bottom: var(--border-hairline) solid var(--border); }
+.setscreen .helpart td { font-size: var(--size-small); color: var(--text-secondary);
+                         line-height: var(--line-normal); padding: var(--space-3) var(--space-5) var(--space-3) 0;
+                         border-bottom: var(--border-hairline) solid var(--divider); }
 /* the roster row's tally — how many values a list holds, so the size of a
    list is visible before opening it */
 .setscreen .vcount { margin-left: auto; font-family: var(--font-mono); font-size: var(--size-caption);

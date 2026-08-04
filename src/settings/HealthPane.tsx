@@ -38,6 +38,13 @@ import { Ico } from "../shell/icons";
 import { importerServices } from "../importers/sources";
 import { threeWayProbe } from "../importers/probes";
 import type { ImporterSource } from "../importers/types";
+import {
+  BACKUP_EVENT,
+  backupRunning,
+  getBackupsRoot,
+  readBackupRecord,
+  runBackup,
+} from "../backup/backup";
 import { causeNote, findDuplicates, type DuplicateReport } from "../db/duplicates";
 import { deleteEntriesCascade } from "../library/entryDelete";
 import { clearErrors, recentErrors, subscribeErrors, type LoggedError } from "./errorLog";
@@ -98,16 +105,7 @@ function SystemTab() {
       <div className="hgroup" style={{ marginTop: 0 }}>
         <p className="hglbl">Backups</p>
         <div className="hlist">
-          <Row
-            pip="idle"
-            label="Automatic backups"
-            state="Not set up yet — backups arrive with their own step, and need a cloud folder to write into."
-            action={
-              <button className="btn-plain btn-sm" aria-disabled="true">
-                Back up now
-              </button>
-            }
-          />
+          <BackupRow />
         </div>
       </div>
 
@@ -180,6 +178,60 @@ function SystemTab() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * The backups health row (step 12) — reads the same record the stale-check
+ * reads; "Back up now" runs the one pipeline. A failed backup is an ERROR pip
+ * (and the error log already lit the rail dot); paused/stale are quiet — the
+ * nag, not an alarm.
+ */
+function BackupRow() {
+  const [record, setRecord] = useState(readBackupRecord());
+  const [busy, setBusy] = useState(backupRunning());
+  useEffect(() => {
+    const h = () => {
+      setRecord(readBackupRecord());
+      setBusy(backupRunning());
+    };
+    window.addEventListener(BACKUP_EVENT, h);
+    return () => window.removeEventListener(BACKUP_EVENT, h);
+  }, []);
+  const root = getBackupsRoot();
+  const staleMs = 7 * 86_400_000;
+  const pip =
+    root == null ? "idle" : record == null ? "idle" : !record.ok ? "err" : "ok";
+  const state =
+    root == null
+      ? "Paused — no backups folder set. Pick one in Settings → Backups."
+      : busy
+        ? "Backing up…"
+        : record == null
+          ? "No backup yet — the first writes on the next close."
+          : !record.ok
+            ? `Last backup failed — ${record.error ?? "unknown"}`
+            : Date.now() - new Date(record.at).getTime() > staleMs
+              ? `Last good backup ${new Date(record.at).toISOString().slice(0, 10)} — stale; the next launch or close catches up.`
+              : `Last backup ${new Date(record.at).toISOString().slice(0, 10)} · verified · on ${record.reason}`;
+  return (
+    <Row
+      pip={pip}
+      label="Automatic backups"
+      state={state}
+      action={
+        <button
+          className="btn-plain btn-sm"
+          disabled={root == null || busy}
+          onClick={() => {
+            setBusy(true);
+            void runBackup("manual");
+          }}
+        >
+          Back up now
+        </button>
+      }
+    />
   );
 }
 

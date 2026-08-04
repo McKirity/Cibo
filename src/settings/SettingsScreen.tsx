@@ -78,6 +78,7 @@ import { PresetsPane, PalettePane } from "./PresetsPalettePane";
 import { WhimsyPane } from "./WhimsyPane";
 import { HealthPane } from "./HealthPane";
 import { HelpPane } from "./HelpPane";
+import { BackupsPane } from "./BackupsPane";
 import { LadderEditor } from "./LadderEditor";
 import { globalLaddersQuery, laddersFrom, writeGlobalLadders } from "./ladderStore";
 import { iconStats, LUCIDE_VERSION } from "../shell/habitIcons";
@@ -190,6 +191,12 @@ export function SettingsScreen({
         ) : section === "help" ? (
           <Pane title="Help">
             <HelpPane />
+          </Pane>
+        ) : section === "backups" ? (
+          <Pane title="Backups">
+            <div className="pbody">
+              <BackupsPane />
+            </div>
           </Pane>
         ) : (
           <PendingPane section={section} />

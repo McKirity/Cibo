@@ -36,4 +36,19 @@ serde_json = "1"
 # (Importer Runtime & External Access § the Calibre reader). `bundled` so the
 # build never depends on a system sqlite.
 rusqlite = { version = "0.32", features = ["bundled"] }
+# Backups (step 12) — every artifact is compressed at write time (zstd, the
+# ruled codec) and the store-directory copy travels as a tar; the growth
+# spike's sizing amendment is why compression is not optional.
+zstd = "0.13"
+tar = "0.4"
+
+# Compression must never run unoptimized: at opt-level 0 a close-time backup
+# of the spike-inflated dev store ground for MINUTES and read as a hang
+# (found live 2026-08-03). Dev builds compile just the zstd stack optimized.
+[profile.dev.package.zstd]
+opt-level = 3
+[profile.dev.package.zstd-safe]
+opt-level = 3
+[profile.dev.package.zstd-sys]
+opt-level = 3
 

@@ -34,12 +34,14 @@ export const PALETTE_VERBS: VerbMeta[] = [
   // a palette action").
   { id: "new-habit", title: "New habit", aliases: ["habit creator", "create habit"], live: true, group: "Habits" },
   { id: "new-entry", title: "New entry", aliases: ["create entry"], live: true },
-  { id: "backup", title: "Back up now", aliases: ["backup"], live: false, group: "Backups" },
+  // LIVE since step 12 — runs the one backup pipeline (health row's twin).
+  { id: "backup", title: "Back up now", aliases: ["backup"], live: true, group: "Backups" },
   { id: "test-connection", title: "Test connection", meta: "per importer + all", aliases: ["importer test"], live: false, group: "Health" },
   { id: "data-checks", title: "Run data checks", aliases: ["data doctor", "health"], live: false, group: "Health" },
   { id: "run-import", title: "Run import now", meta: "per importer", aliases: ["import"], live: false, group: "Importers" },
   { id: "updates", title: "Check for updates", aliases: ["update"], live: false, group: "Updates" },
   { id: "theme", title: "Switch theme", aliases: ["appearance"], live: false, group: "Appearance" },
-  { id: "backups-folder", title: "Open backups folder", aliases: ["reveal backups"], live: false, group: "Backups" },
+  // LIVE since step 12 — reveals the backups root in the file manager.
+  { id: "backups-folder", title: "Open backups folder", aliases: ["reveal backups"], live: true, group: "Backups" },
   { id: "advanced", title: "Advanced Search", meta: "filters this palette", aliases: ["search sets", "query"], live: true },
 ];

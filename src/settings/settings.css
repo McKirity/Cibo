@@ -326,6 +326,10 @@
 .setscreen .sword { font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary); }
 .setscreen .sword.ok { color: var(--verdict-done); }
 .setscreen .sword.err { color: var(--danger); }
+/* the group head — CLAIMED 2026-08-03 (the .mgtag story again: the runline's
+   margin-left:auto assumed a flex parent no rule ever declared, so every
+   count rendered butted against its title — "Backups1 slot") */
+.setscreen .hglbl { display: flex; align-items: baseline; gap: var(--space-4); }
 .setscreen .hglbl .runline { margin-left: auto; font-weight: var(--weight-regular); letter-spacing: 0;
                              text-transform: none; font-family: var(--font-mono); color: var(--text-muted);
                              font-size: var(--size-caption); }

@@ -46,6 +46,8 @@ import { verbHidden } from "../settings/curation";
 import { SECTIONS } from "../settings/SettingsScreen";
 import { MANUAL_GROUPS } from "../settings/manualContent";
 import { Ico } from "../shell/icons";
+import { showErrorToast } from "../shell/toast";
+import { getBackupsRoot, revealBackupsFolder, runBackup } from "../backup/backup";
 import type { SettingsSection } from "../shell/views";
 import { monthVar, parsePeriods, periodDisplay, type PeriodScale, type PlaceMatch } from "./periodGrammar";
 import {
@@ -323,6 +325,14 @@ export function PaletteOverlay({
       // The creator's ruled SECOND door ("+ New habit lives on Settings →
       // Habits only, plus a palette action") — live since step 10 slice 3.
       if (a.v === "new-habit") return go(() => nav.openHabitCreator());
+      // Step 12's pair — same pipeline as the health row / Backups pane.
+      if (a.v === "backup") return go(() => void runBackup("manual"));
+      if (a.v === "backups-folder")
+        return go(() => {
+          if (getBackupsRoot() == null)
+            showErrorToast("No backups folder set — pick one in Settings → Backups.", "Backups");
+          else void revealBackupsFolder();
+        });
       if (a.v === "new-entry") {
         // the verb path: no unmatched title to carry — straight to the pick
         setQuery("");

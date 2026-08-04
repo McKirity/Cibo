@@ -152,6 +152,8 @@ fn calibre_cover(library_path: String, book_path: String) -> Result<tauri::ipc::
         .map_err(|e| format!("cover read failed — {e}"))
 }
 
+mod backup;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -160,7 +162,31 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_persisted_scope::init())
-        .invoke_handler(tauri::generate_handler![calibre_scan, calibre_cover])
+        // Restore swap (step 12): setup runs BEFORE the config window is
+        // created, which is the only moment the OPFS store is closed — a
+        // pending restore marker is applied here or never.
+        .setup(|app| {
+            backup::apply_pending_restore(app.handle());
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            calibre_scan,
+            calibre_cover,
+            backup::bk_store_path,
+            backup::bk_mkdirs,
+            backup::bk_list,
+            backup::bk_remove,
+            backup::bk_promote,
+            backup::bk_write_db,
+            backup::bk_compress_file,
+            backup::bk_bundle_texts,
+            backup::bk_tar_dir,
+            backup::bk_verify_archive,
+            backup::bk_db_integrity,
+            backup::bk_reveal,
+            backup::bk_request_restore,
+            backup::bk_take_restore_result
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

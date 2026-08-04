@@ -31,6 +31,8 @@ import { ensureHabitIcons, runSeed } from "./db/seed";
 import { ensureAppStartDate } from "./db/appStart";
 import { mountFatalLaunch } from "./shell/FatalLaunch";
 import { showErrorToast } from "./shell/toast";
+import { launchStaleCheck } from "./backup/backup";
+import { takeRestoreResult } from "./backup/restore";
 
 // Failure tier ④ trigger — the BOOT WINDOW: an Evolu error before the seed
 // path completes means the store never opened (worker/OPFS init), which is the
@@ -93,6 +95,14 @@ runSeed(evolu).then(
     // latched twice over transactions lost to mid-session reloads (batches
     // 7 and 9). Idempotent null-fill → a lost write heals next launch.
     void ensureHabitIcons(evolu);
+    // Backups (step 12): the launch half — a failed restore surfaces (tier 3;
+    // a SUCCESSFUL restore needs no toast: the restored data is the message),
+    // then the ~7-day stale-check (crashes never fire the close hook).
+    void takeRestoreResult().then((r) => {
+      if (r != null && !r.ok)
+        showErrorToast(`Restore failed — ${r.detail}. The previous data is still in place.`, "Backups");
+    });
+    launchStaleCheck();
   },
   (e) => {
     console.error("Seed failed:", e);

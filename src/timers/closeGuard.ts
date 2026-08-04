@@ -20,14 +20,52 @@
  */
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { discardAllForQuit, hasLiveClocks } from "./timerStore";
+import { getBackupsRoot, runBackup } from "../backup/backup";
 
 let registered = false;
 let bypass = false;
 let showWarning: (() => void) | null = null;
+let showBackingUp: (() => void) | null = null;
 
 /** The shell registers how the quit warning renders; null on unmount. */
 export const registerQuitWarning = (fn: (() => void) | null): void => {
   showWarning = fn;
+};
+
+/**
+ * The shell registers the "backing up before quitting" notice — without it
+ * the close-time backup is a frozen window, which reads as a crash (found
+ * live 2026-08-03 on the spike-inflated dev store: minutes of silence).
+ */
+export const registerBackupNotice = (fn: (() => void) | null): void => {
+  showBackingUp = fn;
+};
+
+/** destroy() skips onCloseRequested — immune to stale/stacked listeners;
+ *  close() is the fallback where destroy is unavailable. */
+const quitNow = (): void => {
+  try {
+    const w = getCurrentWindow();
+    void w.destroy().catch(() => void w.close().catch(() => {}));
+  } catch {
+    /* plain browser dev */
+  }
+};
+
+/**
+ * The ruled close sequence's back half: BACKUP → EXIT (step 12; the timer was
+ * resolved before this is called). A failed backup still quits — the record
+ * and the error log both persist, so the launch stale-check and the health
+ * row carry the news; a window refusing to close would be worse than a
+ * missed slot. Capped so a hung pipeline can never trap the quit.
+ */
+const backupThenQuit = (): void => {
+  bypass = true;
+  showBackingUp?.();
+  const cap = new Promise<void>((res) => window.setTimeout(res, 45_000));
+  void Promise.race([runBackup("close").then(() => undefined, () => undefined), cap]).finally(
+    quitNow,
+  );
 };
 
 /** Register the one close listener. Safe to call on every Shell mount. */
@@ -37,10 +75,18 @@ export const armCloseGuard = (): void => {
   try {
     void getCurrentWindow()
       .onCloseRequested((e) => {
-        if (bypass || !hasLiveClocks()) return; // clean close
-        if (showWarning == null) return; // no live UI to ask — never trap the window
-        e.preventDefault();
-        showWarning();
+        if (bypass) return; // a backup-then-quit is already in flight
+        if (hasLiveClocks() && showWarning != null) {
+          e.preventDefault();
+          showWarning();
+          return;
+        }
+        // Clean close: back up first when a root is set; with backups paused
+        // the close passes through untouched (never a gate).
+        if (getBackupsRoot() != null) {
+          e.preventDefault();
+          backupThenQuit();
+        }
       })
       .catch(() => {
         registered = false;
@@ -50,16 +96,12 @@ export const armCloseGuard = (): void => {
   }
 };
 
-/** The warning's Proceed: discard the in-flight values and force the quit. */
+/** The warning's Proceed: discard the in-flight values, then backup → exit. */
 export const proceedQuit = (): void => {
   discardAllForQuit(); // nothing was written, so there is nothing to undo
-  bypass = true;
-  try {
-    const w = getCurrentWindow();
-    // destroy() skips onCloseRequested — immune to stale/stacked listeners;
-    // close() is the fallback where destroy is unavailable.
-    void w.destroy().catch(() => void w.close().catch(() => {}));
-  } catch {
-    /* plain browser dev */
+  if (getBackupsRoot() != null) backupThenQuit();
+  else {
+    bypass = true;
+    quitNow();
   }
 };

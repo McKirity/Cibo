@@ -34,7 +34,7 @@ import { TooltipLayer } from "./tooltip";
 import { TimerOverlays } from "../timers/TimerOverlays";
 import { GlobalTimerTray } from "../timers/GlobalTimerTray";
 import { focusClock } from "../timers/timerStore";
-import { armCloseGuard, proceedQuit, registerQuitWarning } from "../timers/closeGuard";
+import { armCloseGuard, proceedQuit, registerBackupNotice, registerQuitWarning } from "../timers/closeGuard";
 import { registerTrayNavigate } from "../timers/tray";
 import { DangerConfirm } from "./DangerConfirm";
 import type { CadenceScale } from "../metrics/cadence";
@@ -205,10 +205,15 @@ export function Shell() {
   // warning UI. The DangerConfirm chassis stands in for the (never-drawn)
   // quit warning face.
   const [quitWarn, setQuitWarn] = useState(false);
+  const [closingBackup, setClosingBackup] = useState(false);
   useEffect(() => {
     armCloseGuard();
     registerQuitWarning(() => setQuitWarn(true));
-    return () => registerQuitWarning(null);
+    registerBackupNotice(() => setClosingBackup(true));
+    return () => {
+      registerQuitWarning(null);
+      registerBackupNotice(null);
+    };
   }, []);
   const onProceedQuit = () => {
     setQuitWarn(false);
@@ -588,6 +593,18 @@ export function Shell() {
             setView({ kind: "timers" });
           }}
         />
+      )}
+      {closingBackup && (
+        <div className="dimlayer" role="presentation">
+          <div className="confirm" role="alertdialog" aria-modal="true">
+            <div className="confirm-body">
+              <p>
+                <strong>Backing up before quitting…</strong>
+              </p>
+              <p>Cibo closes by itself when the backup is written.</p>
+            </div>
+          </div>
+        </div>
       )}
       {quitWarn && (
         <DangerConfirm

@@ -77,6 +77,7 @@ import { ImportersPane } from "./ImportersPane";
 import { PresetsPane, PalettePane } from "./PresetsPalettePane";
 import { WhimsyPane } from "./WhimsyPane";
 import { HealthPane } from "./HealthPane";
+import { HelpPane } from "./HelpPane";
 import { LadderEditor } from "./LadderEditor";
 import { globalLaddersQuery, laddersFrom, writeGlobalLadders } from "./ladderStore";
 import { iconStats, LUCIDE_VERSION } from "../shell/habitIcons";
@@ -107,7 +108,6 @@ const SECTIONS: { key: SettingsSection; name: string; icon: string[] }[] = [
 const PENDING: Partial<Record<SettingsSection, string>> = {
   backups: "Restore from backup… and the retention dials (arrives with step 12).",
   storage: "The cloud root picker (arrives with step 14's readiness checkpoint).",
-  help: "Manual (the 22 articles) · Hotkeys · About.",
 };
 
 export function SettingsScreen({
@@ -186,6 +186,10 @@ export function SettingsScreen({
         ) : section === "health" ? (
           <Pane title="Health">
             <HealthPane />
+          </Pane>
+        ) : section === "help" ? (
+          <Pane title="Help">
+            <HelpPane />
           </Pane>
         ) : (
           <PendingPane section={section} />

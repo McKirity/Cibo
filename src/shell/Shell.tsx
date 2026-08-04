@@ -108,7 +108,7 @@ export function Shell() {
   }, [view, active, replaceView]);
 
   // Back/forward bindings: Alt+←/→ and mouse buttons 4/5 (the ruled set, minus
-  // the chrome arrows below). `Ctrl+Home` went live 2026-07-27 — its target is
+  // the chrome arrows below). `Ctrl+H` (was `Ctrl+Home`, user-ruled 2026-08-03) went live 2026-07-27 — its target is
   // Daily, and Daily now exists in both states. `Ctrl+K` went live 2026-07-29
   // with the palette — the four-hotkey set ([[Shell Mechanics]] § 7) is whole.
   // The palette is NEVER summoned over a modal holding input (the overlay
@@ -124,7 +124,12 @@ export function Shell() {
   const [creatorPending, setCreatorPending] = useState(false);
   useEffect(() => {
     const onHome = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Home") {
+      // `Ctrl+H`, USER-RULED 2026-08-03, replacing the ruled-and-drawn
+      // `Ctrl+Home`. Home never fired reliably in testing and the cause was
+      // never identified; a letter key is unambiguous across every keyboard,
+      // needs no Fn combination, and collides with nothing the app binds. The
+      // four-hotkey SET is unchanged — this is one member's spelling.
+      if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
         e.preventDefault();
         // The day cutoff "sets logging DEFAULTS only" — before the cutoff
         // hour, home is still yesterday's working day, DATE-ADDRESSED so the

@@ -24,6 +24,14 @@ const pkg = (() => {
 const lucideVersion = String(pkg.dependencies?.lucide ?? "unknown");
 /** The app's own version — Settings → Health's identity row, and About's. */
 const appVersion = String(pkg.version ?? "0.0.0");
+/**
+ * The build date, for About's version line (the frozen face draws
+ * "Cibo 0.9.4 · build 2026.07.12"). Stamped at config load — which makes a
+ * build non-reproducible byte-for-byte, taken knowingly: for a personal app
+ * shipped by auto-update, "which build am I running" is worth more than
+ * reproducibility, and nothing here verifies binaries.
+ */
+const buildDate = new Date().toISOString().slice(0, 10);
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
@@ -32,6 +40,7 @@ export default defineConfig(async () => ({
   define: {
     __LUCIDE_VERSION__: JSON.stringify(lucideVersion),
     __APP_VERSION__: JSON.stringify(appVersion),
+    __BUILD_DATE__: JSON.stringify(buildDate),
   },
 
   // Evolu: its workers/WASM must not be pre-bundled, and workers need ES format.

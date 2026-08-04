@@ -139,7 +139,7 @@ export const dashboardListCap = (): number =>
  * The cutoff "sets logging DEFAULTS only" ([[Day Boundary & Logging Cutoff]] —
  * one global rule, local wall-clock, never retroactive): before the cutoff
  * hour, the day the app opens to for logging is still YESTERDAY. Consumers:
- * the shell's home target (launch + Ctrl+Home). Every explicit door — the
+ * the shell's home target (launch + Ctrl+H). Every explicit door — the
  * calendar, catch-up, back-dating — always wins; nothing else moves.
  */
 export const defaultLogDay = (now: Date = new Date()): string => {

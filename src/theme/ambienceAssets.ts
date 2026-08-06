@@ -65,8 +65,7 @@ export function revokeAmbience(): void {
   liveUrls = [];
 }
 
-const inTauri = (): boolean =>
-  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+import { inTauri } from "../settings/deviceStore";
 
 async function blobUrl(path: string, ext: string): Promise<string> {
   const fs = await import("@tauri-apps/plugin-fs");

@@ -17,7 +17,7 @@
  * Chunk-4 rulings implemented (2026-07-23):
  *  - Week-majority geometry (ratified): majority-owned weeks, ghost cells,
  *    spilled days still counted day-granularly.
- *  - The expansion list cap: 10 by default (a Settings value at step 10),
+ *  - The expansion list cap: 10 by default (Settings → Tracking → Metrics),
  *    longest-first; the dashed "+ N more" expander closes the list.
  *  - The yearly heat wears the theme base accent (ratified `--accent`).
  *  - The measure micro-bars draw REAL per-bucket amounts (the FINAL's
@@ -44,7 +44,7 @@ import {
   type DayCellState,
   type PeriodBounds,
 } from "../metrics/cadence";
-import { dayFromIndex, dayGap, dayIndex, monthKey, weekStart } from "../metrics/dates";
+import { dayFromIndex, dayGap, dayIndex, monthKey, weekStart, weekStartDow, weekThursday } from "../metrics/dates";
 import {
   circularMeanMinutes,
   clockMinutes as minOfDay,
@@ -190,8 +190,12 @@ const fmtH = (min: number): string => {
 const fmtHShort = (min: number): string => `${Math.round(min / 60)} h`;
 const dayLabel = (day: string): string =>
   `${MONTH_ABBR[Number(day.slice(5, 7)) - 1]} ${Number(day.slice(8, 10))}`;
-const dowName = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const dow = (day: string): number => (new Date(dayIndex(day) * 86_400_000).getUTCDay() + 6) % 7;
+/** A day's own weekday NAME — independent of the week-start setting. */
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const dayName = (day: string): string => DAY_NAMES[new Date(dayIndex(day) * 86_400_000).getUTCDay()];
+/** A day's COLUMN under the configured week start (0 = the start column). */
+const dow = (day: string): number =>
+  (new Date(dayIndex(day) * 86_400_000).getUTCDay() - weekStartDow() + 7) % 7;
 
 // minOfDay / rangeMinutes / fmtClock / the circular mean live in
 // ../metrics/clockMath (imported under their old local names above; the mean's
@@ -257,10 +261,10 @@ export function buildCadenceModel(
       d.future
         ? ""
         : !d.finalized
-          ? `${dowName[dow(d.day)]} ${dayLabel(d.day)} · unfinalized — unknown`
+          ? `${dayName(d.day)} ${dayLabel(d.day)} · unfinalized — unknown`
           : d.done === 0
-            ? `${dowName[dow(d.day)]} ${dayLabel(d.day)} · gap day · 0 habits`
-            : `${dowName[dow(d.day)]} ${dayLabel(d.day)} · ${d.done} of ${activeCount} habits`,
+            ? `${dayName(d.day)} ${dayLabel(d.day)} · gap day · 0 habits`
+            : `${dayName(d.day)} ${dayLabel(d.day)} · ${d.done} of ${activeCount} habits`,
     );
   }
   const bestDay = statsRaw.bestDay?.day ?? null;
@@ -296,7 +300,10 @@ export function buildCadenceModel(
     const byDay = new Map(days.map((d) => [d.day, d]));
     // A week's owner section = its Thursday's month (quarterly ticks) or
     // quarter (yearly ticks); the tick draws AFTER the section's last column.
-    const thuOf = (ws: string) => dayFromIndex(dayIndex(ws) + 3);
+    // The dial's Thursday, never `ws + 3` (see metrics/cadence.majorityWeeks):
+    // under a Sunday start the offset is 4, and a hardcoded 3 put every
+    // quarterly month tick and every yearly month label on the wrong week.
+    const thuOf = (ws: string) => weekThursday(ws);
     const sectionOf = (ws: string) =>
       scale === "quarter" ? thuOf(ws).slice(5, 7) : String(quarterOf(thuOf(ws)));
     const cols: RibbonColVM[] = weeks.map((ws, i) => {
@@ -881,7 +888,7 @@ function deriveMilestones(
       if (LANDMARKS.includes(n) && s.day >= bounds.from && s.day <= bounds.to) {
         out.push({
           title: `Reached the <b>${n}th ${escapeHtml(h.name)} day</b>, on <b>${dayLabel(s.day)}</b>.`,
-          when: `${dowName[dow(s.day)]} · ${dayLabel(s.day)}`,
+          when: `${dayName(s.day)} · ${dayLabel(s.day)}`,
           kind: "landmark",
         });
       }
@@ -902,7 +909,7 @@ function deriveMilestones(
             if (s.day >= bounds.from && s.day <= bounds.to)
               out.push({
                 title: `<b>${escapeHtml(entryTitle.get(id) ?? "—")}</b> crossed <b>${groupInt(mark)} ${escapeHtml(h.countUnit ?? "words")}</b>.`,
-                when: `${dowName[dow(s.day)]} · ${dayLabel(s.day)}`,
+                when: `${dayName(s.day)} · ${dayLabel(s.day)}`,
                 kind: "crossing",
               });
           }

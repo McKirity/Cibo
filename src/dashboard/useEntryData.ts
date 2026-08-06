@@ -17,14 +17,8 @@ import type { SessionRow } from "../metrics/shapes";
 import type { SessionDef } from "./creationSpec";
 import type { EntryIdentity, SiblingRow } from "./entrySpec";
 
-const finalizedDaysQuery = evolu.createQuery((db) =>
-  db
-    .selectFrom("days")
-    .select(["date"])
-    .where("finalized", "=", 1)
-    .where("isDeleted", "is not", 1),
-);
 
+import { finalizedDaysQuery } from "./queries";
 export interface EntryData {
   ready: boolean;
   habitKey: string;
@@ -147,7 +141,10 @@ export function useEntryData(entryId: string): EntryData {
           .where("subunit_definitions.data_type", "=", "picklist")
           .where("subunit_definitions.isDeleted", "is not", 1)
           .where("vocab_options.isDeleted", "is not", 1)
+          // createdAt ties within a seed batch — the key tiebreaker is what
+          // makes declaration order deterministic (see useDayData's note).
           .orderBy("subunit_definitions.createdAt")
+          .orderBy("subunit_definitions.key")
           .orderBy("vocab_options.sort_order"),
       ),
     [habitId],
@@ -204,7 +201,6 @@ export function useEntryData(entryId: string): EntryData {
       engine: raw.gamedev_engine,
       started: raw.started,
       completed: raw.completed,
-      banner: raw.banner,
       cover: raw.cover,
     };
   }, [raw]);
@@ -232,7 +228,6 @@ export function useEntryData(entryId: string): EntryData {
         rating: r.rating,
         series: r.series,
         seriesOrder: r.series_order,
-        type: r.type,
       })),
     [siblingRows],
   );
@@ -297,7 +292,7 @@ export function useEntryData(entryId: string): EntryData {
       subType: (habit?.sub_type as "consumption" | "creation" | null) ?? null,
       measuresCount: habit?.measures_count === 1,
       countUnit: (habit?.count_unit as string | null) ?? null,
-      // Per-habit override, else the Settings global (step 10).
+      // Per-habit override, else the Settings global.
       waveGapDays: (habit?.wave_gap_days as number | null) ?? waveGapDefault(),
       bundle,
       typeVocab,

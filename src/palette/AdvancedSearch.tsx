@@ -10,14 +10,15 @@
  * Period (kit-picker-period REUSED — the second consumer; optional for entry
  * queries, where it scopes engagement conditions) → Conditions (typed,
  * definition-driven rows) → Match all / Match any (ONE switch, no nested
- * boolean trees) → LIVE results (no Run button; a count + the list update on
- * every change) — and RESULTS ARE DOORS: day rows deep-link to their day
- * dashboards, entry rows to their entry dashboards.
+ * boolean trees) → results on a SEARCH BUTTON (user-ruled 2026-07-29,
+ * REVERSING the drafted no-Run-button clause — the snapshot note at the
+ * `submitted` state below) — and RESULTS ARE DOORS: day rows deep-link to
+ * their day dashboards, entry rows to their entry dashboards.
  *
  * Presets mirror CS exactly (kit-menu-preset REUSED): opens blank, results
  * ephemeral, named presets = partial form configurations stored verbatim in
  * `app_meta` under `as_preset:<id>` — habit-KEY-addressed, synced; the Manage
- * door stays inert until step 10's Settings → Presets.
+ * door opens Settings → Presets (live since 2026-08-04).
  *
  * The BUILDER-CHASSIS MINT — deferred by ruling to this session — is decided
  * NO MINT: the genuinely shared pieces are already kit blocks (the period
@@ -25,14 +26,16 @@
  * IDIOM (`.bsec`/`.bhead`, scoped `:is(.csdash,.advs)`), not an anatomy —
  * different steps, different container (screen panel vs. morphing overlay).
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { stars } from "../metrics/format";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import type { WindowCfg } from "../kit/periodWindow";
 import { DayField, PeriodPicker } from "../kit/PeriodPicker";
 import { PresetControl } from "../kit/PresetMenu";
 import { Menu, type MenuItem } from "../kit/Menu";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { Ico, ICONS } from "../shell/icons";
-import { useOverlayEsc } from "../shell/overlayHooks";
+import { useDismiss, useOverlayEsc } from "../shell/overlayHooks";
+import { AS_PREFIX } from "../compare/presets";
 import { monthVar } from "./periodGrammar";
 import type { PaletteNav } from "./Palette";
 import {
@@ -49,7 +52,7 @@ import {
 } from "./advancedSpec";
 import type { SearchData } from "./useSearchData";
 
-const AS_PREFIX = "as_preset:";
+// AS_PREFIX comes from compare/presets (the two rosters share one home).
 const CAP = 60;
 
 // Glyphs come from shell/icons (close/back/plus/chevron — drawn paths match).
@@ -299,7 +302,6 @@ export function AdvancedSearch({
                   data={data}
                   habitByKey={habitByKey}
                   habitById={habitById}
-                  today={today}
                   onChange={setDayConds}
                 />
               ) : (
@@ -356,10 +358,16 @@ export function AdvancedSearch({
                         nav.openDay(h.day);
                       }}
                     >
+                      {/* --pal-hue, never an inline background: the palette
+                          moved its identical dots to the hue handoff on
+                          2026-08-03 precisely because an inline background
+                          cannot be overridden by any stylesheet, so a theme's
+                          rules could not reach it. These two sites were missed
+                          by that pass. Render-identical by default. */}
                       <span className="pal-lead">
                         <span
                           className="pal-dot"
-                          style={{ background: `var(${monthVar(Number(h.day.slice(5, 7)))})` }}
+                          style={{ ["--pal-hue" as string]: `var(${monthVar(Number(h.day.slice(5, 7)))})` }}
                         />
                       </span>
                       <span className="pal-txt">
@@ -405,7 +413,7 @@ export function AdvancedSearch({
                         <span className="pal-lead">
                           <span
                             className="pal-dot"
-                            style={{ background: `var(--${h.habit?.colourSlot ?? "accent"})` }}
+                            style={{ ["--pal-hue" as string]: `var(--${h.habit?.colourSlot ?? "accent"})` }}
                           />
                         </span>
                       )}
@@ -540,24 +548,12 @@ function EntryField({
     .filter((e) => needle === "" || e.title.toLowerCase().includes(needle))
     .slice(0, 12);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (boxRef.current != null && !boxRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopImmediatePropagation();
-        setOpen(false);
-      }
-    };
-    window.addEventListener("mousedown", onDown, true);
-    window.addEventListener("keydown", onKey, true);
-    return () => {
-      window.removeEventListener("mousedown", onDown, true);
-      window.removeEventListener("keydown", onKey, true);
-    };
-  }, [open]);
+  // The app's ONE dismissal discipline. This hand-rolled the identical
+  // capture-phase pair until 2026-08-04 — in a file that already imported
+  // `useOverlayEsc` from the same module. The SURFACE stays hand-built (an
+  // input cannot nest inside Menu's item buttons, the recorded reason); only
+  // the dismissal was ever duplicated.
+  useDismiss(boxRef, () => setOpen(false), { enabled: open });
 
   return (
     <div className="fieldwrap" ref={boxRef}>
@@ -682,17 +678,16 @@ function DayCondRows({
   data,
   habitByKey,
   habitById,
-  today,
   onChange,
 }: {
   conds: IdCond<DayCond>[];
   data: SearchData;
   habitByKey: Map<string, ASHabit>;
   habitById: Map<string, ASHabit>;
-  today: string;
+  // NO `today` (deleted 2026-08-04) — threaded in and immediately discarded
+  // with `void today;`.
   onChange: (c: IdCond<DayCond>[]) => void;
 }) {
-  void today;
   const patch = (i: number, c: IdCond<DayCond>) => onChange(conds.map((x, j) => (j === i ? c : x)));
   const remove = (i: number) => onChange(conds.filter((_, j) => j !== i));
   const label = (c: DayCond) => DAY_KINDS.find((k) => k.kind === c.kind)?.label ?? c.kind;
@@ -836,7 +831,7 @@ function EntryCondRows({
               <div className="wopts">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <span key={n} className={`opt${c.n === n ? " on" : ""}`} onClick={() => patch(i, { ...c, n })}>
-                    {"★".repeat(n)}
+                    {stars(n)}
                   </span>
                 ))}
               </div>

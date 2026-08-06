@@ -1,5 +1,5 @@
 /** The custom titlebar + its window-action wiring. Split out of Shell.tsx 2026-07-30 (dedup pass wave 4). */
-import { Ico } from "./icons";
+import { Ico, ICONS } from "./icons";
 import { winAction } from "./safeWindow";
 
 // Custom titlebar (native decorations are off in tauri.conf.json). The drag
@@ -24,8 +24,8 @@ export function Titlebar({
   onForward: () => void;
   railCollapsed: boolean;
   onToggleRail: () => void;
-  /** Something the hidden rail would have been signalling (today: unfinalized
-   *  days; the health dot joins at step 10). */
+  /** Something the hidden rail would have been signalling — unfinalized days
+   *  OR'd with the health dot (the step-10 join, live since 2026-08-04). */
   attention: boolean;
 }) {
   return (
@@ -34,7 +34,7 @@ export function Titlebar({
         {/* THE RAIL TOGGLE — 2026-08-01, step 9.
             The frozen frame draws this button as RESTORE-ONLY (`display:none`
             until collapsed), and draws no collapse control anywhere; the
-            palette's ten verbs are a closed set that doesn't include one
+            palette's nine verbs are a closed set that doesn't include one
             either. So "what collapses the rail" was never ruled — a gap, not a
             conflict. Filled the minimal way: ONE always-visible toggle, whose
             drawn icon is already a sidebar glyph. Flagged for ratification;
@@ -60,7 +60,7 @@ export function Titlebar({
           disabled={!canBack}
           onClick={onBack}
         >
-          <Ico d={["m12 19-7-7 7-7", "M19 12H5"]} />
+          <Ico d={ICONS.back} />
         </button>
         <button
           className={`tb-btn${canForward ? "" : " disabled"}`}
@@ -68,7 +68,7 @@ export function Titlebar({
           disabled={!canForward}
           onClick={onForward}
         >
-          <Ico d={["M5 12h14", "m12 5 7 7-7 7"]} />
+          <Ico d={ICONS.forward} />
         </button>
       </div>
       <div className="drag" data-tauri-drag-region>
@@ -82,7 +82,7 @@ export function Titlebar({
           <Ico d={["M4 4h16v16H4z"]} />
         </button>
         <button className="tb-btn close" title="Close" onClick={winAction((w) => w.close())}>
-          <Ico d={["M18 6 6 18", "m6 6 12 12"]} />
+          <Ico d={ICONS.close} />
         </button>
       </div>
     </div>

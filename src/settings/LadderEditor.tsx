@@ -20,7 +20,7 @@
  * milestone; changing a ladder changes what re-derives from that moment on.
  */
 import { useState } from "react";
-import { Ico } from "../shell/icons";
+import { Ico, ICONS } from "../shell/icons";
 import { DEFAULT_LADDERS, type Ladder, type LadderOverrides, type LadderSubject } from "../daily/milestones";
 
 const SUBJECTS: { key: LadderSubject; label: string; hint: string }[] = [
@@ -74,7 +74,7 @@ export function LadderEditor({
           <div className={`ladrow${isOpen ? " open" : ""}`} key={s.key}>
             <div className="ladhead">
               <button className="disc" onClick={() => setOpen(isOpen ? null : s.key)}>
-                <Ico d={["m9 18 6-6-6-6"]} />
+                <Ico d={ICONS.chevronRight} />
               </button>
               <span className="ladmeta">
                 <span className="ladname">{s.label}</span>
@@ -195,7 +195,7 @@ function OneLadder({
                   data-tip="Stop at a number"
                   onClick={() => setBand(i, { until: b.every * 10 })}
                 >
-                  <Ico d={["M12 5v14", "M5 12h14"]} />
+                  <Ico d={ICONS.plus} />
                 </button>
               </>
             )}
@@ -205,7 +205,7 @@ function OneLadder({
                 data-tip="Remove"
                 onClick={() => onChange({ ...ladder, bands: ladder.bands.filter((_, j) => j !== i) })}
               >
-                <Ico d={["M3 6h18", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"]} />
+                <Ico d={ICONS.trash} />
               </button>
             )}
           </div>
@@ -224,7 +224,7 @@ function OneLadder({
             onChange({ ...ladder, bands });
           }}
         >
-          <Ico d={["M12 5v14", "M5 12h14"]} /> Add a band
+          <Ico d={ICONS.plus} /> Add a band
         </button>
       </div>
     </div>

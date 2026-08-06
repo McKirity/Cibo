@@ -24,7 +24,11 @@ import type { ChartKind, MeasurePick, WindowCfg } from "./compareSpec";
  * sites are unchanged; Advanced Search passes `as_preset:` (the ruled mirror —
  * same mechanism, its own roster).
  */
-const KEY_PREFIX = "cs_preset:";
+/** The two preset rosters' `app_meta` key prefixes — EXPORTED 2026-08-04 so
+ *  nothing spells them as bare literals (Settings → Presets did, for both). */
+export const CS_PREFIX = "cs_preset:";
+export const AS_PREFIX = "as_preset:";
+const KEY_PREFIX = CS_PREFIX;
 
 /** The stored (partial, verbatim) form — any subset of the four steps. */
 export interface PresetCfg {

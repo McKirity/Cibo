@@ -42,9 +42,7 @@ export const importerServices = (): { name: string; probe: ImporterSource }[] =>
   return out;
 };
 
-/**
- * ONE "Import" door per library (user-ruled 2026-08-01 — the per-source
- * doors collapsed; the modal's area switch owns source selection). Live for
- * every label since all five source families built the same day.
- */
-export const importDoorReady = (label: string): boolean => label === "Import";
+/* ONE "Import" door per library (user-ruled 2026-08-01 — the per-source doors
+ * collapsed; the modal's area switch owns source selection). The
+ * `importDoorReady` gate that lived here died 2026-08-04: every door has been
+ * live since step 8 closed, so the check was dead code. */

@@ -2,9 +2,9 @@
  * The two importer API keys — TMDB + YouTube, the app's ONLY keys (Steam /
  * AniList / AO3 keyless; [[Importer Runtime & External Access]]'s access
  * table). Ruled storage: **synced, stored plain** in `app_meta`
- * ([[Sync & Per-Device Settings]] — not secrets); the real entry surface is
- * Settings → Importers (step 10), the dev panel hosts the stand-in rows
- * meanwhile (the step-8 stand-in doctrine).
+ * ([[Sync & Per-Device Settings]] — not secrets); the ONE entry surface is
+ * Settings → Importers (the dev panel's duplicate rows were deleted with the
+ * whole dev surface, 2026-08-04 user-ruled).
  *
  * NOTE (2026-08-01): the old vault's gitignored `data.json` — the Phase 1
  * Overview's build-time-retrieval source — carries BOTH keys empty, so there

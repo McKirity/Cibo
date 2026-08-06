@@ -27,6 +27,10 @@
     { "identifier": "fs:allow-write-file", "allow": [{ "path": "$APPLOCALDATA/images/**" }] },
     { "identifier": "fs:allow-mkdir", "allow": [{ "path": "$APPLOCALDATA/images/**" }] },
     { "identifier": "fs:allow-exists", "allow": [{ "path": "$APPLOCALDATA/images/**" }] },
+    { "identifier": "fs:allow-read-text-file", "allow": [{ "path": "$APPLOCALDATA/settings.json" }, { "path": "$APPLOCALDATA/timer-heartbeat.json" }] },
+    { "identifier": "fs:allow-write-text-file", "allow": [{ "path": "$APPLOCALDATA/settings.json" }, { "path": "$APPLOCALDATA/timer-heartbeat.json" }] },
+    { "identifier": "fs:allow-exists", "allow": [{ "path": "$APPLOCALDATA/settings.json" }, { "path": "$APPLOCALDATA/timer-heartbeat.json" }] },
+    { "identifier": "fs:allow-remove", "allow": [{ "path": "$APPLOCALDATA/timer-heartbeat.json" }, { "path": "$APPLOCALDATA/images/**" }] },
     "dialog:allow-open",
     {
       "identifier": "http:default",

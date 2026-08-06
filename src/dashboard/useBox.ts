@@ -14,7 +14,16 @@ export function useBox<T extends Element>(): { ref: React.MutableRefObject<T | n
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    // Bail out on an unchanged size (2026-08-04): a drag-resize fires the
+    // ResizeObserver AND the window listener for the same frame, and a fresh
+    // {w,h} object re-rendered the chart twice per frame even when nothing
+    // moved. Six charts on a creation dashboard.
+    const measure = () =>
+      setBox((prev) => {
+        const w = el.clientWidth;
+        const h = el.clientHeight;
+        return prev.w === w && prev.h === h ? prev : { w, h };
+      });
     measure();
     let ro: ResizeObserver | null = null;
     if (typeof ResizeObserver !== "undefined") {

@@ -2,8 +2,8 @@
  * Build step 7 — the end-of-interval SIGNAL.
  *
  * "Countdown/pomodoro end-of-interval signals: sound by default, style
- * configurable in Settings" — the style control is step 10's; this ships the
- * default. The signal passes the pinned notification fence ("did the user
+ * configurable in Settings" — the style control lives in Settings → Timers
+ * (step 10, live; settings/local owns the value). The signal passes the pinned notification fence ("did the user
  * start something that ends?") — a completion signal for a user-started clock,
  * never a reminder; the app still builds no notification infrastructure.
  *
@@ -77,7 +77,7 @@ export const fireSignal = (boundary: Exclude<Boundary, null>): void => {
   // Every boundary sounds; a break-end is quieter business (the clock keeps
   // running) but still a completion the user scheduled.
   void boundary;
-  // The Settings → Timers signal style (step 10): Silent sheds the sound only —
+  // The Settings → Timers signal style: Silent sheds the sound only —
   // the OS attention ask is the point of the signal and always fires.
   if (getSignalStyle() !== "silent") chime();
   flagAttention();

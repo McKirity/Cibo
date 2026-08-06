@@ -1,5 +1,6 @@
 /** Comparing Statistics' chart renderers (pure functions of CmpChart) + the window dash/style roster. Split out of CompareDashboard.tsx 2026-07-30 (dedup pass wave 4). */
 import type { CmpChart } from "./compareSpec";
+import { useBox } from "../dashboard/useBox";
 
 /**
  * Window = line STYLE, never colour: the SVG dasharray and the legend's
@@ -12,11 +13,15 @@ export const WINDOW_DASHES = [
   { dash: "2 5", style: "dotted" },
 ] as const;
 
-// ── Charts (HTML axes + stretch-safe SVG) ────────────────────────────────────
+// ── Charts (HTML axes + box-sized-viewBox SVG) ───────────────────────────────
+// Axis labels are HTML (the chunk-5 lesson — text never enters the SVG), and
+// since 2026-08-04 the SVGs are box-sized like every dashboard chart: viewBox =
+// the measured pixel box (shared useBox), no preserveAspectRatio="none" — the
+// step-4 ruling's technique, applied late to the one surface the sweep missed
+// (bar widths, gaps, stroke weights and radii are real pixels now).
 
 export function BarsChart({ chart }: { chart: CmpChart }) {
-  const W = 1000;
-  const H = 250;
+  const { ref, w: W, h: H } = useBox<SVGSVGElement>();
   const n = chart.bucketLabels.length;
   const stacked = chart.kind === "sbar";
   const groups = chart.bucketLabels.map((_, bi) => chart.series.map((s) => s.values[bi] ?? 0));
@@ -71,15 +76,19 @@ export function BarsChart({ chart }: { chart: CmpChart }) {
         ))}
       </div>
       <div className="gb-plot">
-        <svg className="chartsvg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-label={chart.title}>
-          <g stroke="var(--divider)" strokeWidth="1">
-            {chart.yTicks.map((t) => (
-              <line key={t} x1="0" y1={y(t)} x2={W} y2={y(t)} />
-            ))}
-          </g>
-          {rects.map((r, i) => (
-            <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} rx="3" fill={r.fill} />
-          ))}
+        <svg ref={ref} className="chartsvg" viewBox={`0 0 ${Math.max(1, W)} ${Math.max(1, H)}`} aria-label={chart.title}>
+          {W > 0 && H > 0 && (
+            <>
+              <g stroke="var(--divider)" strokeWidth="1">
+                {chart.yTicks.map((t) => (
+                  <line key={t} x1="0" y1={y(t)} x2={W} y2={y(t)} />
+                ))}
+              </g>
+              {rects.map((r, i) => (
+                <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} rx="3" fill={r.fill} />
+              ))}
+            </>
+          )}
         </svg>
         <div className="gb-xaxis">
           {chart.bucketLabels.map((l, i) => (
@@ -115,7 +124,13 @@ export function HBars({ chart }: { chart: CmpChart }) {
           <div className="btrack">
             <div
               className="bfill"
-              style={{ width: `${(s.total / max) * 100}%`, background: `var(--${s.colourSlot})` }}
+              // width is DATA (it is the bar); the hue is handed over as
+              // `--series` so a theme can repaint the fill — see shell.css
+              // § the hue handoff.
+              style={{
+                width: `${(s.total / max) * 100}%`,
+                ["--series" as string]: `var(--${s.colourSlot})`,
+              }}
             />
           </div>
           <span className="bval">{fmtNum(s.total)}</span>
@@ -191,8 +206,7 @@ const fmtNum = (v: number): string =>
   v >= 100 || Number.isInteger(v) ? Math.round(v).toLocaleString() : v.toFixed(1);
 
 export function LineChart({ chart }: { chart: CmpChart }) {
-  const W = 1000;
-  const H = 240;
+  const { ref, w: W, h: H } = useBox<SVGSVGElement>();
   const n = chart.bucketLabels.length;
   const x = (i: number) => (n <= 1 ? 0 : (i / (n - 1)) * W);
   const y = (v: number) => H - 10 - (v / chart.yMax) * (H - 30);
@@ -202,14 +216,17 @@ export function LineChart({ chart }: { chart: CmpChart }) {
   return (
     <div className="lochart">
       <div className="lo-yaxis">
-        {chart.yTicks.map((t) => (
-          <span key={t} style={{ top: `${((y(t) / H) * 100).toFixed(1)}%` }}>
-            {t}
-          </span>
-        ))}
+        {H > 0 &&
+          chart.yTicks.map((t) => (
+            <span key={t} style={{ top: `${((y(t) / H) * 100).toFixed(1)}%` }}>
+              {t}
+            </span>
+          ))}
       </div>
       <div className="lo-plot">
-        <svg className="chartsvg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-label={chart.title}>
+        <svg ref={ref} className="chartsvg" viewBox={`0 0 ${Math.max(1, W)} ${Math.max(1, H)}`} aria-label={chart.title}>
+          {W > 0 && H > 0 && (
+            <>
           <g strokeWidth="1">
             {chart.bucketLabels.map((_, i) => (
               <line key={i} x1={x(i)} y1={10} x2={x(i)} y2={H - 10} stroke="var(--divider)" />
@@ -258,6 +275,8 @@ export function LineChart({ chart }: { chart: CmpChart }) {
                 strokeDasharray={WINDOW_DASHES[s.dashIdx % WINDOW_DASHES.length].dash || undefined}
               />
             ))}
+            </>
+          )}
         </svg>
         <div className="lo-xaxis">
           {chart.bucketLabels.map((l, i) =>

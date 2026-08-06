@@ -19,8 +19,8 @@
  * toggle).
  */
 import { useMemo, useRef, useState } from "react";
-import { Ico } from "../shell/icons";
-import { HabitIcon, ICON_NAMES } from "../shell/habitIcons";
+import { Ico, ICONS } from "../shell/icons";
+import { HabitIcon, iconNames } from "../shell/habitIcons";
 import { useDismiss, useOverlayEsc } from "../shell/overlayHooks";
 import { customSlotName, isValidHex, writeCustomColour } from "./customColours";
 
@@ -90,7 +90,7 @@ export function ColourPicker({
       </div>
       <div className="pk-custom">
         <span className="cs" style={isValidHex(hex.trim()) ? { background: hex.trim(), borderStyle: "solid" } : undefined}>
-          {!isValidHex(hex.trim()) && <Ico d={["M12 5v14", "M5 12h14"]} />}
+          {!isValidHex(hex.trim()) && <Ico d={ICONS.plus} />}
         </span>
         <span className="cl">Custom</span>
         <input
@@ -138,8 +138,10 @@ export function IconPicker({
    */
   const { shown, total } = useMemo(() => {
     const needle = q.trim().replace(/-/g, "").toLowerCase();
-    const hits =
-      needle === "" ? ICON_NAMES : ICON_NAMES.filter((n) => n.replace(/-/g, "").includes(needle));
+    // iconNames() builds the kebab roster on FIRST ASK — this picker is its
+    // only reader, and it used to be built at launch (see habitIcons).
+    const all = iconNames();
+    const hits = needle === "" ? all : all.filter((n) => n.replace(/-/g, "").includes(needle));
     return { shown: hits.slice(0, SAMPLE_CAP), total: hits.length };
   }, [q]);
 
@@ -151,7 +153,7 @@ export function IconPicker({
     >
       <p className="pk-title">Habit icon</p>
       <div className="pk-search">
-        <Ico d={["M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16z", "m21 21-4.3-4.3"]} />
+        <Ico d={ICONS.search} />
         <input
           value={q}
           placeholder="Search 2,000 icons…"

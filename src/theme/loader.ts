@@ -3,11 +3,11 @@
  *
  * Two roots, one code path (ruled 2026-07-19): the app's bundled resource
  * directory and the drop-in folder (<cloud root>/themes/ — stood in for by a
- * dev-picked folder until step 10's Settings → Storage picker exists; the
- * established localStorage stand-in doctrine). The folder name IS the theme
+ * dev-picked folder until step 14's cloud-root picker exists; the pick + root
+ * persist on the per-device file, settings/deviceStore). The folder name IS the theme
  * name · `_`-prefixed folders are skipped · theme.css is the only required
  * file · a malformed folder is skipped, never a crash (its health-row entry
- * arrives with the health home, step 10 — recorded in the scan meanwhile).
+ * lives in the health home — recorded in the scan meanwhile).
  *
  * CASCADE MODEL: main.tsx keeps its static import of the bundled Default's
  * theme.css — since 6a that compiled-in copy is the ULTIMATE FALLBACK, not a
@@ -36,11 +36,12 @@
 import { showErrorToast } from "../shell/toast";
 import { applyDerivedDials } from "./derived";
 import { applyThemeFonts } from "./fonts";
+import { deviceGet as lsGet, deviceSet as lsSet, inTauri } from "../settings/deviceStore";
 
 export const DEFAULT_THEME = "Default (neutral light)";
-/** The per-device theme pick (a real lever; control dev-hosted until step 10). */
+/** The per-device theme pick (Settings → Appearance owns the control). */
 export const THEME_PICK_KEY = "cibo.themePick";
-/** Dev stand-in for <cloud root>/themes/ until step 10's Settings → Storage. */
+/** Dev stand-in for <cloud root>/themes/ until step 14's cloud-root picker. */
 export const THEMES_ROOT_KEY = "cibo.dev.themesRoot";
 const MISSING_NOTICED_KEY = "cibo.themeMissingNoticed";
 const STYLE_ID = "cibo-theme-css";
@@ -61,24 +62,8 @@ export interface ThemeScan {
   skipped: string[];
 }
 
-const inTauri = (): boolean =>
-  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-
-const lsGet = (key: string): string | null => {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-};
-const lsSet = (key: string, value: string | null): void => {
-  try {
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, value);
-  } catch {
-    /* per-device sugar */
-  }
-};
+// inTauri is imported from settings/deviceStore (the one declaration; it lives
+// there because the boot shim needs a dependency-free module). Was a local copy.
 
 export const getThemesRoot = (): string | null => lsGet(THEMES_ROOT_KEY);
 export const setThemesRoot = (path: string | null): void => lsSet(THEMES_ROOT_KEY, path);
@@ -160,7 +145,7 @@ async function inject(entry: ThemeEntry): Promise<void> {
   announce(entry.name);
 }
 
-/** Apply + persist a pick (the dev panel's door; Settings inherits at step 10). */
+/** Apply + persist a pick — Settings → Appearance's door (the dev panel's until step 10). */
 export async function setTheme(entry: ThemeEntry): Promise<void> {
   await inject(entry);
   lsSet(THEME_PICK_KEY, entry.name);

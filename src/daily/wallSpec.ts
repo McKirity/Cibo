@@ -35,7 +35,7 @@ import { hoursMinutes, groupInt } from "../metrics/format";
 import { sessionMinutes } from "../metrics/shapes";
 import type { KeepsakeValues } from "./keepsake";
 import { keepsakeValues } from "./keepsake";
-import { RANK, type PackInput, type Span } from "./wallPack";
+import { DEFAULT_BUDGET_HALF_ROWS, RANK, type PackInput, type Span } from "./wallPack";
 
 // ── The tiles ────────────────────────────────────────────────────────────────
 
@@ -183,6 +183,20 @@ const SPANS = {
   /** Provisional only — a milestone card's real span is MEASURED at render. */
   milestone: { cols: 3, halfRows: 4 },
 } as const satisfies Record<string, Span>;
+
+/**
+ * THE COVER HEIGHT CEILING (2026-08-02) — a cover tile may not grow past this
+ * share of the visible wall, and when it would, its WIDTH gives way instead
+ * (CoverWall's cover pass). Once heights come off the art, nothing else stops
+ * one tall poster from owning the whole wall.
+ *
+ * A SHARE, not a pixel figure, because the wall unit is fixed while the window
+ * is not: any px ceiling that behaves at 2560 lets a hero run away at 1920, and
+ * one that behaves at 1920 crops every poster at 2560. The number is the
+ * corpus's own — the drawn `big` cover stood 8 half-rows in an 18-half-row
+ * viewport, and that is the tallest a cover was ever drawn.
+ */
+export const COVER_CAP_SHARE = SPANS.coverBig.halfRows / DEFAULT_BUDGET_HALF_ROWS;
 
 const WHIMSY_SPANS: Record<WhimsyWhich, Span> = {
   sun: SPANS.sliver,

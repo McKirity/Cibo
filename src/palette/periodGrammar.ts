@@ -24,7 +24,7 @@
  * offers Q2 · 2025 (owning quarter) and 2025 (owning year).
  */
 import { pad2 } from "../metrics/clock";
-import { isoWeekMonday, isoWeeksInYear } from "../metrics/dates";
+import { isoWeekMonday, isoWeeksInYear, weekNum, weekStart } from "../metrics/dates";
 import { MONTHS_LONG, MONTHS_SHORT } from "../metrics/format";
 
 export type PeriodScale = "week" | "month" | "quarter" | "year";
@@ -107,15 +107,25 @@ function yearPlace(y: number, tierLabel: string): PeriodPlace {
   };
 }
 
+/**
+ * A week place FOLLOWS THE WEEK-START DIAL (user-ruled 2026-08-04). The week
+ * NUMBER stays ISO — that is the app-wide contract, a week is labelled by the
+ * ISO week of the Thursday it contains — but the anchor and the "from" date
+ * are the configured week's own first day. `weekStart(isoMonday)` is the
+ * identity under a Monday start and steps back to the preceding Sunday under a
+ * Sunday one, which is the configured week holding that same Thursday. Without
+ * this the palette stated a Monday boundary for a week the nav calendar and the
+ * cadence dashboards drew as starting a day earlier.
+ */
 function weekPlace(y: number, w: number, tierLabel: string): PeriodPlace {
-  const mon = isoWeekMonday(y, w);
+  const start = weekStart(isoWeekMonday(y, w));
   return {
     kind: "period",
     scale: "week",
-    anchor: mon,
+    anchor: start,
     title: `W${w} · ${y}`,
-    sub: `weekly cadence · from ${mon}`,
-    colourVar: monthVar(Number(mon.slice(5, 7))),
+    sub: `weekly cadence · from ${start}`,
+    colourVar: monthVar(Number(start.slice(5, 7))),
     tierLabel,
   };
 }
@@ -157,13 +167,11 @@ export function periodDisplay(
     return { title: p.title, sub: "quarterly cadence", colourVar: p.colourVar };
   }
   if (scale === "year") return { title: String(y), sub: "yearly cadence", colourVar: "--accent" };
-  // week — derive the ISO week number from the anchor
-  const d = new Date(`${anchor}T12:00:00Z`);
-  const dow = (d.getUTCDay() + 6) % 7;
-  const thu = new Date(d.getTime() + (3 - dow) * 86400000);
-  const isoY = thu.getUTCFullYear();
-  const week1Mon = Date.parse(isoWeekMonday(isoY, 1) + "T12:00:00Z");
-  const w = Math.round((thu.getTime() - week1Mon) / (7 * 86400000)) + 1;
+  // week — dates.weekNum owns this: it labels the CONFIGURED week by the ISO
+  // week of the Thursday it contains. This block hand-rolled the derivation in
+  // raw Date math (Monday-fixed), which the dedup pass missed when it adopted
+  // the module's ISO inverses just above.
+  const { week: w, year: isoY } = weekNum(anchor);
   return {
     title: `W${w} · ${isoY}`,
     sub: "weekly cadence",
@@ -221,7 +229,9 @@ export function parsePeriods(rawQuery: string, today: string): PlaceMatch[] {
     const w = Number(weekM[1]);
     let y = weekM[2] != null ? Number(weekM[2]) : thisYear;
     if (w < 1 || w > isoWeeksInYear(y)) return [];
-    if (weekM[2] == null && isoWeekMonday(y, w) > today) {
+    // The begun-year test reads the CONFIGURED week's first day, matching the
+    // anchor weekPlace builds (and the `direct.anchor > today` guard below).
+    if (weekM[2] == null && weekStart(isoWeekMonday(y, w)) > today) {
       y -= 1; // most recent begun
       // the decremented year may hold only 52 weeks — re-check or a yearless
       // "w53" early in a year mislabels (2026-07-30)

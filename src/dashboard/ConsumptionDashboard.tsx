@@ -12,6 +12,7 @@
  */
 import { useMemo, useState, type CSSProperties } from "react";
 import { todayLocal } from "../metrics/clock";
+import { requestLibraryImport, requestSettingsNav } from "../shell/navRequest";
 import { useConsumptionData } from "./useConsumptionData";
 import { buildConsumptionDashboard, type DashboardModel, type ScopeSel } from "./consumptionSpec";
 import { HEAT_CLASS } from "./specShared";
@@ -90,7 +91,18 @@ export function ConsumptionDashboard({
       </div>
 
       {m.masthead.empty ? (
-        <EmptyState name={m.masthead.name} onAddEntries={() => setCreationOpen(true)} />
+        <EmptyState
+          name={m.masthead.name}
+          onAddEntries={() => setCreationOpen(true)}
+          onRunImport={
+            onOpenLibrary == null
+              ? undefined
+              : () => {
+                  requestLibraryImport();
+                  onOpenLibrary();
+                }
+          }
+        />
       ) : (
         <div className="gs">
           {/* ── Masthead ── */}
@@ -188,7 +200,7 @@ export function ConsumptionDashboard({
                         <div className="brow" key={i} title={r.tip}>
                           <span className="blabel">{r.label}</span>
                           <div className="btrack">
-                            <div className="bfill" style={{ width: `${r.pct}%`, background: `var(${r.colorVar})` }} />
+                            <div className="bfill" style={{ width: `${r.pct}%`, ["--series" as string]: `var(${r.colorVar})` }} />
                           </div>
                           <span className="bval">{r.value}</span>
                         </div>
@@ -278,7 +290,15 @@ export function ConsumptionDashboard({
   );
 }
 
-function EmptyState({ name, onAddEntries }: { name: string; onAddEntries?: () => void }) {
+function EmptyState({
+  name,
+  onAddEntries,
+  onRunImport,
+}: {
+  name: string;
+  onAddEntries?: () => void;
+  onRunImport?: () => void;
+}) {
   return (
     <div className="gs-empty" style={{ display: "block" }}>
       <div className="emptybox gen">
@@ -287,12 +307,13 @@ function EmptyState({ name, onAddEntries }: { name: string; onAddEntries?: () =>
           {name} has no sessions yet — log one, run an import, or set an icon to bring this
           dashboard to life.
         </div>
-        {/* Honest doors (2026-07-30): only entry creation exists yet — the
-            importers are step 8's, the icon picker step 10's. */}
+        {/* All three doors live since 2026-08-04 (the re-wire batch): "Run an
+            import" opens the library WITH its import modal (the one-shot
+            navRequest pattern); "Set an icon" routes to Settings → Habits. */}
         <div className="edoors">
           <button className="btn-accent" type="button" onClick={onAddEntries}>Add entries</button>
-          <button className="btn-plain" type="button" disabled title="The importers arrive at step 8">Run an import</button>
-          <button className="btn-plain" type="button" disabled title="The icon picker arrives with Settings (step 10)">Set an icon</button>
+          <button className="btn-plain" type="button" disabled={onRunImport == null} onClick={onRunImport}>Run an import</button>
+          <button className="btn-plain" type="button" title="Opens Settings → Habits" onClick={() => requestSettingsNav("habits")}>Set an icon</button>
         </div>
       </div>
     </div>

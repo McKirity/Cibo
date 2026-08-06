@@ -42,6 +42,7 @@ import {
 } from "./spineSpec";
 import { useDayData, type DayData, type DayEntry } from "./useDayData";
 import { dayFromIndex, dayIndex } from "../metrics/dates";
+import { requestHabitCreator, requestSettingsNav } from "../shell/navRequest";
 import { nowLocalDateTime, todayLocal } from "../metrics/clock";
 import {
   clearDay,
@@ -67,7 +68,6 @@ import {
   clampInterval,
   dropQueued,
   queueWrite,
-  setAutosaveMinutes,
   subscribePending,
   useAutosave,
 } from "./autosave";
@@ -310,28 +310,10 @@ export function Spine({
               "nothing is unsaved" stopped being true the moment writes started
               waiting, so the form says how many are waiting and offers the
               flush — quiet register, never a demand. */}
-          {import.meta.env.DEV && (
-            /* STAND-IN for Settings → Tracking → Logging (step 10), the same
-               pattern the whimsy panel uses for first-run setup: the panel
-               replaces where the value comes FROM, never the value's shape. */
-            <p className="fieldnote" style={{ marginTop: "var(--space-5)", textAlign: "right" }}>
-              auto-save every{" "}
-              <input
-                className="inp num"
-                inputMode="numeric"
-                defaultValue={autosaveMinutes}
-                style={{ minWidth: "56px" }}
-                onBlur={(e) => {
-                  const row = autosaveRows[0];
-                  setAutosaveMinutes(row ? { id: row.id as string } : null, Number(e.target.value));
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.currentTarget.blur();
-                }}
-              />{" "}
-              min <span className="cap">· dev stand-in for Settings</span>
-            </p>
-          )}
+          {/* The DEV auto-save stand-in that sat here RETIRED 2026-08-04
+              (the third audit): Settings → Tracking → Logging shipped the
+              real stepper at step 10, which made this a second live writer
+              of the same synced row on the app's front door. */}
 
           {pending > 0 && (
             <p className="fieldnote" style={{ marginTop: "var(--space-5)", textAlign: "right" }}>
@@ -408,15 +390,18 @@ export function Spine({
  * case. An empty *logged* day is NOT this — that is just the resting form.
  */
 function ZeroActiveHabits() {
+  // Both escape doors LIVE since 2026-08-04 (the re-wire batch — they were
+  // aria-disabled dead ends while their destinations existed): the navRequest
+  // bridge lands Settings → Habits, with the creator open for "New habit".
   return (
     <div className="emptybox">
       <div className="eh">No active habits</div>
       <div className="es">Activate your seeded habits or create new ones to start logging days.</div>
       <div style={{ display: "flex", gap: "var(--space-4)", justifyContent: "center" }}>
-        <button className="btn-accent" aria-disabled="true">
+        <button className="btn-accent" onClick={() => requestSettingsNav("habits")}>
           Settings → Habits
         </button>
-        <button className="btn-plain" aria-disabled="true">
+        <button className="btn-plain" onClick={() => requestHabitCreator()}>
           New habit
         </button>
       </div>
@@ -1516,6 +1501,10 @@ function EntryRow({
               className={`pk-row${i === cursor ? " on" : ""}`}
               onMouseDown={(ev) => {
                 ev.preventDefault();
+                // The wrapper's own mousedown re-opens (`setShut(false)`) and
+                // runs AFTER this one — a pick must not bubble into it, or the
+                // panel it just closed snaps straight back open.
+                ev.stopPropagation();
                 onPick(e.id);
                 setQuery("");
                 setShut(true);
@@ -1531,6 +1520,7 @@ function EntryRow({
               className="pk-new"
               onMouseDown={(ev) => {
                 ev.preventDefault();
+                ev.stopPropagation();
                 create();
                 setShut(true);
               }}
@@ -1690,6 +1680,9 @@ function VocabSelect({
             aria-selected={v === value}
             onMouseDown={(e) => {
               e.preventDefault();
+              // Never bubble into the wrapper's re-opening mousedown (see the
+              // entry picker's rows) — it would override this close.
+              e.stopPropagation();
               onPick(v);
               setShut(true);
             }}

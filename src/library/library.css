@@ -32,7 +32,8 @@
   line-height: 1.7; color: var(--pill-cat, var(--text-secondary));
   background: color-mix(in oklch, var(--pill-cat, var(--text-secondary)), var(--window-background) var(--tint-mix)); }
 
-:is(.libscreen, .mo2) .pill.neutral { color: var(--text-secondary); background: var(--inset-background); font-family: var(--font-mono); }
+/* `.pill.neutral` deleted 2026-08-04 — the only pill markup is a bare
+   `className="pill"` in bits.tsx; the modifier was never applied. */
 
 .chip-h { display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: var(--size-caption);
   color: var(--text-secondary); background: var(--inset-background); border-radius: var(--radius-full); padding: 1px var(--space-4); }
@@ -385,7 +386,9 @@
 .bf:hover { background: var(--hover-wash); color: var(--text-strong); }
 .bf .k { color: var(--text-muted); }
 .bf .ico { color: var(--text-muted); }
-.bf.dashed { border-style: dashed; color: var(--text-muted); cursor: default; }
+/* `.bf.dashed` deleted 2026-08-04 — a leftover of the drawn dashed-inert face
+   STRUCK by the 2026-07-27 "Type is ABSENT, never dashed" ruling. This sheet
+   already deleted `.tsel.delta` for that reason and missed the siblings. */
 /* an ACTIVE (non-default) picker filter reads accent — the .tsel.on rule */
 .bf.on { border-color: var(--accent); color: var(--accent); background: var(--selected-wash); }
 .bf.on .k, .bf.on .ico { color: var(--accent); }
@@ -433,7 +436,8 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .picker2 .cell { font-size: var(--size-caption); color: var(--text-secondary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.picker2 .mono { font-family: var(--font-mono); }
+/* `.picker2 .mono` deleted 2026-08-04 — PickerRow renders
+   lcb/lthumb/lt/cell/starrow/dim/ltick, never `mono`. */
 .picker2 .dim { color: var(--text-muted); }
 /* rating = N WHOLE stars (user-ruled: ★★★★, never "★ 4"), priority = the
    read-only chevrons — the exhibit's dot/mono faces swapped at translation */
@@ -453,7 +457,7 @@
   padding-right: var(--space-2); }
 .fblock { border: var(--border-hairline) solid var(--divider); border-radius: var(--radius-small);
   padding: var(--space-5); background: var(--panel-background); }
-.fblock.dashed { border-style: dashed; background: transparent; }
+/* `.fblock.dashed` deleted 2026-08-04 — same struck dashed-inert face. */
 .mo2 .fname { font-size: var(--size-caption); font-weight: var(--weight-bold); color: var(--text-secondary);
   text-transform: uppercase; letter-spacing: .05em; margin: 0 0 var(--space-3); }
 .fsel { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); width: 100%;
@@ -463,7 +467,7 @@
   transition: background var(--motion-fast) var(--ease-standard); }
 .fsel:hover { background: var(--hover-wash); color: var(--text-strong); }
 .fsel .ico { color: var(--text-muted); flex: 0 0 auto; }
-.fsel.inert { cursor: default; }
+/* `.fsel.inert` deleted 2026-08-04 — same struck dashed-inert face. */
 .mo2 .lane { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3);
   border: var(--border-hairline) dashed var(--border); border-radius: var(--radius-small);
   padding: var(--space-3) var(--space-4); margin-top: var(--space-3); }

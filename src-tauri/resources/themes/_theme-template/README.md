@@ -96,7 +96,8 @@ weight. A hyphen followed by anything that isn't a number stays part of the fami
 - **Formats:** `.woff2` (preferred) · `.woff` · `.ttf` · `.otf`.
 - **Soft-fail:** an unreadable font is skipped and the fallback stack in `theme.css` stands.
   Always keep a sane fallback in the stack.
-- Keep `@font-face` out of `theme.css` — it stays values-only; the `fonts/` folder is the channel.
+- Keep `@font-face` out of `theme.css` — a relative URL inside the injected sheet can't resolve
+  to this folder; the `fonts/` folder is the channel.
 
 ## File formats
 
@@ -117,3 +118,23 @@ group. Change what you want; leave the rest. Notes:
   layouts need structural re-accommodation.
 - The **rail chrome** block is where a theme gets its own register (the split-register device), or
   sets the rail equal to the window/panel values for a single-register read.
+
+## Rules — optional, after the dial block *(2026-08-02)*
+
+`theme.css` may carry **rules after the `:root` block** — selectors that paint what dials can't
+say: textures, ornament marks (pseudo-elements), restyled states, per-surface exceptions, type
+detail like casing and tracking. Only the active theme's sheet is ever loaded, so your rules can
+never touch another theme.
+
+- **Dials first, always.** If the app already paints the surface and you just want a different
+  value, use the dial. Rules are for what dials cannot express.
+- **Keep the `:root` block on top** — a syntax error in a rule below can't hurt the dials above.
+- **Never move or resize anything in the app's layout.** Paint freely — backgrounds, borders,
+  shadows, ink, opacity, text treatment. You *may* add a floating mark with a pseudo-element
+  (position/size it however you like — it pushes nothing) and you *may* nudge something 1px on
+  press. You may **not** change an in-flow box's padding, margin, width, height or display —
+  and never a size that carries data (a chart bar's minimum width changes what the chart says).
+- **Own your reduce-effects fallbacks**: pure decoration disappears under `.reduce-effects`;
+  anything carrying meaning flattens to a solid instead.
+- Rules target the app's class names, and those can change between app versions — if a mark
+  quietly stops painting after an update, check the hook list in the docs and re-point it.

@@ -5,14 +5,15 @@
  *
  * Two roles, one boundary ([[Palette]]): TELEPORT (places — entries · habits ·
  * screens · periods via the route grammar) and ACTIONS (the pinned, CLOSED
- * ten-verb inventory — additions only against real friction, never here).
+ * nine-verb inventory — additions only against real friction, never here).
  * Ranking is deterministic, no cleverness, ever (paletteSpec). Never a route;
  * Esc closes; one overlay at a time; also summoned by the rail's Search entry
  * (the recorded overlay exception).
  *
  * Four live states: at-rest — RESTRUCTURED 2026-07-29 (user-ruled, in-canvas
  * at the palette exhibit; a knowing delta over the FINAL's verb-inventory
- * face): RECENT nouns lead (visit ledger ∪ logging recency, recents.ts), the
+ * face): RECENT nouns lead (the visit ledger ALONE, recents.ts — the
+ * logging-recency merge was removed the same day, second pass), the
  * commands follow as ONE flat ALPHABETICAL list with the last-used verb
  * lifted, and Advanced Search moved to the WELL as a search escalation ·
  * mid-typing (grouped ranked results) · the period-grammar teleport
@@ -28,13 +29,15 @@
  * standing ruling); AdvancedSearch.tsx owns it. The morph replaces this face
  * in place: one overlay, two states, no separate screen, no route.
  *
- * Stand-ins, flagged: verbs whose targets belong to later steps (backups 12 ·
- * updater at Hardening) render DISABLED with a "later" meta — the nav rail's
- * disabled-Tools precedent. A verb hidden by Settings → Palette curation is
+ * A verb whose target hasn't landed renders DISABLED with its GROUP name in
+ * the meta — the nav rail's disabled-Tools precedent. ONE left: Check for
+ * updates (Phase 2 step 5); the backup pair went live with step 12. A verb
+ * hidden by Settings → Palette curation is
  * ABSENT, never greyed. (The Map row joined 2026-07-30 when the Map landed;
  * the Settings-sections + manual-pages tier joined 2026-08-03 with the manual
  * reader — the last absent teleport group.)
  */
+import { relLabel } from "../metrics/format";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { EntryCreationModal } from "../library/EntryCreationModal";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
@@ -46,8 +49,10 @@ import { verbHidden } from "../settings/curation";
 import { SECTIONS } from "../settings/SettingsScreen";
 import { MANUAL_GROUPS } from "../settings/manualContent";
 import { Ico } from "../shell/icons";
-import { showErrorToast } from "../shell/toast";
+import { showErrorToast, showInfoToast } from "../shell/toast";
 import { getBackupsRoot, revealBackupsFolder, runBackup } from "../backup/backup";
+import { publishDoctor, runDoctor } from "../db/doctor";
+import { requestProbeAll } from "../shell/navRequest";
 import type { SettingsSection } from "../shell/views";
 import { monthVar, parsePeriods, periodDisplay, type PeriodScale, type PlaceMatch } from "./periodGrammar";
 import {
@@ -55,7 +60,6 @@ import {
   readLastVerb,
   readRecents,
   recordLastVerb,
-  relLabel,
   type RecentPlace,
 } from "./recents";
 import { useSearchData } from "./useSearchData";
@@ -78,7 +82,7 @@ export interface PaletteNav {
   openManual(articleId: string): void;
 }
 
-// ── The pinned ten-verb inventory (CLOSED — [[Palette]]; never re-litigate) ──
+// ── The pinned nine-verb inventory (CLOSED — [[Palette]]; never re-litigate) ──
 
 type PalAction =
   | { t: "habit"; key: string }
@@ -156,7 +160,6 @@ const VERB_ICON: Record<VerbId, ReactNode> = {
   backup: I.backup,
   "test-connection": I.test,
   "data-checks": I.checks,
-  "run-import": I.imp,
   updates: I.upd,
   theme: I.theme,
   "backups-folder": I.folder,
@@ -333,6 +336,36 @@ export function PaletteOverlay({
             showErrorToast("No backups folder set — pick one in Settings → Backups.", "Backups");
           else void revealBackupsFolder();
         });
+      // The Health pair + the theme door — live 2026-08-04 (the completeness
+      // audit's re-wire batch; each verb's ruled form is quoted in verbs.ts).
+      if (a.v === "data-checks")
+        return go(() => {
+          // Ruled: "triggers the scan WITHOUT navigating to Settings → Health".
+          // Full pass (fs tier included), feeds the rail dot, and SAYS what it
+          // found — a silent scan reads as a dead action (the no-words lesson).
+          void runDoctor({ withFs: true }).then(
+            (r) => {
+              publishDoctor(r);
+              const n = r.checks.reduce((sum, c) => sum + c.findings.length, 0);
+              showInfoToast(
+                n === 0
+                  ? "Data checks ran — nothing to flag."
+                  : `Data checks: ${n} finding${n === 1 ? "" : "s"}${
+                      r.errors > 0 ? ` (${r.errors} error${r.errors === 1 ? "" : "s"})` : ""
+                    } — see Settings → Health.`,
+              );
+            },
+            (e) => showErrorToast(`Data checks failed — ${String(e)}`, "Data Doctor"),
+          );
+        });
+      if (a.v === "test-connection")
+        return go(() => {
+          // "per importer + test all", delivered as test-all: land on the
+          // health home and every importer row runs its probe (one-shot).
+          requestProbeAll();
+          nav.openSettings("health");
+        });
+      if (a.v === "theme") return go(() => nav.openSettings("appearance"));
       if (a.v === "new-entry") {
         // the verb path: no unmatched title to carry — straight to the pick
         setQuery("");
@@ -361,10 +394,8 @@ export function PaletteOverlay({
   }, [data.entries]);
 
   // ── The Recent group (user-ruled 2026-07-29 — the at-rest face leads with
-  // nouns). Two sources merge: the shell's visit ledger (periods · libraries ·
-  // days carry no other recency) and LOGGING recency (an entry played
-  // yesterday is recent whether or not its dashboard was opened). Read once
-  // per summon — the overlay mounts fresh each time.
+  // nouns). ONE source: the shell's visit ledger — see the REMOVED-merge note
+  // below. Read once per summon — the overlay mounts fresh each time.
   const [visits] = useState(readRecents);
   const [lastVerb] = useState(readLastVerb);
   // RECENT = the VISIT LEDGER ONLY (user-ruled 2026-07-29, second pass: the
@@ -439,6 +470,10 @@ export function PaletteOverlay({
     );
     const habitById = new Map(data.habits.map((h) => [h.id, h]));
     const habitByKey = new Map(data.habits.filter((h) => h.key != null).map((h) => [h.key as string, h]));
+    // The recents loop resolved each remembered entry with a linear `find`
+    // over the whole entry list; one map, built beside the habit maps it
+    // already builds here (2026-08-04).
+    const entryById = new Map(data.entries.map((e) => [e.id, e]));
     // LEAD RULING (user-ruled 2026-07-29): an ENTRY wears its owning habit's
     // GLYPH tinted in the habit colour — the dot survives only on days/periods.
     const entryLead = (h: (typeof data.habits)[number] | undefined) =>
@@ -483,7 +518,7 @@ export function PaletteOverlay({
         const p = r.place;
         const when = relLabel(r.at);
         if (p.kind === "entry") {
-          const e = data.entries.find((x) => x.id === p.id);
+          const e = entryById.get(p.id);
           const h = e != null ? habitById.get(e.habitId) : undefined;
           if (e == null || h == null) continue;
           out.push(

@@ -6,8 +6,9 @@
        here the frame IS the window, so it fills the viewport (100vh/vw).
      · the content pane SCROLLS (real dashboards are tall) — the mockup pinned
        an overflow:hidden placeholder.
-   The nav-calendar body, Tools destinations, Settings, and the live vignette
-   remain step-9 / step-6a work — placeheld here, not drawn. */
+   The nav-calendar body (step 9), the Tools destinations and Settings
+   (step 10) have ALL landed since this header was written; the vignette was
+   retired outright 2026-08-01. Nothing here is placeheld any more. */
 
 .app-frame {
   position: fixed;
@@ -234,6 +235,24 @@
      seat, roster 247 → 249). Every .overline tenant today lives in the rail;
      the base rule above stays for any future pane tenant. */
   color: var(--rail-muted);
+}
+
+/* the rail's quiet in-section note. CLAIMED 2026-08-04: both tenants — the DEV
+   log-view button and the user-facing zero-active-habits line — were rendering
+   with NO rule at all (the class had never been written to any sheet). The copy
+   itself is step 15's to replace, but the missing style was today's. */
+.rail .cal-placeholder {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: var(--size-caption);
+  color: var(--rail-muted);
+  background: transparent;
+  border: var(--border-hairline) dashed var(--rail-border);
+  border-radius: var(--radius-small);
+  padding: var(--space-4);
+  margin: 0;
 }
 
 /* nav calendar — the month grid LANDED 2026-08-01 (step 9), claimed from
@@ -590,6 +609,30 @@ button.doorlink:hover {
   background: var(--hover-wash);
   color: var(--text-strong);
 }
+/* Back-to-today (2026-08-04, user-ruled) — the mstep recipe with the accent,
+   so the one control that RETURNS reads apart from the two that step. It
+   renders only while the viewed month differs from the current one. */
+.calhead .mtoday {
+  color: var(--accent);
+}
+
+/* The archived-habit band (2026-08-04, user-ruled option A: an archived
+   habit's dashboard, library and entry pages stay browsable + editable,
+   wearing this one marker — Shell renders it above all three families). The
+   WORD carries the state; the quiet inset ground is just a frame. */
+.archband {
+  margin: var(--space-5) var(--space-6) 0;
+  padding: var(--space-4) var(--space-6);
+  background: var(--inset-background);
+  border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-medium);
+  color: var(--text-secondary);
+  font-size: var(--size-small);
+}
+.archband strong {
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+}
 .jumppop .jump-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -809,7 +852,7 @@ button.doorlink:hover {
   letter-spacing: .05em;
 }
 
-/* Tools — 2×2 tile grid (destinations are step 7/8/9) */
+/* Tools — 2×2 tile grid (all four destinations live: Timers · CS · Search · Map) */
 .tools {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -851,6 +894,19 @@ button.doorlink:hover {
 }
 .tool:hover .ico {
   color: var(--text-strong);
+}
+/* The ACTIVE tool — the class was set since step 7 and styled NOWHERE (the
+   Blame! v5 port's 2026-08-03 finding, left as a design call; user-ruled IN
+   2026-08-04 at the completeness audit). The libmenu-item.on recipe: wash +
+   weight + accent, never colour alone — so the state survives a theme whose
+   accent sits near resting text (Blame!'s white). App-side on dials, so every
+   theme inherits it and a theme's own rules may re-style it. */
+.tool.active {
+  background: var(--selected-wash);
+  font-weight: var(--weight-bold);
+}
+.tool.active .ico {
+  color: var(--accent);
 }
 
 /* The flex absorber — what pushes Settings to the rail's foot.
@@ -925,38 +981,12 @@ button.doorlink:hover {
    painted wash read as a grey box sticking out). The room is still reserved
    (the left padding); a theme with decoration paints into it at step 6a. */
 
-/* the vignette clock — numberless analog face (sweep is the one motion).
-   THE SWEEP ROTATES AS AN HTML-LEVEL ELEMENT (the whole overlay svg), not as
-   an SVG child: Chromium composites element transform animations but NOT
-   SVG-internal ones, so the old animated <line> repainted the clock every
-   frame, forever — the 2026-07-29 app-wide hover-lag catch (confirmed by the
-   reduce-effects A/B). The hub dots ride the rotating layer above the hand;
-   centered circles are rotation-invariant. */
-.clock-sweep-layer {
-  transform-origin: 50% 50%;
-  animation: clock-sweep 60s linear infinite;
-  will-change: transform;
-}
-/* "reduce-effects sheds the sweep; the minute hand jumps" — the Default
-   clock's ruled contract ([[Default (neutral light)]]), unwired until
-   2026-07-29 (shell.css carried NO reduce rules at all; found at the
-   hover-lag A/B). HIDDEN, not frozen: a stopped second hand would lie about
-   the seconds — the motion display test. The hub dots stay. */
-.reduce-effects .clock-sweep-layer {
-  animation: none;
-  will-change: auto;
-}
-.reduce-effects .clock-sweep-layer .sweep {
-  visibility: hidden;
-}
-@keyframes clock-sweep {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* The vignette clock's sweep rules lived here and were DELETED 2026-08-04 (the
+   third audit). The 2026-08-01 retirement took `VignetteClock.tsx`, the
+   `.clockwrap` sizing and `--clock-max` — and this file's own note above
+   records that — but `.clock-sweep-layer`, its two reduce-effects overrides
+   and the `@keyframes clock-sweep` survived the sweep with no markup left to
+   match. (They also carried a raw `60s` inside dead code.) */
 
 /* == THE AMBIENCE LAYER (step 6a — build glue, no corpus source) ============
    The backdrop paints the WHOLE window as .app-frame's lowest layer: a

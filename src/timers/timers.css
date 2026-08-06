@@ -155,7 +155,8 @@
 .mo.timer-manage,
 .mo.timer-create { width: var(--modal-manage-w); }
 /* the recovery dialog reuses --modal-confirm-w and the GRAND clearance tier */
-.timer-mo .mo-title svg { display: block; }
+/* `.mo-title svg` deleted 2026-08-04 — both `.timer-mo` modals render a plain
+   text <span> title; the recovery dialog's icon lives in `.ch`, styled below. */
 /* APPEARANCE PASS 2026-07-28 — RECOVERY ADOPTS kit-dialog-confirm's ANATOMY. It already
    borrowed --modal-confirm-w while wearing the full chassis (head band + hairline + foot
    band), so the app had two anatomies for one job: a short, decision-led, prose-led dialog.

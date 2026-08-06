@@ -1,10 +1,12 @@
 /**
  * The app-wide icon roster — the shell's lucide-path vocabulary for doors and
  * actions (which are never data, per Iconography; the DATA icons — habits —
- * live in shell/habitIcons.tsx). `Ico` mirrors library/bits' wrapper exactly
- * (path-only, `.ico` class, stroke styled by kit.css) so per-file `Ico`/glyph
- * constants adopt without markup change; bits.tsx keeps its own copy until the
- * migration wave.
+ * live in shell/habitIcons.tsx). `Ico` is path-only, `.ico` class, stroke
+ * styled by kit.css — the shape per-file glyph constants adopted without
+ * markup change when THE MIGRATION WAVE RAN (2026-08-04, the third audit's
+ * dedup pass: ~45 literal call sites became ICONS.* references; bits.tsx has
+ * imported from here since the kit hoist). The deliberate divergences that
+ * stay are annotated at their sites (TrackedPicker's search, CS's chevron).
  *
  * Path-only by contract: shapes drawn as <rect>/<circle> in the per-file
  * copies (pause · stop · clock) are expressed as equivalent paths here.

@@ -17,6 +17,12 @@
  */
 import { NonEmptyString100, NonEmptyString1000, NonNegativeInt, PositiveInt } from "@evolu/common";
 import { evolu } from "../db/evolu";
+// titleKey is IMPORTED, never re-declared: db/duplicates records that the
+// detector must fold titles exactly as the importer does, or it reports
+// duplicates the importer had no way to prevent. This file carried a
+// byte-identical private copy until 2026-08-04 — two copies that could drift
+// apart silently, which is the very failure that note guards against.
+import { titleKey } from "../db/duplicates";
 import { stringListToJson, type EntryId, type HabitId } from "../db/schema";
 import { saveCover } from "./covers";
 import { ensureGenreVocab } from "./vocabAdd";
@@ -40,7 +46,10 @@ export interface ExistingEntry {
   series: string | null;
   series_order: number | null;
   words: number | null;
-  status: string | null;
+  // NO `status` (deleted 2026-08-04): it was selected, mapped and typed for
+  // nobody. `adoptPatch` backfills description/creators/studios/type/genre/
+  // series/series_order/words and deliberately not status, and the insert path
+  // reads `ctx.bundleHasStatus` + the FETCHED entry's status instead.
 }
 
 export interface EngineCtx {
@@ -51,12 +60,6 @@ export interface EngineCtx {
   existing: ExistingEntry[];
 }
 
-/** Title similarity for the adoption pass — normalize case/punctuation/space. */
-const titleKey = (t: string): string =>
-  t
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
 
 const listJson = (xs: string[]) =>
   xs.length > 0 ? stringListToJson(xs.map((x) => NonEmptyString1000.orThrow(x))) : null;

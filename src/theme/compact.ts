@@ -3,8 +3,8 @@
  * that compact is IMPLEMENTED during Build, Phase 2 keeps only real-hardware
  * tuning). The tri-state `auto | on | off`; **auto keys off WINDOW width,
  * never the device** (~1600px, live on resize — [[Sync & Per-Device
- * Settings]]'s row). Per-device; localStorage stand-in until the per-device
- * file; the control is dev-hosted until step 10's Settings → Appearance.
+ * Settings]]'s row). Per-device, on the settings file (deviceStore, 2026-08-04);
+ * the control lives in Settings → Appearance.
  *
  * Mechanism: one class on the root element — `.compact` — mirroring
  * `.reduce-effects` (the corpus-wide root-class doctrine). The value block
@@ -12,24 +12,23 @@
  * class directly.
  */
 
+import { deviceGet, deviceSet } from "../settings/deviceStore";
+
 export type CompactMode = "auto" | "on" | "off";
 export const COMPACT_KEY = "cibo.compactMode";
 /** The Sync note's "~1600px" window-width knee for compact-auto. */
 export const COMPACT_AUTO_BELOW = 1600;
 
 const lsGet = (): CompactMode => {
-  try {
-    const v = localStorage.getItem(COMPACT_KEY);
-    return v === "on" || v === "off" || v === "auto" ? v : "auto";
-  } catch {
-    return "auto";
-  }
+  const v = deviceGet(COMPACT_KEY);
+  return v === "on" || v === "off" || v === "auto" ? v : "auto";
 };
 
 export const getCompactMode = (): CompactMode => lsGet();
 
-/** True when the class is currently applied (for the dev switch's readout). */
-export const compactApplied = (): boolean => document.documentElement.classList.contains("compact");
+// `compactApplied` was DELETED 2026-08-04: its only stated consumer was the dev
+// switch's readout, and that switch retired 2026-08-02 — Settings → Appearance
+// reads `getCompactMode()` instead.
 
 function resolve(mode: CompactMode): void {
   const on = mode === "on" || (mode === "auto" && window.innerWidth < COMPACT_AUTO_BELOW);
@@ -37,11 +36,7 @@ function resolve(mode: CompactMode): void {
 }
 
 export function setCompactMode(mode: CompactMode): void {
-  try {
-    localStorage.setItem(COMPACT_KEY, mode);
-  } catch {
-    /* per-device sugar */
-  }
+  deviceSet(COMPACT_KEY, mode);
   resolve(mode);
 }
 

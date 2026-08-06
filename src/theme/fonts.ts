@@ -42,8 +42,7 @@ export function parseFontStem(stem: string): { family: string; weight?: string }
   return { family: stem };
 }
 
-const inTauri = (): boolean =>
-  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+import { inTauri } from "../settings/deviceStore";
 
 /** Faces registered by the currently applied theme (for clean unregister). */
 let liveFaces: FontFace[] = [];

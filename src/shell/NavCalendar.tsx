@@ -27,26 +27,13 @@ import { evolu } from "../db/evolu";
 import { DateOnly } from "../db/schema";
 import { catchUpDays, unfinalizedQuery } from "../daily/catchUp";
 import { useDismiss } from "./overlayHooks";
-import { Ico } from "./icons";
-import { dayFromIndex, dayIndex, isoWeek, weekStart } from "../metrics/dates";
+import { Ico, ICONS } from "./icons";
+import { dayFromIndex, dayIndex, weekDayLetters, weekNum, weekStart } from "../metrics/dates";
 import { quarterOf, type CadenceScale } from "../metrics/cadence";
+import { MONTHS_LONG, MONTHS_SHORT } from "../metrics/format";
 
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
-const DOW = ["M", "T", "W", "T", "F", "S", "S"];
+/* Header letters follow the configured week start (dates.weekDayLetters). */
 
 /** The calendar icon of the Jump control, verbatim from the frozen frame. */
 const JUMP_ICON = [
@@ -73,7 +60,8 @@ interface Cell {
   inMonth: boolean;
 }
 
-/** The six-ish week rows a month spans, Monday-start, spill days included. */
+/** The six-ish week rows a month spans, week-start first (the configured
+ *  dial), spill days included. */
 function monthGrid(anchor: string): {
   weeks: Cell[][];
   from: string;
@@ -85,7 +73,7 @@ function monthGrid(anchor: string): {
   const lastDom = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const last = `${anchor.slice(0, 7)}-${String(lastDom).padStart(2, "0")}`;
   const startIdx = dayIndex(weekStart(first));
-  // Through the END of the week holding the last day — +6 from that Monday.
+  // Through the END of the week holding the last day — +6 from its start.
   const endIdx = dayIndex(weekStart(last)) + 6;
   const weeks: Cell[][] = [];
   for (let i = startIdx; i <= endIdx; i += 7) {
@@ -153,7 +141,7 @@ export function NavCalendar({
     return m;
   }, [ledger]);
 
-  const monthLabel = MONTH_NAMES[Number(anchor.slice(5, 7)) - 1];
+  const monthLabel = MONTHS_LONG[Number(anchor.slice(5, 7)) - 1];
   const year = anchor.slice(0, 4);
 
   return (
@@ -218,7 +206,7 @@ export function NavCalendar({
             aria-label="Previous month"
             onClick={() => goMonth(-1)}
           >
-            <Ico d={CHEV_LEFT} size={16} />
+            <Ico d={ICONS.chevronLeft} size={16} />
           </button>
           <button
             className="month doorlink"
@@ -231,8 +219,25 @@ export function NavCalendar({
             aria-label="Next month"
             onClick={() => goMonth(1)}
           >
-            <Ico d={CHEV_RIGHT} size={16} />
+            <Ico d={ICONS.chevronRight} size={16} />
           </button>
+          {/* BACK TO TODAY — user-ruled 2026-08-04 (the completeness audit,
+              option A): appears ONLY when the viewed month is not the current
+              one, and snaps home. Closes the "no one-click return" gap the
+              Jump work surfaced and deliberately left for a user call. */}
+          {anchor.slice(0, 7) !== today.slice(0, 7) && (
+            <button
+              className="mstep mtoday"
+              aria-label="Back to the current month"
+              title="Back to the current month"
+              onClick={() => {
+                setStep("jump");
+                setAnchor(today);
+              }}
+            >
+              <Ico d={TODAY_ICON} size={16} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -241,15 +246,15 @@ export function NavCalendar({
           on every anchor value. */}
       <div className={`cal${step != null ? ` step-${step}` : ""}`} key={anchor.slice(0, 7)}>
         <div className="wk" />
-        {DOW.map((d, i) => (
+        {weekDayLetters().map((d, i) => (
           <div className="dow" key={i}>
             {d}
           </div>
         ))}
 
         {weeks.map((row) => {
-          const monday = row[0].day;
-          const { week } = isoWeek(monday);
+          const monday = row[0].day; // the week-START day (Monday by default)
+          const { week } = weekNum(monday);
           // "The current week's label is highlighted" — the week holding today,
           // not the week of the anchored month, so it lights only on the month
           // you are actually in.
@@ -276,8 +281,10 @@ export function NavCalendar({
 }
 
 /**
- * THE JUMP PICKER — the grid's only re-anchor control, and therefore the whole
- * of month navigation (the frozen grid draws no prev/next arrows).
+ * THE JUMP PICKER — the FAR-target re-anchor control. It was the whole of
+ * month navigation when built (the frozen grid draws no prev/next arrows), but
+ * the header chevrons joined 2026-08-01 (user-ruled, reversing the Jump-only
+ * face) and back-to-today 2026-08-04 — Jump now owns only the far targets.
  *
  * The ruling's shape is a **narrowing prompt: year → month**, which is what
  * the two tiers here are — step the year, then pick a month. The year label is
@@ -288,36 +295,12 @@ export function NavCalendar({
  * registry (`--month-jan` … `--month-dec`) — the one place in the rail those
  * dials surface.
  */
-const MONTH_ABBRS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-const MONTH_SLOTS = [
-  "jan",
-  "feb",
-  "mar",
-  "apr",
-  "may",
-  "jun",
-  "jul",
-  "aug",
-  "sep",
-  "oct",
-  "nov",
-  "dec",
-];
-const CHEV_LEFT = ["m15 18-6-6 6-6"];
-const CHEV_RIGHT = ["m9 18 6-6-6-6"];
+/* Month names, abbreviations and chevrons all come from the shared rosters
+   (metrics/format · shell/icons) since 2026-08-04 — this file hand-transcribed
+   three month tables and both chevron paths, having landed at step 9 after the
+   dedup pass that routed everyone else through them. */
+/** A target: ring + centre dot — "back to the current month". */
+const TODAY_ICON = ["M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0", "M12 12h.01"];
 
 function JumpPicker({
   anchor,
@@ -353,7 +336,7 @@ function JumpPicker({
           aria-label="Previous year"
           onClick={() => setYear(year - 1)}
         >
-          <Ico d={CHEV_LEFT} size={16} />
+          <Ico d={ICONS.chevronLeft} size={16} />
         </button>
         <button
           className="yr"
@@ -367,11 +350,11 @@ function JumpPicker({
           aria-label="Next year"
           onClick={() => setYear(year + 1)}
         >
-          <Ico d={CHEV_RIGHT} size={16} />
+          <Ico d={ICONS.chevronRight} size={16} />
         </button>
       </div>
       <div className="jump-grid">
-        {MONTH_ABBRS.map((label, i) => (
+        {MONTHS_SHORT.map((label, i) => (
           <button
             key={label}
             className={`jump-m${year === curYear && i + 1 === curMonth ? " cur" : ""}`}
@@ -381,7 +364,7 @@ function JumpPicker({
           >
             <span
               className="md"
-              style={{ background: `var(--month-${MONTH_SLOTS[i]})` }}
+              style={{ background: `var(--month-${label.toLowerCase()})` }}
             />
             {label}
           </button>
@@ -429,8 +412,6 @@ function CatchUpFlag({
     if (days.length === 0) setOpen(false);
   }, [days.length]);
 
-  if (days.length === 0) return null;
-
   // POSITION: the frozen face places the popover just right of the rail at a
   // fixed offset, which assumes a frame that never scrolls. The live rail
   // scrolls AND clips (`overflow: hidden auto`), so an absolutely-positioned
@@ -438,7 +419,14 @@ function CatchUpFlag({
   // button's measured rect escapes the clip; the rect is re-measured on scroll
   // and resize so the panel stays welded to the flag rather than stranded
   // where it opened (a fixed element does not move with its anchor for free).
+  //
+  // This MUST sit above the empty-queue return: the queue empties and refills
+  // under a mounted rail (finalizing the last day, or a day going unfinalized),
+  // and a hook below the return changes the hook count between those renders.
   const rect = useAnchorRect(btnRef, open);
+
+  if (days.length === 0) return null;
+
   return (
     <div className="catchwrap">
       <button

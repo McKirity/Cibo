@@ -7,12 +7,13 @@
  * period window (the CS picker; all-time when unset; for ENTRY queries it
  * scopes the ENGAGEMENT conditions only — attributes are timeless) → a list
  * of condition rows → Match all / Match any (ONE switch, no nested boolean
- * trees) → a live result set (no Run button).
+ * trees) → results on the Search button (the 2026-07-29 reversal of the
+ * drafted no-Run-button clause — AdvancedSearch.tsx owns the snapshot note;
+ * these functions are pure either way and never knew the difference).
  *
  * A row with an unanswered pick is INCOMPLETE and contributes nothing (the
  * CS precedent — an incomplete pick draws nothing rather than guessing).
- * With no complete rows, the result is the whole universe in the window —
- * honest, and it makes the live count move from the first keystroke.
+ * With no complete rows, the result is the whole universe in the window.
  */
 import { resolveWindow, type WindowCfg } from "../kit/periodWindow";
 

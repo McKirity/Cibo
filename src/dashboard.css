@@ -84,14 +84,18 @@
    law on identity-is-clickable surfaces: under a theme whose accent sits one step
    from resting text, a colour-only hover is not an affordance. */
 .lrow:hover .ltitle .nm{color:var(--accent); text-decoration:underline; text-underline-offset:3px;}
-.mast .art .ico{width:38%; height:auto;}
+/* `.mast .art .ico` deleted 2026-08-04 — all four mastheads render a lettermark
+   <span> inside `.art`, never an icon. */
 .mast .hname{font-family:var(--font-heading); font-size:var(--size-display); font-weight:var(--weight-bold); line-height:var(--line-tight);}
 .mast .idcol{min-width:0; padding-top:var(--space-2);}
 .mast .idrow{display:flex; align-items:center; gap:var(--space-5); flex-wrap:wrap;}
 .mast .since{font-size:var(--size-small); color:var(--text-secondary); margin-top:var(--space-4);}
-.mast .since b{color:var(--text-strong); font-weight:var(--weight-medium);}
+/* `.mast .since b` deleted 2026-08-04 — every spec builds `sinceLive` as a
+   plain template string; it renders as a text child, no markup. */
 .panel + .panel{margin-top:var(--space-6);}
-.panel.tighthead{padding-top:calc(var(--frame-clear-grand) + var(--space-2)); padding-bottom:calc(var(--frame-clear-grand) + var(--space-2));}
+/* `.panel.tighthead` deleted 2026-08-04 — the only `tighthead` element is
+   CadenceDashboard's `.cpanel tighthead`, which is not a `.panel` and is served
+   by cadence.css's own rule. */
 .phead .pmeta{font-size:var(--size-small); color:var(--text-muted);}
 .phead .pright{display:flex; align-items:center; gap:var(--space-5);}
 .phead .ptitle{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); line-height:var(--line-tight); letter-spacing:-.01em; color:var(--text-strong);}
@@ -124,7 +128,9 @@
    dots — Iconography's boundary; verified 2026-07-30, do not re-flag) */
 .tile .tl .dot{width:var(--space-5); height:var(--space-5); border-radius:var(--radius-small); flex:0 0 auto;}
 .tile .ts{font-size:var(--size-small); color:var(--text-secondary); min-height:0;}
-.tile .ts b{color:var(--text-strong); font-weight:var(--weight-medium);}
+/* `.tile .ts b` deleted 2026-08-04 — subtitles are plain strings in every spec
+   and every renderer. (Contrast `.calnote b`/`.rline b`/`.mcard .mtitle b`,
+   which ARE live: the review layer really does emit HTML.) */
 .tile .tv{font-family:var(--font-mono); font-size:var(--size-stat-value); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong); white-space:nowrap;}
 .tile .tv .tdt{display:block; font-family:var(--font-ui); font-size:var(--size-caption); font-weight:var(--weight-regular); color:var(--text-muted); margin-bottom:var(--space-2); white-space:nowrap; line-height:1;}
 .tile .tv .u{font-family:var(--font-ui); font-size:var(--size-body); color:var(--text-muted); font-weight:var(--weight-regular); margin-left:2px;}
@@ -146,7 +152,8 @@
 .trend{display:grid; grid-template-columns:2fr 1fr; gap:0; align-items:stretch;}
 .trend > div:first-child{padding-right:var(--space-7);}
 .trio{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--space-6);}
-.trio.four{grid-template-columns:repeat(4,1fr);}
+/* `.trio.four` deleted 2026-08-04 — both `.trio` tenants are `trio grouped`
+   with their columns set inline. */
 .trio.grouped{gap:0;}
 .trio.grouped > .dcol:first-child{padding-left:0; border-left:none;}
 .trio.grouped > .dcol:last-child{padding-right:0;}
@@ -165,7 +172,12 @@
    but missed rules whose HEAD is the fill element itself, leaving these stranded
    in staging and the bars unstyled) ------- */
 .btrack{height:var(--space-6); background:var(--inset-background); border-radius:var(--radius-full); overflow:hidden;}
-.bfill{height:100%; border-radius:var(--radius-full); min-width:var(--space-3);}
+/* THE HUE HANDOFF (2026-08-03): the fill's WIDTH stays inline (it is the datum)
+   but its colour arrives as `--series` and is painted here — an inline
+   `background` cannot be overridden by any stylesheet, which left every bar
+   unthemeable. Render is unchanged; a theme's own rules can now restyle the
+   fill (Blame! makes it a phosphor trace). See shell.css § the hue handoff. */
+.bfill{height:100%; border-radius:var(--radius-full); min-width:var(--space-3); background:var(--series, var(--cat-1));}
 /* Tint follows the dashboard's habit hue (--heat-hue, set per dashboard) — the
    corpus tinted this per screen (--habit-2 Gaming, --habit-3 reading) via
    [data-screen] overrides that stay staged; the generalized component reads the
@@ -348,7 +360,7 @@
 .rangechart{width:100%; height:var(--chart-height); display:block;}
 .rchart{min-width:0;}
 .rchart-head{display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-4); margin-bottom:var(--space-5); padding-bottom:var(--space-4); border-bottom:var(--border-hairline) solid var(--divider);}
-.rchart-head .cm{font-size:var(--size-caption); color:var(--text-muted); text-align:right;}
+/* `.rchart-head .cm` deleted 2026-08-04 — both `.rchart-head`s render only `.ct`. */
 .rchart-head .ct{font-size:var(--size-body); font-weight:var(--weight-bold); color:var(--text-strong);}
 .rlegend{display:flex; flex-wrap:wrap; gap:var(--space-6); margin-top:var(--space-5); font-size:var(--size-caption); color:var(--text-secondary);}
 .rlegend .k{display:inline-flex; align-items:center; gap:var(--space-3);}

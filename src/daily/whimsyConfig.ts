@@ -1,18 +1,18 @@
 /**
  * The whimsy tier's inputs — location and the user's dated events.
  *
- * THIS IS A STAND-IN SOURCE, not a stand-in shape. First-run setup's steps 1–2
- * (important dates · coordinates) collect exactly this, and Settings edits it
- * later — but both are step 15 / step 10, so until then a dev panel writes it
- * (the same substitution the dev habit-activation panel already makes). When
- * those land they replace the SOURCE and nothing else: cards read `WhimsyConfig`
- * and never learn where it came from.
+ * Settings → Whimsy is the live editor (step 10 — exactly the source-swap
+ * this header always predicted: cards read `WhimsyConfig` and never learn
+ * where it came from). First-run setup's steps 1–2 (important dates ·
+ * coordinates) will FILL it at step 15; the dev whimsy panel lingers as a
+ * dev-only duplicate door until then.
  *
  * Location is stored as coordinates outright — no place names, no geocoding
- * ([[Calendar & Whimsy]] § config). Per-device by nature, so the dev store is
- * localStorage; the real one is the per-device settings file.
+ * ([[Calendar & Whimsy]] § config). Per-device by nature — stored on the
+ * per-device settings file (settings/deviceStore, 2026-08-04).
  */
 import { pad2 } from "../metrics/clock";
+import { deviceGet, deviceSet } from "../settings/deviceStore";
 
 export interface DatedEvent {
   id: string;
@@ -35,7 +35,7 @@ export interface WhimsyConfig {
   /**
    * The weather card's DISPLAY unit — the snapshot stores Celsius canonically
    * (network-tier fork A's rider, 2026-07-27). Defaults to °F because the
-   * drawn face reads Fahrenheit; a real Settings row owns this at step 10.
+   * drawn face reads Fahrenheit; Settings → Whimsy's Temperature row owns it.
    */
   tempUnit: "F" | "C";
   events: DatedEvent[];
@@ -74,7 +74,7 @@ export const DEFAULT_CONFIG: WhimsyConfig = {
 
 export const loadWhimsyConfig = (): WhimsyConfig => {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = deviceGet(KEY);
     if (!raw) return DEFAULT_CONFIG;
     const parsed = JSON.parse(raw) as Partial<WhimsyConfig>;
     // Merge over the default so a stored config written by an older panel
@@ -86,11 +86,7 @@ export const loadWhimsyConfig = (): WhimsyConfig => {
 };
 
 export const saveWhimsyConfig = (c: WhimsyConfig): void => {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(c));
-  } catch {
-    /* private mode / quota — dev tooling, so failing to persist is survivable */
-  }
+  deviceSet(KEY, JSON.stringify(c));
 };
 
 /**

@@ -12,13 +12,14 @@
  *
  * Fences (binding): every card/row is a DOOR to its entry dashboard — no
  * inline editing anywhere; Bulk edit opens its modal directly (the library
- * never enters a multi-select state); the importer doors are inert until
- * step 8.
+ * never enters a multi-select state); the importer door is LIVE (step 8 —
+ * ONE per library, user-ruled 2026-08-01; the disabled branch was removed
+ * 2026-08-04, the inline note at the toolbar).
  *
- * Implementation stand-ins, recorded: the persisted view state rides
- * localStorage until the per-device local file exists ([[Sync & Per-Device
- * Settings]]); search text is transient (not part of the persisted state);
- * the pin band hides at zero Current entries.
+ * The persisted view state rides the per-device settings file
+ * (settings/deviceStore, 2026-08-04 — [[Sync & Per-Device Settings]]); search
+ * text is transient (not part of the persisted state); the pin band hides at
+ * zero Current entries.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { LibEntry, LibraryViewState, SortKey } from "./librarySpec";
@@ -43,7 +44,8 @@ import { Pager } from "../kit/Pager";
 import { EntryCreationModal } from "./EntryCreationModal";
 import { BulkEditModal } from "./BulkEditModal";
 import { ImportModal } from "../importers/ImportModal";
-import { importDoorReady } from "../importers/sources";
+import { consumeLibraryImport } from "../shell/navRequest";
+import { deviceGet, deviceSet } from "../settings/deviceStore";
 import "./library.css";
 
 const PER_PAGE_COLS = "--lib-grid-cols";
@@ -51,18 +53,25 @@ const PER_PAGE_ROWS = "--lib-grid-rows";
 
 /** 9×2 off the dials (the counts are dials; reading them keeps the page bound
  * to the drawn geometry if a theme ever legally re-pins them). */
+let perPageCache: number | null = null;
 const perPage = (): number => {
+  // CACHED (2026-08-04): this ran inside a memo keyed on the filtered list, so
+  // every search keystroke forced a full style resolution. Both dials are
+  // theme-level and only move on theme apply / compact toggle, which reload
+  // the sheet — a page-lifetime read is the right granularity.
+  if (perPageCache != null) return perPageCache;
   const cs = getComputedStyle(document.documentElement);
   const cols = parseInt(cs.getPropertyValue(PER_PAGE_COLS)) || 9;
   const rows = parseInt(cs.getPropertyValue(PER_PAGE_ROWS)) || 2;
-  return cols * rows;
+  perPageCache = cols * rows;
+  return perPageCache;
 };
 
 const storageKey = (habitKey: string) => `cibo.libraryView.${habitKey}`;
 
 const loadViewState = (habitKey: string): LibraryViewState => {
   try {
-    const raw = localStorage.getItem(storageKey(habitKey));
+    const raw = deviceGet(storageKey(habitKey));
     if (raw == null) return DEFAULT_VIEW_STATE;
     // Validated field-by-field, never spread in whole (2026-07-30): a stale
     // `sort` value rendered "sorted by undefined" and silently broke the
@@ -112,14 +121,12 @@ export function Library({
   const [page, setPage] = useState(1);
   const [creationOpen, setCreationOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
+  // A dashboard's "Run an import" door parks a one-shot and navigates here —
+  // the library mounts with its modal already open (navRequest, 2026-08-04).
+  const [importOpen, setImportOpen] = useState(() => consumeLibraryImport());
 
   useEffect(() => {
-    try {
-      localStorage.setItem(storageKey(habitKey), JSON.stringify(state));
-    } catch {
-      /* per-device nicety only — a blocked write costs nothing */
-    }
+    deviceSet(storageKey(habitKey), JSON.stringify(state));
   }, [habitKey, state]);
 
   /** Every view-state change re-derives from page 1 (the drawn behavior —
@@ -347,14 +354,10 @@ export function Library({
               <Ico d={ICON.edit} size={14} />
               Bulk edit
             </button>
+            {/* ONE live "Import" door per library (the 2026-08-01 ruling); the
+                step-8-era disabled branch was dead code and left 2026-08-04. */}
             {importerDoors(habitKey).map((label) => (
-              <button
-                key={label}
-                className="btn-plain"
-                disabled={!importDoorReady(label)}
-                title={importDoorReady(label) ? undefined : "This importer lands later in step 8"}
-                onClick={importDoorReady(label) ? () => setImportOpen(true) : undefined}
-              >
+              <button key={label} className="btn-plain" onClick={() => setImportOpen(true)}>
                 <Ico d={ICON.download} size={14} />
                 {label}
               </button>
@@ -382,15 +385,7 @@ export function Library({
                 {importerDoors(habitKey)
                   .slice(0, 1)
                   .map((label) => (
-                    <button
-                      key={label}
-                      className="btn-plain"
-                      disabled={!importDoorReady(label)}
-                      title={
-                        importDoorReady(label) ? undefined : "This importer lands later in step 8"
-                      }
-                      onClick={importDoorReady(label) ? () => setImportOpen(true) : undefined}
-                    >
+                    <button key={label} className="btn-plain" onClick={() => setImportOpen(true)}>
                       <Ico d={ICON.download} size={14} />
                       {label}
                     </button>

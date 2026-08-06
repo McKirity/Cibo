@@ -76,10 +76,18 @@ export interface FlagPanelSpec {
 
 export interface RangeModel {
   colorVar: string;
+  /**
+   * NO `archived` FIELD, DELIBERATELY (user-ruled 2026-08-04: "leave it bare").
+   * The range template is the one habit dashboard that wears no archived
+   * marker — Shell's shared `.archband` excludes it by construction, and the
+   * simple/creation `.archchip` is not adopted here. The flag was computed and
+   * never rendered until this ruling; it is now simply not produced. Do not
+   * re-flag the absence as a gap. `input.archived` still feeds the COLD heat
+   * chip below, which is a different reading.
+   */
   masthead: {
     name: string;
     heat: HeatChip | null;
-    archived: boolean;
     empty: boolean;
     sinceLive: string;
     tabs: { key: string; label: string }[];
@@ -305,7 +313,6 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
     masthead: {
       name: input.name,
       heat,
-      archived: input.archived,
       empty,
       sinceLive,
       tabs,

@@ -32,3 +32,11 @@ export const catchUpDays = (
   rows: readonly { date: unknown }[],
   before: string,
 ): string[] => rows.map((r) => String(r.date)).filter((d) => d < before);
+
+/** Is ANYTHING behind? The same predicate without building the array — the
+ *  answer the shell's attention dot wants, where the list itself is never
+ *  rendered and allocating it on every render was pure waste. */
+export const hasCatchUp = (
+  rows: readonly { date: unknown }[],
+  before: string,
+): boolean => rows.some((r) => String(r.date) < before);

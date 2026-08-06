@@ -205,10 +205,10 @@ export const paginate = (entries: LibEntry[], page: number, perPage: number): Pa
   return { rows: entries.slice(from - 1, to), page: p, pageCount, from, to, total };
 };
 
-// pagerCells HOISTED to kit/Pager.tsx 2026-07-30 (the dedup pass — the Map
-// was its second consumer); re-exported here so existing import paths and the
-// harness pattern keep working.
-export { pagerCells } from "../kit/Pager";
+// pagerCells HOISTED to kit/Pager.tsx 2026-07-30 (the dedup pass — the Map was
+// its second consumer). Its back-compat re-export was DELETED 2026-08-04: it
+// had ZERO importers, and the "harness pattern" it cited has no harness in the
+// repo. Import from `kit/Pager` directly.
 
 // ── Status pills — the categorical palette, always carrying the word ─────────
 
@@ -391,7 +391,9 @@ const STATUS_LIFECYCLE = new Map<string, number>([
   ["Dropped", 4],
 ]);
 
-export const statusLifecycleRank = (status: string | null): number =>
+/** Lifecycle order for the bulk picker's status sort. Module-private since
+ *  2026-08-04 — it had no external importer. */
+const statusLifecycleRank = (status: string | null): number =>
   status == null ? 99 : STATUS_LIFECYCLE.get(status) ?? 50;
 
 const pickerKey = (e: LibEntry, k: PickerSortKey): number | string => {

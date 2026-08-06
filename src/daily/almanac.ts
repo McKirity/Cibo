@@ -19,6 +19,7 @@
  */
 import type { DatedEvent } from "./whimsyConfig";
 import { dayStart } from "./sky";
+import { weekNum, weekStartDow } from "../metrics/dates";
 
 const DAY_MS = 86_400_000;
 
@@ -259,7 +260,7 @@ export interface TimeProgress {
   /** 1-based day of year — the footer's "Day N of M". */
   doy: number;
   daysInYear: number;
-  /** Monday-first week number counted from Jan 1 — the footer's "week N". */
+  /** The week's display number — `dates.weekNum`, the app-wide answer. */
   week: number;
   /** 1–4. */
   quarter: number;
@@ -277,8 +278,10 @@ export function timeProgress(dayKey: string, now: Date): TimeProgress {
   const jan1 = new Date(year, 0, 1);
   const daysInYear = (new Date(year + 1, 0, 1).getTime() - jan1.getTime()) / DAY_MS;
   const daysInMonth = new Date(year, d.getMonth() + 1, 0).getDate();
-  // Weeks run Mon–Sun (the configured default; Settings owns this later).
-  const dow = (d.getDay() + 6) % 7;
+  // The week runs from the CONFIGURED start (2026-08-04's dial), not a
+  // hardcoded Monday: this card sits beside the nav calendar and the cadence
+  // dashboards, and a fixed Mon–Sun made its Week ring disagree with both.
+  const dow = (d.getDay() - weekStartDow() + 7) % 7;
   const sameDay = now.getFullYear() === d.getFullYear() && now.getMonth() === d.getMonth() && now.getDate() === d.getDate();
   const msIntoDay = sameDay ? now.getTime() - d.getTime() : DAY_MS;
   const doy = dayOfYear(dayKey);
@@ -295,7 +298,9 @@ export function timeProgress(dayKey: string, now: Date): TimeProgress {
     yearPct: (doy - 1 + msIntoDay / DAY_MS) / daysInYear,
     doy,
     daysInYear,
-    week: Math.floor((doy + ((jan1.getDay() + 6) % 7) - 1) / 7) + 1,
+    // weekNum, not a count of 7-day blocks from Jan 1 — the hand-rolled form
+    // disagreed with every other week label in the app AND with ISO itself.
+    week: weekNum(dayKey).week,
     quarter: q + 1,
     quarterPct: (noon.getTime() - qStart.getTime()) / (qEnd.getTime() - qStart.getTime()),
   };

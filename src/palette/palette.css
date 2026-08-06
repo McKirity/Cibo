@@ -21,14 +21,16 @@
      is its known second tenant).
 
    BUILD GLUE (authored, dial-derived): .pal-in · the .pal-row button reset ·
-   .pal-row.off (a verb whose step hasn't landed — the rail's disabled-Tools
-   precedent) · .pal-row.static · .pal-more · .pal-letter.
+   .pal-row.off (a verb whose target hasn't landed — one tenant left, Check
+   for updates) · .pal-more · .pal-letter. (.pal-row.static retired
+   2026-07-29 — the tombstone below.)
 
    THE `.advs` FACE (Advanced Search — the morph) is AUTHORED BUILD-SIDE by
    standing ruling (no FINAL draws it): the same overlay chassis widened onto
    CS's builder idiom — builder column at --builder-w, live results beside it.
-   The shared builder/picker/preset rules live in compare.css under
-   `:is(.csdash, .advs)`. Iterates at the GUI pass.
+   The shared builder/picker/preset rules live in KIT.CSS under
+   `:is(.csdash, .advs)` (hoisted there at the 2026-07-30 dedup pass — this
+   pointer said compare.css until 2026-08-04). Iterates at the GUI pass.
    ========================================================================== */
 
 .pal-scrim{position:fixed; inset:0; z-index:80; background:var(--overlay-dim); animation:pal-dim var(--motion-standard) var(--ease-entering);}
@@ -54,7 +56,7 @@
 .pal-in::placeholder{color:var(--text-muted);}
 /* BUILD-SIDE ADDITION (user-ruled 2026-07-29, in-canvas) — the Advanced Search
    door, promoted out of the Actions list into the well. It is a search
-   ESCALATION, not a verb, and as row 10 of a ten-verb list it sat below eight
+   ESCALATION, not a verb, and as the last row of the verb list it sat below
    unlanded ones. It replaces the well's Esc kbd (the foot legend keeps Esc). */
 .pal-advs-door{display:inline-flex; align-items:center; gap:var(--space-3); flex:0 0 auto;
                padding:var(--space-3) var(--space-4); border-radius:var(--radius-small);
@@ -76,8 +78,9 @@
          width:100%; border:none; background:transparent; font-family:var(--font-ui);}
 .pal-row:hover{background:var(--hover-wash);}
 .pal-row.sel{background:var(--selected-wash); box-shadow:inset var(--border-heavy) 0 0 var(--accent);}
-/* build glue: a verb whose target step hasn't landed (the rail's disabled-
-   Tools precedent) — drawn, inert, "later" in the meta */
+/* build glue: a verb whose target hasn't landed (the rail's disabled-Tools
+   precedent) — drawn, inert, its GROUP name in the meta (the "later" meta was
+   replaced by the group name 2026-07-29). One tenant: Check for updates. */
 .pal-row.off{cursor:default; opacity:.55;}
 .pal-row.off:hover{background:transparent;}
 /* .pal-row.static RETIRED 2026-07-29 with the quick-create door itself

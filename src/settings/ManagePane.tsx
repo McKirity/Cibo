@@ -28,7 +28,7 @@ import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@evolu/react";
 import { NonEmptyString100 } from "@evolu/common";
 import { evolu } from "../db/evolu";
-import { Ico } from "../shell/icons";
+import { Ico, ICONS } from "../shell/icons";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { DangerConfirm } from "../shell/DangerConfirm";
 import { showErrorToast } from "../shell/toast";
@@ -99,10 +99,13 @@ export function ManagePane({
   const defs = useQuery(defsQuery);
   const vocab = useQuery(vocabQuery);
 
-  const live = habits.filter((h) => !h.archived);
-  const projects = live.filter((h) => h.kind === "project");
-  const daily = live.filter((h) => h.kind !== "project");
-  const shelf = habits.filter((h) => h.archived === 1);
+  // Memoized so `takenSlots` below can actually hit: `live` was a fresh array
+  // every render, so its dep changed identity every time and the Set was
+  // rebuilt regardless (2026-08-04).
+  const live = useMemo(() => habits.filter((h) => !h.archived), [habits]);
+  const projects = useMemo(() => live.filter((h) => h.kind === "project"), [live]);
+  const daily = useMemo(() => live.filter((h) => h.kind !== "project"), [live]);
+  const shelf = useMemo(() => habits.filter((h) => h.archived === 1), [habits]);
 
   // Hard-unique: slots owned by any OTHER live habit lock in the picker.
   const takenSlots = useMemo(
@@ -359,7 +362,7 @@ export function ManagePane({
                       Activate
                     </button>
                     <button className="iconbtn danger" data-tip="Delete" onClick={() => void askDelete(h)}>
-                      <Ico d={["M3 6h18", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"]} />
+                      <Ico d={ICONS.trash} />
                     </button>
                   </span>
                 </div>
@@ -410,6 +413,7 @@ export function ManagePane({
       {keepsakeFor != null && (
         <KeepsakeEditor
           habitId={String(keepsakeFor.id)}
+          habitKey={(keepsakeFor.key as string | null) ?? null}
           habitName={String(keepsakeFor.name ?? "")}
           colourSlot={String(keepsakeFor.colour_slot ?? "habit-1")}
           measuresTime={keepsakeFor.measures_time === 1}
@@ -503,7 +507,7 @@ function Group({
               }}
             >
               <button className="disc" data-tip="Sub-units" onClick={() => onToggle(id)}>
-                <Ico d={["m9 18 6-6-6-6"]} />
+                <Ico d={ICONS.chevronRight} />
               </button>
               <span className="grip" data-tip="Drag to reorder">
                 <Ico d={["M8 7h8", "M8 12h8", "M8 17h8"]} size={18} />
@@ -550,7 +554,7 @@ function Group({
                   <Ico d={["M2 5a1 1 0 0 1 1-1h18a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z", "M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9", "M10 13h4"]} />
                 </button>
                 <button className="iconbtn danger" data-tip="Delete" onClick={() => onDelete(h)}>
-                  <Ico d={["M3 6h18", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"]} />
+                  <Ico d={ICONS.trash} />
                 </button>
               </span>
             </div>
@@ -658,7 +662,7 @@ function Disclosure({
                         setDraft("");
                       }}
                     >
-                      <Ico d={["M12 5v14", "M5 12h14"]} size={12} /> add
+                      <Ico d={ICONS.plus} size={12} /> add
                     </button>
                   )}
                 </>

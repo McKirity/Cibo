@@ -1,5 +1,5 @@
 /** The app-wide running-clock reminder tray (`.timertray`). Split out of TimerOverlays.tsx 2026-07-30 (dedup pass wave 4) so the shell's mount no longer pulls the modal code. */
-import { clockMs, fmtMs, remainingMs, type Clock } from "./timerCore";
+import { clockMs, fmtMs, remainingMs, type Clock, modeLabel} from "./timerCore";
 import { useTimers } from "./timerStore";
 import "./timers.css";
 
@@ -24,7 +24,7 @@ export function GlobalTimerTray({ onOpen }: { onOpen: (id: number) => void }) {
             style={{ background: `var(--${c.tracked[0]?.colourSlot ?? "habit-1"})` }}
           />
           <span className="swm">
-            {c.mode === "stopwatch" ? "Stopwatch" : c.mode === "countdown" ? "Countdown" : "Pomodoro"}
+            {modeLabel(c.mode)}
           </span>
           <span className="swt">{clockChipReadout(c, now)}</span>
         </button>

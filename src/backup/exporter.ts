@@ -25,11 +25,24 @@ export const TABLES = [
 export type TableName = (typeof TABLES)[number];
 export type Row = Record<string, unknown>;
 
+/** One query object per table, built ONCE and reused (2026-08-04 —
+ *  `createQuery` ran inside the loop, minting eight fresh queries on every
+ *  backup, where the rest of the app hoists to module scope). Memoized rather
+ *  than a literal map so each table keeps its own precise row type. */
+const tableQueryCache = new Map<TableName, ReturnType<typeof tableQuery>>();
+const tableQuery = (t: TableName) => evolu.createQuery((db) => db.selectFrom(t).selectAll());
+const queryFor = (t: TableName) => {
+  const hit = tableQueryCache.get(t);
+  if (hit != null) return hit;
+  const q = tableQuery(t);
+  tableQueryCache.set(t, q);
+  return q;
+};
+
 export async function readAllTables(): Promise<Record<TableName, Row[]>> {
   const out = {} as Record<TableName, Row[]>;
   for (const t of TABLES) {
-    const q = evolu.createQuery((db) => db.selectFrom(t).selectAll());
-    const rows = await evolu.loadQuery(q);
+    const rows = await evolu.loadQuery(queryFor(t));
     out[t] = rows.map((r) => ({ ...(r as Row) }));
   }
   return out;

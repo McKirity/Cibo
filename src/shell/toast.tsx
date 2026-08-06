@@ -1,10 +1,12 @@
 /**
  * `kit-toast` — the app's ONE slide-in slot, one toast at a time.
  *
- * Two variants (Overlays sheet, movement 07): **undo** — a light delete's ~10 s
- * window with an action button; **error** — a background failure's report, the
- * four-tier failure model's tier 3, a `--danger` dot leading (the second signal;
- * the word carries the meaning, never colour alone).
+ * THREE variants since 2026-08-04 (two at the Overlays-sheet freeze): **undo**
+ * — a light delete's ~10 s window with an action button; **error** — a
+ * background failure's report, the four-tier failure model's tier 3, a
+ * `--danger` dot leading (the second signal; the word carries the meaning,
+ * never colour alone); **info** — the ratified quiet completion report
+ * (`showInfoToast` below carries its own ruling note).
  *
  * Built here at Daily's form spine because session remove was ruled to ship with
  * its undo rather than repeat chunk 5's inert-danger-foot deferral (screen note
@@ -20,7 +22,7 @@ import { logError } from "../settings/errorLog";
 export interface ToastMessage {
   /** Monotonic — a new toast replaces the one on screen (one slot). */
   id: number;
-  kind: "undo" | "error";
+  kind: "undo" | "error" | "info";
   message: string;
   /** Undo only; running it dismisses the toast. */
   onUndo?: () => void;
@@ -39,11 +41,14 @@ const publish = (t: ToastMessage | null) => {
   for (const l of listeners) l(t);
 };
 
+/* The three raisers RETURN NOTHING since 2026-08-04. They each handed back the
+   slot id, no caller ever read one, and there is no dismiss-by-id to spend it
+   on (`dismissToast` was deleted at the 2026-07-30 dedup pass). `nextId` and
+   `ToastMessage.id` stay — they key the slot's self-dismiss. */
+
 /** The ~10 s undo window ([[Delete Safety & Undo]] tier 2). */
-export const showUndoToast = (message: string, onUndo: () => void, ms = 10_000): number => {
-  const id = nextId++;
-  publish({ id, kind: "undo", message, onUndo, ms });
-  return id;
+export const showUndoToast = (message: string, onUndo: () => void, ms = 10_000): void => {
+  publish({ id: nextId++, kind: "undo", message, onUndo, ms });
 };
 
 /**
@@ -53,11 +58,21 @@ export const showUndoToast = (message: string, onUndo: () => void, ms = 10_000):
  * slice 5): the toast is the moment, that list is the standing record, and it
  * is what the rail's health dot summarizes.
  */
-export const showErrorToast = (message: string, source = "App", ms = 6_000): number => {
-  const id = nextId++;
+export const showErrorToast = (message: string, source = "App", ms = 6_000): void => {
   logError(message, source);
-  publish({ id, kind: "error", message, ms });
-  return id;
+  publish({ id: nextId++, kind: "error", message, ms });
+};
+
+/**
+ * A quiet completion report — NOT a failure (no error dot, nothing logged) and
+ * NOT an undo window. First tenant: the palette's "Run data checks" verb,
+ * whose ruling ("triggers the scan without navigating to Settings → Health")
+ * needs a word of outcome or the action reads as dead (the no-words lesson).
+ * The RATIFIED third kit-toast variant (user-ruled 2026-08-04: "Fine, keep
+ * it") — the registry's two-variant list grew to three that day.
+ */
+export const showInfoToast = (message: string, ms = 6_000): void => {
+  publish({ id: nextId++, kind: "info", message, ms });
 };
 
 /** The slot itself — mounted once, by the shell. */

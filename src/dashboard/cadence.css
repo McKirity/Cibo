@@ -28,7 +28,7 @@
 .cadash .perhead .idblock{display:flex; flex-direction:column; gap:var(--space-2);}
 .cadash .perhead .pid{font-family:var(--font-heading); font-size:var(--size-display); font-weight:var(--weight-bold); line-height:var(--line-tight); letter-spacing:-.01em;}
 .cadash .perhead .ctx{font-size:var(--size-small); color:var(--text-secondary);}
-.cadash .perhead .ctx b{color:var(--text-strong); font-weight:var(--weight-medium);}
+/* `.perhead .ctx b` deleted 2026-08-04 — `header.ctx` is a plain string. */
 .cadash .perhead .doors{display:flex; align-items:center; gap:var(--space-4); margin-left:var(--space-6);}
 .cadash .updoor{display:inline-flex; align-items:center; gap:var(--space-3); font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-secondary); background:var(--window-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); padding:var(--space-3) var(--space-5); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);}
 .cadash .updoor:hover{background:var(--hover-wash); color:var(--accent);}
@@ -118,7 +118,8 @@
    calendar's treatment — the plain cell face, distinct from the lowest wash —
    and future cells go faceless like the calendar's blank. */
 .cadash .ncell.gap{background:var(--panel-background);}
-.cadash .ncell.blank{background:none; box-shadow:none;}
+/* The duplicate `.ncell.blank` (an editing artifact — the same selector twice
+   on adjacent lines, the first unreachable) merged 2026-08-04. */
 .cadash .ncell.blank{background:transparent; box-shadow:none;}
 
 /* --- 2 · the six stat tiles (kit-tile-stat, the cadence face) ------------- */
@@ -212,7 +213,7 @@
 .cadash .htotal{font-family:var(--font-mono); font-size:var(--size-subheading); color:var(--text-strong);}
 .cadash .htotal .sub{font-family:var(--font-ui); font-size:var(--size-small); color:var(--text-muted); font-weight:var(--weight-regular);}
 .cadash .hbest{font-size:var(--size-body); color:var(--text-secondary);}
-.cadash .hbest b{color:var(--text-strong); font-weight:var(--weight-medium);}
+/* `.hbest b` deleted 2026-08-04 — `HabitRowVM.best` is a plain string. */
 .cadash .hdone{font-family:var(--font-mono); font-size:var(--size-subheading); font-weight:var(--weight-bold); color:var(--text-strong); text-align:right;}
 .cadash .hdoor{display:flex; align-items:center; justify-content:flex-end; color:var(--text-muted); cursor:pointer;}
 .cadash .hdoor .ico{width:var(--icon-size-small); height:var(--icon-size-small);}

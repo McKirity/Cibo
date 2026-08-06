@@ -22,6 +22,7 @@
  *
  * Timer state is per-device, never synced (Design Outline §8).
  */
+import { pad2 } from "../metrics/clock";
 
 export type TimerMode = "stopwatch" | "countdown" | "pomodoro";
 
@@ -50,7 +51,7 @@ export interface Clock {
   clockBaseMs: number;
   /** countdown: the target length. */
   targetMs: number | null;
-  /** pomodoro: the user-set pair (defaults 25/5 until step 10's Settings row). */
+  /** pomodoro: the user-set pair (Settings → Timers owns the defaults). */
   workMs: number | null;
   breakMs: number | null;
   phase: "work" | "break";
@@ -180,8 +181,7 @@ export const fmtMs = (ms: number): string => {
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
-  const p = (n: number) => String(n).padStart(2, "0");
-  return h > 0 ? `${h}:${p(m)}:${p(s)}` : `${m}:${p(s)}`;
+  return h > 0 ? `${h}:${pad2(m)}:${pad2(s)}` : `${m}:${pad2(s)}`;
 };
 
 /** "25:00"-style mm:ss (config chips; grows to h:mm:ss above an hour).
@@ -193,8 +193,7 @@ export const fmtTarget = (ms: number): string => {
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
-  const p = (n: number) => String(n).padStart(2, "0");
-  return h > 0 ? `${h}:${p(m)}:${p(s)}` : `${m}:${p(s)}`;
+  return h > 0 ? `${h}:${pad2(m)}:${pad2(s)}` : `${m}:${pad2(s)}`;
 };
 
 /** Parse "25", "25:00" or "1:30:00" into ms (null on nonsense). */
@@ -213,3 +212,7 @@ export const parseTarget = (raw: string): number | null => {
 
 /** An accumulator handed to the log form: whole minutes, floor 1. */
 export const handoffMinutes = (ms: number): number => Math.max(1, Math.round(ms / 60000));
+
+/** A clock mode's display name — the board, the tray and the modals all show it. */
+export const modeLabel = (m: TimerMode): string =>
+  m === "stopwatch" ? "Stopwatch" : m === "countdown" ? "Countdown" : "Pomodoro";

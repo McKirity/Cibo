@@ -1,6 +1,24 @@
-/* Step-3 scaffold styles — the bare logging screen. NOT kit rules: layout
-   glue for a screen that has no frozen FINAL (chrome/rail/theming are step
-   6's problem). Dials only, per the derivation law — no raw values. */
+/* The GLOBAL base sheet (born as the step-3 scaffold; pruned 2026-08-04 when
+   the dev log surface was deleted, user-ruled "no longer need the dev panel
+   at all"). What survives has real tenants OUTSIDE that surface:
+
+   · `body` — the app-wide ground; nothing else declares it.
+   · `.row` — a generic flex row. MULTI-SCOPE by accident and kept knowingly:
+     daily.css re-declares it under `.daily` (gap-5, wins on specificity) and
+     map.css under `.mapscreen`; this bare copy is what styles the cover
+     wall's on-this-day rows and any other unscoped tenant. One of the four
+     corpus-generic names the audit flagged — re-scope, don't extend.
+   · the `.entry-row` family — a list-row look whose surviving tenant is the
+     MAP (LeafRow passes variant="entry-row"); the Log-view picker it was born
+     for is gone.
+
+   Deleted with the dev surface (no other tenant existed): `.card` (its gap
+   moved into daily.css's own `.card`, which was silently inheriting it from
+   here — the audit's leak finding) · `.form-error` · `.form-flash` ·
+   `.entry-list` · the `.day-table` family · `.day-sum` · `.dev-panel`.
+   `.shell` + `.boot-line` died earlier the same day, tenant-less.
+
+   NOT kit rules. Dials only, per the derivation law — no raw values. */
 
 body {
   margin: 0;
@@ -12,57 +30,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.shell {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: var(--space-8);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-7);
-}
-
-.boot-line {
-  font-size: var(--size-caption);
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-}
-
-.card {
-  background: var(--panel-background);
-  border: var(--border-hairline) solid var(--border);
-  border-radius: var(--radius-medium);
-  padding: var(--space-7);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
 .row {
   display: flex;
   align-items: center;
   gap: var(--space-4);
   flex-wrap: wrap;
-}
-
-.form-error {
-  font-size: var(--size-small);
-  color: var(--danger);
-}
-
-.form-flash {
-  font-size: var(--size-small);
-  color: var(--text-secondary);
-}
-
-/* The entry picker's match list. */
-.entry-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  max-height: 240px;
-  overflow-y: auto;
-  /* scrollbar-width/-color struck 2026-08-01 at the scrollbar mint — the
-     standard pair overrides the app-wide recipe's pseudo-elements (trap a). */
 }
 
 .entry-row {
@@ -91,47 +63,4 @@ body {
   margin-left: auto;
   font-size: var(--size-caption);
   color: var(--text-muted);
-}
-
-/* The day's logged-sessions list. */
-.day-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--size-small);
-}
-.day-table th {
-  text-align: left;
-  font-size: var(--size-caption);
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: var(--border-hairline) solid var(--divider);
-}
-.day-table td {
-  padding: var(--space-3) var(--space-4);
-  border-bottom: var(--border-hairline) solid var(--divider);
-  color: var(--text-strong);
-}
-.day-table .mono {
-  font-family: var(--font-mono);
-}
-.day-sum {
-  font-size: var(--size-small);
-  color: var(--text-secondary);
-}
-.day-sum b {
-  color: var(--text-strong);
-  font-weight: var(--weight-bold);
-}
-
-/* TEMPORARY dev habit-activation panel (first-run setup replaces it). */
-.dev-panel summary {
-  font-size: var(--size-caption);
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.dev-panel table {
-  margin-top: var(--space-4);
 }

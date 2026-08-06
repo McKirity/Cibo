@@ -110,7 +110,7 @@ function ProgressRow({ item, state }: { item: QueueItem; state: ItemState }) {
       ? 100
       : state.phase === "importing"
         ? 60
-        : state.phase === "retrying" || state.phase === "failed"
+        : state.phase === "failed"
           ? 40
           : 0;
   const label =
@@ -118,15 +118,13 @@ function ProgressRow({ item, state }: { item: QueueItem; state: ItemState }) {
       ? "queued"
       : state.phase === "importing"
         ? "importing…"
-        : state.phase === "retrying"
-          ? state.detail
-          : state.phase === "added"
-            ? "✓ added"
-            : state.phase === "adopted"
-              ? "✓ adopted"
-              : state.phase === "skipped"
-                ? `skipped — ${state.reason}`
-                : `failed — ${state.reason}`;
+        : state.phase === "added"
+          ? "✓ added"
+          : state.phase === "adopted"
+            ? "✓ adopted"
+            : state.phase === "skipped"
+              ? `skipped — ${state.reason}`
+              : `failed — ${state.reason}`;
   const cls = state.phase === "added" || state.phase === "adopted" ? "done" : state.phase === "failed" ? "fail" : "";
   return (
     <div className="progrow">

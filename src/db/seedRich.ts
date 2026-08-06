@@ -27,6 +27,7 @@ import {
   PositiveInt,
   type Evolu,
 } from "@evolu/common";
+import { pad2 } from "../metrics/clock";
 import {
   DateOnly,
   DateTimeLocal,
@@ -64,9 +65,8 @@ const chance = (p: number) => rnd() < p;
 
 // ── Date helpers (local-midnight, DST-safe) ───────────────────────────────────
 
-const pad = (n: number) => String(n).padStart(2, "0");
-const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const hm = (h: number, m: number) => `${pad(h)}:${pad(m)}`;
+const ymd = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const hm = (h: number, m: number) => `${pad2(h)}:${pad2(m)}`;
 
 const TODAY = new Date();
 
@@ -338,7 +338,10 @@ const insertSession = (
   day: string,
   measure: { kind: "time" | "count"; value: number } | { kind: "range"; start: string; end: string } | { kind: "none" },
   source: "manual" | "timer" | "import" | "derived",
-): EntryId extends never ? never : ReturnType<CiboEvolu["insert"]> => {
+  // Was `EntryId extends never ? never : ReturnType<…>` — a conditional whose
+  // test is ALWAYS false, so it only ever resolved to the right-hand side.
+  // Simplified 2026-08-04.
+): ReturnType<CiboEvolu["insert"]> => {
   const base = {
     habit_fk: habit,
     entry_fk: entry,
@@ -534,7 +537,7 @@ function seedSimpleTime(ctx: Ctx, hk: string, playProb: number, lo: number, hi: 
  * the dashboard shows the real mixed-provenance state. `playProb` is ignored:
  * activity tracks Writing, not an independent coin.
  */
-function seedKeyboard(ctx: Ctx, _playProb: number) {
+function seedKeyboard(ctx: Ctx) {
   const hk = "keyboard";
   const habit = ctx.habitId.get(hk)!;
   let board = pick(KEYBOARD_BOARDS);
@@ -735,7 +738,7 @@ export async function seedRich(
   seedCreationTime(ctx, "gamedev", gamedev, "gamedev_type", GAMEDEV_TYPES, 0.34);
   seedSimpleTime(ctx, "embroidery", 0.24, 20, 120);
   seedSimpleTime(ctx, "drawing", 0.3, 15, 150);
-  seedKeyboard(ctx, 0.62);
+  seedKeyboard(ctx);
   seedWalking(ctx, 0.45);
   seedSleep(ctx, 0.92);
 

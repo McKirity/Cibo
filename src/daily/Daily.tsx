@@ -36,7 +36,6 @@ import { DateOnly } from "../db/schema";
 import { todayLocal } from "../metrics/clock";
 import { Spine } from "./Spine";
 import { CoverWall } from "./CoverWall";
-import { DevWhimsyPanel } from "./DevWhimsyPanel";
 import {
   CountdownsCard,
   FactCard,
@@ -58,7 +57,7 @@ import {
 } from "./cards";
 import { anniversariesFor, trackingAnniversary } from "./almanac";
 import { appAnniversary, ensureAppStartDate } from "../db/appStart";
-import { cardOn, loadWhimsyConfig, saveWhimsyConfig, type WhimsyConfig } from "./whimsyConfig";
+import { cardOn, loadWhimsyConfig, type WhimsyConfig } from "./whimsyConfig";
 import { parseFeedSnapshot } from "./feedData";
 import { catchUpDays, unfinalizedQuery } from "./catchUp";
 import { ensureTodayFeeds } from "./feeds";
@@ -96,19 +95,6 @@ const entryCountQuery = evolu.createQuery((db) =>
 );
 
 /**
- * The catch-up queue's SECOND door — the conditional card on Daily's
- * unfinalized state ("Monday is still open — finish it"), for the
- * log-a-day-late habit. Functional, not whimsy: it never folds into the wall
- * and it is exempt from whimsy-fails-silent.
- *
- * The queue's membership is exactly the `days` rows whose `finalized` is
- * false — the ledger is SPARSE, so a day never touched has no row and never
- * enters the queue; it stays a door on the nav calendar. **The other door, the
- * rail's catch-up FLAG and popover, landed 2026-08-01** (step 9), and the query
- * they share moved to `catchUp.ts` with it — one queue, seen twice.
- */
-
-/**
  * The app's own start date — written once at launch (main.tsx) and never
  * changed while the app runs, so ONE module-level read serves every Daily
  * mount instead of re-running the ensure round-trip per navigation
@@ -127,7 +113,10 @@ export function Daily({
   onOpenDay?: (day: string) => void;
   onOpenEntry?: (entryId: string, habitKey: string | null) => void;
 }) {
-  const [config, setConfig] = useState<WhimsyConfig>(loadWhimsyConfig);
+  // Read once per mount — Settings → Whimsy is the only writer now (the dev
+  // whimsy panel died with the dev surface, 2026-08-04), and navigating to
+  // Settings and back re-mounts this screen, so the read stays fresh.
+  const [config] = useState<WhimsyConfig>(loadWhimsyConfig);
   // View state ONLY — Edit day never touches the finalize flag.
   const [editing, setEditing] = useState(false);
   useEffect(() => setEditing(false), [dayKey]);
@@ -158,11 +147,6 @@ export function Daily({
     if (isToday) void ensureTodayFeeds(config);
   }, [isToday, config]);
 
-  const updateConfig = (next: WhimsyConfig) => {
-    setConfig(next);
-    saveWhimsyConfig(next);
-  };
-
   if (finalized && !editing)
     return (
       <CoverWall
@@ -177,7 +161,6 @@ export function Daily({
       dayKey={dayKey}
       isToday={isToday}
       config={config}
-      onConfigChange={updateConfig}
       feedSnapshotRaw={dayState[0]?.feed_snapshot != null ? String(dayState[0].feed_snapshot) : null}
       onOpenDay={onOpenDay}
       onFinalized={() => setEditing(false)}
@@ -238,7 +221,6 @@ function WorkingDay({
   dayKey,
   isToday,
   config,
-  onConfigChange,
   feedSnapshotRaw,
   onOpenDay,
   onFinalized,
@@ -246,7 +228,6 @@ function WorkingDay({
   dayKey: string;
   isToday: boolean;
   config: WhimsyConfig;
-  onConfigChange: (next: WhimsyConfig) => void;
   feedSnapshotRaw: string | null;
   onOpenDay?: (day: string) => void;
   onFinalized: () => void;
@@ -401,7 +382,6 @@ function WorkingDay({
         />
       </div>
 
-      {import.meta.env.DEV && <DevWhimsyPanel config={config} onChange={onConfigChange} />}
     </div>
   );
 }
@@ -421,10 +401,12 @@ const CATCH_MD = new Intl.DateTimeFormat(undefined, { month: "short", day: "nume
  * them apart), so every chip carries its date; yesterday reads as "Yesterday"
  * relative to the REAL today, never the viewed day.
  *
- * Each chip is a door. "Open the catch-up queue" — the popover the ruling
- * gives the rail's flag — waits for step 9's nav calendar; until then this card
- * IS the queue, which is what the ruling calls a second door to the same
- * machinery rather than a different feature.
+ * Each chip is a door. This is the queue's SECOND door — the rail's catch-up
+ * flag + popover (step 9, landed 2026-08-01) is the first, and the query they
+ * share lives in `catchUp.ts`: one queue, seen twice. Functional, not whimsy —
+ * the card never folds into the wall and is exempt from whimsy-fails-silent;
+ * membership is exactly the sparse ledger's unfinalized rows, so an untouched
+ * day never enters the queue (it stays a door on the nav calendar).
  */
 function CatchUpCard({
   days,

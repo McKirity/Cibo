@@ -1,11 +1,11 @@
 /**
  * PALETTE CURATION — the per-action enable/disable roster (Build step 10,
- * slice 4). [[Palette]]: the pinned ten-verb inventory is "user-curated in
+ * slice 4). [[Palette]]: the pinned nine-verb inventory is "user-curated in
  * Settings"; [[Settings & Configuration]] tags it **synced** ("a curation
  * encodes preference"), and disabling **hides, never deletes**.
  *
  * Stored as one `app_meta` row (`palette_off`) holding a comma-separated list
- * of hidden verb ids — a roster of ten booleans is one value, not ten rows,
+ * of hidden verb ids — a roster of nine booleans is one value, not nine rows,
  * and the app_meta value cap (1000 chars) is nowhere near reachable.
  *
  * Read the same two ways as the rest of settings/store.ts: a live query for

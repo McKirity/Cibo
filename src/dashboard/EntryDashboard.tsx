@@ -10,8 +10,8 @@
  * Done = the app's first user-surface `evolu.update("entries")` — branded
  * values, every Result checked (the batch-4 lesson). The danger foot is INERT
  * (delete deferred with the undo-toast machinery — user-ruled 2026-07-23).
- * Day-log rows are inert doors until the Daily screen lands (the chunk-4
- * day-cell precedent).
+ * Day-log rows are LIVE doors to their cover walls (since 2026-07-27 — the
+ * correction note at the day-log renderer; this header predates Daily).
  *
  * (The danger foot went LIVE at the step-6 catch-up — the undo-toast tier
  * exists since the form spine, so the chunk-5 deferral is discharged.)
@@ -27,7 +27,7 @@ import {
 } from "../db/schema";
 import { NonEmptyString100, NonEmptyString1000, NonNegativeInt, PositiveInt } from "@evolu/common";
 import { evolu } from "../db/evolu";
-import { dayFromIndex, dayGap, dayIndex, monthKey } from "../metrics/dates";
+import { dayFromIndex, dayGap, dayIndex, heatRowLabels, monthKey } from "../metrics/dates";
 import { useEntryData, type EntryData } from "./useEntryData";
 import {
   buildEntryDashboard,
@@ -39,14 +39,14 @@ import {
   type WavesSpec,
   type WaveTableRow,
 } from "./entrySpec";
-import { Panel, StatGroup } from "./kit";
+import { heatPoolStyle, Panel, StatGroup } from "./kit";
 import { CoverInner } from "../kit/CoverArt";
 import { useBox } from "./useBox";
 import { DistPanel } from "./CreationDashboard";
 import { deleteEntriesCascade } from "../library/entryDelete";
 import { showErrorToast, showUndoToast } from "../shell/toast";
 import { todayLocal } from "../metrics/clock";
-import { MONTHS_SHORT } from "../metrics/format";
+import { MONTHS_SHORT, stars } from "../metrics/format";
 import type { CreationHeatCell, CreationModel } from "./creationSpec";
 import "../dashboard.css";
 import "./screen.css";
@@ -406,7 +406,10 @@ function RailEdit({
 
   return (
     <div className="erail edit">
-      <div className="cover" title="Replace cover — the images subsystem is a later step">
+      {/* The edit face's cover box stays a plain placeholder: the DROP half
+          (replace-by-file) is step 14's cloud root. The VIEW face above paints
+          real art via CoverInner — display landed at step 8. */}
+      <div className="cover" title="Replace cover — file drop arrives with the cloud root (step 14)">
         <span className="cinit">✎ REPLACE COVER</span>
       </div>
       <div className="finput">
@@ -490,7 +493,7 @@ function RailEdit({
                   <option value="">—</option>
                   {[5, 4, 3, 2, 1].map((n) => (
                     <option key={n} value={n}>
-                      {"★".repeat(n)}
+                      {stars(n)}
                     </option>
                   ))}
                 </select>
@@ -1288,7 +1291,8 @@ function GrowthCurve({ g, colorVar }: { g: GrowthSpec; colorVar: string }) {
               fill="url(#ghatch)"
             />
           ))}
-          {/* the fixed milestone ladder */}
+          {/* the computed nice-step axis rungs (entrySpec replaced the fixed
+              ladder here — the ladder survives only as `crossings`) */}
           <g stroke="var(--divider)" strokeDasharray="4 3" strokeWidth={1}>
             {g.rungs.map((r) => (
               <line key={r.value} x1={padL} x2={w - padR} y1={Y(r.value)} y2={Y(r.value)} />
@@ -1378,10 +1382,10 @@ function EntryHeatmap({ heatmap }: { heatmap: Omit<CreationModel["heatmap"], "tr
           </div>
         </div>
       )}
-      <div className="heat">
+      <div className="heat" style={heatPoolStyle(heatmap.cells, (c) => c.levels[measure])}>
         <div className="weekdays">
           <span className="wd" />
-          {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((d, i) => (
+          {heatRowLabels().map((d, i) => (
             <span className="wd" key={i}>
               {d}
             </span>

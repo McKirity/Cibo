@@ -55,7 +55,9 @@ export function EntryCreationModal({
   // Hook rules: the fallback hook is called UNCONDITIONALLY and the prop's
   // value wins when present (Evolu dedupes the identical underlying queries,
   // so the double subscription collapses at the store layer).
-  const ownData = useLibraryData(habitKey);
+  // `dataProp != null` skips the derivation, not the subscription — the hook
+  // must still be called unconditionally.
+  const ownData = useLibraryData(habitKey, dataProp != null);
   const data = dataProp ?? ownData;
   const creation = data.subType === "creation";
 

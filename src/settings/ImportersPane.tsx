@@ -14,15 +14,10 @@
  * which is also the only write path the storage has.
  */
 import { useEffect, useState } from "react";
-import { Ico } from "../shell/icons";
 import { getImporterKey, setImporterKey, type ImporterKeyName } from "../importers/keys";
 import { getCalibrePath, setCalibrePath } from "../importers/calibre";
+import { DevMark } from "./SettingsScreen";
 
-const DEVMARK = [
-  "M4 4h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
-  "M8 20h8",
-  "M12 16v4",
-];
 
 /** Last four only — enough to tell two keys apart, never enough to use. */
 const mask = (key: string): string => `${"•".repeat(10)}${key.slice(-4)}`;
@@ -162,10 +157,7 @@ function CalibreRow() {
   return (
     <div className="crow">
       <span className="clabel">Library path</span>
-      <span className="devmark">
-        <Ico d={DEVMARK} />
-        This device
-      </span>
+      <DevMark />
       <span className="cright">
         <span className={`field${path == null ? " none" : ""}`}>{path ?? "Not set"}</span>
         <button className="btn-plain btn-sm" onClick={() => void pick()}>

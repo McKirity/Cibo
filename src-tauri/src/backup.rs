@@ -19,7 +19,7 @@
 
 use serde::Deserialize;
 use std::fs;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use tauri::Manager;
 
@@ -403,12 +403,7 @@ pub fn apply_pending_restore(app: &tauri::AppHandle) {
     }
 }
 
-// A tiny read used by bk_verify_archive's error paths; kept to silence the
-// unused-import lint on platforms where cfg paths differ.
-#[allow(dead_code)]
-fn _read_probe(p: &Path) -> std::io::Result<Vec<u8>> {
-    let mut f = fs::File::open(p)?;
-    let mut v = Vec::new();
-    f.read_to_end(&mut v)?;
-    Ok(v)
-}
+// `_read_probe` was DELETED 2026-08-04 (the third audit). Its comment claimed
+// it was "kept to silence the unused-import lint" — the reverse was true: it
+// was the ONLY consumer of `Read`, so it created the import it claimed to
+// justify. The import narrowed to `Write` with it (`Counter` + `tar_dir_into`).

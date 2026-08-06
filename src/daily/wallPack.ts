@@ -58,7 +58,7 @@ const HALF_ROW_PITCH = 70;
  * units, the 1400-canvas viewport. A shape default only; the hard in-band
  * preference needs a real measured budget.
  */
-const DEFAULT_BUDGET_HALF_ROWS = 18;
+export const DEFAULT_BUDGET_HALF_ROWS = 18;
 
 /** A tile's footprint: whole columns × HALF-rows (a whole unit = 2 half-rows). */
 export interface Span {

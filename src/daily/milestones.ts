@@ -28,7 +28,8 @@
  * is why the wall card needs no snapshot and `feed_snapshot` gains no tenant.
  *
  * WHERE THE RULES LIVE. The ladders are DATA (`habits.milestone_ladders`, null =
- * the global default below); Settings → Tracking → Metrics edits them at step 10.
+ * the global default below); Settings → Tracking → Metrics edits them (step 10,
+ * live — LadderEditor + ladderStore).
  * The SUBJECT SWAP stays code-side (`SUBJECT_SWAP`) — Sleep's half is
  * definition-driven off the range kind anyway, and Keyboard's cannot be:
  * "you type every day" is a fact about a life, not about a declaration.

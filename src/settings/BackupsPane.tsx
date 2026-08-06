@@ -29,17 +29,12 @@ import {
 } from "../backup/backup";
 import { requestRestore } from "../backup/restore";
 import { showErrorToast } from "../shell/toast";
+import { relLabel } from "../metrics/format";
 
-const relTime = (iso: string): string => {
-  const ms = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(ms / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min ago`;
-  const h = Math.floor(mins / 60);
-  if (h < 24) return `${h} hour${h === 1 ? "" : "s"} ago`;
-  const d = Math.floor(h / 24);
-  return `${d} day${d === 1 ? "" : "s"} ago`;
-};
+/* relTime was a re-implementation of metrics/format.relLabel — adopted
+   2026-08-04. One copy-visible change: the shared form pluralises the minute
+   bucket ("5 mins ago"), matching the palette's recents list. */
+const relTime = (iso: string): string => relLabel(new Date(iso).getTime());
 
 export function BackupsPane() {
   const [root, setRoot] = useState(getBackupsRoot());

@@ -5,7 +5,7 @@
  * literals); hoisted here so a fix lands once and the specs stop drifting.
  * Pure functions — no React, no dials.
  */
-import { dayFromIndex, dayGap, dayIndex, isoWeek, monthKey, weekStart, yearKey } from "../metrics/dates";
+import { dayFromIndex, dayGap, dayIndex, monthKey, weekNum, weekStart, yearKey } from "../metrics/dates";
 import { deltaChip, decimal1, fmtDMY, fmtRange, groupInt, MONTHS_SHORT, type DeltaChip } from "../metrics/format";
 import {
   priorWindow,
@@ -63,7 +63,7 @@ export const initialism = (title: string, max = 4): string => {
 
 /** "wk 12 · 2024" for a week-start day. */
 export const bestWeekLabel = (weekStartDay: string): string => {
-  const { week, year } = isoWeek(weekStartDay);
+  const { week, year } = weekNum(weekStartDay);
   return `wk ${week} · ${year}`;
 };
 
@@ -347,7 +347,7 @@ export function buildTrendWindow(year: string, isYear: boolean, trendEnd: string
     for (let i = 0; i < buckets.length; i += 4) {
       const d0 = buckets[i][0];
       if (!d0) continue;
-      const iw = isoWeek(d0);
+      const iw = weekNum(d0);
       if (String(iw.year) !== year) continue;
       xticks.push({ i, label: `W${iw.week}` });
     }

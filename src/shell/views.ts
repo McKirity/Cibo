@@ -32,6 +32,7 @@
 import type { CadenceScale } from "../metrics/cadence";
 import { isoWeek, isoWeekMonday, isoWeeksInYear } from "../metrics/dates";
 
+import { pad2 } from "../metrics/clock";
 /** The 13 ruled sections, left-pane order ([[Settings & Configuration]]). */
 export const SETTINGS_SECTIONS = [
   "habits",
@@ -57,8 +58,6 @@ export type View =
    * date-addressed, and a finalized one is its cover wall. Absent = today.
    */
   | { kind: "daily"; day?: string }
-  /** The dev logging view — hosts the seed/activation panels until step 15. */
-  | { kind: "log" }
   | { kind: "habit"; key: string }
   /** The consumption catalog — the stats-vs-library split's second screen. */
   | { kind: "library"; habitKey: string }
@@ -109,7 +108,6 @@ export function viewTitle(
 
 // ── The route string form ([[Shell Mechanics]] § 2's address table) ──────────
 
-const pad2 = (n: number): string => String(n).padStart(2, "0");
 /**
  * A REAL calendar date, not merely a date-shaped string: `2026-13-99` matches
  * the shape and does not exist, and the first caller of `parseView` will be a
@@ -163,8 +161,6 @@ export function serializeView(view: View): string {
       return "map";
     case "settings":
       return `settings/${view.section}`;
-    case "log":
-      return "log";
   }
 }
 
@@ -185,7 +181,6 @@ export function parseView(route: string): View | null {
   if (head === "compare") return { kind: "compare" };
   if (head === "timers") return { kind: "timers" };
   if (head === "map") return { kind: "map" };
-  if (head === "log") return { kind: "log" };
   if (head === "settings") {
     // Bare `settings` = the first section, the drawn default face.
     if (arg == null || arg === "") return { kind: "settings", section: "habits" };

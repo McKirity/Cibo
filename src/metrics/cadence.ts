@@ -29,8 +29,9 @@ import {
   dayFromIndex,
   dayIndex,
   eachDay,
-  isoWeek,
+  weekNum,
   weekStart,
+  weekThursday,
 } from "./dates";
 import { MONTHS_LONG, MONTHS_SHORT } from "./format";
 
@@ -72,21 +73,22 @@ const doy = (day: string): number => {
   return dayIndex(day) - dayIndex(`${y}-01-01`) + 1;
 };
 
-/** ISO week number of a day (weeks start Monday, week 1 holds Jan 4). The
- *  week-year variant lives in `dates.isoWeek`; this is its number half. */
-export const isoWeekNum = (day: string): number => isoWeek(day).week;
+/** The DISPLAY week number of a day's (configured) week — dates.weekNum's
+ *  number half (ISO number of the week's Thursday; identical to the plain ISO
+ *  number under Monday start). The week-year variant is `dates.weekNum`. */
+export const isoWeekNum = (day: string): number => weekNum(day).week;
 
 /**
- * Majority-owned ISO week numbers for [from, to] — a week belongs to the
- * period holding its THURSDAY (the ratified week-majority geometry). Fixed
+ * Majority-owned week numbers for [from, to] — a week belongs to the
+ * period holding its THURSDAY (the ratified week-majority geometry; the
+ * Thursday follows the configured week start via dates.weekThursday). Fixed
  * 2026-07-30: the headers used the endpoints' own ISO weeks, which at year
  * edges read "weeks 1–1" (Dec 31 2024 is week 1 of 2025) and claimed weeks a
  * month does not own.
  */
 const ownedWeekNums = (from: string, to: string): { first: number; last: number } => {
-  const thuOfWeek = (day: string): string => dayFromIndex(dayIndex(weekStart(day)) + 3);
-  const firstThu = thuOfWeek(from) >= from ? thuOfWeek(from) : dayFromIndex(dayIndex(thuOfWeek(from)) + 7);
-  const lastThu = thuOfWeek(to) <= to ? thuOfWeek(to) : dayFromIndex(dayIndex(thuOfWeek(to)) - 7);
+  const firstThu = weekThursday(from) >= from ? weekThursday(from) : dayFromIndex(dayIndex(weekThursday(from)) + 7);
+  const lastThu = weekThursday(to) <= to ? weekThursday(to) : dayFromIndex(dayIndex(weekThursday(to)) - 7);
   return { first: isoWeekNum(firstThu), last: isoWeekNum(lastThu) };
 };
 
@@ -104,9 +106,10 @@ export function periodBounds(scale: CadenceScale, anchor: string): PeriodBounds 
   if (scale === "week") {
     from = weekStart(anchor);
     to = dayFromIndex(dayIndex(from) + 6);
-    // The ISO week-YEAR, not the week-start's calendar year — the week of Mon
-    // 2024-12-30 is "Week 1 · 2025", never "Week 1 · 2024" (fixed 2026-07-30).
-    label = `Week ${isoWeekNum(anchor)} · ${isoWeek(anchor).year}`;
+    // The week-YEAR, not the week-start's calendar year — the week of Mon
+    // 2024-12-30 is "Week 1 · 2025", never "Week 1 · 2024" (fixed 2026-07-30;
+    // weekNum carries the pair under either week start).
+    label = `Week ${weekNum(anchor).week} · ${weekNum(anchor).year}`;
     prevAnchor = dayFromIndex(dayIndex(from) - 7);
     nextAnchor = dayFromIndex(dayIndex(from) + 7);
     up.push(
@@ -164,7 +167,11 @@ export function majorityWeeks(bounds: PeriodBounds): string[] {
   let ws = weekStart(bounds.from);
   // step forward until past the period
   while (ws <= bounds.to) {
-    const thu = dayFromIndex(dayIndex(ws) + 3);
+    // weekThursday, never `ws + 3` — the offset is 3 only under a Monday start
+    // (4 under Sunday), and `ownedWeekNums` above already reads the dial. A
+    // hardcoded +3 made this test a WEDNESDAY under Sunday start, so the
+    // ribbon's columns disagreed with the header's own week numbers.
+    const thu = weekThursday(ws);
     if (thu >= bounds.from && thu <= bounds.to) out.push(ws);
     ws = dayFromIndex(dayIndex(ws) + 7);
   }

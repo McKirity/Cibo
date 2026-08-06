@@ -10,6 +10,7 @@
  * Pure; datetimes are the schema's local "YYYY-MM-DDTHH:MM[:SS]" strings.
  */
 import { dayIndex } from "./dates";
+import { sessionMinutes } from "./shapes";
 
 /** Minutes past midnight of a "YYYY-MM-DDTHH:MM[:SS]" local datetime. */
 export const clockMinutes = (dt: string): number =>
@@ -19,9 +20,25 @@ export const clockMinutes = (dt: string): number =>
 export const absMinutes = (dt: string): number =>
   dayIndex(dt.slice(0, 10)) * 1440 + clockMinutes(dt);
 
-/** Whole minutes spanned start → end; 0 when either bound is missing. */
+/**
+ * Whole minutes spanned start → end; 0 when either bound is missing.
+ *
+ * DELEGATES to the shape catalog (2026-08-04). This computed the span as
+ * `absMinutes(end) - absMinutes(start)` — WALL-CLOCK minutes, which read an
+ * hour long on a spring-forward night and an hour short on fall-back, while
+ * `shapes.sessionMinutes` (the catalog member every other duration surface
+ * reads: milestones, the cover wall, Compare, search) measured REAL ELAPSED
+ * time. The Sleep strip's derived readout agreed with the catalog, so the
+ * range dashboard was the only surface disagreeing — 8h00m against the same
+ * night's 7h00m elsewhere.
+ *
+ * Elapsed is canonical: a duration is time actually spent, and the catalog is
+ * the app's one-shape-written-once law. `absMinutes`/`clockMinutes` above are
+ * untouched — POSITION on the 24-hour wheel (circular means, the sleep-line
+ * geometry) is a different job, and wall-clock is right for it.
+ */
 export const durationMinutes = (s: { start?: string | null; end?: string | null }): number =>
-  s.start != null && s.end != null ? Math.max(0, absMinutes(s.end) - absMinutes(s.start)) : 0;
+  sessionMinutes({ measure_kind: "range", value: null, start: s.start, end: s.end });
 
 /** "HH:MM" from clock minutes (wrap-normalized onto 0–1439). */
 export const fmtHM = (clockMin: number): string => {

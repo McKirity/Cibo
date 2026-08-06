@@ -3,16 +3,16 @@
  * rail + content pane from the frozen `Final/frame.html`, with the Habits
  * section WIRED to the seeded active habits (click a habit → its dashboard).
  *
- * Deliberately partial — this is the container step 6's dashboards live in.
- * Still placeheld: **the month grid** (step 9, in progress) and **Settings**
- * (step 10). The Tools destinations all landed; the rail's ambience band is now
- * a bare flex absorber — **the vignette clock was retired 2026-08-01** at step
- * 9's open (user-ruled), taking `VignetteClock.tsx` and `--clock-max` with it.
+ * Born as step 6's container and FULLY TENANTED since: the month grid landed
+ * at step 9 (NavCalendar), Settings at step 10, and every Tools destination is
+ * live. The rail's ambience band is a bare flex absorber — **the vignette
+ * clock was retired 2026-08-01** at step 9's open (user-ruled), taking
+ * `VignetteClock.tsx` and `--clock-max` with it.
  *
  * The dev seed/activation panels ride the Log view — the working loop that
  * turns seeds into rail habits: seed rich → activate → click → dashboard.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode} from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
 import { Daily } from "../daily/Daily";
@@ -40,18 +40,19 @@ import { DangerConfirm } from "./DangerConfirm";
 import type { CadenceScale } from "../metrics/cadence";
 import { useHistory } from "./useHistory";
 import { HabitIcon, hasIcon } from "./habitIcons";
-import { Ico } from "./icons";
+import { Ico, ICONS } from "./icons";
 import { Titlebar } from "./Titlebar";
 import { NavCalendar } from "./NavCalendar";
 import { Ambience } from "../theme/Ambience";
 import { NotYetDashboard } from "./NotYetDashboard";
-import { LogView } from "./DevPanels";
 import { SettingsScreen } from "../settings/SettingsScreen";
 import { defaultLogDay } from "../settings/store";
 import { viewTitle, type SettingsSection, type View } from "./views";
+import { NAV_CREATOR_EVENT, NAV_SETTINGS_EVENT } from "./navRequest";
 import { requestManualArticle } from "../settings/manualContent";
-import { catchUpDays, unfinalizedQuery } from "../daily/catchUp";
+import { hasCatchUp, unfinalizedQuery } from "../daily/catchUp";
 import { hasErrors, subscribeErrors } from "../settings/errorLog";
+import { doctorErrorCount, subscribeDoctor } from "../db/doctor";
 import { todayLocal } from "../metrics/clock";
 import "./shell.css";
 // Routing reads the habit row's kind/sub_type (chunk 3) — the key sets are
@@ -59,7 +60,7 @@ import "./shell.css";
 // sub_type, simple/range off kind, exactly the derived-template rule. Coding's
 // 2026-07-22 downgrade lands it on the simple template beside Keyboard.
 
-export const activeHabitsQuery = evolu.createQuery((db) =>
+const activeHabitsQuery = evolu.createQuery((db) =>
   db
     .selectFrom("habits")
     .select(["id", "key", "name", "kind", "sub_type", "colour_slot", "icon", "archived"])
@@ -93,9 +94,13 @@ export function Shell() {
     contentRef.current?.scrollTo({ top: 0, left: 0 });
   }, [view]);
 
-  // If the selected habit gets archived out from under us, fall back to Daily.
-  // REPLACE, not navigate: the user did not ask to go here, so it must not
-  // become a history entry you can press "back" into (and bail out of again).
+  // The bail-out is for DELETED habits only since 2026-08-04 (user-ruled at
+  // the completeness audit, option A): an ARCHIVED habit's dashboard, library
+  // and entry pages stay browsable AND editable, wearing the .archband marker
+  // below — archive is soft and its data is legal to visit. A hard-deleted
+  // habit's screens are the dead routes. REPLACE, not navigate: the user did
+  // not ask to go here, so it must not become a history entry you can press
+  // "back" into (and bail out of again).
   useEffect(() => {
     const key =
       view.kind === "habit"
@@ -103,10 +108,30 @@ export function Shell() {
         : view.kind === "entry" || view.kind === "library"
           ? view.habitKey
           : null;
-    if (key != null && !active.some((h) => h.key === key)) {
+    if (key != null && !habits.some((h) => h.key === key)) {
       replaceView({ kind: "daily" });
     }
-  }, [view, active, replaceView]);
+  }, [view, habits, replaceView]);
+
+  // The archived marker's trigger. The simple/range/creation dashboards carry
+  // their own DRAWN archived faces (masthead chip · "streaks ended" tiles ·
+  // the honestly-empty trend, gamedev-stats FINAL) — the band would double-
+  // mark them. It dresses the surfaces with no face of their own: the library,
+  // the entry dashboard, and the consumption template (nothing was ever drawn
+  // for it — no seeded consumption habit archives).
+  const archivedHere = useMemo(() => {
+    const key =
+      view.kind === "habit"
+        ? view.key
+        : view.kind === "entry" || view.kind === "library"
+          ? view.habitKey
+          : null;
+    if (key == null) return false;
+    const h = habits.find((x) => x.key === key);
+    if (h == null || !h.archived) return false;
+    if (view.kind === "habit" && h.sub_type !== "consumption") return false;
+    return true;
+  }, [view, habits]);
 
   // Back/forward bindings: Alt+←/→ and mouse buttons 4/5 (the ruled set, minus
   // the chrome arrows below). `Ctrl+H` (was `Ctrl+Home`, user-ruled 2026-08-03) went live 2026-07-27 — its target is
@@ -225,13 +250,24 @@ export function Shell() {
   // What the hidden rail would still be signalling: the catch-up queue, and —
   // since step 10 slice 5 — the health dot, ORed in here as the comment that
   // stood in this spot always said it would be.
-  const unfinalized = useQuery(unfinalizedQuery);
-  const catchUpWaiting = catchUpDays(unfinalized, today).length > 0;
+  // The catch-up subscription lives in `CatchUpAttention` below, NOT here.
+  // Held at this level it re-rendered the ENTIRE content tree on any `days`
+  // write — every screen is inline JSX in this component's return, so a
+  // finalize (or any bookkeeping row) reached Daily's form mid-typing. That is
+  // this codebase's own recorded lesson: a live query is cheap on a dashboard
+  // and expensive on a form.
   // The health dot lights on ERROR SEVERITY only ("warnings wait quietly in
   // the surface" — [[App Health & Diagnostics]]). Evaluated at launch and
   // whenever the log changes; no polling, per the ruled run model.
-  const [healthWarn, setHealthWarn] = useState(() => hasErrors());
-  useEffect(() => subscribeErrors((rows) => setHealthWarn(rows.length > 0)), []);
+  //
+  // TWO producers since step 13, ORed: the recent-errors log and the Data
+  // Doctor's error-severity findings (the ruling names both — "failed backup
+  // verify, importer error, error-severity Data Doctor finding").
+  const [logWarn, setLogWarn] = useState(() => hasErrors());
+  const [doctorWarn, setDoctorWarn] = useState(() => doctorErrorCount() > 0);
+  useEffect(() => subscribeErrors((rows) => setLogWarn(rows.length > 0)), []);
+  useEffect(() => subscribeDoctor((n) => setDoctorWarn(n > 0)), []);
+  const healthWarn = logWarn || doctorWarn;
 
   /**
    * The one day door every surface routes through. The FUTURE is a dead route
@@ -262,6 +298,25 @@ export function Shell() {
     else if (view.kind === "daily" && view.day != null && view.day !== today)
       recordRecent({ kind: "day", day: view.day });
   }, [view, today]);
+
+  // The deep-action bridge (navRequest, 2026-08-04): components too deep to
+  // thread a callback through fire these; the Shell owns the View state.
+  useEffect(() => {
+    const onSettings = (e: Event) => {
+      const section = (e as CustomEvent<{ section?: SettingsSection }>).detail?.section;
+      if (section != null) setView({ kind: "settings", section });
+    };
+    const onCreator = () => {
+      setCreatorPending(true);
+      setView({ kind: "settings", section: "habits" });
+    };
+    window.addEventListener(NAV_SETTINGS_EVENT, onSettings);
+    window.addEventListener(NAV_CREATOR_EVENT, onCreator);
+    return () => {
+      window.removeEventListener(NAV_SETTINGS_EVENT, onSettings);
+      window.removeEventListener(NAV_CREATOR_EVENT, onCreator);
+    };
+  }, [setView]);
 
   // Memoized: the palette's rows memo depends on `nav`, so a fresh object
   // literal every Shell render would rebuild its rows per keystroke.
@@ -321,16 +376,20 @@ export function Shell() {
       {/* step 6a — the whole-window ambience layer (backdrop · timer backdrop);
           silent (null) for the art-free bundled pair */}
       <Ambience timers={view.kind === "timers"} />
-      <Titlebar
-        title={title}
-        canBack={canBack}
-        canForward={canForward}
-        onBack={back}
-        onForward={forward}
-        railCollapsed={railCollapsed}
-        onToggleRail={() => setRailCollapsed((c) => !c)}
-        attention={catchUpWaiting || healthWarn}
-      />
+      <CatchUpAttention today={today} healthWarn={healthWarn}>
+        {(attention) => (
+          <Titlebar
+            title={title}
+            canBack={canBack}
+            canForward={canForward}
+            onBack={back}
+            onForward={forward}
+            railCollapsed={railCollapsed}
+            onToggleRail={() => setRailCollapsed((c) => !c)}
+            attention={attention}
+          />
+        )}
+      </CatchUpAttention>
 
       <nav className="rail">
         {/* 1 · THE NAV CALENDAR — live since 2026-08-01 (step 9). It owns its
@@ -344,13 +403,6 @@ export function Shell() {
             openDay={openDay}
             onCadence={(scale, anchor) => setView({ kind: "cadence", scale, anchor })}
           />
-          {/* The dev tooling's only door until step 15's first-run setup
-              replaces it — never drawn, and it compiles out of a release. */}
-          {import.meta.env.DEV && (
-            <button className="cal-placeholder" onClick={() => setView({ kind: "log" })}>
-              dev log view
-            </button>
-          )}
         </div>
 
         {/* 2 · Habits */}
@@ -398,7 +450,7 @@ export function Shell() {
           )}
           {active.length === 0 && (
             <p className="cal-placeholder">
-              no active habits — seed + activate on the Log view
+              no active habits — restore one in Settings › Habits
             </p>
           )}
         </div>
@@ -411,7 +463,7 @@ export function Shell() {
               className={`tool${view.kind === "timers" ? " active" : ""}`}
               onClick={() => setView({ kind: "timers" })}
             >
-              <Ico d={["M10 2h4", "M12 14l3-3", "M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"]} />
+              <Ico d={ICONS.timer} />
               Timers
             </button>
             {/* "Statistics" is the drawn display label; "Comparing Statistics"
@@ -429,13 +481,14 @@ export function Shell() {
                 active state means "this is the current view", and this one
                 means "this overlay is open" — the same claim the rail is
                 making in both cases, which is where you are. Added 2026-08-03
-                so a theme can light it momentarily; render-neutral, since app
-                CSS styles `.tool.active` nowhere. */}
+                for themes; since 2026-08-04 app CSS styles `.tool.active`
+                itself (shell.css — wash + weight + accent, user-ruled at the
+                completeness audit), so this lights under every theme. */}
             <button
               className={`tool${paletteOpen ? " active" : ""}`}
               onClick={() => setPaletteOpen(true)}
             >
-              <Ico d={["M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16z", "m21 21-4.3-4.3"]} />
+              <Ico d={ICONS.search} />
               Search
             </button>
             <button
@@ -471,9 +524,26 @@ export function Shell() {
       </nav>
 
       <div className="content" ref={contentRef}>
+        {/* The archived band — ONE site dresses all three screen families
+            (habit · library · entry) rather than threading a prop into six
+            components. The word carries the state, never colour alone. */}
+        {archivedHere && (
+          <div className="archband">
+            <strong>Archived habit</strong> — browsing and editing stay open;{" "}
+            <button
+              className="doorlink"
+              onClick={() => setView({ kind: "settings", section: "habits" })}
+            >
+              restore it in Settings → Habits
+            </button>{" "}
+            to log again.
+          </div>
+        )}
         {view.kind === "habit" ? (
           (() => {
-            const h = active.find((x) => x.key === view.key);
+            // ALL habits, not `active` (2026-08-04): an archived habit's
+            // dashboard resolves its real template, not the not-yet face.
+            const h = habits.find((x) => x.key === view.key);
             // key by habit → a fresh mount per habit, so scope + type + heatmap
             // mode reset to All Time / All types on every swap.
             const openEntry = (id: string) => setView({ kind: "entry", id, habitKey: view.key });
@@ -543,10 +613,14 @@ export function Shell() {
             // "Land on the new habit's dashboard — it's live and loggable
             // immediately" ([[Habit Creator]] § Post-creation flow).
             onOpenHabit={(key) => setView({ kind: "habit", key })}
+            // The Data Doctor's fix actions — a finding's deep link to the
+            // row's edit surface ([[Data Doctor (Reduced)]]).
+            onOpenDay={openDay}
+            onOpenEntry={(id, habitKey) => setView({ kind: "entry", id, habitKey })}
             openCreator={creatorPending}
             onCreatorOpened={() => setCreatorPending(false)}
           />
-        ) : view.kind === "daily" ? (
+        ) : (
           <Daily
             key={view.day ?? today}
             dayKey={view.day}
@@ -555,8 +629,6 @@ export function Shell() {
               if (habitKey != null) setView({ kind: "entry", id, habitKey });
             }}
           />
-        ) : (
-          <LogView />
         )}
       </div>
 
@@ -659,3 +731,25 @@ function HabitButton({
   );
 }
 
+
+/**
+ * The catch-up half of the titlebar's attention dot, isolated (2026-08-04).
+ *
+ * The point is the SUBSCRIPTION BOUNDARY, not the markup: held in `Shell` this
+ * live query re-rendered every screen on any `days` write, because the whole
+ * content tree is inline JSX in Shell's return. Down here it re-renders one
+ * titlebar. `hasCatchUp` is the array-free predicate — the day list is never
+ * drawn at this level, so building it was waste on top of waste.
+ */
+function CatchUpAttention({
+  today,
+  healthWarn,
+  children,
+}: {
+  today: string;
+  healthWarn: boolean;
+  children: (attention: boolean) => ReactNode;
+}) {
+  const unfinalized = useQuery(unfinalizedQuery);
+  return <>{children(hasCatchUp(unfinalized, today) || healthWarn)}</>;
+}

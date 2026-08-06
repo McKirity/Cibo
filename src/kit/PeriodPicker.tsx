@@ -17,13 +17,13 @@
  */
 import { useRef, useState } from "react";
 import { pad2 } from "../metrics/clock";
-import { monthGridCells } from "../metrics/dates";
+import { monthGridCells, weekDayLetters } from "../metrics/dates";
 import { MONTHS_LONG, MONTHS_SHORT } from "../metrics/format";
 import { Ico, ICONS } from "../shell/icons";
 import { useDismiss } from "../shell/overlayHooks";
 import { RELATIVE_DAYS, type WindowCfg } from "./periodWindow";
 
-const DOW = ["M", "T", "W", "T", "F", "S", "S"];
+/* Header letters follow the configured week start (dates.weekDayLetters). */
 
 /* The calendar glyph KEEPS its own drawn path — it starts the rect at the
  * opposite corner to shell/icons' `calendar` (visually identical, path data
@@ -92,7 +92,7 @@ export function DayField({
             </span>
           </div>
           <div className="cgrid">
-            {DOW.map((d, i) => (
+            {weekDayLetters().map((d, i) => (
               <div className="cdow" key={i}>
                 {d}
               </div>

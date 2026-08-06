@@ -24,8 +24,7 @@ import { getImporterKey } from "./keys";
 
 const API = "https://www.googleapis.com/youtube/v3";
 
-const KEY_MISSING =
-  "YouTube API key not set — paste it in the dev panel (Log view → Dev: importer config).";
+const KEY_MISSING = "YouTube API key not set — add it in Settings → Importers.";
 
 /** The canonical seeded media-type string — see seed.ts's media picklist. */
 const TYPE_YOUTUBE = "Youtube";

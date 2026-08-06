@@ -780,8 +780,12 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
      * one tile per window below.
      */
     const win = wins[0];
+    // Hoisted (2026-08-04): loop-INVARIANT — same habit, same window every
+    // iteration — and each call filters the whole session set, so N split
+    // series meant N full-store scans instead of one. The Total tile below
+    // reuses it rather than computing a third time.
+    const whole = scopeTotal(picked[0].habit.id, win);
     series.forEach((s) => {
-      const whole = scopeTotal(picked[0].habit.id, win);
       const share = whole > 0 ? Math.round((s.total / whole) * 100) : 0;
       tiles.push({
         label: s.splitValue ?? s.label,
@@ -795,7 +799,7 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
     tiles.push({
       label: "Total",
       dotSlot: null,
-      value: round1(per(scopeTotal(picked[0].habit.id, win), win)),
+      value: round1(per(whole, win)),
       unit: measure.unit,
       subtitle: "",
     });

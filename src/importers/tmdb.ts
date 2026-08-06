@@ -5,8 +5,8 @@
  * [[Old Importer Survey]] § bugs not to inherit).
  *
  * Keyed: v3 `api_key` query-param style (not Bearer) — the key lives in
- * `app_meta` (synced plain, dev-panel entry until step 10's Settings →
- * Importers). A missing key is a LEGIBLE state, never a silent empty search:
+ * `app_meta` (synced plain; Settings → Importers owns entry). A missing key
+ * is a LEGIBLE state, never a silent empty search:
  * the source's `notice` names it, and a keyless fetch fails with the same
  * message.
  *
@@ -28,8 +28,7 @@ import { getImporterKey } from "./keys";
 const API = "https://api.themoviedb.org/3";
 const IMG = "https://image.tmdb.org/t/p";
 
-const KEY_MISSING =
-  "TMDB API key not set — paste it in the dev panel (Log view → Dev: importer config).";
+const KEY_MISSING = "TMDB API key not set — add it in Settings → Importers.";
 
 const poster = (path: string | null | undefined, size: "w342" | "w780"): string | null =>
   path ? `${IMG}/${size}${path}` : null;

@@ -12,7 +12,7 @@
  * WHAT IT PINS before deciding to delete it. It reads the stored keys back in
  * plain words; it does not re-render the query workspace.
  *
- * PALETTE — the per-action enable/disable toggles for the pinned ten-verb
+ * PALETTE — the per-action enable/disable toggles for the pinned nine-verb
  * inventory. **Disabling HIDES, never deletes** ([[Palette]]), so a re-enabled
  * verb returns unchanged. Verbs whose step has not landed are shown but locked
  * off: curating something that cannot run yet would be a promise the app can't
@@ -21,16 +21,16 @@
  */
 import { useState } from "react";
 import { useQuery } from "@evolu/react";
-import { Ico } from "../shell/icons";
-import { deletePreset, renamePreset, usePresets, type Preset } from "../compare/presets";
+import { Ico, ICONS } from "../shell/icons";
+import { deletePreset, renamePreset, usePresets, type Preset, AS_PREFIX, CS_PREFIX} from "../compare/presets";
 import { PALETTE_VERBS } from "../palette/verbs";
 import { hiddenFrom, paletteOffQuery, setVerbEnabled } from "./curation";
 
 // ── Presets ──────────────────────────────────────────────────────────────────
 
 export function PresetsPane() {
-  const cs = usePresets("cs_preset:");
-  const as = usePresets("as_preset:");
+  const cs = usePresets(CS_PREFIX);
+  const as = usePresets(AS_PREFIX);
   return (
     <div className="hscroll">
       <PresetGroup title="Comparing Statistics" rows={cs} empty="Saved from the Comparing Statistics workspace." />
@@ -111,7 +111,7 @@ function PresetRow({ preset }: { preset: Preset<unknown> }) {
     <div className="mitem">
       <div className="mrow">
         <button className="disc" data-tip="What it pins" onClick={() => setOpen((o) => !o)}>
-          <Ico d={["m9 18 6-6-6-6"]} />
+          <Ico d={ICONS.chevronRight} />
         </button>
         <span className="mid">
           {renaming ? (
@@ -143,7 +143,7 @@ function PresetRow({ preset }: { preset: Preset<unknown> }) {
         </span>
         <span className="macts">
           <button className="iconbtn danger" data-tip="Delete" onClick={() => deletePreset(preset)}>
-            <Ico d={["M3 6h18", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"]} />
+            <Ico d={ICONS.trash} />
           </button>
         </span>
       </div>

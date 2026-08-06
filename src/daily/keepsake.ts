@@ -11,7 +11,7 @@
  *      error" — a finalized day must not shout about a broken tile, and the
  *      lettermark fallback is a legitimate permanent look. The talkative half
  *      (a live preview and named rejection reasons) belongs to the PASTE SLOT,
- *      which is step 10 and is not built here.
+ *      which is Settings → Keepsake (KeepsakeEditor) and is not built here.
  *  2 · IT NEVER TRUSTS THE SHADOW ROOT. Encapsulation is not security: the
  *      shadow root exists so a snippet can carry its own `<style>` sealed from
  *      the app while custom properties still inherit through the boundary (the
@@ -166,7 +166,7 @@ export function substitute(snippet: string, v: KeepsakeValues): string {
       case "range-start-pct": return escapeHtml(v.rangeStartPct);
       case "range-end-pct": return escapeHtml(v.rangeEndPct);
       // An unknown token is left standing rather than blanked: it is visible in
-      // the paste preview (step 10) and harmless on the wall, where blanking it
+      // the paste preview (KeepsakeEditor) and harmless on the wall, where blanking it
       // would silently look like real-but-empty data.
       default: return whole;
     }
@@ -221,7 +221,8 @@ const cssIsSafe = (css: string): boolean => {
 };
 
 export interface SanitizeReport {
-  /** Anything removed — the paste slot's raw material (step 10). Unused here. */
+  /** Anything removed — the paste slot's raw material: KeepsakeEditor maps
+   *  these into named rejection reasons. Unused by the wall's silent path. */
   removed: string[];
 }
 
@@ -233,7 +234,7 @@ export interface SanitizeReport {
  * the only thing that agrees with the browser about where a tag ends, and every
  * regex sanitizer eventually disagrees with it.
  */
-export function sanitizeTree(root: Element, doc: Document): SanitizeReport {
+export function sanitizeTree(root: Element): SanitizeReport {
   const removed: string[] = [];
   const walk = (el: Element): void => {
     for (const child of Array.from(el.children)) {
@@ -277,7 +278,6 @@ export function sanitizeTree(root: Element, doc: Document): SanitizeReport {
     }
   };
   walk(root);
-  void doc;
   return { removed };
 }
 
@@ -294,12 +294,24 @@ export function renderSnippet(
   if (snippet == null || snippet.trim() === "") return null;
   try {
     const html = substitute(snippet, values);
-    const host = doc.createElement("div");
+    // PARSE INERT, THEN SANITIZE, THEN ADOPT. The fragment must never touch the
+    // live document before the gate runs: an element in a browsing context
+    // fetches img[src] and fires onerror/onload the moment innerHTML lands, so
+    // parsing into `doc` gave a hostile snippet one shot before sanitizeTree
+    // could strip it. A createHTMLDocument tree has no browsing context — no
+    // fetches, no handlers — so the gate now closes first. (The CSP is the
+    // second fence, but it rides production builds; dev loads Vite's devUrl,
+    // and the step-10 keepsake editor renders untrusted paste in dev.)
+    const inert = doc.implementation.createHTMLDocument("");
+    const host = inert.createElement("div");
     host.innerHTML = html;
-    const report = sanitizeTree(host, doc);
+    const report = sanitizeTree(host);
     if (host.children.length === 0) return null;
     const frag = doc.createDocumentFragment();
-    while (host.firstChild) frag.appendChild(host.firstChild);
+    for (let child = host.firstChild; child != null; child = host.firstChild) {
+      frag.appendChild(doc.importNode(child, true));
+      child.remove();
+    }
     return { node: frag, removed: report.removed };
   } catch {
     // Silence is the ruling. A snippet that cannot be drawn is a lettermark.

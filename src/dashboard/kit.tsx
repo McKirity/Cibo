@@ -9,6 +9,7 @@
  */
 import { useState, type CSSProperties } from "react";
 import { useBox } from "./useBox";
+import { heatRowLabels } from "../metrics/dates";
 import { CoverInner } from "../kit/CoverArt";
 import type {
   DistColumnSpec,
@@ -119,7 +120,7 @@ export function DistributionColumns({ columns }: { columns: DistColumnSpec[] }) 
               <div className="brow" key={i} title={r.tip}>
                 <span className="blabel">{r.label}</span>
                 <div className="btrack">
-                  <div className="bfill" style={{ width: `${r.pct}%`, background: `var(${r.colorVar})` }} />
+                  <div className="bfill" style={{ width: `${r.pct}%`, ["--series" as string]: `var(${r.colorVar})` }} />
                 </div>
                 <span className="bval">{r.value}</span>
               </div>
@@ -231,14 +232,27 @@ function TrendChart({
   return (
     <>
       <div className="chartwrap">
-        <svg ref={ref} className="linechart" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet">
+        {/* `--trend-hue` + the .trendline class (2026-08-03): the lead trace is
+            the ONLY path a theme should be able to single out. Before this the
+            kit drew every series as a bare `path[fill="none"]`, so a theme
+            reaching for the lead could only match all of them — the Blame! v5
+            pass did exactly that and bloomed supporting series by accident.
+            The class names the lead; the custom property hands over its hue so
+            a theme paints in the CHART'S colour, not its own first slot. */}
+        <svg
+          ref={ref}
+          className="linechart"
+          viewBox={`0 0 ${w} ${h}`}
+          preserveAspectRatio="xMidYMid meet"
+          style={{ ["--trend-hue" as string]: `var(${color})` }}
+        >
           {w > 0 && (
             <>
               {yVals.map((v, i) => (
                 <line key={i} x1={pad} x2={w - pad} y1={Y(v)} y2={Y(v)} stroke="var(--divider)" strokeWidth={1} />
               ))}
               <path d={dArea} fill={`color-mix(in oklch, var(${color}), transparent var(--chart-area-mix))`} />
-              <path d={dLine} fill="none" stroke={`var(${color})`} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+              <path className="trendline" d={dLine} fill="none" stroke={`var(${color})`} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
             </>
           )}
         </svg>
@@ -331,6 +345,54 @@ const HEAT_WORDS = ["no play", "~45 min", "1 h 30", "3 h 10", "5 h+"];
 export const catCellFill = (slotVar: string, level: number): string =>
   `color-mix(in oklch, var(${slotVar}), var(--window-background) var(--cat-bg-${level}))`;
 
+/**
+ * THE HEAT POOL'S CENTRE — where the block's activity actually concentrates,
+ * published as `--pool-x` / `--pool-y` on the `.heat` element.
+ *
+ * User-ruled 2026-08-03 ("Yes, follow real data"). It exists for the theme
+ * layer: a theme may paint the heatmap as ONE emitting surface whose glow
+ * pools over the hot region ([[Blame!]]'s collective heat glow — "the chart
+ * itself glows, emitting where it's strongest"). Publishing the centroid is
+ * the app's whole share of that: no theme is named here, nothing renders
+ * differently without a theme that opts in, and a theme that ignores these
+ * properties is unaffected.
+ *
+ * CUBE-WEIGHTED so hot cells dominate — a linear mean drifts toward the
+ * middle of any well-spread year and stops meaning "where it's strongest".
+ * Level 0 contributes nothing (no activity, no burn) and hidden padding cells
+ * (level -1) are skipped. An empty grid publishes NOTHING, so the theme's own
+ * fallback placement stands rather than collapsing to a corner.
+ *
+ * Grid order is the one `heatmapGrid` builds and `.heat .cells` renders:
+ * row-major over 7 weekday rows (`for row { for col }` against
+ * `grid-template-columns: repeat(N,1fr)`), so index → col = i % weeks,
+ * row = floor(i / weeks).
+ *
+ * `levelOf` is explicit because the four heat families disagree on what a
+ * level IS: the intensity map stores one, the creation/entry maps store one
+ * PER MEASURE (so the pool must follow the toggle the user is looking at),
+ * and the measureless map stores a boolean — every logged day burns alike.
+ */
+export function heatPoolStyle<T>(cells: T[], levelOf: (cell: T) => number): CSSProperties | undefined {
+  const weeks = Math.max(1, Math.round(cells.length / 7));
+  let wx = 0;
+  let wy = 0;
+  let total = 0;
+  for (let i = 0; i < cells.length; i++) {
+    const level = levelOf(cells[i]);
+    if (!(level > 0)) continue;
+    const weight = level * level * level;
+    wx += weight * (((i % weeks) + 0.5) / weeks);
+    wy += weight * ((Math.floor(i / weeks) + 0.5) / 7);
+    total += weight;
+  }
+  if (!total) return undefined;
+  return {
+    ["--pool-x" as string]: `${((wx / total) * 100).toFixed(1)}%`,
+    ["--pool-y" as string]: `${((wy / total) * 100).toFixed(1)}%`,
+  } as CSSProperties;
+}
+
 interface HeatCell {
   day: string | null;
   minutes: number;
@@ -395,10 +457,12 @@ export function Heatmap({
 
   return (
     <Panel title="Activity heatmap" right={header}>
-      <div className="heat">
+      {/* --pool-x/--pool-y: the activity centroid, for themes that paint the
+          block as one emitting surface (see heatPoolStyle). Inert otherwise. */}
+      <div className="heat" style={heatPoolStyle(cells, (c) => c.level)}>
         <div className="weekdays">
           <span className="wd" />
-          {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((d, i) => (
+          {heatRowLabels().map((d, i) => (
             <span className="wd" key={i}>
               {d}
             </span>

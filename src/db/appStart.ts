@@ -24,6 +24,7 @@
 import { NonEmptyString100, NonEmptyString1000, type Evolu } from "@evolu/common";
 import { Schema } from "./schema";
 
+import { pad2 } from "../metrics/clock";
 // Taken as a parameter, never the singleton, so the mock harness can drive it
 // (the derivedKeyboard.ts precedent).
 type CiboEvolu = Evolu<typeof Schema>;
@@ -32,8 +33,7 @@ const APP_START_KEY = "app_started";
 
 /** Local calendar date of a timestamp — the store speaks local wall-clock. */
 const toDateOnly = (d: Date): string => {
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 };
 
 /**

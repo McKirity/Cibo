@@ -6,9 +6,9 @@
  * walk: stable book uuid = the missing dedup key, richer metadata, faster
  * scans).
  *
- * The library path is per-device ([[Storage & Filesystem Layout]]); its real
- * home is Settings → Importers (step 10) — until then a localStorage
- * stand-in set from the dev panel (the established per-device doctrine).
+ * The library path is per-device ([[Storage & Filesystem Layout]]); the
+ * control is Settings → Importers, the store the per-device settings file
+ * (settings/deviceStore, 2026-08-04).
  *
  * Field map ([[Importer Field Mapping]] §4): title · authors → creators ·
  * **tags → genre, IMPORTED** (the user's curated Calibre tags; unknown
@@ -29,19 +29,15 @@
 import type { FetchOutcome, ImportCandidate, ImporterSource } from "./types";
 import { cleanTitle } from "./titles";
 import { cleanDescription } from "./text";
+import { deviceGet, deviceSet } from "../settings/deviceStore";
 
 const PATH_KEY = "cibo.dev.calibrePath";
 
-const PATH_MISSING =
-  "Calibre library folder not set — pick it in the dev panel (Log view → Dev: importer config).";
+const PATH_MISSING = "Calibre library folder not set — pick it in Settings → Importers.";
 
 export const getCalibrePath = (): string | null => {
-  try {
-    const v = localStorage.getItem(PATH_KEY);
-    if (v != null && v.trim() !== "") return v;
-  } catch {
-    /* fall through to the env fallback */
-  }
+  const v = deviceGet(PATH_KEY);
+  if (v != null && v.trim() !== "") return v;
   // .env.local dev fallback (per-device like the path itself; gitignored).
   // Verified against the real library at entry (2026-08-01): 151 books,
   // #words = custom_column_1, all link tables as calibre_scan expects.
@@ -50,12 +46,7 @@ export const getCalibrePath = (): string | null => {
 };
 
 export const setCalibrePath = (path: string | null): void => {
-  try {
-    if (path == null) localStorage.removeItem(PATH_KEY);
-    else localStorage.setItem(PATH_KEY, path);
-  } catch {
-    /* per-device sugar */
-  }
+  deviceSet(PATH_KEY, path);
   scanCache = null; // a new library means a new catalog
 };
 

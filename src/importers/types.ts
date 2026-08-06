@@ -155,11 +155,14 @@ export interface ImporterSource {
   notice?(existingPairs: ReadonlySet<string>): Promise<string | null>;
 }
 
-/** Per-item live status the modal's progress rows render. */
+/** Per-item live status the modal's progress rows render.
+ *  NO `retrying` PHASE (deleted 2026-08-04): the ONE ruled backoff retry lives
+ *  inside `http.ts` and is invisible to the engine, so nothing could ever emit
+ *  it — the modal carried two branches for a state that could not occur. If a
+ *  retry ever needs to surface, `http` has to report it upward first. */
 export type ItemState =
   | { phase: "queued" }
   | { phase: "importing" }
-  | { phase: "retrying"; detail: string }
   | { phase: "added" }
   | { phase: "adopted" }
   | { phase: "skipped"; reason: string }

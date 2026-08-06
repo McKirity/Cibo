@@ -2,9 +2,9 @@
  * PER-DEVICE settings — the local tier (Build step 10, slice 1).
  *
  * The roster: [[Sync & Per-Device Settings]] — appearance levers + machine
- * facts stay on the device. localStorage is the ESTABLISHED stand-in until the
- * per-device file exists (the library view state's doctrine); this module is
- * where those keys now live so the real file swap is one file's edit.
+ * facts stay on the device. Since 2026-08-04 the store is the REAL per-device
+ * file (settings/deviceStore — settings.json; localStorage passthrough only
+ * outside Tauri). The localStorage stand-in era is over.
  *
  * Members already living elsewhere, deliberately NOT moved: the theme pick +
  * themes root (theme/loader.ts) · compact (theme/compact.ts) · the Calibre
@@ -25,25 +25,11 @@
  */
 import { withAppWindow } from "../shell/safeWindow";
 import { LUCIDE_VERSION } from "../shell/habitIcons";
+import { deviceGet as lsGet, deviceSet as lsSet, inTauri } from "./deviceStore";
 
-const inTauri = (): boolean =>
-  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-
-const lsGet = (key: string): string | null => {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-};
-const lsSet = (key: string, value: string | null): void => {
-  try {
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, value);
-  } catch {
-    /* per-device sugar */
-  }
-};
+import { pad2 } from "../metrics/clock";
+// inTauri is imported from settings/deviceStore (the one declaration; it lives
+// there because the boot shim needs a dependency-free module). Was a local copy.
 
 // ── reduce-effects ───────────────────────────────────────────────────────────
 
@@ -216,6 +202,20 @@ export const setBannerFade = (pct: number | null): void => {
   applyBannerFade();
 };
 
+// ── writing rail banner ──────────────────────────────────────────────────────
+
+/**
+ * The creation entry dashboard's rail banner (the dissolve band) — built per
+ * the 2026-07-23 ruling "Build it, but I want the option to disable it"; the
+ * disable half landed 2026-08-04 (the completeness audit). Absent key = ON,
+ * the spec-level default the banner shipped with. Read at spec build
+ * (dashboard/entrySpec.ts), so a toggle takes effect on the next dashboard
+ * mount — no live re-render owed.
+ */
+export const RAIL_BANNER_KEY = "cibo.railBanner";
+export const getRailBanner = (): boolean => lsGet(RAIL_BANNER_KEY) !== "0";
+export const setRailBanner = (on: boolean): void => lsSet(RAIL_BANNER_KEY, on ? "1" : "0");
+
 /** The theme's own default, for the slider's resting position. */
 export const themeBannerFade = (): number => {
   const raw = getComputedStyle(document.documentElement)
@@ -270,8 +270,7 @@ export interface LucideSeen {
 
 const localDate = (): string => {
   const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 };
 
 /** Reconcile at launch; returns what the Icons tab should show. */

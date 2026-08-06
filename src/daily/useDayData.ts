@@ -48,7 +48,14 @@ const definitionsQuery = evolu.createQuery((db) =>
     .select(["id", "habit_fk", "key", "label", "data_type", "createdAt"])
     .where("scope", "=", "session")
     .where("isDeleted", "is not", 1)
-    .orderBy("createdAt"),
+    // Declaration order — Stage before Wiki, as the FINAL draws. `createdAt`
+    // alone does NOT deliver it: a seed batch inserts a habit's definitions in
+    // one synchronous transaction, so their timestamps TIE and SQLite breaks
+    // the tie however it likes — which is how Writing's Kind switch came up
+    // Wiki-first. The key tiebreaker makes the order deterministic (the table
+    // carries no declaration-order column to read instead).
+    .orderBy("createdAt")
+    .orderBy("key"),
 );
 
 const vocabQuery = evolu.createQuery((db) =>

@@ -10,11 +10,11 @@
  * [[Shell Mechanics]] § 2), so the left pane navigates; tabs inside a pane are
  * local state, never routes.
  *
- * SLICE 1 PANES: Tracking · Appearance · Timers · Developer (the pure
- * control stacks — every stand-in control the dashboards deferred here).
- * The other nine sections render their door + a quiet pending note; they land
- * in the later slices (Manage/creator · vocab/presets/palette/importers/
- * whimsy · health · help). The note is build glue, not a drawn state.
+ * ALL 13 SECTIONS LIVE since 2026-08-04 (built in five slices, Tracking ·
+ * Appearance · Timers · Developer first). The one pending face left is
+ * Storage, which waits on step 14's cloud root — `PENDING` below is its
+ * single entry, and the quiet note it renders is build glue, not a drawn
+ * state.
  *
  * Tracking's tabs are Periods · Metrics · LOGGING — the third is the
  * 2026-07-27 autosave ruling's home ([[Settings & Configuration]] § Tracking),
@@ -22,7 +22,7 @@
  */
 import { useEffect, useState } from "react";
 import { useQuery } from "@evolu/react";
-import { Ico } from "../shell/icons";
+import { Ico, ICONS } from "../shell/icons";
 import { Menu } from "../kit/Menu";
 import {
   clampDayCutoff,
@@ -32,7 +32,6 @@ import {
   DAY_CUTOFF_KEY,
   LIST_CAP_DEFAULT,
   LIST_CAP_KEY,
-  QUARTER_SCHEME_KEY,
   syncedSettingsQuery,
   WAVE_GAP_DEFAULT,
   WAVE_GAP_KEY,
@@ -47,10 +46,12 @@ import {
   getParityZoom,
   getPomoBreak,
   getPomoWork,
+  getRailBanner,
   getReduceEffects,
   getSignalStyle,
   getUiScale,
   setBannerFade,
+  setRailBanner,
   setForceOpaque,
   setMacBookPreview,
   setParityZoom,
@@ -63,7 +64,7 @@ import {
   UI_SCALE_STEP,
   type SignalStyle,
 } from "./local";
-import { getPick, scanThemes, setTheme, type ThemeEntry } from "../theme/loader";
+import { getPick, getThemesRoot, scanThemes, setTheme, setThemesRoot, type ThemeEntry } from "../theme/loader";
 import { getCompactMode, setCompactMode, type CompactMode } from "../theme/compact";
 import {
   autosaveQuery,
@@ -91,9 +92,9 @@ import "./settings.css";
 
 export const SECTIONS: { key: SettingsSection; name: string; icon: string[] }[] = [
   { key: "habits", name: "Habits", icon: ["M8 6h13", "M8 12h13", "M8 18h13", "M3 6h.01", "M3 12h.01", "M3 18h.01"] },
-  { key: "tracking", name: "Tracking", icon: ["M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z", "M16 2v4", "M8 2v4", "M3 10h18"] },
+  { key: "tracking", name: "Tracking", icon: ICONS.calendar },
   { key: "appearance", name: "Appearance", icon: ["M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z", "M12 2v2", "M12 20v2", "m4.9 4.9 1.4 1.4", "m17.7 17.7 1.4 1.4", "M2 12h2", "M20 12h2", "m6.3 17.7-1.4 1.4", "m19.1 4.9-1.4 1.4"] },
-  { key: "timers", name: "Timers", icon: ["M10 2h4", "M12 14l3-3", "M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"] },
+  { key: "timers", name: "Timers", icon: ICONS.timer },
   { key: "whimsy", name: "Whimsy", icon: ["M12 3l2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2z"] },
   { key: "importers", name: "Importers", icon: ["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "m7 10 5 5 5-5", "M12 15V3"] },
   { key: "backups", name: "Backups", icon: ["M2 5a1 1 0 0 1 1-1h18a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z", "M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9", "M10 13h4"] },
@@ -105,9 +106,10 @@ export const SECTIONS: { key: SettingsSection; name: string; icon: string[] }[] 
   { key: "help", name: "Help", icon: ["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z", "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3", "M12 17h.01"] },
 ];
 
-/** What each pending section will hold — the door's one honest line. */
+/** What each pending section will hold — the door's one honest line.
+ *  (The backups row left 2026-08-04: step 12 shipped its pane, so the string
+ *  had been unreachable dead data.) */
 const PENDING: Partial<Record<SettingsSection, string>> = {
-  backups: "Restore from backup… and the retention dials (arrives with step 12).",
   storage: "The cloud root picker (arrives with step 14's readiness checkpoint).",
 };
 
@@ -115,6 +117,8 @@ export function SettingsScreen({
   section,
   onSection,
   onOpenHabit,
+  onOpenDay,
+  onOpenEntry,
   openCreator = false,
   onCreatorOpened,
 }: {
@@ -122,6 +126,9 @@ export function SettingsScreen({
   onSection: (s: SettingsSection) => void;
   /** Post-creation flow: "land on the new habit's dashboard" (ruled). */
   onOpenHabit?: (habitKey: string) => void;
+  /** Health → Data: a finding's deep link to the row's edit surface (step 13). */
+  onOpenDay?: (date: string) => void;
+  onOpenEntry?: (id: string, habitKey: string) => void;
   /** Arrived from the palette's "New habit" verb — open the creator on mount. */
   openCreator?: boolean;
   onCreatorOpened?: () => void;
@@ -186,7 +193,13 @@ export function SettingsScreen({
           </Pane>
         ) : section === "health" ? (
           <Pane title="Health">
-            <HealthPane />
+            <HealthPane
+              onOpenDay={onOpenDay}
+              onOpenEntry={onOpenEntry}
+              // The habit editor and the vocabulary lists are both tabs of the
+              // Habits section, so both fix targets land there.
+              onOpenHabits={() => onSection("habits")}
+            />
           </Pane>
         ) : section === "help" ? (
           <Pane title="Help">
@@ -214,8 +227,9 @@ const DEVMARK_ICON = [
   "M12 16v4",
 ];
 
-/** kit-mark-device — synced is the unmarked default; this marks what stays. */
-function DevMark() {
+/** kit-mark-device — synced is the unmarked default; this marks what stays.
+ *  EXPORTED 2026-08-04: ImportersPane had its own byte-identical copy. */
+export function DevMark() {
   return (
     <span className="devmark">
       <Ico d={DEVMARK_ICON} />
@@ -238,7 +252,7 @@ function Stepper({
       </button>
       <span className="stepval">{value}</span>
       <button className="stepbtn" data-tip="Increase" onClick={() => onStep(1)}>
-        <Ico d={["M12 5v14", "M5 12h14"]} />
+        <Ico d={ICONS.plus} />
       </button>
     </span>
   );
@@ -319,7 +333,7 @@ function Select({
     <span className="selwrap">
       <button className="selectbtn" onClick={() => setOpen((o) => !o)}>
         {label}
-        <Ico d={["m6 9 6 6 6-6"]} />
+        <Ico d={ICONS.chevron} />
       </button>
       {open && (
         <Menu
@@ -352,7 +366,7 @@ function PendingPane({ section }: { section: SettingsSection }) {
   return (
     <Pane title={meta?.name ?? "Settings"}>
       <p className="pending">
-        Not built yet — this pane arrives later in step 10.
+        Not built yet — this pane arrives with a later step.
         {PENDING[section] != null && (
           <>
             {" "}
@@ -396,7 +410,7 @@ function HabitsPane({
               setCreating(true);
             }}
           >
-            <Ico d={["M12 5v14", "M5 12h14"]} />
+            <Ico d={ICONS.plus} />
             New habit
           </button>
         </div>
@@ -522,16 +536,9 @@ function TrackingPane() {
                   />
                 </span>
               </div>
-              <div className="crow two">
-                <span className="clabel">Quarters</span>
-                <span className="cright">
-                  <Select
-                    label="Calendar · Jan · Apr · Jul · Oct"
-                    items={[{ key: "calendar", label: "Calendar · Jan · Apr · Jul · Oct", selected: true }]}
-                    onPick={(k) => write(QUARTER_SCHEME_KEY, k)}
-                  />
-                </span>
-              </div>
+              {/* The Quarters row is STRUCK (user-ruled 2026-08-04, the
+                  completeness audit): quarters are calendar, fixed — the
+                  control offered exactly one option and nothing read it. */}
               <div className="crow two">
                 <span className="clabel">Day cutoff</span>
                 <span className="cright">
@@ -593,16 +600,18 @@ function TrackingPane() {
   );
 }
 
-// ── Appearance — the six per-device levers ───────────────────────────────────
+// ── Appearance — the seven per-device levers ─────────────────────────────────
 
 function AppearancePane() {
   const [themes, setThemes] = useState<ThemeEntry[]>([]);
   const [pick, setPick] = useState(getPick());
+  const [themesRoot, setThemesRootState] = useState(getThemesRoot());
   const [scale, setScale] = useState(getUiScale());
   const [compact, setCompact] = useState<CompactMode>(getCompactMode());
   const [reduce, setReduce] = useState(getReduceEffects());
   const [opaque, setOpaque] = useState(getForceOpaque());
   const [fade, setFade] = useState<number>(() => getBannerFade() ?? themeBannerFade());
+  const [railBanner, setRailBannerState] = useState(getRailBanner());
 
   useEffect(() => {
     scanThemes().then(
@@ -632,6 +641,60 @@ function AppearancePane() {
                     );
                   }}
                 />
+              </span>
+            </div>
+            {/* The drop-in themes ROOT - the ONE surviving dev-panel stand-in,
+                re-homed here when the dev panel was deleted (2026-08-04,
+                user-ruled "no longer need the dev panel at all"). Step 14's
+                cloud root supersedes it, on the Backups pane's folder-picker
+                precedent. recursive: true is load-bearing - without it the
+                scan can list the root but not read inside a theme, silently
+                skipping every folder (paid for at the 6a decoration test). */}
+            <div className="crow">
+              <span className="clabel">Drop-in folder</span>
+              <DevMark />
+              <span className="cright">
+                {themesRoot != null && <span className="field">{themesRoot}</span>}
+                <button
+                  className="btn-plain btn-sm"
+                  onClick={() => {
+                    void (async () => {
+                      try {
+                        const { open } = await import("@tauri-apps/plugin-dialog");
+                        const dir = await open({
+                          directory: true,
+                          recursive: true,
+                          title: "Pick the drop-in themes folder",
+                        });
+                        if (typeof dir === "string") {
+                          setThemesRoot(dir);
+                          setThemesRootState(dir);
+                          const sc = await scanThemes();
+                          setThemes(sc.themes);
+                        }
+                      } catch (e) {
+                        console.error("Settings: themes-root pick failed", e);
+                      }
+                    })();
+                  }}
+                >
+                  Browse…
+                </button>
+                {themesRoot != null && (
+                  <button
+                    className="btn-plain btn-sm"
+                    onClick={() => {
+                      setThemesRoot(null);
+                      setThemesRootState(null);
+                      scanThemes().then(
+                        (sc) => setThemes(sc.themes),
+                        (e) => console.error("Settings: theme rescan failed", e),
+                      );
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
               </span>
             </div>
             <div className="crow">
@@ -716,6 +779,23 @@ function AppearancePane() {
                 />
               </span>
             </div>
+            <div className="crow">
+              <span className="clabel">Writing rail banner</span>
+              <DevMark />
+              <span className="cright">
+                <Seg
+                  value={railBanner ? "on" : "off"}
+                  options={[
+                    { v: "on", label: "On" },
+                    { v: "off", label: "Off" },
+                  ]}
+                  onPick={(v) => {
+                    setRailBanner(v === "on");
+                    setRailBannerState(v === "on");
+                  }}
+                />
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -788,9 +868,58 @@ function TimersPane() {
 
 // ── Developer — MacBook preview · parity zoom ────────────────────────────────
 
+// The rich seeder and the feed re-capture moved here when the hidden dev-panel
+// surface was DELETED (2026-08-04, user-ruled "no longer need the dev panel at
+// all"): the seeder survives because Hardening's full-scope seeding pass is
+// user-ruled work; re-capture because changing the whimsy location otherwise
+// only applies at the next day's fetch. Seeding stays DEV-gated - a release
+// build must not offer a control that floods a real store with fixture rows -
+// and the seeder module loads on click, so it stays out of the launch graph.
 function DeveloperPane() {
   const [preview, setPreview] = useState(getMacBookPreview());
   const [parity, setParity] = useState(getParityZoom());
+  const [seedStatus, setSeedStatus] = useState("");
+  const [seedBusy, setSeedBusy] = useState(false);
+  const runSeed = (clear: boolean) => {
+    void (async () => {
+      setSeedBusy(true);
+      setSeedStatus("working… (this touches thousands of rows)");
+      try {
+        const { evolu } = await import("../db/evolu");
+        const mod = await import("../db/seedRich");
+        if (clear) {
+          const r = await mod.clearRichSeed(evolu);
+          setSeedStatus(`Cleared ${r.removed} rows.`);
+        } else {
+          const r = await mod.seedRich(evolu);
+          setSeedStatus(
+            `Seeded ${r.entries} entries · ${r.sessions} sessions · ${r.subunits} categoricals · ${r.days} finalized days (cleared ${r.clearedFirst} first).`,
+          );
+        }
+      } catch (e) {
+        setSeedStatus(`error: ${String(e)}`);
+        console.error(e);
+      } finally {
+        setSeedBusy(false);
+      }
+    })();
+  };
+  const [feedStatus, setFeedStatus] = useState("");
+  const recaptureFeeds = () => {
+    void (async () => {
+      setFeedStatus("re-fetching…");
+      try {
+        const feeds = await import("../daily/feeds");
+        const { loadWhimsyConfig } = await import("../daily/whimsyConfig");
+        await feeds.devClearTodayFeeds();
+        await feeds.ensureTodayFeeds(loadWhimsyConfig());
+        setFeedStatus("done - today's snapshot re-captured");
+      } catch (e) {
+        setFeedStatus(`error: ${String(e)}`);
+        console.error(e);
+      }
+    })();
+  };
   return (
     <Pane title="Developer">
       <div className="pbody">
@@ -828,6 +957,31 @@ function DeveloperPane() {
               />
             </span>
           </div>
+          <div className="crow">
+            <span className="clabel">Re-capture feeds</span>
+            <DevMark />
+            <span className="cright">
+              {feedStatus !== "" && <span className="mgtag">{feedStatus}</span>}
+              <button className="btn-plain btn-sm" onClick={recaptureFeeds}>
+                ↻ Re-capture
+              </button>
+            </span>
+          </div>
+          {import.meta.env.DEV && (
+            <div className="crow">
+              <span className="clabel">Rich seeder</span>
+              <DevMark />
+              <span className="cright">
+                {seedStatus !== "" && <span className="mgtag">{seedStatus}</span>}
+                <button className="btn-plain btn-sm" disabled={seedBusy} onClick={() => runSeed(false)}>
+                  Seed
+                </button>
+                <button className="btn-plain btn-sm" disabled={seedBusy} onClick={() => runSeed(true)}>
+                  Clear
+                </button>
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </Pane>

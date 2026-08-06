@@ -24,7 +24,7 @@
  * SOURCES (network-tier forks A/B/C, user-ruled 2026-07-27):
  *  · weather — Open-Meteo (keyless; bare coordinates in, per the no-geocoding
  *    ruling). Values snapshot in CELSIUS canonically; the display unit is a
- *    view concern (`WhimsyConfig.tempUnit` until the real Settings row).
+ *    view concern (`WhimsyConfig.tempUnit` — Settings → Whimsy's row).
  *  · horoscope — the old plugin's keyless API, which moved:
  *    `horoscope-app-api.vercel.app` now 308-redirects to `freehoroscopeapi.com`
  *    (verified live 2026-07-27), so the new host is fetched directly. The

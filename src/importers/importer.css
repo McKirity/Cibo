@@ -119,7 +119,8 @@
 .importmo .pastewrap{display:flex; flex-direction:column; gap:var(--space-5);}
 .importmo .pastebox{min-height:200px; background:var(--inset-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); box-shadow:var(--shadow-inset); padding:var(--space-5) var(--space-6); color:var(--text-secondary); font-family:var(--font-mono); font-size:var(--size-small); line-height:1.9; resize:vertical; outline:none;}
 .importmo .pastehelp{font-size:var(--size-small); color:var(--text-muted); margin:0;}
-.importmo .pastehelp b{color:var(--text-secondary); font-weight:var(--weight-medium);}
+/* `.pastehelp b` deleted 2026-08-04 — pasteHelp renders as plain text, so the
+   element it styled cannot exist. */
 .importmo .imp-lineerrs{font-size:var(--size-small); color:var(--danger);}
 .importmo .imp-lineerrs p{margin:0 0 var(--space-2);}
 
@@ -171,9 +172,6 @@
 .importmo .failbox .fmsg b{color:var(--text-strong); font-weight:var(--weight-medium);}
 .importmo .failbox .probemsg{color:var(--text-muted);}
 
-/* the AniList quirks block (anime area only — lands with that source) */
-.importmo .quirks{margin-top:var(--space-6); background:var(--inset-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); padding:var(--space-5) var(--space-6);}
-.importmo .quirks .qh{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.08em; font-weight:var(--weight-bold); color:var(--text-muted); margin:0 0 var(--space-3);}
-.importmo .quirks ul{margin:0; padding-left:var(--space-6); color:var(--text-secondary); font-size:var(--size-small);}
-.importmo .quirks li + li{margin-top:var(--space-2);}
-.importmo .quirks b{color:var(--text-strong); font-weight:var(--weight-medium);}
+/* The AniList quirks block (5 rules) was DELETED 2026-08-04 (the third audit):
+   its comment read "lands with that source", AniList shipped at step 8's close
+   on 2026-08-01, and the block never landed — no `quirks`/`qh` markup exists. */

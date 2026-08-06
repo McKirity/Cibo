@@ -19,14 +19,8 @@ import { type HabitId } from "../db/schema";
 import type { SessionRow } from "../metrics/shapes";
 import type { CreationEntryRow, SessionDef } from "./creationSpec";
 
-const finalizedDaysQuery = evolu.createQuery((db) =>
-  db
-    .selectFrom("days")
-    .select(["date"])
-    .where("finalized", "=", 1)
-    .where("isDeleted", "is not", 1),
-);
 
+import { finalizedDaysQuery } from "./queries";
 export interface CreationData {
   ready: boolean;
   name: string;
@@ -107,7 +101,11 @@ export function useCreationData(habitKey: string): CreationData {
           // the FINAL draws), THEN vocab order within each. Ordering by vocab
           // sort_order alone interleaved the definitions, so panel order — and
           // whichever panel got a given default — was effectively arbitrary.
+          // The key tiebreaker is load-bearing: a seed batch writes a habit's
+          // definitions in one transaction, so their createdAt values tie and
+          // the tie broke arbitrarily (see useDayData's note).
           .orderBy("subunit_definitions.createdAt")
+          .orderBy("subunit_definitions.key")
           .orderBy("vocab_options.sort_order"),
       ),
     [habitId],

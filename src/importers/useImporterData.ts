@@ -56,7 +56,6 @@ export function useImporterData(habitKey: string): ImporterData {
             "series",
             "series_order",
             "words",
-            "status",
           ])
           .where("habit_fk", "=", (habitId ?? "never") as HabitId)
           .where("isDeleted", "is not", 1),
@@ -92,7 +91,6 @@ export function useImporterData(habitKey: string): ImporterData {
         series: r.series as string | null,
         series_order: r.series_order as number | null,
         words: r.words as number | null,
-        status: r.status as string | null,
       })),
     };
   }, [habit, habitId, habitKey, entryRows]);

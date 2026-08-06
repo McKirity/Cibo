@@ -14,9 +14,11 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { useSimpleData } from "./useSimpleData";
 import { buildSimpleDashboard, type SimpleModel, type ScopeSel } from "./simpleSpec";
-import { Panel, StatGroup, StatTile } from "./kit";
+import { heatPoolStyle, Panel, StatGroup, StatTile } from "./kit";
 import { CreationTrend, DistPanel } from "./CreationDashboard";
 import { todayLocal } from "../metrics/clock";
+import { heatRowLabels } from "../metrics/dates";
+import { requestSettingsNav } from "../shell/navRequest";
 import { HEAT_CLASS } from "./specShared";
 import "../dashboard.css";
 import "./screen.css";
@@ -151,10 +153,10 @@ function AttendancePanel({
         </span>
       }
     >
-      <div className="heat">
+      <div className="heat" style={heatPoolStyle(a.cells, (c) => (c.on ? 4 : 0))}>
         <div className="weekdays">
           <span className="wd" />
-          {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((d, i) => (
+          {heatRowLabels().map((d, i) => (
             <span className="wd" key={i}>
               {d}
             </span>
@@ -275,10 +277,10 @@ function SimpleHeatmap({ heatmap }: { heatmap: NonNullable<SimpleModel["heatmap"
         </span>
       }
     >
-      <div className="heat">
+      <div className="heat" style={heatPoolStyle(heatmap.cells, (c) => c.level)}>
         <div className="weekdays">
           <span className="wd" />
-          {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((d, i) => (
+          {heatRowLabels().map((d, i) => (
             <span className="wd" key={i}>
               {d}
             </span>
@@ -326,11 +328,12 @@ function EmptyState({ name }: { name: string }) {
           {name}'s stats appear here once it has sessions — streaks, days, and the heatmap all build
           from what you log. One door fills this dashboard:
         </div>
-        {/* Honest doors (2026-07-30): logging lives on the Daily screen and no
-            navigation is threaded here; the icon picker is step 10's. */}
+        {/* Honest doors: logging lives on the Daily screen (redirect by
+            tooltip); "Set an icon" routes to Settings → Habits since
+            2026-08-04 (the re-wire batch — its picker shipped at step 10). */}
         <div className="edoors">
-          <button className="btn-accent" type="button" disabled title="Log sessions from the Daily screen (Ctrl+Home)">Log a session</button>
-          <button className="btn-plain" type="button" disabled title="The icon picker arrives with Settings (step 10)">Set an icon</button>
+          <button className="btn-accent" type="button" disabled title="Log sessions from the Daily screen (Ctrl+H)">Log a session</button>
+          <button className="btn-plain" type="button" title="Opens Settings → Habits" onClick={() => requestSettingsNav("habits")}>Set an icon</button>
         </div>
       </div>
     </div>

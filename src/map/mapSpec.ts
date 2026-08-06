@@ -21,6 +21,7 @@
 
 import { MONTHS_LONG, MONTHS_SHORT } from "../metrics/format";
 
+import { pad2 } from "../metrics/clock";
 // The month faces are the app-wide shared arrays (dedup pass 2026-07-30);
 // the exports keep their Map-local names so consumers don't churn.
 export const MONTHS = MONTHS_LONG;
@@ -33,7 +34,6 @@ export const DABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 /** The drawn quarter labels — month spans read inline, no tooltip needed. */
 export const Q_LABELS = ["Q1 · Jan – Mar", "Q2 · Apr – Jun", "Q3 · Jul – Sep", "Q4 · Oct – Dec"];
 
-const pad = (n: number): string => String(n).padStart(2, "0");
 
 export interface TimeMonth {
   y: number;
@@ -74,9 +74,9 @@ export function buildTimeTrunk(firstYear: number, today: string): TimeYear[] {
       for (let mi = 0; mi < 3; mi++) {
         const m = qStart + mi;
         if (y === ty && m > tm) continue;
-        months.push({ y, m, label: MONTHS[m - 1], anchor: `${y}-${pad(m)}-01` });
+        months.push({ y, m, label: MONTHS[m - 1], anchor: `${y}-${pad2(m)}-01` });
       }
-      quarters.push({ q: q + 1, label: Q_LABELS[q], anchor: `${y}-${pad(qStart)}-01`, months });
+      quarters.push({ q: q + 1, label: Q_LABELS[q], anchor: `${y}-${pad2(qStart)}-01`, months });
     }
     years.push({ year: y, anchor: `${y}-01-01`, quarters });
   }
@@ -93,12 +93,12 @@ const daysInMonth = (y: number, m: number): number => new Date(y, m, 0).getDate(
 
 /** Day-lines for one month, capped at today in the current month. */
 export function monthDayRows(y: number, m: number, today: string): DayRow[] {
-  const isCur = `${y}-${pad(m)}` === today.slice(0, 7);
+  const isCur = `${y}-${pad2(m)}` === today.slice(0, 7);
   const last = isCur ? Number(today.slice(8, 10)) : daysInMonth(y, m);
   const rows: DayRow[] = [];
   for (let d = 1; d <= last; d++) {
     const wd = DABBR[new Date(y, m - 1, d).getDay()];
-    rows.push({ iso: `${y}-${pad(m)}-${pad(d)}`, label: `${wd} ${d} ${MABBR[m - 1]}` });
+    rows.push({ iso: `${y}-${pad2(m)}-${pad2(d)}`, label: `${wd} ${d} ${MABBR[m - 1]}` });
   }
   return rows;
 }

@@ -23,36 +23,27 @@
  *
  * The BACKUPS ROOT is `<cloud root>/backups/`; the cloud root itself is
  * step 14's picker, so until then the root is a dev-hosted stand-in on the
- * themes-root doctrine (localStorage; the real source replaces this, nothing
- * else). Unset root = backups PAUSE + the health nag — never a gate.
+ * themes-root doctrine (the per-device settings file; the real source
+ * replaces this, nothing else). Unset root = backups PAUSE + the health nag —
+ * never a gate.
  */
 import { invoke } from "@tauri-apps/api/core";
 import { evolu } from "../db/evolu";
 import { todayLocal } from "../metrics/clock";
 import { showErrorToast } from "../shell/toast";
 import { readAllTables, toCanonicalJson, toCsv, TABLES } from "./exporter";
+import { deviceGet, deviceSet, inTauri } from "../settings/deviceStore";
 
-const inTauri = (): boolean =>
-  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+// inTauri is imported from settings/deviceStore (the one declaration; it lives
+// there because the boot shim needs a dependency-free module). Was a local copy.
 
 // ── the root (step-14 stand-in) ──────────────────────────────────────────────
 
 export const BACKUPS_ROOT_KEY = "cibo.dev.backupsRoot";
 
-export const getBackupsRoot = (): string | null => {
-  try {
-    return localStorage.getItem(BACKUPS_ROOT_KEY);
-  } catch {
-    return null;
-  }
-};
+export const getBackupsRoot = (): string | null => deviceGet(BACKUPS_ROOT_KEY);
 export const setBackupsRoot = (path: string | null): void => {
-  try {
-    if (path === null) localStorage.removeItem(BACKUPS_ROOT_KEY);
-    else localStorage.setItem(BACKUPS_ROOT_KEY, path);
-  } catch {
-    /* stand-in */
-  }
+  deviceSet(BACKUPS_ROOT_KEY, path);
   emitRecord();
 };
 
@@ -72,18 +63,14 @@ export const BACKUP_EVENT = "cibo:backup-record";
 
 export const readBackupRecord = (): BackupRecord | null => {
   try {
-    const raw = localStorage.getItem(RECORD_KEY);
+    const raw = deviceGet(RECORD_KEY);
     return raw == null ? null : (JSON.parse(raw) as BackupRecord);
   } catch {
     return null;
   }
 };
 const writeRecord = (r: BackupRecord): void => {
-  try {
-    localStorage.setItem(RECORD_KEY, JSON.stringify(r));
-  } catch {
-    /* the record is telemetry, never a gate */
-  }
+  deviceSet(RECORD_KEY, JSON.stringify(r));
   emitRecord();
 };
 const emitRecord = (): void => {
@@ -101,7 +88,10 @@ const MONTHLY = /^(\d{4}-\d{2})(\.db\.zst|-export\.tar\.zst|-store\.tar\.zst)$/;
 
 const dbName = (id: string) => `${id}.db.zst`;
 const exportName = (id: string) => `${id}-export.tar.zst`;
-const storeName = (id: string) => `${id}-store.tar.zst`;
+/** EXPORTED so restore.ts resolves the same filename this writes. It used to
+ *  hand-build the string, which meant a rename here would have silently broken
+ *  restore — the one path where a mismatch is unrecoverable. */
+export const storeName = (id: string) => `${id}-store.tar.zst`;
 
 export interface Slot {
   id: string; // YYYY-MM-DD or YYYY-MM
@@ -138,7 +128,8 @@ export const listSlots = async (): Promise<Slot[]> => {
 // ── the pipeline ─────────────────────────────────────────────────────────────
 
 const sep = (root: string): string => (root.includes("/") && !root.includes("\\") ? "/" : "\\");
-const join = (root: string, name: string): string => `${root}${sep(root)}${name}`;
+/** EXPORTED with `storeName` — restore.ts must assemble paths identically. */
+export const join = (root: string, name: string): string => `${root}${sep(root)}${name}`;
 
 let running: Promise<BackupRecord> | null = null;
 

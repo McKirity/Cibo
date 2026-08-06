@@ -28,7 +28,7 @@ import {
   entryAttributesToJson,
   type EntryAttribute,
 } from "../db/schema";
-import { Ico } from "../shell/icons";
+import { Ico, ICONS } from "../shell/icons";
 import { HabitIcon } from "../shell/habitIcons";
 import { useOverlayEsc } from "../shell/overlayHooks";
 import { showErrorToast } from "../shell/toast";
@@ -65,7 +65,7 @@ const ATTRS: { v: EntryAttribute; label: string }[] = [
   { v: "priority", label: "Priority" },
 ];
 
-const TRASH = ["M3 6h18", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"];
+const TRASH = ICONS.trash;
 
 /**
  * THE "WHAT YOU'RE MAKING" LINES — the picks' consequences, not their
@@ -285,16 +285,18 @@ export function HabitCreator({
         }
       } else {
         // The key is derived and never shown; collisions get a numeric tail.
-        const base = habitKeyFrom(name);
-        const used = new Set(
-          (
-            await evolu.loadQuery(
-              evolu.createQuery((db) =>
-                db.selectFrom("habits").select(["key"]).where("isDeleted", "is not", 1),
-              ),
-            )
-          ).map((r) => String(r.key)),
+        // The same read carries kind + sort_order, so the tail value below
+        // costs no extra round-trip.
+        const existing = await evolu.loadQuery(
+          evolu.createQuery((db) =>
+            db
+              .selectFrom("habits")
+              .select(["key", "kind", "sort_order"])
+              .where("isDeleted", "is not", 1),
+          ),
         );
+        const base = habitKeyFrom(name);
+        const used = new Set(existing.map((r) => String(r.key)));
         habitKey = base;
         for (let i = 2; used.has(habitKey); i++) habitKey = `${base}-${i}`;
 
@@ -307,7 +309,7 @@ export function HabitCreator({
           // Created habits arrive LIVE — "land on the new habit's dashboard,
           // it's loggable immediately". Only seeds arrive archived.
           archived: 0 as never,
-          sort_order: nextSortOrder(draft.kind) as never,
+          sort_order: nextSortOrder(draft.kind, existing) as never,
         } as never);
         if (!res.ok) {
           console.error("creator: habit insert rejected", res.error);
@@ -393,7 +395,7 @@ export function HabitCreator({
         <div className="hc-head">
           <span className="hc-title">{edit != null ? `Edit ${edit.name}` : "New habit"}</span>
           <button className="iconbtn hc-close" onClick={onClose} aria-label="Cancel">
-            <Ico d={["M18 6 6 18", "m6 6 12 12"]} />
+            <Ico d={ICONS.close} />
           </button>
         </div>
 
@@ -500,7 +502,7 @@ export function HabitCreator({
                     if (!draft.measuresTime) set("measureless", false);
                   }}
                 >
-                  <span className="box">{draft.measuresTime && <Ico d={["M20 6 9 17l-5-5"]} />}</span>
+                  <span className="box">{draft.measuresTime && <Ico d={ICONS.check} />}</span>
                   <span className="ctext">
                     <span className="cn">Time</span>
                     <span className="cs">Minutes per session, rolled up to hours at larger scales.</span>
@@ -513,7 +515,7 @@ export function HabitCreator({
                     if (!draft.measuresCount) set("measureless", false);
                   }}
                 >
-                  <span className="box">{draft.measuresCount && <Ico d={["M20 6 9 17l-5-5"]} />}</span>
+                  <span className="box">{draft.measuresCount && <Ico d={ICONS.check} />}</span>
                   <span className="ctext">
                     <span className="cn">Count</span>
                     <span className="cs">A running number — you name its unit.</span>
@@ -546,7 +548,7 @@ export function HabitCreator({
                       }));
                     }}
                   >
-                    <span className="box">{draft.measureless && <Ico d={["M20 6 9 17l-5-5"]} />}</span>
+                    <span className="box">{draft.measureless && <Ico d={ICONS.check} />}</span>
                     <span className="ctext">
                       <span className="cn">Just log it</span>
                       <span className="cs">No number — logging that it happened is the record.</span>
@@ -576,7 +578,7 @@ export function HabitCreator({
                     className="stepbtn"
                     onClick={() => set("maxMidnights", Math.min(7, draft.maxMidnights + 1))}
                   >
-                    <Ico d={["M12 5v14", "M5 12h14"]} />
+                    <Ico d={ICONS.plus} />
                   </button>
                 </span>
                 <span className="spanunit">
@@ -647,7 +649,7 @@ export function HabitCreator({
                               )
                             }
                           >
-                            <Ico d={["M18 6 6 18", "m6 6 12 12"]} />
+                            <Ico d={ICONS.close} />
                           </button>
                         </span>
                       ))}
@@ -672,7 +674,7 @@ export function HabitCreator({
                   className="medadd"
                   onClick={() => set("mediums", [...draft.mediums, { name: "", values: [] }])}
                 >
-                  <Ico d={["M12 5v14", "M5 12h14"]} /> Add a medium
+                  <Ico d={ICONS.plus} /> Add a medium
                 </button>
               )}
               {level === "entry" && draft.mediums.length >= 1 && (
@@ -704,7 +706,7 @@ export function HabitCreator({
                         )
                       }
                     >
-                      <span className="vbox">{on && <Ico d={["M20 6 9 17l-5-5"]} />}</span>
+                      <span className="vbox">{on && <Ico d={ICONS.check} />}</span>
                       <span className="vlbl">{a.label}</span>
                     </button>
                   );
@@ -795,7 +797,7 @@ export function HabitCreator({
                         className="cs"
                         style={isValidHex(hex.trim()) ? { background: hex.trim(), borderStyle: "solid" } : undefined}
                       >
-                        {!isValidHex(hex.trim()) && <Ico d={["M12 5v14", "M5 12h14"]} />}
+                        {!isValidHex(hex.trim()) && <Ico d={ICONS.plus} />}
                       </span>
                       <span className="cl">Custom</span>
                       <input
@@ -869,7 +871,7 @@ export function HabitCreator({
                       set("waveGapDays", Math.min(365, (draft.waveGapDays ?? 29) + 1))
                     }
                   >
-                    <Ico d={["M12 5v14", "M5 12h14"]} />
+                    <Ico d={ICONS.plus} />
                   </button>
                 </span>
                 <span className="spanunit">days</span>
@@ -901,7 +903,7 @@ export function HabitCreator({
               Cancel
             </button>
             <button className="btn-accent" aria-disabled={!ready} onClick={() => void commit()}>
-              <Ico d={["M20 6 9 17l-5-5"]} />
+              <Ico d={ICONS.check} />
               {edit != null ? "Save changes" : "Create habit"}
             </button>
           </div>
@@ -923,11 +925,25 @@ export function HabitCreator({
   );
 }
 
-/** New habits sort to the END of their own partition (Projects above Daily). */
-function nextSortOrder(_kind: HabitKind): number {
-  // The partition is enforced by the rail's own grouping; a large tail value
-  // keeps a new habit last within its group without renumbering anything.
-  return Date.now() % 100000;
+/**
+ * New habits sort to the END of their own partition (Projects above Daily).
+ *
+ * One past the partition's current maximum — NOT a clock value: this read
+ * `Date.now() % 100000`, which wraps every ~100 seconds, so a habit created
+ * just after a wrap sorted AHEAD of everything instead of last. The partition
+ * itself is enforced by the rail's grouping; this only orders within it.
+ */
+function nextSortOrder(
+  kind: HabitKind,
+  existing: readonly { kind: unknown; sort_order: unknown }[],
+): number {
+  const isProject = (k: unknown): boolean => k === "project";
+  const mine = existing.filter((r) => isProject(r.kind) === isProject(kind));
+  const max = mine.reduce((hi, r) => {
+    const n = Number(r.sort_order);
+    return Number.isFinite(n) && n > hi ? n : hi;
+  }, 0);
+  return max + 1;
 }
 
 function ValueInput({ onAdd }: { onAdd: (v: string) => void }) {
@@ -1061,7 +1077,7 @@ function DerivedBuilder({
       </div>
       <div className="dermenu">
         <button className="deradd" onClick={() => setOpen((o) => !o)}>
-          <Ico d={["M12 5v14", "M5 12h14"]} /> Add a subunit
+          <Ico d={ICONS.plus} /> Add a subunit
         </button>
         {open && (
           <div className="pop">

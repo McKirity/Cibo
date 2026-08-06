@@ -28,9 +28,11 @@ import {
   type ShapeChart,
   type TrendSeries,
 } from "./creationSpec";
-import { catCellFill, Panel, StatGroup } from "./kit";
+import { catCellFill, heatPoolStyle, Panel, StatGroup } from "./kit";
 import { EntryCreationModal } from "../library/EntryCreationModal";
 import { todayLocal } from "../metrics/clock";
+import { heatRowLabels } from "../metrics/dates";
+import { requestSettingsNav } from "../shell/navRequest";
 import { HEAT_CLASS } from "./specShared";
 import "../dashboard.css";
 import "./screen.css";
@@ -218,7 +220,7 @@ function Shape({ chart }: { chart: ShapeChart }) {
           <div className="brow" key={r.label} title={r.tip}>
             <span className="blabel">{r.label}</span>
             <div className="btrack">
-              <div className="bfill" style={{ width: `${r.pct}%`, background: `var(${r.colorVar})` }} />
+              <div className="bfill" style={{ width: `${r.pct}%`, ["--series" as string]: `var(${r.colorVar})` }} />
             </div>
             <span className="bval">{r.value}</span>
           </div>
@@ -337,7 +339,11 @@ export function CreationTrend({ trend, color }: { trend: CreationModel["trend"];
         {s.kind === "line" && (
           <path d={dArea} fill={`color-mix(in oklch, var(${color}), transparent var(--chart-area-mix))`} />
         )}
+        {/* .trendline names the LEAD trace (2026-08-03) — only the single-series
+            face has one; a stacked chart has bands, not a lead. See kit.tsx's
+            TrendChart for the reasoning. */}
         <path
+          className="trendline"
           d={dLine}
           fill="none"
           stroke={`var(${color})`}
@@ -405,7 +411,13 @@ export function CreationTrend({ trend, color }: { trend: CreationModel["trend"];
           ) : (
             <>
               <div className="chartwrap">
-                <svg ref={ref} className="linechart" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet">
+                <svg
+                  ref={ref}
+                  className="linechart"
+                  viewBox={`0 0 ${w} ${h}`}
+                  preserveAspectRatio="xMidYMid meet"
+                  style={{ ["--trend-hue" as string]: `var(${color})` }}
+                >
                   {w > 0 && (
                     <>
                       {yVals.map((v, i) => (
@@ -517,10 +529,10 @@ function CreationHeatmap({ heatmap }: { heatmap: CreationModel["heatmap"] }) {
           </>
         )}
       </div>
-      <div className="heat">
+      <div className="heat" style={heatPoolStyle(heatmap.cells, (c) => c.levels[measure])}>
         <div className="weekdays">
           <span className="wd" />
-          {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((d, i) => (
+          {heatRowLabels().map((d, i) => (
             <span className="wd" key={i}>
               {d}
             </span>
@@ -703,7 +715,8 @@ function EmptyState({ name, onNew }: { name: string; onNew?: () => void }) {
         </div>
         <div className="edoors">
           <button className="btn-accent" type="button" onClick={onNew}>+ New entry</button>
-          <button className="btn-plain" type="button" disabled title="The icon picker arrives with Settings (step 10)">Set an icon</button>
+          {/* Routes to Settings → Habits since 2026-08-04 (the re-wire batch). */}
+          <button className="btn-plain" type="button" title="Opens Settings → Habits" onClick={() => requestSettingsNav("habits")}>Set an icon</button>
         </div>
       </div>
     </div>

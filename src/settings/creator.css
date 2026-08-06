@@ -127,13 +127,17 @@
 .hc .valin { flex: 1 1 var(--input-inline-w); min-width: var(--input-inline-w); border: none; background: transparent; outline: none;
              font-family: var(--font-ui); font-size: var(--size-small); color: var(--text-strong); padding: var(--space-2) var(--space-3); }
 .hc .valin::placeholder { color: var(--text-muted); }
-.hc .medadd, .hc .deradd { display: inline-flex; align-items: center; gap: var(--space-3); align-self: flex-start;
+/* Scoped to BOTH roots: `.medadd` has two tenants outside the creator modal —
+   LadderEditor's "Add a band" (Settings → Tracking) and WhimsyPane's "Add a
+   date" (Settings → Whimsy). Under `.hc` alone both rendered as native UA
+   buttons. Same story as `.mgtag` and `.runline` below. */
+:is(.hc, .setscreen) .medadd, .hc .deradd { display: inline-flex; align-items: center; gap: var(--space-3); align-self: flex-start;
             font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary);
             background: transparent; border: var(--border-standard) dashed var(--border); border-radius: var(--radius-small);
             padding: var(--space-4) var(--space-5); cursor: pointer;
             transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
-.hc .medadd:hover, .hc .deradd:hover { background: var(--hover-wash); color: var(--text-strong); }
-.hc .medadd .ico, .hc .deradd .ico { width: var(--icon-size-small); height: var(--icon-size-small); }
+:is(.hc, .setscreen) .medadd:hover, .hc .deradd:hover { background: var(--hover-wash); color: var(--text-strong); }
+:is(.hc, .setscreen) .medadd .ico, .hc .deradd .ico { width: var(--icon-size-small); height: var(--icon-size-small); }
 
 /* the vocab anchor (project) */
 .hc .vanchor { display: flex; flex-wrap: wrap; gap: var(--space-4); }
@@ -154,6 +158,9 @@
 
 /* max-span (range) + the editor's wave-gap override, one anatomy */
 .hc .spanrow { display: flex; align-items: center; gap: var(--space-5); }
+/* NOTE 2026-08-04: `.spanval` has no markup — the span row renders `.stepval`
+   inside `.stepper`. Kept ONLY because the block below is a claimed-family
+   variant like `.btn-plain.ghost`; delete it with them if that family goes. */
 .hc .spanval { font-family: var(--font-mono); font-size: var(--size-subheading); font-weight: var(--weight-bold);
                color: var(--text-strong); min-width: 2ch; text-align: center; }
 .hc .spanunit { font-size: var(--size-body); color: var(--text-secondary); }

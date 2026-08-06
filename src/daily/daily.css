@@ -95,9 +95,13 @@
   .sky-stack { flex:1 1 auto; /* in flow since 2026-07-19; the absolute neutralization is struck */ display:flex; flex-direction:column;
                  gap:var(--space-5); min-height:0; }
   /* ---- kit-panel (the card every zone sits in) ---- */
+    /* gap: declared HERE since 2026-08-04 — App.css's global `.card` used to
+       supply it by accident (the audit's leak finding) and died with the dev
+       surface; this sheet now owns its card whole. */
     .card { background:var(--panel-background); border:var(--border-hairline) solid var(--border);
             border-radius:var(--radius-medium); box-shadow:var(--shadow-low);
-            padding:var(--space-6); display:flex; flex-direction:column; min-height:0; }
+            padding:var(--space-6); display:flex; flex-direction:column; min-height:0;
+            gap:var(--space-6); }
   /* pass 5 — every whimsy card clips its own art: nothing paints past its shell */
     /* iteration 2 · slot 7 — 12px frame clearance reserved inside the card (squished twice: own frame + the spine's growth) */
     .card.whimsy { overflow:hidden; min-height:fit-content; /* sizes to its interior — never clips or spills (re-ruled 2026-07-19). `auto` resolves to ZERO under overflow:hidden, so the ruled floor silently did not exist; `fit-content` is the floor this file's own note below prescribes. */ padding:calc(var(--frame-clear-whimsy) + var(--space-4)); }
@@ -426,14 +430,10 @@
   .derived b { color:var(--text-strong); font-weight:var(--weight-medium); }
   .derived .flag { display:inline-flex; align-items:center; gap:var(--space-2); }
   .derived > span + span { border-left:var(--border-hairline) solid var(--border); padding-left:var(--space-5); }
-  /* checkbox */
-    .check { display:inline-flex; align-items:center; gap:var(--space-4); font-size:var(--size-body); cursor:pointer; }
-  .check .box { width:20px; height:20px; border-radius:var(--radius-small); flex:0 0 auto;
-                  border:var(--border-standard) solid var(--border); background:var(--inset-background);
-                  display:flex; align-items:center; justify-content:center; }
-  .check .box .ico { color:var(--text-on-filled); opacity:0; }
-  .check.on .box { background:var(--accent); border-color:var(--accent); }
-  .check.on .box .ico { opacity:1; }
+  /* The `.check` family (6 rules) was DELETED 2026-08-04 (the third audit):
+     STRUCK by the 2026-07-26 ToggleChip ruling — the drawn checkbox "feels bare
+     and disjointed", so MeasurelessRow renders the `.kb` chip instead and no
+     markup has emitted `check` since. */
   /* kit-control-finalize — the day's closing gesture (not a submit button).
        RE-RULED 2026-07-13 (user edit, adopted): the "close of day" lead-in rule and the
        finalize-note are STRUCK, and the label is plain "Finalize" — no weekday. The button
@@ -583,20 +583,19 @@
        positioning, not paint; the z-index is layering, same precedent as the frame's
        anchor offsets). Click anywhere else to dismiss. */
     .pk-live { position:relative; cursor:text; }
-  .pk-live .face-rest { display:contents; }
-  .pk-live .face-open { display:none; }
+  /* The four `.face-rest`/`.face-open` swap rules were DELETED 2026-08-04:
+     Spine.tsx states the swap "is NOT reproduced — a hidden input can never
+     take the focus that would reveal it", so they never had markup. */
   .pk-live:focus-within { box-shadow:inset 0 0 0 var(--focus-ring-weight) var(--focus-ring); outline:none; }
-  .pk-live:focus-within .face-rest { display:none; }
-  .pk-live:focus-within .face-open { display:contents; }
   .pk-live .pkdrop { display:none; position:absolute; top:100%; left:0; right:0; z-index:1; }
   .pk-live:focus-within .pkdrop { display:block; }
 
   /* ===== CLAIMED 2026-07-26 — kit-picker-datetime's CLICK-FALLBACKS =========
      35 rules out of `kit-staging.css`, verbatim, for the frozen
      `Final/daily-form-pickers.html`. Ruled 2026-07-26: TRANSLATE AS FROZEN,
-     with a RE-DESIGN OWED — the user recalls disliking how the calendar and
-     time picker look and ruled "we can revisit that later once it actually
-     gets built". Reproduced faithfully so there is something real to judge.
+     with a re-design owed. THE REVISIT RAN 2026-08-04 ("Picker is mostly
+     fine, just need to make it opaque") — the surface went opaque in kit.css;
+     the anatomy stands as drawn; the owed re-design is DISCHARGED.
 
      `.calpop` is NOT the nav calendar: the frozen file draws it as a component
      wholly separate from `.cal` (week numbers, finalize markers, catch-up
@@ -616,7 +615,7 @@
   .timepop .tcell.sel { background:var(--accent); color:var(--text-on-filled); }
   .timepop .tnote { margin-top:var(--space-4); font-size:var(--size-caption); color:var(--text-muted); }
   .timepop .tscrub { margin-top:var(--space-5); height:var(--space-3); border-radius:var(--radius-full); background:var(--inset-background); position:relative; }
-  .timepop .tscrub > i { position:absolute; top:50%; width:14px; height:14px; border-radius:var(--radius-full); background:var(--panel-background); border:var(--border-standard) solid var(--accent); transform:translate(-50%,-50%); box-shadow:var(--shadow-low); }
+  .timepop .tscrub > i { position:absolute; top:50%; width:14px; height:14px; border-radius:var(--radius-full); background:var(--raised-background); border:var(--border-standard) solid var(--accent); transform:translate(-50%,-50%); box-shadow:var(--shadow-low); }
   .dt-live { overflow:visible; }
   .dt-live .dpart { position:relative; cursor:pointer; }
   .dt-live .dpart .cue { margin-left:var(--space-3); color:var(--text-muted); }
@@ -635,19 +634,20 @@
      face so the app can be typed into — the `.qbody` delta's class of thing,
      recorded at the use site rather than smuggled in.
 
-     `.bare` is a <select> inside the drawn `.inp.sel` chip; `.pkin` is the
-     entry picker's type-ahead field inside `.picker`; `.timein` is the
-     datetime's typeable 24h field, which the frozen `.tnote` itself calls the
-     PRIMARY path ("this strip is the fallback"). None of them paints: they
-     inherit the chip they sit in. */
-    .inp.sel .bare, .picker .pkin, .dt .dpart .timein {
+     `.pkin` is the entry picker's type-ahead field inside `.picker`; `.timein`
+     is the datetime's typeable 24h field, which the frozen `.tnote` itself
+     calls the PRIMARY path ("this strip is the fallback"). Neither paints: they
+     inherit the chip they sit in.
+
+     The `.bare` <select> halves (3 rules incl. an `option` rule for an element
+     that cannot exist) were DELETED 2026-08-04 — VocabSelect was ruled off the
+     native menu 2026-07-26 and renders a span/listbox, so nothing emits it. */
+    .picker .pkin, .dt .dpart .timein {
       font-family:inherit; font-size:inherit; font-weight:inherit; color:inherit;
       background:transparent; border:none; outline:none; padding:0; margin:0;
       min-width:0; appearance:none; }
-  .inp.sel .bare { flex:1 1 auto; cursor:pointer; }
   .picker .pkin { flex:1 1 auto; width:100%; }
   .dt .dpart .timein { width:5ch; text-align:center; }
-  .inp.sel .bare option { color:var(--text-strong); background:var(--panel-background); }
   .inp:focus-within, .picker:focus-within { box-shadow:inset 0 0 0 var(--focus-ring-weight) var(--focus-ring); }
   /* CLOSED WHILE STILL FOCUSED. `:focus-within` alone can only be closed by
      taking the focus away, and the app was doing exactly that — blurring to
@@ -877,113 +877,8 @@
 
 
 
-/* ── the dev whimsy panel (never ships) ───────────────────────────────────── */
-
-.devwhimsy {
-  margin-top: var(--space-6);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-medium);
-  background: var(--panel-background);
-}
-.dw-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  width: 100%;
-  padding: var(--space-4);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--text-secondary);
-  font-family: var(--font-ui);
-  font-size: var(--size-small);
-  text-align: left;
-}
-.dw-sub {
-  color: var(--text-muted);
-}
-.dw-tag {
-  margin-left: auto;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
-  background: var(--hover-wash);
-  color: var(--text-muted);
-  font-size: var(--size-caption);
-}
-.dw-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: 0 var(--space-4) var(--space-4);
-}
-.dw-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  align-items: flex-end;
-}
-.dw-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  font-size: var(--size-caption);
-  color: var(--text-muted);
-}
-.dw-actions {
-  align-items: center;
-}
-.dw-note {
-  flex: 1 1 20ch;
-  font-size: var(--size-caption);
-  color: var(--text-muted);
-}
-.dw-presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.dw-preset {
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  background: transparent;
-  color: var(--text-secondary);
-  font-family: var(--font-ui);
-  font-size: var(--size-caption);
-  cursor: pointer;
-}
-.dw-preset:hover {
-  background: var(--hover-wash);
-  color: var(--text-strong);
-}
-.dw-events {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-.dw-evhead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.dw-ev {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  align-items: center;
-}
-.dw-rec {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--size-caption);
-  color: var(--text-muted);
-}
-.dw-empty {
-  margin: 0;
-  font-size: var(--size-caption);
-  color: var(--text-muted);
-}
+/* The dev whimsy panel's CSS block (~107 lines) was DELETED 2026-08-04 with
+   the panel itself — the whole dev surface retired, user-ruled. */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    DAILY — STATE 2, THE COVER WALL
@@ -1070,43 +965,38 @@
   .cover { display:flex; flex-direction:column; justify-content:flex-end;
            padding:var(--space-6); color:var(--text-on-filled);
            background:var(--slot); }
-  .cover > .art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; }
-  /* THE CAPTION WASH — the library's cover-caption recipe, with its stops
-     RE-SCOPED to a bottom band (user-ruled 2026-07-31 across three corrections:
-     the tile's original single ramp lost the words in the box-art · a boxed
-     plate behind the title was "incredibly ugly" · a full-height copy
-     "shouldn't cover the entire tile").
-     WHY THE --text-strong MIX IS CORRECT HERE, though it looks like the
-     derivation-law inversion (this cost a round of getting it backwards):
-     --text-strong and --text-on-filled ALWAYS INVERT TOGETHER — near-black +
-     white on the Default, near-white (#f2f2f5) + near-black (#1a0510) on Void.
-     The tile's ink IS --text-on-filled, so wash and ink stay opposite in every
-     theme: a dark wash under white text, a light wash under dark text. Swapping
-     this ramp for a --scrim-only darkening BREAKS that pairing and puts Void's
-     dark ink on a dark bed — which is exactly what it did. The pair is the
-     unit; neither half may be re-derived alone.
-     What WAS wrong: the library authors these stops on `.gcap`, a bottom
-     anchored caption BOX, so they measure against the caption. Transplanted to
-     a full-bleed ::after they measured against the whole tile and veiled the
-     art. Compressed here into the bottom ~44%, so the wash is solid under the
-     justify-end text block and the upper art is untouched. */
-  /* --wash-top is the ONE knob: how far up the tile the wash reaches; every
-     other stop is a fraction of it, so the ramp keeps its SHAPE when it moves.
-     Tuned to the user's eye 2026-07-31: 44% → 34% → 26%, and the falloff
-     steepened to read as a BOUNDARY rather than a long haze — the band holds
-     near-full to ~⅔ of its height, then clears over the last third. Still a
-     gradient, not an edge: a hard cut is the "plate" face that was rejected.
-     ONE LAYER, deliberately: this stacked a --scrim pass over the ramp (the
-     library's own two-layer face), and since the first-listed background paints
-     ON TOP, a black scrim sat over Void's near-white ramp and the band rendered
-     GRAY — user-ruled 2026-07-31, "the wash should be white instead of gray".
-     The ramp alone carries it. It is not hardcoded white: --text-strong is the
-     theme's ink, so this is near-WHITE under a dark theme (which is the wanted
-     face) and near-BLACK under a light one — staying opposite --text-on-filled,
-     the tile's ink, exactly as the pair requires. */
-  .cover:has(> .art)::after { --wash-top:26%; content:""; position:absolute; inset:0; z-index:0;
-                              background:linear-gradient(to top, color-mix(in oklch, var(--text-strong), transparent 6%),
-                                           color-mix(in oklch, var(--text-strong), transparent 22%) calc(var(--wash-top) * .66), transparent var(--wash-top)); }
+  /* ---- THE ART FACE: an untouched CARD with an INFO BAND fixed to its bottom
+     (user-ruled 2026-08-02 — *"let's not change the cards, instead add an
+     extra portion directly beneath it that contains all the information"* ·
+     *"should be attached to the bottom of the cards, not floating beneath
+     it"*). The words leave the picture entirely; the picture keeps the size
+     and shape it had when nothing was written on it.
+     THE CAPTION WASH RETIRED HERE (`.cover:has(> .art)::after`, tuned across
+     three corrections 2026-07-31): with nothing left to make legible over the
+     art, a veil over the art is pure loss. The recipe — and the
+     --text-strong/--text-on-filled pairing law it documented, which neither
+     half may be re-derived alone — lives on in the library's `.gcap`, its
+     original home.
+     ALSO RETIRED: a full-width caption FOOTER that ATE the card's height
+     (built and reverted the same day, "incredibly bad"). The band adds its
+     height to the tile; it never takes any from the art. ---- */
+  .cover:has(> .cvart) { padding:0; justify-content:flex-start; }
+  /* The card. Unmeasured it flexes into the drawn span and the art draws
+     `contain` — a whole cover with a sliver of slot showing beats a cropped
+     one. Measured (`data-art`) it takes the art's exact aspect, so `cover`
+     only lets a sub-pixel disagreement bleed off the edge instead of opening a
+     hairline of --slot. --art-h is set when the viewport ceiling bound the
+     card; the tile narrows with it, so the band stays exactly as wide as the
+     card it is attached to. Nothing may crop this art. */
+  .cvart { position:relative; flex:1 1 auto; min-height:0; width:100%; }
+  .cover[data-art] .cvart { flex:0 0 auto; height:var(--art-h, auto);
+                            aspect-ratio:1 / var(--art-ratio); }
+  .cvart .art { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  .cover[data-art] .cvart .art { object-fit:cover; }
+  /* ---- the NO-ART face: the typographic keepsake, unchanged and band-less.
+     It reads perfectly on its flat slot field — that face is what this overlay
+     anatomy was drawn for, and it is a designed permanent look, not a degraded
+     one. Only art defeats text. ---- */
   .cover .kind { position:absolute; top:var(--space-5); left:var(--space-6); z-index:1;
                  font-family:var(--font-mono); font-size:var(--size-caption); letter-spacing:.06em;
                  text-transform:uppercase; color:var(--text-on-filled); opacity:.8; }
@@ -1126,6 +1016,45 @@
                  color:var(--text-on-filled); }
   .cover .dur { font-weight:var(--weight-bold); }
   .cover .stars { letter-spacing:.12em; color:var(--text-on-filled); }
+
+  /* ---- the INFO BAND's own type. LAST ON PURPOSE: every rule here re-points
+     one of the overlay declarations above at the band's plate ground, and they
+     tie on specificity (0,2,0), so source order is what decides. Moving this
+     block up puts the on-art ink back on the band — white words on a panel.
+     A QUIET plate, not a slab of habit colour: the wall reads as a mosaic of
+     art, and seven saturated full-width bands under it is the face the
+     reverted footer wore. Identity rides the tinted glyph and the duration
+     chip instead — the eyebrow already names the habit, so nothing here is
+     carried by colour alone. ---- */
+  .cvinfo { position:relative; flex:0 0 auto; display:flex; flex-direction:column;
+            gap:var(--space-2); padding:var(--space-4) var(--space-5) var(--space-5);
+            background:var(--panel-background); }
+  .cvinfo .kind { position:static; padding-right:30px; color:var(--text-muted); opacity:1; }
+  /* The glyph is CENTRED ON THE EYEBROW'S LINE (user-ruled 2026-08-02: "in
+     line with the subtitle text"). Its box starts at the band's own top
+     padding — so its top edge is the eyebrow line box's top edge — and is
+     given that line box's exact height, computed from the same two dials the
+     eyebrow reads; `align-items:center` then centres the icon in it at any
+     glyph size and under any theme's caption scale. A hardcoded `top` cannot
+     do this: it holds for one icon size on one theme and drifts on every
+     other. The eyebrow's padding-right is the horizontal half of the same
+     job, so the pair moves together — a bigger glyph needs a wider reserve. */
+  .cvinfo .glyph { top:var(--space-4); right:var(--space-5); opacity:1;
+                   display:flex; align-items:center;
+                   height:calc(var(--size-caption) * var(--line-normal)); }
+  .cvinfo .glyph .ico { width:22px; height:22px; color:var(--slot); }
+  /* ONE title size across the band, including the `big` tile: `.cover.big .ttl`
+     lifts to --size-heading for the day's longest sitting, which was hero type
+     on a large CARD and reads as an inconsistency in a compact band (it also
+     ate the clamp, truncating a title that fits at this size). Scoped through
+     `.cover` to tie that rule's specificity and win on source order. The big
+     tile still says it is the big one — by being the biggest picture. */
+  .cover .cvinfo .ttl { font-size:var(--size-subheading); color:var(--text-strong);
+                        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+                        overflow:hidden; }
+  .cvinfo .meta { margin-top:var(--space-1); }
+  .cvinfo .chip { background:var(--slot); }
+  .cvinfo .stars { color:var(--text-secondary); }
   /* The square-source entry (a channel) wears `.cover yt`: the COVER
      composition, with `.yt` left as a shape hook only. Its old face — a 64px
      avatar centred on the habit colour with the name beneath — was struck
@@ -1185,7 +1114,15 @@
   .banner .nums span { font-weight:var(--weight-regular); opacity:.7; }
 
   /* ---- whimsy tiles — the grout: kit shell, whimsy-palette interiors, quieter ---- */
-  .whim { background:var(--panel-background); border:var(--border-hairline) solid var(--border); }
+  /* The overline is absolute, so every tile that draws one has to RESERVE its
+     room. That reserve was a frozen 24px literal until 2026-08-02, when the
+     first big-caption theme walked into it: UT/DR runs --size-caption at 18px
+     against the Default's 14, the label's line box grew to 27px, and the fact
+     tile's category chip landed on top of the word FACT. The reserve is now the
+     label's OWN footprint — its top offset plus one line of caption type — so it
+     tracks whatever type a theme sets, and no tile carries a raw px. */
+  .whim { background:var(--panel-background); border:var(--border-hairline) solid var(--border);
+          --wl-clear: calc(var(--space-4) + var(--size-caption) * var(--line-normal)); }
   .whim .wl { position:absolute; z-index:2; font-family:var(--font-mono); font-size:var(--size-caption);
               text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted);
               left:var(--space-5); top:var(--space-4); }
@@ -1205,7 +1142,7 @@
   .whim-sun .wl { color: color-mix(in oklch, var(--whimsy-ink), var(--whimsy-day) 30%); }
 
   /* Season / Year slivers (2×1) — a month ribbon with a today tick */
-  .whim-ribbon { display:flex; flex-direction:column; justify-content:center; gap:var(--space-3); padding:var(--space-5); padding-top:24px; }
+  .whim-ribbon { display:flex; flex-direction:column; justify-content:center; gap:var(--space-3); padding:var(--space-5); padding-top:var(--wl-clear); }
   .whim-ribbon .band { position:relative; display:flex; height:14px; border-radius:var(--radius-small); overflow:hidden; }
   .whim-ribbon .band > i { display:block; height:100%; }
   .whim-ribbon .tick { position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--text-strong); border-radius:1px; }
@@ -1213,7 +1150,7 @@
   .whim-ribbon .foot b { color:var(--text-secondary); font-weight:var(--weight-medium); }
 
   /* glances (1×1) */
-  .glance { display:flex; flex-direction:column; padding:var(--space-5); padding-top:24px; }
+  .glance { display:flex; flex-direction:column; padding:var(--space-5); padding-top:var(--wl-clear); }
 
   /* Re-cut 2026-07-27 (user-ruled): the wall's word tile carries the DEFINITION
      — real content the FINAL's 1×1 glance never held — and widens to a strip. */
@@ -1251,7 +1188,7 @@
   .whim-holiday .nm { font-size:var(--size-caption); color:var(--text-secondary); font-weight:var(--weight-medium); text-wrap:pretty; }
 
   /* strips (3–4 × 1) */
-  .strip-tile { display:flex; flex-direction:column; justify-content:center; padding:var(--space-5) var(--space-6); padding-top:24px; }
+  .strip-tile { display:flex; flex-direction:column; justify-content:center; padding:var(--space-5) var(--space-6); padding-top:var(--wl-clear); }
   .whim-quote { position:relative; }
   .whim-quote .qm { position:absolute; top:2px; left:var(--space-4); font-family:var(--font-heading); font-size:46px; line-height:1; color:var(--whimsy-star); }
   .whim-quote p { margin:0; padding-left:var(--space-8); font-family:var(--font-heading); font-style:italic;

@@ -17,7 +17,7 @@
  * review).
  */
 import { useState } from "react";
-import { clockMs, fmtMs, fmtTarget, itemMs, remainingMs, type Clock } from "./timerCore";
+import { clockMs, fmtMs, fmtTarget, itemMs, remainingMs, type Clock, modeLabel} from "./timerCore";
 import { focusClock, pauseClock, runClock, stopClock, useTimers } from "./timerStore";
 import { CreateClockModal } from "./TimerOverlays";
 import { clockChipReadout } from "./GlobalTimerTray";
@@ -146,7 +146,7 @@ export function TimersScreen({
 
   const c = focused;
   const mode =
-    c.mode === "stopwatch" ? "Stopwatch" : c.mode === "countdown" ? "Countdown" : "Pomodoro";
+    modeLabel(c.mode);
 
   return (
     <section className="timerscreen">

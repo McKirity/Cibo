@@ -6,7 +6,39 @@
  *
  * Day strings are the schema's "YYYY-MM-DD" (local wall-clock, no timezone —
  * Day Boundary & Logging Cutoff); we treat them as opaque calendar labels.
+ *
+ * THE WEEK-START DIAL (2026-08-04 — the `week_start` synced setting, wired):
+ * week bucketing, calendar layout and week labels all follow ONE module-level
+ * parameter, pushed in by settings/store when its cache loads (the settings
+ * layer imports down into metrics, never the reverse). It is the one
+ * deliberate crack in this module's purity: set at launch + on the rare
+ * setting change, constant within any derivation pass — dashboards re-read at
+ * mount (the synced-settings freshness doctrine). ISO week NUMBERS stay
+ * ISO-defined (Monday-based); a configurable week is LABELED by the ISO week
+ * of the Thursday it contains (`weekNum`), which is the identity function for
+ * Monday-start weeks and the least-surprising number for Sunday-start ones.
  */
+import { pad2 } from "./clock";
+
+/** 1 = Monday (the ruled default) · 0 = Sunday — `Date.getUTCDay` numbering. */
+let WEEK_START_DOW: 0 | 1 = 1;
+export const setWeekStartDow = (d: 0 | 1): void => {
+  WEEK_START_DOW = d;
+};
+export const weekStartDow = (): 0 | 1 => WEEK_START_DOW;
+
+/** Day names in `getUTCDay` order — the base every rotated face reads. */
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"] as const;
+
+/** The i-th column's day name under the configured week start (0 = start). */
+export const weekDayName = (i: number): string => DAY_NAMES[(WEEK_START_DOW + i) % 7];
+/** Single-letter header row for the calendar grids, week-start first. */
+export const weekDayLetters = (): string[] =>
+  Array.from({ length: 7 }, (_, i) => DAY_LETTERS[(WEEK_START_DOW + i) % 7]);
+/** The heatmaps' alternating gutter labels (rows 0·2·4·6), week-start first. */
+export const heatRowLabels = (): string[] =>
+  Array.from({ length: 7 }, (_, i) => (i % 2 === 0 ? weekDayName(i) : ""));
 
 /** Days since the Unix epoch for a "YYYY-MM-DD" label (calendar, not instant). */
 export function dayIndex(day: string): number {
@@ -17,8 +49,7 @@ export function dayIndex(day: string): number {
 /** Inverse of dayIndex → "YYYY-MM-DD". */
 export function dayFromIndex(idx: number): string {
   const dt = new Date(idx * 86_400_000);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`;
+  return `${dt.getUTCFullYear()}-${pad2(dt.getUTCMonth() + 1)}-${pad2(dt.getUTCDate())}`;
 }
 
 /** Whole days from a to b (b − a); negative if b precedes a. */
@@ -30,13 +61,25 @@ export const monthKey = (day: string): string => day.slice(0, 7);
 /** "YYYY" — the calendar-year bucket key. */
 export const yearKey = (day: string): string => day.slice(0, 4);
 
-/** The Monday (week start, Mon–Sun default) of a day's week, as a day string. */
+/** The first day of a day's week (the configured week start), as a day string. */
 export function weekStart(day: string): string {
   const idx = dayIndex(day);
   const dow = new Date(idx * 86_400_000).getUTCDay(); // 0=Sun … 6=Sat
-  const backToMon = (dow + 6) % 7;
-  return dayFromIndex(idx - backToMon);
+  const back = (dow - WEEK_START_DOW + 7) % 7;
+  return dayFromIndex(idx - back);
 }
+
+/** The Thursday of a day's (configured) week — the day that carries its label. */
+export const weekThursday = (day: string): string =>
+  dayFromIndex(dayIndex(weekStart(day)) + ((4 - WEEK_START_DOW + 7) % 7));
+
+/**
+ * The week's DISPLAY number + week-year: the ISO week of the Thursday this
+ * (configured) week contains. Identical to `isoWeek(day)` under Monday start;
+ * under Sunday start it numbers the week by the six days it shares with the
+ * ISO week rather than by its leading Sunday.
+ */
+export const weekNum = (day: string): { week: number; year: number } => isoWeek(weekThursday(day));
 
 /** ISO-8601 week number + week-year (weeks start Monday; wk 1 holds Jan 4). */
 export function isoWeek(day: string): { week: number; year: number } {
@@ -85,20 +128,20 @@ export interface MonthGridCell {
 
 /**
  * The month grid every calendar popover draws — leading days of the previous
- * month, this month, then trailing days: always whole weeks, Monday first.
- * Flat (the popovers render a 7-column CSS grid, not week rows); `month0` is
- * 0-based, matching the popovers' view cursors.
+ * month, this month, then trailing days: always whole weeks, week-start first
+ * (the configured dial). Flat (the popovers render a 7-column CSS grid, not
+ * week rows); `month0` is 0-based, matching the popovers' view cursors.
  */
 export function monthGridCells(year: number, month0: number): MonthGridCell[] {
-  const p = (n: number) => String(n).padStart(2, "0");
-  const first = `${year}-${p(month0 + 1)}-01`;
+  const first = `${year}-${pad2(month0 + 1)}-01`;
   const firstIdx = dayIndex(first);
-  const lead = (firstIdx + 3) % 7; // epoch day 0 = Thursday → Monday-first dow
+  // epoch day 0 = Thursday, so getUTCDay(firstIdx) = (firstIdx + 4) % 7.
+  const lead = (firstIdx + 4 - WEEK_START_DOW + 7) % 7;
   const total = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
   const cells: MonthGridCell[] = [];
   for (let i = lead; i > 0; i--) cells.push({ day: dayFromIndex(firstIdx - i), out: true });
   for (let d = 1; d <= total; d++)
-    cells.push({ day: `${year}-${p(month0 + 1)}-${p(d)}`, out: false });
+    cells.push({ day: `${year}-${pad2(month0 + 1)}-${pad2(d)}`, out: false });
   while (cells.length % 7 !== 0)
     cells.push({ day: dayFromIndex(dayIndex(cells[cells.length - 1].day) + 1), out: true });
   return cells;

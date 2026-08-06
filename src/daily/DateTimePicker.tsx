@@ -3,11 +3,11 @@
  * the click-fallbacks in the whole app (the Sleep strip).
  *
  * Ruled 2026-07-26: **translate as frozen** (`Final/daily-form-pickers.html`,
- * all its CSS rules already claimed), **with a re-design OWED** — the user
- * recalls disliking how the calendar and time picker look, and said "we can
- * revisit that later once it actually gets built". A deferred re-design, not an
- * acceptance: the drawing is reproduced faithfully so there is something real
- * to judge.
+ * all its CSS rules already claimed), with a re-design owed. **THE REVISIT RAN
+ * 2026-08-04 (the completeness audit) and the verdict was small: "Picker is
+ * mostly fine, just need to make it opaque"** — the popover surface moved to
+ * the ladder's opaque tier (kit.css § kit-picker-datetime) and the anatomy
+ * stands as drawn. The owed re-design is DISCHARGED.
  *
  * TYPING IS THE PRIMARY PATH; the popovers are the fallback (the frozen file
  * says so in its own `.tnote`). Both open on `:focus-within`, the same
@@ -26,17 +26,21 @@
  * nor is helped by it.
  */
 import { useRef, useState } from "react";
-import { monthGridCells } from "../metrics/dates";
+import { monthGridCells, weekDayLetters } from "../metrics/dates";
 import { MONTHS_LONG } from "../metrics/format";
 import { pad2 as pad, todayLocal } from "../metrics/clock";
 
-const DOW = ["M", "T", "W", "T", "F", "S", "S"];
+/* Header letters follow the configured week start (dates.weekDayLetters). */
 
-/** "Thu 3 Jul" — the frozen face's date label. */
-const dateLabel = (day: string): string =>
-  new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric", month: "short" }).format(
-    new Date(`${day}T12:00:00`),
-  );
+/** "Thu 3 Jul" — the frozen face's date label. The formatter is hoisted (every
+ *  sibling in this folder hoists its own; Intl construction is the expensive
+ *  part and a Sleep strip renders two pickers). */
+const DATE_LABEL = new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+});
+const dateLabel = (day: string): string => DATE_LABEL.format(new Date(`${day}T12:00:00`));
 
 /**
  * 24-HOUR ONLY (user-ruled 2026-07-26: "it should be military time too").
@@ -93,7 +97,7 @@ export function DateTimePicker({
   const shownTime = typed ?? time;
 
   // The grid: leading days of the previous month, this month, then trailing —
-  // always whole weeks, Monday first (metrics/dates.monthGridCells — 2026-07-30 dedup).
+  // always whole weeks, week-start first (metrics/dates.monthGridCells — 2026-07-30 dedup).
   const cells = monthGridCells(view.y, view.m);
 
   const scrub = useRef<HTMLDivElement>(null);
@@ -161,7 +165,7 @@ export function DateTimePicker({
             </span>
           </div>
           <div className="cgrid">
-            {DOW.map((d, i) => (
+            {weekDayLetters().map((d, i) => (
               <div className="cdow" key={i}>
                 {d}
               </div>
@@ -183,6 +187,10 @@ export function DateTimePicker({
                   key={c.day}
                   onMouseDown={(e) => {
                     e.preventDefault();
+                    // The wrapper's mousedown re-opens (`setShutDate(false)`)
+                    // and runs after this one — a pick must not bubble into it,
+                    // or the close below is overridden and the popover stays.
+                    e.stopPropagation();
                     if (dead || c.out) return;
                     // The date, and ONLY the date — picking a day says nothing
                     // about what time of day it was.
@@ -257,6 +265,7 @@ export function DateTimePicker({
                 key={t}
                 onMouseDown={(e) => {
                   e.preventDefault();
+                  e.stopPropagation(); // the wrapper's mousedown would re-open
                   setTyped(null);
                   onChange(date, t);
                   setShutTime(true);

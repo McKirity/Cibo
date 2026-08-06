@@ -3,8 +3,8 @@
  * (spec'd SHARED; Advanced Search is the second consumer). Three regions:
  * "This comparison" (Save current — names a PARTIAL config) · "Saved · synced"
  * (a row populates the saved fields, blanks stay manual; inline rename +
- * delete on hover) · the Manage door (Settings → Presets — built at step 10,
- * INERT until then, the placeheld-by-design pattern).
+ * delete on hover) · the Manage door (Settings → Presets — LIVE 2026-08-04;
+ * the un-disabling note sits at the button below).
  *
  * HOISTED compare/ → kit/ 2026-07-30 (the dedup pass, wave 2) with the shared
  * CSS families; the storage half (presets.ts) stays compare-side — the
@@ -14,6 +14,7 @@ import { useRef, useState } from "react";
 import { deletePreset, renamePreset, savePreset, usePresets, type Preset, type PresetCfg } from "../compare/presets";
 import { Ico, ICONS } from "../shell/icons";
 import { useDismiss } from "../shell/overlayHooks";
+import { requestSettingsNav } from "../shell/navRequest";
 
 /* The bookmark/chart/pen/gear glyphs are this menu's own (not in the shared
  * roster); the trash keeps its drawn two-path form (shell's `trash` draws the
@@ -205,7 +206,10 @@ export function PresetControl<C = PresetCfg>({
           ),
         )}
         <div className="mdiv" />
-        <button className="prow manage" title="Settings → Presets lands at Build step 10" disabled>
+        {/* LIVE 2026-08-04 (the re-wire batch): the pane shipped at step 10
+            but this door was never un-disabled — the audit's clearest
+            control-wired-to-nothing finding. */}
+        <button className="prow manage" onClick={() => requestSettingsNav("presets")}>
           <IGear />
           <span className="pn">Manage in Settings → Presets</span>
         </button>

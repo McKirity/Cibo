@@ -63,7 +63,16 @@ export interface LibraryData {
   bundle: Set<string>;
 }
 
-export function useLibraryData(habitKey: string): LibraryData {
+/**
+ * @param skipDerivation when true, the queries still subscribe (hook rules —
+ *   the call site cannot be conditional) but the O(sessions) per-entry
+ *   aggregation is not run. The library MODALS pass this: they take their data
+ *   from the parent screen by prop and only call this hook to satisfy the rules
+ *   of hooks, so before 2026-08-04 the whole derivation ran TWICE per store
+ *   change — in exactly the surfaces (bulk apply, delete) where the store
+ *   changes. Evolu dedupes the SQL; it does not dedupe our arithmetic.
+ */
+export function useLibraryData(habitKey: string, skipDerivation = false): LibraryData {
   const habitQuery = useMemo(
     () =>
       evolu.createQuery((db) =>
@@ -142,6 +151,7 @@ export function useLibraryData(habitKey: string): LibraryData {
   const statusRows = useQuery(statusVocabQuery);
 
   const entries = useMemo<LibEntry[]>(() => {
+    if (skipDerivation) return [];
     // Per-entry aggregates in one pass over the habit's sessions.
     const agg = new Map<string, { hours: number; lastDay: string | null; count: number }>();
     for (const s of sessionRows) {
@@ -173,7 +183,7 @@ export function useLibraryData(habitKey: string): LibraryData {
         createdAt: String(r.createdAt ?? ""),
       };
     });
-  }, [entryRows, sessionRows]);
+  }, [entryRows, sessionRows, skipDerivation]);
 
   const subType = (habit?.sub_type as string | null) ?? null;
   const picklistValues = useMemo(

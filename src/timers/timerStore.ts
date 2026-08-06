@@ -5,14 +5,17 @@
  * detection (countdown-zero · pomodoro phase ends) so a clock finishes even
  * with no timer surface mounted.
  *
- * PERSISTENCE — per-device, never synced. localStorage stand-in (the Library's
- * approved precedent) until the per-device file lands: state is written on
+ * PERSISTENCE — per-device, never synced: the ruled ~15 s HEARTBEAT FILE
+ * (timer-heartbeat.json via settings/deviceStore, 2026-08-04 — separate from
+ * settings.json so the beat never churns it): state is written on
  * every mutation and on a ~15 s heartbeat while running. The clean-close
  * invariant does the crash detection: every clean quit either had no clocks or
  * discarded them through the quit warning, so ANY persisted clock at launch is
  * a crash → the recovery queue (one dialog per clock, sequentially —
  * the multi-clock corner, ruled 2026-07-28). Crash gap never counted: the
  * recovered values are the last-persisted fold, allowed to lag ≤ one heartbeat.
+ * main.tsx awaits the device store BEFORE this module evaluates, so the
+ * crash-detection IIFE below reads a primed cache synchronously.
  */
 import { useSyncExternalStore } from "react";
 import {
@@ -26,8 +29,8 @@ import {
 import { fireSignal, unlockAudio } from "./signal";
 import { syncTray } from "./tray";
 import { stagedCount } from "./logHandoff";
+import { timerGet, timerSet } from "../settings/deviceStore";
 
-const STORAGE_KEY = "cibo-timer-state-v1";
 const HEARTBEAT_MS = 15_000;
 
 export interface TimerState {
@@ -52,7 +55,7 @@ const emit = () => {
 const persist = () => {
   try {
     if (state.clocks.length === 0 && state.recoveryQueue.length === 0) {
-      localStorage.removeItem(STORAGE_KEY);
+      timerSet(null);
       return;
     }
     const now = Date.now();
@@ -65,7 +68,7 @@ const persist = () => {
       ...state.clocks.map((c) => fold(c, now)),
       ...state.recoveryQueue.map((c) => ({ ...c, running: true })),
     ];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ clocks: folded, savedAt: now }));
+    timerSet(JSON.stringify({ clocks: folded, savedAt: now }));
   } catch {
     /* storage unavailable — timers still run, recovery just has nothing */
   }
@@ -85,7 +88,7 @@ const mutate = (fn: (s: TimerState) => TimerState) => {
   const hmr = (globalThis as { __ciboTimerHmr?: boolean }).__ciboTimerHmr === true;
   (globalThis as { __ciboTimerHmr?: boolean }).__ciboTimerHmr = false;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = timerGet();
     if (raw == null) return;
     const parsed = JSON.parse(raw) as { clocks?: Clock[] };
     const clocks = Array.isArray(parsed.clocks) ? parsed.clocks : [];
@@ -352,11 +355,7 @@ export const hasLiveClocks = (): boolean =>
 /** Proceed on the quit warning: discard everything so the close is clean. */
 export const discardAllForQuit = (): void => {
   state = { clocks: [], focusedId: null, manageId: null, recoveryQueue: [] };
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
+  timerSet(null);
   emit();
   syncTicker();
 };
@@ -375,7 +374,9 @@ export const useTimers = (): TimerState => {
   return state;
 };
 
-export const getTimerState = (): TimerState => state;
+// `getTimerState` was DELETED 2026-08-04 — an imperative escape hatch with no
+// caller; every reader uses `useTimers`, and `hasLiveClocks` reads `state`
+// directly from inside this module.
 
 // arm the ticker for crash-restored paused clocks (none run at launch, but the
 // call is the honest place to normalise)

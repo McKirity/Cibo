@@ -12,9 +12,9 @@
  * label the elapsed-time ruling had just struck. Something logged but never
  * opened is simply not recent HERE.
  *
- * Storage is localStorage — the SAME stand-in the library's view state rides
- * (per-device state until the per-device file lands): recents are device
- * texture, not synced data, and a `days ago` label needs no CRDT.
+ * Storage is the per-device settings file (settings/deviceStore, 2026-08-04):
+ * recents are device texture, not synced data, and a `days ago` label needs
+ * no CRDT.
  * Also here: the LAST-USED VERB (the one moving row the alphabetical Actions
  * list lifts to its top — user-ruled the same day).
  */
@@ -31,6 +31,8 @@ export interface RecentVisit {
   /** epoch ms of the visit */
   at: number;
 }
+
+import { deviceGet, deviceSet } from "../settings/deviceStore";
 
 const PLACES_KEY = "cibo.palette.recentPlaces";
 const VERB_KEY = "cibo.palette.lastVerb";
@@ -66,7 +68,7 @@ const validPlace = (p: unknown): p is RecentPlace => {
 
 export function readRecents(): RecentVisit[] {
   try {
-    const raw = localStorage.getItem(PLACES_KEY);
+    const raw = deviceGet(PLACES_KEY);
     if (raw == null) return [];
     const parsed = JSON.parse(raw) as RecentVisit[];
     return Array.isArray(parsed) ? parsed.filter((v) => validPlace(v?.place)) : [];
@@ -82,41 +84,23 @@ export function recordRecent(place: RecentPlace): void {
       { place, at: Date.now() },
       ...readRecents().filter((v) => placeId(v.place) !== id),
     ].slice(0, CAP);
-    localStorage.setItem(PLACES_KEY, JSON.stringify(next));
+    deviceSet(PLACES_KEY, JSON.stringify(next));
   } catch {
     // per-device sugar — never worth an error surface
   }
 }
 
 export function readLastVerb(): string | null {
-  try {
-    return localStorage.getItem(VERB_KEY);
-  } catch {
-    return null;
-  }
+  return deviceGet(VERB_KEY);
 }
 
 export function recordLastVerb(verbId: string): void {
-  try {
-    localStorage.setItem(VERB_KEY, verbId);
-  } catch {
-    /* ditto */
-  }
+  deviceSet(VERB_KEY, verbId);
 }
 
-/**
- * ELAPSED label for a VISIT (user-ruled 2026-07-29: "show how many
- * minutes/hours/days ago when I opened it" — precise, never a bucket word).
- */
-export function relLabel(atMs: number, nowMs: number = Date.now()): string {
-  const mins = Math.floor((nowMs - atMs) / 60000);
-  if (!Number.isFinite(mins) || mins < 1) return "just now";
-  if (mins < 60) return `${mins} min${mins === 1 ? "" : "s"} ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days} day${days === 1 ? "" : "s"} ago`;
-}
+/* `relLabel` MOVED to metrics/format 2026-08-04 — it gained a third consumer
+   in a second area (the Backups pane), and a pure formatter belongs in the
+   formatter module rather than behind a cross-screen import. */
 
 /* relDayLabel (day-granular buckets for logging recency) left with the
    logging merge, 2026-07-29 — no tenant. */

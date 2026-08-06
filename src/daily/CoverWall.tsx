@@ -23,11 +23,20 @@
  * applied to a text card — and the exhibit recorded that hand-assigning the
  * spans was wrong twice in two attempts, so they are computed here.
  */
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { dayRevision } from "./spineSpec";
 import {
   buildWall,
   toPackInputs,
+  COVER_CAP_SHARE,
   type ClusterTile,
   type BannerTile,
   type CoverTile,
@@ -41,7 +50,7 @@ import {
   type WeatherWallTile,
   type WhimsyWhich,
 } from "./wallSpec";
-import { packWall, type Span } from "./wallPack";
+import { packWall, DEFAULT_BUDGET_HALF_ROWS, type Span } from "./wallPack";
 import { KeepsakeTile } from "./KeepsakeTile";
 import { useCoverUrl } from "../kit/CoverArt";
 import { useWallData } from "./useWallData";
@@ -49,9 +58,9 @@ import { useMilestoneDay } from "./useMilestoneDay";
 import { displayTemp, weatherWords } from "./feedData";
 import { holidayFor, factFor, onThisDay, quoteFor, signGlyph, timeProgress, wordFor } from "./almanac";
 import { moonDiscPaths, moonInfo, seasonBand, seasonInfo, sunInfo } from "./sky";
-import { loadWhimsyConfig } from "./whimsyConfig";
+import { cardOn, loadWhimsyConfig } from "./whimsyConfig";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
-import { hoursMinutes } from "../metrics/format";
+import { hoursMinutes, stars } from "../metrics/format";
 import "./daily.css";
 
 const WEEKDAY = new Intl.DateTimeFormat(undefined, { weekday: "long" });
@@ -90,12 +99,32 @@ export function CoverWall({
   // shows the day as it was"). The three ephemeral ones — weather · horoscope ·
   // tarot — come from `feed_snapshot` (live since the network tier, 2026-07-27):
   // exactly what the day captured, and absent means OMITTED, never faked.
+  // Each computed tile's Settings → Whimsy roster key. The roster is coarser
+  // than the tile list: `sky` covers sun + season, `almanac` covers fact,
+  // holiday and the year-progress tile. Same grouping Daily's form state reads.
   const whimsy = useMemo<WhimsyWhich[]>(() => {
+    const ROSTER_KEY: Record<string, string> = {
+      sun: "sky",
+      season: "sky",
+      moon: "moon",
+      word: "word",
+      fact: "almanac",
+      quote: "quote",
+      year: "almanac",
+      otd: "otd",
+      holiday: "almanac",
+    };
     const list: WhimsyWhich[] = ["sun", "season", "moon", "word", "fact", "quote", "year"];
     if (onThisDay(dayKey).length > 0) list.push("otd");
     if (holidayFor(dayKey) != null) list.push("holiday");
-    return list;
-  }, [dayKey]);
+    // HONOR THE TOGGLES (user-ruled 2026-08-04). The wall built all eight
+    // unconditionally, so a card switched off vanished from the working day and
+    // kept appearing on every finalized wall. These tiles are RECOMPUTED, not
+    // snapshotted, so the "already-finalized days stay as they were" exemption
+    // never covered them — the ephemeral three (weather · horoscope · tarot)
+    // are the snapshotted ones, and they are not in this list.
+    return list.filter((w) => cardOn(config, ROSTER_KEY[w] ?? w));
+  }, [dayKey, config]);
 
   const tiles = useMemo(
     () =>
@@ -191,6 +220,11 @@ export function CoverWall({
   // budget rides along.
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [budget, setBudget] = useState<number | null>(null);
+  // The grid's live metrics, measured beside the budget because the cover pass
+  // below needs the REAL column width: a wall column is 1fr of the stretched
+  // 15-track grid (~131px), not one --wall-unit (128), and a 2% error in the
+  // width compounds straight into a wrongly-quantised height.
+  const [grid, setGrid] = useState<{ colW: number; gap: number; step: number } | null>(null);
   useLayoutEffect(() => {
     const el = wrapRef.current;
     if (el == null) return;
@@ -199,6 +233,7 @@ export function CoverWall({
       const unit = parseFloat(cs.getPropertyValue("--wall-unit")) || 128;
       const gap = parseFloat(cs.getPropertyValue("--wall-gap")) || 12;
       const pad = (parseFloat(cs.getPropertyValue("--space-6")) || 16) * 2;
+      const padX = (parseFloat(cs.getPropertyValue("--space-7")) || 24) * 2;
       const step = (unit - gap) / 2 + gap;
       // n half-rows occupy n·step − gap, so n = (h + gap) / step.
       const n = Math.floor((el.clientHeight - pad + gap) / step);
@@ -206,6 +241,12 @@ export function CoverWall({
         const next = Math.max(4, n);
         return prev === next ? prev : next;
       });
+      const colW = (el.clientWidth - padX - 14 * gap) / 15;
+      setGrid((prev) =>
+        prev != null && prev.gap === gap && prev.step === step && Math.abs(prev.colW - colW) < 0.5
+          ? prev
+          : { colW, gap, step },
+      );
     };
     compute();
     const ro = new ResizeObserver(compute);
@@ -213,9 +254,115 @@ export function CoverWall({
     return () => ro.disconnect();
   }, []);
 
+  // ── the cover pass: the tile takes the ART's shape ────────────────────────
+  //
+  // Ruled 2026-08-02 (user: the consumption tiles "should flex to show the
+  // entire cover, not just a portion of it"). The drawn spans were authored
+  // against one implicit aspect — 2×3 is 0.671 against a poster's 0.667, near
+  // exact — and everything that isn't a 2:3 poster paid for it: the `big` tile
+  // is 0.50, so it cropped a quarter off a poster's sides, and Steam's header
+  // fallback (460×215) survived as a letterbox slice of itself.
+  //
+  // So a cover tile's height is now MEASURED from its art, the same "shape
+  // follows content" rule the milestone cards run under — one step further than
+  // the square-source clause the screen note already carries ("a square-source
+  // entry renders square"), which was this idea applied to the one aspect
+  // anybody had a name for. No probe pass: the art reports its natural size
+  // when it loads, so nothing is fetched twice.
+  const [aspects, setAspects] = useState<ReadonlyMap<string, number>>(new Map());
+  const noteArt = useCallback((id: string, w: number, h: number) => {
+    if (!(w > 0) || !(h > 0)) return;
+    const ratio = h / w;
+    setAspects((prev) => {
+      const old = prev.get(id);
+      if (old != null && Math.abs(old - ratio) < 0.002) return prev;
+      const next = new Map(prev);
+      next.set(id, ratio);
+      return next;
+    });
+  }, []);
+
+  // ── the info band's measured height ───────────────────────────────────────
+  //
+  // The band (2026-08-02, user-ruled: "add an extra portion directly beneath
+  // it that contains all the information" · "attached to the bottom of the
+  // cards, not floating beneath it") is part of the tile, so the tile's
+  // RESERVATION has to cover art + band. It reports its rendered height the
+  // way the art reports its natural size.
+  //
+  // WHY THIS CANNOT RATCHET, which the first attempt at a caption footer did:
+  // this number feeds the SPAN ONLY. It never enters the width choice, the
+  // column count or the art's own box below — so the band's height can never
+  // come back around and change the width it was measured at. Any future edit
+  // that lets `bands` reach the cover pass's width arithmetic rebuilds the
+  // feedback loop that collapsed the wall into 65px strips of slot colour.
+  const [bands, setBands] = useState<ReadonlyMap<string, number>>(new Map());
+  const noteBand = useCallback((id: string, h: number) => {
+    if (!(h > 0)) return;
+    setBands((prev) => {
+      const old = prev.get(id);
+      if (old != null && Math.abs(old - h) < 0.5) return prev;
+      const next = new Map(prev);
+      next.set(id, h);
+      return next;
+    });
+  }, []);
+
+  const coverBoxes = useMemo(() => {
+    const boxes = new Map<string, CoverBox>();
+    if (grid == null) return boxes;
+    // The ceiling, in pixels, for this window (see COVER_CAP_SHARE). Floored at
+    // the wall's own minimum tile so a very short viewport cannot reduce covers
+    // to stamps.
+    const capHalfRows = (budget ?? DEFAULT_BUDGET_HALF_ROWS) * COVER_CAP_SHARE;
+    const capPx = Math.max(2, capHalfRows) * grid.step - grid.gap;
+    const widthOf = (c: number) => c * grid.colW + (c - 1) * grid.gap;
+    for (const t of tiles) {
+      if (t.body.kind !== "cover") continue;
+      const ratio = aspects.get(t.id);
+      // No art (or not loaded yet) → the drawn span stands. The lettermark
+      // fallback is a designed face, not a degraded one, and it has no aspect
+      // of its own to follow.
+      if (ratio == null) continue;
+      // Width is the first thing spent to stay under the ceiling, and it is
+      // spent in whole columns while it can be: the day's biggest sitting is
+      // ALLOWED three columns, but only art wide enough to stay short keeps
+      // them. A tall poster gives the third column back rather than tower.
+      // THE ART'S CEILING IS THE ART'S ALONE — the band is not subtracted from
+      // it. The card keeps the size it had before the band existed (user:
+      // "let's not change the cards"); the band adds its height to the tile.
+      let cols = t.body.big && !t.body.square ? 3 : 2;
+      while (cols > 2 && widthOf(cols) * ratio > capPx) cols--;
+      const natural = widthOf(cols) * ratio;
+      // Still over at the narrowest whole width — so the width leaves the grid
+      // and follows the art off the ceiling instead. The tile then draws
+      // narrower than the columns it reserves, which is mortar, not a gap in
+      // the picture.
+      const capped = natural > capPx;
+      const height = capped ? capPx : natural;
+      // The span is a RESERVATION only — the tile draws at the art's exact
+      // aspect (`coverBox`) plus the band, never at the row multiple. Rounding
+      // the DRAWN height to a row is what put a band of slot colour inside the
+      // tile.
+      const band = bands.get(t.id) ?? BAND_ESTIMATE;
+      const halfRows = Math.max(2, Math.ceil((height + band + grid.gap) / grid.step));
+      boxes.set(t.id, { span: { cols, halfRows }, ratio, capPx: capped ? capPx : null });
+    }
+    return boxes;
+  }, [tiles, aspects, grid, budget, bands]);
+
+  // The text probe and the cover pass measure disjoint tiles; the pack reads
+  // one map.
+  const spans = useMemo(() => {
+    if (coverBoxes.size === 0) return measured;
+    const merged = new Map(measured);
+    for (const [id, box] of coverBoxes) merged.set(id, box.span);
+    return merged;
+  }, [measured, coverBoxes]);
+
   const layout = useMemo(() => {
     const opts = budget != null ? { budgetHalfRows: budget } : undefined;
-    const packed = packWall(toPackInputs(tiles, seedKey, measured), opts);
+    const packed = packWall(toPackInputs(tiles, seedKey, spans), opts);
     if (packed.overflowUnlogged.length === 0) return packed;
     // The unlogged remainder — whatever did not land in a hole inside the
     // island — collects into ONE neat labelled cluster block, which is then
@@ -226,8 +373,8 @@ export function CoverWall({
       .filter((n) => n !== "");
     const cluster: WallTile = { id: "cluster", body: { kind: "cluster", names } };
     const keep = tiles.filter((t) => !overflow.has(t));
-    return packWall(toPackInputs([...keep, cluster], seedKey, measured), opts);
-  }, [tiles, seedKey, measured, budget]);
+    return packWall(toPackInputs([...keep, cluster], seedKey, spans), opts);
+  }, [tiles, seedKey, spans, budget]);
 
   const finalized = data.dayRow?.finalized ?? false;
   const d = new Date(`${dayKey}T12:00:00`);
@@ -265,8 +412,13 @@ export function CoverWall({
               <div
                 key={p.item.id}
                 className={`tile ${tileClass(p.item)}`}
+                /* Set only once the box IS the art's shape. Until then the art
+                   draws `contain` — a whole cover with a sliver of slot beats a
+                   cropped one, every time. */
+                data-art={coverBoxes.has(p.item.id) ? "fit" : undefined}
                 style={{
                   ...tileStyle(p.item),
+                  ...coverBox(p.item, coverBoxes),
                   gridColumn: `${p.col} / span ${p.cols}`,
                   gridRow: `${p.row} / span ${p.halfRows}`,
                 }}
@@ -284,7 +436,13 @@ export function CoverWall({
                     : undefined
                 }
               >
-                <TileBody tile={p.item} dayKey={dayKey} config={config} />
+                <TileBody
+                  tile={p.item}
+                  dayKey={dayKey}
+                  config={config}
+                  onArt={noteArt}
+                  onBand={noteBand}
+                />
               </div>
             );
           })}
@@ -318,14 +476,48 @@ export function CoverWall({
   );
 }
 
-/** The `--slot` a tile paints itself with; only the art-bearing kinds carry one. */
-/** The wall's cover art: the shared reader, drawn OVER the keepsake fallback
- *  (which stays visible whenever there is no art, per fail-to-fallback). */
-function WallArt({ cover }: { cover: string | null }) {
-  const src = useCoverUrl(cover);
-  if (src == null) return null;
-  return <img className="art" src={src} alt="" />;
+/** What the cover pass works out per tile: its reservation and its true box. */
+interface CoverBox {
+  span: Span;
+  /** naturalHeight / naturalWidth. */
+  ratio: number;
+  /** Set only when the ceiling bound — the height is then fixed and the width follows. */
+  capPx: number | null;
 }
+
+/** Stand-in band height until the first real measurement lands — the eyebrow
+ *  line, the title line and the chip row, plus the band's padding. */
+const BAND_ESTIMATE = 78;
+
+/**
+ * A measured cover's ART BOX draws at its art's EXACT aspect: `aspect-ratio`
+ * supplies whichever dimension the grid does not. Uncapped, the columns give
+ * the width and the picture gives the height; capped, the ceiling gives the
+ * height and the picture gives the width (the tile narrows with it, so the
+ * band underneath stays exactly as wide as the card it is attached to). Either
+ * way the art box IS the picture's shape, so there is nothing left over to
+ * band and nothing to crop.
+ *
+ * The TILE's own height is `auto` — art box plus the info band. Sizing the
+ * tile itself and letting the art fill it is what the retired footer attempt
+ * did, and it is why the art shrank as the band grew.
+ */
+const coverBox = (t: WallTile, boxes: ReadonlyMap<string, CoverBox>): Record<string, string> => {
+  const box = boxes.get(t.id);
+  if (box == null) return {};
+  const shape: Record<string, string> = {
+    ["--art-ratio"]: `${box.ratio}`,
+    alignSelf: "start",
+    height: "auto",
+  };
+  if (box.capPx == null) return shape;
+  return {
+    ...shape,
+    ["--art-h"]: `${Math.round(box.capPx)}px`,
+    width: `${Math.round(box.capPx / box.ratio)}px`,
+    justifySelf: "start",
+  };
+};
 
 const tileStyle = (t: WallTile): Record<string, string> => {
   const b = t.body;
@@ -396,15 +588,21 @@ function TileBody({
   tile,
   dayKey,
   config,
+  onArt,
+  onBand,
 }: {
   tile: WallTile;
   dayKey: string;
   config: ReturnType<typeof loadWhimsyConfig>;
+  /** The cover pass's ear — a loaded cover reports its natural size upward. */
+  onArt?: (id: string, w: number, h: number) => void;
+  /** Its second ear — the info band reports its rendered height (span only). */
+  onBand?: (id: string, h: number) => void;
 }) {
   const b = tile.body;
   switch (b.kind) {
     case "cover":
-      return <Cover t={b} />;
+      return <Cover t={b} tileId={tile.id} onArt={onArt} onBand={onBand} />;
     case "banner":
       return <Banner t={b} />;
     case "keepsake":
@@ -430,27 +628,57 @@ function TileBody({
 
 // ── Habit tiles ──────────────────────────────────────────────────────────────
 
-function Cover({ t }: { t: CoverTile }) {
+function Cover({
+  t,
+  tileId,
+  onArt,
+  onBand,
+}: {
+  t: CoverTile;
+  tileId: string;
+  onArt?: (id: string, w: number, h: number) => void;
+  onBand?: (id: string, h: number) => void;
+}) {
   // ONE composition for portrait and square alike (user-ruled 2026-08-02:
-  // "Fill with the avatar"). The square branch used to draw its own thing — a
-  // 64px avatar badge centred on the habit's colour, with the name and
-  // duration beneath — which was the frozen face's own design, drawn when the
-  // circle could only ever hold a LETTER. Given real art it read as an empty
-  // tile with a sticker on it, beside neighbours whose art fills them.
-  // So `square` now decides only the tile's SHAPE (a 2×2 span, set in
-  // wallSpec) and no longer its anatomy: the art fills, the wash band carries
-  // the caption, exactly as every other cover tile on the wall.
-  return (
+  // "Fill with the avatar"). `square` decides only the tile's SHAPE (a 2×2
+  // span, set in wallSpec), never its anatomy.
+  //
+  // THE INFO BAND (user-ruled 2026-08-02, after the caption-overlay face was
+  // judged unreadable over real art and a caption-footer re-cut was judged
+  // worse and reverted whole): *"let's not change the cards, instead add an
+  // extra portion directly beneath it that contains all the information"* ·
+  // *"should be attached to the bottom of the cards, not floating beneath
+  // it"*. So the CARD IS UNTOUCHED — same art, same size, same shape it had
+  // when nothing was written on it — and the words move off it into a band
+  // fixed to its bottom edge, inside the same tile box and its radius.
+  //
+  // THE NO-ART FACE KEEPS THE OVERLAY COMPOSITION, unchanged and band-less:
+  // the typographic keepsake reads perfectly on its flat slot field — that
+  // face is what the overlay anatomy was drawn for, and it is a designed
+  // permanent look, not a degraded one. Only art defeats text.
+  const src = useCoverUrl(t.cover);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const bandRef = useRef<HTMLDivElement | null>(null);
+  // TWO ways in, because `load` alone loses the race: a blob the webview has
+  // already decoded is `complete` before React attaches the listener, so the
+  // event never fires, the tile keeps its DRAWN span, and the art gets cropped
+  // to a shape it never had. That is precisely what happened to the day's `big`
+  // tile while its neighbours measured fine. Re-reading `complete` after every
+  // render closes it; the state setter bails when the ratio is unchanged, so
+  // this settles in one extra render and then costs a property read.
+  useEffect(() => {
+    const el = imgRef.current;
+    if (el != null && el.complete) onArt?.(tileId, el.naturalWidth, el.naturalHeight);
+  });
+  // The band reports the same way — every render, the parent bails on
+  // unchanged. Its height buys ROWS and nothing else (see the cover pass).
+  useLayoutEffect(() => {
+    const el = bandRef.current;
+    if (el != null) onBand?.(tileId, el.getBoundingClientRect().height);
+  });
+
+  const info = (
     <>
-      {/* Real cover art at runtime; the typographic keepsake underneath is the
-          `kit-tile-fallback` treatment, which stays the permanent look for an
-          entry that never got art. An absent or dead ref simply draws nothing —
-          silently, per the fail-to-fallback law.
-          FIXED 2026-07-31 (step 8): this drew `src={t.cover}` — the RAW stored
-          reference — which the webview resolved against the dev server and
-          404'd every time, so wall art had never once rendered. The ref is
-          root-relative and its bytes are read Rust-side (kit/CoverArt). */}
-      <WallArt cover={t.cover} />
       <span className="kind">{t.eyebrow}</span>
       {hasIcon(t.icon) && (
         <span className="glyph">
@@ -462,10 +690,38 @@ function Cover({ t }: { t: CoverTile }) {
         <span className="chip dur">{t.duration}</span>
         {t.rating != null && (
           <span className="stars">
-            {"★".repeat(t.rating)}
+            {stars(t.rating)}
             {"☆".repeat(Math.max(0, 5 - t.rating))}
           </span>
         )}
+      </div>
+    </>
+  );
+
+  // No art → the keepsake face, exactly as before, no band.
+  if (src == null) return info;
+
+  return (
+    <>
+      {/* The CARD. Real cover art at runtime, alone in its box — nothing is
+          written on it any more.
+          FIXED 2026-07-31 (step 8): this drew `src={t.cover}` — the RAW stored
+          reference — which the webview resolved against the dev server and
+          404'd every time, so wall art had never once rendered. The ref is
+          root-relative and its bytes are read Rust-side (kit/CoverArt). */}
+      <div className="cvart">
+        <img
+          ref={imgRef}
+          className="art"
+          src={src}
+          alt=""
+          onLoad={(e) =>
+            onArt?.(tileId, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)
+          }
+        />
+      </div>
+      <div className="cvinfo" ref={bandRef}>
+        {info}
       </div>
     </>
   );
@@ -479,10 +735,17 @@ function Cover({ t }: { t: CoverTile }) {
  * fail-to-fallback law.
  */
 function Banner({ t }: { t: BannerTile }) {
+  // useCoverUrl, never the raw stored ref — the same fix the COVER half of this
+  // component took on 2026-07-31. A stored ref is a root-relative path the
+  // webview resolves against the dev server and 404s; the bytes come back
+  // Rust-side as a blob URL. Latent until banners become droppable at step 14,
+  // and it fails SILENTLY into the gradient field, so it would not have
+  // announced itself then either.
+  const src = useCoverUrl(t.banner);
   return (
     <>
-      {t.banner != null && (
-        <img className="art" src={t.banner} alt="" onError={(e) => e.currentTarget.remove()} />
+      {src != null && (
+        <img className="art" src={src} alt="" onError={(e) => e.currentTarget.remove()} />
       )}
       <span className="kind">{t.eyebrow}</span>
       <div className="foot">

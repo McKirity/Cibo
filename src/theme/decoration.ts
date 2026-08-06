@@ -89,8 +89,7 @@ let published: string[] = [];
 let lastSummary: DecorationSummary = { state: "absent", active: [], off: [], tints: {}, warnings: [] };
 export const decorationSummary = (): DecorationSummary => lastSummary;
 
-const inTauri = (): boolean =>
-  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+import { inTauri } from "../settings/deviceStore";
 
 let liveUrls: string[] = [];
 

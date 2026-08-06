@@ -31,7 +31,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@evolu/react";
 import { NonEmptyString100 } from "@evolu/common";
 import { evolu } from "../db/evolu";
-import { Ico } from "../shell/icons";
+import { Ico, ICONS } from "../shell/icons";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { showErrorToast } from "../shell/toast";
 
@@ -277,7 +277,7 @@ export function VocabularyPane() {
                           />
                         ) : (
                           <button className="iconbtn danger" aria-label="Remove" onClick={() => remove(o.id)}>
-                            <Ico d={["M18 6 6 18", "m6 6 12 12"]} />
+                            <Ico d={ICONS.close} />
                           </button>
                         )}
                       </span>

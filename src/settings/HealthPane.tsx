@@ -25,18 +25,19 @@
  *    the accumulation home the 2026-07-03 ruling named and nothing provided).
  *  · Entry duplicates — LIVE. Step 13's `entry-dedupe` check, built early at
  *    step 8 and user-ruled to get a real Settings door: this is that door.
- *  · Backups — WAITS for step 12. The row is drawn with its state unknown
- *    rather than omitted, so the shape is not retrofitted later.
+ *  · Backups — LIVE since step 12.
  *  · Sync — DORMANT by ruling: "drawn quiet, never omitted — wakes when the
  *    Mac joins".
- *  · The other seven Data Doctor checks — step 13's.
+ *  · The Data half — LIVE since step 13: all TEN ruled checks over
+ *    `src/db/doctor.ts`, with per-finding mute and the restorable Ignored list.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
-import { Ico } from "../shell/icons";
+import { Ico, ICONS } from "../shell/icons";
 import { importerServices } from "../importers/sources";
 import { threeWayProbe } from "../importers/probes";
+import { consumeProbeAll, PROBE_ALL_EVENT } from "../shell/navRequest";
 import type { ImporterSource } from "../importers/types";
 import {
   BACKUP_EVENT,
@@ -45,10 +46,23 @@ import {
   readBackupRecord,
   runBackup,
 } from "../backup/backup";
-import { causeNote, findDuplicates, type DuplicateReport } from "../db/duplicates";
 import { deleteEntriesCascade } from "../library/entryDelete";
 import { clearErrors, recentErrors, subscribeErrors, type LoggedError } from "./errorLog";
 import { LUCIDE_VERSION } from "../shell/habitIcons";
+import {
+  publishDoctor,
+  runDoctor,
+  type CheckReport,
+  type DoctorReport,
+  type Finding,
+  type Severity,
+} from "../db/doctor";
+import {
+  decodeMutes,
+  doctorMutesQuery,
+  muteFinding,
+  unmuteFinding,
+} from "../db/doctorMutes";
 
 const PIP_OK = ["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z", "m8.5 12.5 2.5 2.5 4.5-5"];
 const PIP_ERR = ["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z", "M12 7v6", "M12 17h.01"];
@@ -56,7 +70,15 @@ const PIP_IDLE = ["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"];
 
 type Tab = "system" | "data";
 
-export function HealthPane() {
+/** Where a finding's fix action sends you — Shell's doors, threaded down. */
+export interface HealthNav {
+  onOpenDay?: (date: string) => void;
+  onOpenEntry?: (id: string, habitKey: string) => void;
+  /** The habit editor + the vocabulary lists both live in Settings → Habits. */
+  onOpenHabits?: () => void;
+}
+
+export function HealthPane(nav: HealthNav) {
   const [tab, setTab] = useState<Tab>("system");
   return (
     <>
@@ -68,21 +90,27 @@ export function HealthPane() {
           Data
         </button>
       </div>
-      <div className="pbody">{tab === "system" ? <SystemTab /> : <DataTab />}</div>
+      <div className="pbody">{tab === "system" ? <SystemTab /> : <DataTab {...nav} />}</div>
     </>
   );
 }
 
 // ── System ───────────────────────────────────────────────────────────────────
 
+/* COUNT SQL-SIDE, never `rows.length` (2026-08-04). These three selected every
+   id in `habits`, `entries` and `sessions` and rendered the array lengths —
+   tens of thousands of ids materialised into JS on every store change while
+   this tab is mounted, to draw one line of text. The projected 15-year store
+   makes that the pane's dominant cost. `countAll` is the app's established
+   answer (daily/Daily.tsx's Lifetime card). */
 const countsQuery = evolu.createQuery((db) =>
-  db.selectFrom("habits").select(["id"]).where("isDeleted", "is not", 1),
+  db.selectFrom("habits").select((eb) => eb.fn.countAll<number>().as("n")).where("isDeleted", "is not", 1),
 );
 const entryCountQuery = evolu.createQuery((db) =>
-  db.selectFrom("entries").select(["id"]).where("isDeleted", "is not", 1),
+  db.selectFrom("entries").select((eb) => eb.fn.countAll<number>().as("n")).where("isDeleted", "is not", 1),
 );
 const sessionCountQuery = evolu.createQuery((db) =>
-  db.selectFrom("sessions").select(["id"]).where("isDeleted", "is not", 1),
+  db.selectFrom("sessions").select((eb) => eb.fn.countAll<number>().as("n")).where("isDeleted", "is not", 1),
 );
 const seedVersionQuery = evolu.createQuery((db) =>
   db
@@ -93,12 +121,26 @@ const seedVersionQuery = evolu.createQuery((db) =>
 );
 
 function SystemTab() {
-  const habits = useQuery(countsQuery);
-  const entries = useQuery(entryCountQuery);
-  const sessions = useQuery(sessionCountQuery);
+  const habitCount = useQuery(countsQuery)[0]?.n ?? 0;
+  const entryCount = useQuery(entryCountQuery)[0]?.n ?? 0;
+  const sessionCount = useQuery(sessionCountQuery)[0]?.n ?? 0;
   const seed = useQuery(seedVersionQuery);
   const [errors, setErrors] = useState<LoggedError[]>(() => recentErrors());
   useEffect(() => subscribeErrors(setErrors), []);
+  // "Test connection" (palette verb, 2026-08-04): consume the one-shot on
+  // mount, hear the event while mounted — a bumped signal makes every
+  // importer row run its probe.
+  const [probeSignal, setProbeSignal] = useState(() => (consumeProbeAll() ? 1 : 0));
+  useEffect(() => {
+    // A mounted tab handles the event directly — consume the parked one-shot
+    // too, so it cannot re-fire on some later mount.
+    const h = () => {
+      consumeProbeAll();
+      setProbeSignal((n) => n + 1);
+    };
+    window.addEventListener(PROBE_ALL_EVENT, h);
+    return () => window.removeEventListener(PROBE_ALL_EVENT, h);
+  }, []);
 
   return (
     <div className="hscroll">
@@ -113,7 +155,7 @@ function SystemTab() {
         <p className="hglbl">Importers</p>
         <div className="hlist">
           {importerServices().map((s) => (
-            <ImporterRow key={s.name} name={s.name} source={s.probe} />
+            <ImporterRow key={s.name} name={s.name} source={s.probe} runSignal={probeSignal} />
           ))}
         </div>
       </div>
@@ -136,7 +178,7 @@ function SystemTab() {
           <Row
             pip="ok"
             label="Contents"
-            state={`${habits.length} habits · ${entries.length.toLocaleString()} entries · ${sessions.length.toLocaleString()} sessions`}
+            state={`${habitCount} habits · ${entryCount.toLocaleString()} entries · ${sessionCount.toLocaleString()} sessions`}
           />
         </div>
       </div>
@@ -262,7 +304,16 @@ function Row({
   );
 }
 
-function ImporterRow({ name, source }: { name: string; source: ImporterSource }) {
+function ImporterRow({
+  name,
+  source,
+  runSignal = 0,
+}: {
+  name: string;
+  source: ImporterSource;
+  /** Bumped by the palette's test-all — each bump runs this row's probe. */
+  runSignal?: number;
+}) {
   const [verdict, setVerdict] = useState<{ ok: boolean; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -277,6 +328,10 @@ function ImporterRow({ name, source }: { name: string; source: ImporterSource })
       setBusy(false);
     }
   }, [source]);
+
+  useEffect(() => {
+    if (runSignal > 0) void test();
+  }, [runSignal, test]);
 
   return (
     <div className="srow">
@@ -298,75 +353,192 @@ function ImporterRow({ name, source }: { name: string; source: ImporterSource })
   );
 }
 
+
 // ── Data ─────────────────────────────────────────────────────────────────────
+//
+// THE DATA DOCTOR (step 13) — the ruled TEN checks over `src/db/doctor.ts`.
+// This is the display half only: the engine computes, the surface shows the
+// findings, offers each one's fix, and lets one be ignored on purpose.
+//
+// Ruled run model: the surface opens → a full pass INCLUDING the filesystem
+// tier (the launch pass, which feeds the rail dot, runs the DB tier only).
+//
+// SEVERITY IS THE WHOLE GRAMMAR: errors tint the row and light the rail dot,
+// warnings are quiet colour, info is not an alarm at all. Never colour alone —
+// the pip, the state word and the finding lines all carry it.
 
-/** The eight ruled checks. Only `entry-dedupe` has an implementation today. */
-const CHECKS: { id: string; label: string; note: string }[] = [
-  { id: "entry-dedupe", label: "Duplicate entries", note: "The same title stored twice." },
-  { id: "unknown-vocab", label: "Unknown vocabulary", note: "A stored value no longer in its list." },
-  { id: "unknown-icon", label: "Unknown icons", note: "An icon name absent from the pinned set." },
-  { id: "orphan-session", label: "Orphaned sessions", note: "A session pointing at a missing entry." },
-  { id: "orphan-image", label: "Orphaned images", note: "A cover file no entry references." },
-  { id: "missing-cover", label: "Missing covers", note: "An entry whose cover file is gone." },
-  { id: "impossible-range", label: "Impossible ranges", note: "A range session that ends before it starts." },
-  { id: "empty-day", label: "Finalized empty days", note: "A day marked done with nothing in it." },
-];
+const PIP_WARN = ICONS.warning;
+const ICO_MUTE = ["M11 5 6 9H2v6h4l5 4z", "M23 9l-6 6", "M17 9l6 6"];
+const ICO_RERUN = ["M21 12a9 9 0 1 1-9-9c2.5 0 4.8 1 6.4 2.6L21 8", "M21 3v5h-5"];
+const ICO_DISC = ICONS.chevronRight;
 
-const HABIT_KEYS = ["gaming", "reading", "media", "writing", "gamedev"];
+/** The severity tier's class suffix — one word, used by pip, word and row. */
+const tierClass = (severity: Severity): string =>
+  severity === "error" ? "err" : severity === "warning" ? "warn" : "info";
 
-function DataTab() {
-  const [report, setReport] = useState<Record<string, DuplicateReport>>({});
+const pipPath = (severity: Severity): string[] =>
+  severity === "error" ? PIP_ERR : severity === "warning" ? PIP_WARN : PIP_IDLE;
+
+function DataTab({ onOpenDay, onOpenEntry, onOpenHabits }: HealthNav) {
+  const [report, setReport] = useState<DoctorReport | null>(null);
   const [busy, setBusy] = useState(false);
-  const [ran, setRan] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
+  /** Muted this session — the store is the truth, this keeps the list honest
+   *  between a mute and the next run without re-scanning the filesystem. */
+  const [justMuted, setJustMuted] = useState<ReadonlySet<string>>(new Set());
 
-  const run = async () => {
+  const muteRows = useQuery(doctorMutesQuery);
+  const ignored = useMemo(() => decodeMutes(muteRows), [muteRows]);
+
+  const run = useCallback(async () => {
     setBusy(true);
     try {
-      const out: Record<string, DuplicateReport> = {};
-      for (const k of HABIT_KEYS) out[k] = await findDuplicates(k);
-      setReport(out);
-      setRan(true);
+      const r = await runDoctor({ withFs: true });
+      setReport(r);
+      setJustMuted(new Set());
+      // The dot follows the freshest verdict, whoever produced it.
+      publishDoctor(r);
     } catch (e) {
-      console.error("health: duplicate scan failed", e);
+      console.error("doctor: run failed", e);
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  // "Re-checked when the surface opens" — the ruled half of the run model.
+  useEffect(() => {
+    void run();
+  }, [run]);
+
+  const visible = useCallback(
+    (c: CheckReport): Finding[] => c.findings.filter((f) => !justMuted.has(f.muteKey)),
+    [justMuted],
+  );
+
+  const mute = (f: Finding) => {
+    if (!muteFinding(f.muteKey)) return;
+    setJustMuted((prev) => new Set(prev).add(f.muteKey));
+  };
+
+  const act = async (action: NonNullable<Finding["action"]>) => {
+    setBusy(true);
+    try {
+      if (action.kind === "delete-session") {
+        const res = evolu.update("sessions", { id: action.id as never, isDeleted: 1 });
+        if (!res.ok) console.error("doctor: session delete rejected", res.error);
+      } else if (action.kind === "delete-entries") {
+        await deleteEntriesCascade(action.ids);
+      } else {
+        const fs = await import("@tauri-apps/plugin-fs");
+        await fs.remove(action.path, { baseDir: fs.BaseDirectory.AppLocalData });
+      }
+      await run();
+    } catch (e) {
+      console.error("doctor: fix action failed", e);
     } finally {
       setBusy(false);
     }
   };
 
-  const groups = Object.entries(report).flatMap(([habitKey, r]) =>
-    r.groups.map((g) => ({ habitKey, g })),
-  );
+  const goto = (t: NonNullable<Finding["target"]>) => {
+    if (t.kind === "day") onOpenDay?.(t.date);
+    else if (t.kind === "entry") onOpenEntry?.(t.id, t.habitKey);
+    else onOpenHabits?.();
+  };
+
+  const checks = report?.checks ?? [];
+  const totalFindings = checks.reduce((n, c) => n + visible(c).length, 0);
 
   return (
     <div className="hscroll">
       <div className="hgroup" style={{ marginTop: 0 }}>
         <p className="hglbl">
-          Checks
-          <span className="runline">{ran ? "run just now" : "not run yet"}</span>
+          Data Doctor
+          <span className="runline">
+            {report == null
+              ? busy
+                ? "checking…"
+                : "not run yet"
+              : `${checks.length} checks · ${totalFindings === 0 ? "all clear" : `${totalFindings} to look at`}`}
+          </span>
         </p>
         <div className="hlist">
-          {CHECKS.map((c) => {
-            const live = c.id === "entry-dedupe";
-            const found = live && ran ? groups.length : 0;
+          {checks.map((c) => {
+            const found = visible(c);
+            const lit = c.ran && found.length > 0;
+            const tier = tierClass(c.severity);
             return (
-              <div className={`srow${live && ran && found > 0 ? " finding" : ""}`} key={c.id}>
-                <span className={`pip ${!live ? "idle" : !ran ? "idle" : found > 0 ? "err" : "ok"}`}>
-                  <Ico d={!live || !ran ? PIP_IDLE : found > 0 ? PIP_ERR : PIP_OK} />
-                </span>
-                <span className="sinfo">
-                  <span className="slabel">{c.label}</span>
-                  <span className="sstate">{live ? c.note : `${c.note} · not built yet`}</span>
-                </span>
-                <span className="sact">
-                  {live && ran && (
-                    <span className={`sword ${found > 0 ? "err" : "ok"}`}>
-                      {found > 0 ? `${found} found` : "Clean"}
+              <div className="ddcheck" key={c.id}>
+                <div className={`srow${lit && c.severity !== "info" ? ` finding ${tier}` : ""}`}>
+                  <span className={`pip ${!c.ran ? "idle" : lit ? tier : "ok"}`}>
+                    <Ico d={!c.ran ? PIP_IDLE : lit ? pipPath(c.severity) : PIP_OK} />
+                  </span>
+                  <span className="sinfo">
+                    <span className="slabel">{c.label}</span>
+                    <span className="sstate">
+                      {c.note}
+                      {c.muted > 0 && ` · ${c.muted} ignored`}
                     </span>
-                  )}
-                </span>
+                  </span>
+                  <span className="sact">
+                    {!c.ran ? (
+                      <span className="sword idle">Not checked</span>
+                    ) : lit ? (
+                      <>
+                        <span className={`sword ${tier}`}>{found.length} found</span>
+                        <button
+                          className={`disc${open === c.id ? " on" : ""}`}
+                          title={open === c.id ? "Hide" : "Show"}
+                          onClick={() => setOpen(open === c.id ? null : c.id)}
+                        >
+                          <Ico d={ICO_DISC} />
+                        </button>
+                      </>
+                    ) : (
+                      <span className="sword ok">Clean</span>
+                    )}
+                  </span>
+                </div>
+                {open === c.id &&
+                  found.map((f) => (
+                    <div className={`dfind ${tier}`} key={f.muteKey}>
+                      <span className="dfid">
+                        <span className="dfline">{f.line}</span>
+                        <span className="dfctx">{f.context}</span>
+                      </span>
+                      <span className="dfacts">
+                        {f.target != null && (
+                          <button className="btn-plain btn-sm" onClick={() => goto(f.target!)}>
+                            {f.target.kind === "day"
+                              ? "Open the day"
+                              : f.target.kind === "entry"
+                                ? "Open the entry"
+                                : f.target.kind === "habit"
+                                  ? "Open the habit"
+                                  : "Open the lists"}
+                          </button>
+                        )}
+                        {f.action != null && (
+                          <button
+                            className="btn-danger btn-sm"
+                            disabled={busy}
+                            onClick={() => void act(f.action!)}
+                          >
+                            {f.actionLabel ?? "Fix"}
+                          </button>
+                        )}
+                        <button className="iconbtn" title="Ignore this finding" onClick={() => mute(f)}>
+                          <Ico d={ICO_MUTE} />
+                        </button>
+                      </span>
+                    </div>
+                  ))}
               </div>
             );
           })}
+          {checks.length === 0 && (
+            <p className="vnote">{busy ? "Running the checks…" : "The checks have not run yet."}</p>
+          )}
         </div>
         <button
           className="btn-plain"
@@ -374,54 +546,46 @@ function DataTab() {
           disabled={busy}
           onClick={() => void run()}
         >
+          <Ico d={ICO_RERUN} />
           {busy ? "Running…" : "Run checks"}
         </button>
       </div>
 
-      {groups.length > 0 && (
+      {/* The restorable Ignored list — the ruled other half of muting. A mute
+          you cannot find again is a bug you hid from yourself. */}
+      {ignored.length > 0 && (
         <div className="hgroup">
-          <p className="hglbl">Duplicate entries</p>
-          <div className="mlist">
-            {groups.map(({ habitKey, g }) => (
-              <div className="mitem" key={`${habitKey}-${g.key}`}>
-                <div className="mrow">
-                  <span className="mid">
-                    <span className="mname">{g.displayTitle}</span>
-                    <span className="missing soft">
-                      <span>
-                        {habitKey} · {causeNote(g.cause)}
-                      </span>
-                    </span>
+          <p className="hglbl">
+            Ignored
+            <span className="runline">{ignored.length}</span>
+          </p>
+          <div className="hlist">
+            {ignored.map((m) => {
+              const spec = checks.find((c) => c.id === m.check);
+              return (
+                <div className="srow" key={m.id}>
+                  <span className="pip idle">
+                    <Ico d={ICO_MUTE} />
                   </span>
-                  <span className="macts">
-                    {g.safeToDelete.length > 0 ? (
-                      <button
-                        className="btn-danger btn-sm"
-                        disabled={busy}
-                        onClick={async () => {
-                          setBusy(true);
-                          try {
-                            await deleteEntriesCascade(g.safeToDelete.map(String));
-                            await run();
-                          } finally {
-                            setBusy(false);
-                          }
-                        }}
-                      >
-                        Remove {g.safeToDelete.length} empty copy
-                      </button>
-                    ) : (
-                      <span className="mgtag">every copy has history — keep</span>
-                    )}
+                  <span className="sinfo">
+                    <span className="slabel">{spec?.label ?? m.check}</span>
+                    <span className="sstate">Ignored since {m.since}</span>
+                  </span>
+                  <span className="sact">
+                    <button
+                      className="btn-plain btn-sm"
+                      disabled={busy}
+                      onClick={() => {
+                        if (unmuteFinding(m.id)) void run();
+                      }}
+                    >
+                      Stop ignoring
+                    </button>
                   </span>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-          <p className="vnote foot">
-            Only copies with no sessions can be removed. Entries carrying history are never
-            touched — merging them is not something the app does.
-          </p>
         </div>
       )}
     </div>

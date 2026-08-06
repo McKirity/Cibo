@@ -12,12 +12,13 @@ import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
 import { waveGapDefault } from "../settings/store";
 
+import { finalizedDaysQuery } from "./queries";
 const habitsQuery = evolu.createQuery((db) =>
   db
     .selectFrom("habits")
     .select([
-      "id", "key", "name", "kind", "sub_type", "colour_slot", "archived",
-      "measures_time", "measures_count", "count_unit", "derived_rules", "sort_order",
+      "id", "key", "name", "kind", "colour_slot", "archived",
+      "measures_time", "measures_count", "count_unit", "sort_order",
       "wave_gap_days",
     ])
     .where("isDeleted", "is not", 1)
@@ -41,9 +42,6 @@ const entriesQuery = evolu.createQuery((db) =>
     .where("isDeleted", "is not", 1),
 );
 
-const daysQuery = evolu.createQuery((db) =>
-  db.selectFrom("days").select(["date"]).where("finalized", "=", 1).where("isDeleted", "is not", 1),
-);
 
 const subunitValuesQuery = evolu.createQuery((db) =>
   db
@@ -66,14 +64,18 @@ export interface CadHabit {
   key: string;
   name: string;
   kind: "project" | "simple" | "range";
-  subType: "consumption" | "creation" | null;
   colour: string; // "habit-N" slot name
   archived: boolean;
   measuresTime: boolean;
   measuresCount: boolean;
   countUnit: string | null;
-  derivedRules: string | null; // raw JSON (range rules-as-data)
-  sortOrder: number;
+  /* `subType`, `derivedRules` and `sortOrder` were DELETED 2026-08-04 — mapped
+     for nobody (zero reads in cadenceSpec AND CadenceDashboard). `sort_order`
+     stays in the SELECT because the query orders by it. NOTE: `derivedRules`
+     was fetched while the range expansion's flag strips are hardcoded Sleep
+     semantics (cadenceSpec's "8 h+ nights" / "up before noon") — porting those
+     to the rules-as-data the way rangeSpec does is a Tier-2 item, and would
+     bring this field back deliberately. */
   /** Per-habit wave-gap override (null = the 30-day default) — the review's
    *  anniversaries/churn must cluster the same waves the entry dashboard does. */
   waveGapDays: number | null;
@@ -118,7 +120,7 @@ export function useCadenceData(): CadenceData {
   const habitRows = useQuery(habitsQuery);
   const sessionRows = useQuery(sessionsQuery);
   const entryRows = useQuery(entriesQuery);
-  const dayRows = useQuery(daysQuery);
+  const dayRows = useQuery(finalizedDaysQuery);
   const valueRows = useQuery(subunitValuesQuery);
 
   const habits = useMemo<CadHabit[]>(
@@ -130,15 +132,12 @@ export function useCadenceData(): CadenceData {
           key: h.key as string,
           name: (h.name as string) ?? (h.key as string),
           kind: h.kind as CadHabit["kind"],
-          subType: (h.sub_type as CadHabit["subType"]) ?? null,
           colour: (h.colour_slot as string) ?? "habit-1",
           archived: h.archived === 1,
           measuresTime: h.measures_time === 1,
           measuresCount: h.measures_count === 1,
           countUnit: (h.count_unit as string | null) ?? null,
-          derivedRules: (h.derived_rules as string | null) ?? null,
-          sortOrder: (h.sort_order as number) ?? 0,
-          // Per-habit override, else the Settings global (step 10; the spec's
+          // Per-habit override, else the Settings global (the spec's
           // own `?? 30` stays as the final backstop).
           waveGapDays: (h.wave_gap_days as number | null) ?? waveGapDefault(),
         })),

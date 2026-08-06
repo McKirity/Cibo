@@ -1,7 +1,7 @@
 /* Vertical-slice screen glue — the structural wrappers the frozen FINAL keeps
    screen-local (.gs / .gs-body), plus the masthead lettermark. NOT kit rules;
-   dials only, per the derivation law. The rail/titlebar/theme shell is step 6;
-   this renders the dashboard pane bare, like step 3's log screen. */
+   dials only, per the derivation law. (Born at step 4, when this pane rendered
+   bare; the shell it once waited on has long since landed around it.) */
 
 .gsdash {
   padding: var(--space-8);
@@ -25,7 +25,8 @@
   margin-top: 0;
 }
 
-/* Masthead art = a lettermark fallback (icons are step 6 / Iconography). */
+/* Masthead art = the lettermark (deliberate — [[Iconography]]'s data-icon
+   boundary keeps the masthead letter; habit icons live in the rail). */
 .mast .art span {
   font-family: var(--font-heading);
   font-size: var(--size-display);
@@ -142,7 +143,10 @@
 
 /* The archived habit's honestly-empty 30-day trend face (gamedev-stats FINAL —
    drawn there as JS-set inline styles; a class here). */
-.creationdash .trend-empty {
+/* NOT scoped to .creationdash: CreationTrend is rendered by SimpleDashboard
+   too (root class `gsdash simpledash`), so an archived SIMPLE habit's empty
+   trend drew with no styling at all. */
+.trend-empty {
   padding: var(--space-8);
   text-align: center;
   color: var(--text-muted);

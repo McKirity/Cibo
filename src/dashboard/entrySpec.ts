@@ -30,7 +30,7 @@ import {
   type SessionRow,
   type Wave,
 } from "../metrics/shapes";
-import { dayFromIndex, dayGap, dayIndex, isoWeek, monthKey, weekStart, yearKey } from "../metrics/dates";
+import { dayFromIndex, dayGap, dayIndex, monthKey, weekNum, weekStart, yearKey } from "../metrics/dates";
 import {
   fmtDMY,
   fmtMonY,
@@ -39,8 +39,10 @@ import {
   hoursWhole,
   MONTHS_LONG,
   MONTHS_SHORT,
+  stars,
 } from "../metrics/format";
 import type { TileSpec } from "./consumptionSpec";
+import { getRailBanner } from "../settings/local";
 import { CAT_SLOTS, dayCounts, initialism, longestRunOf, STATUS_CAT, streakTile } from "./specShared";
 import {
   buildDistributions,
@@ -71,7 +73,10 @@ export interface EntryIdentity {
   engine: string | null;
   started: string | null;
   completed: string | null;
-  banner: string | null;
+  // NO `banner` (deleted 2026-08-04): the stored ref was fetched and mapped but
+  // never read — the rail's `.railbanner` is a pure gradient stand-in, and
+  // `RailSpec.banner` (the separate BOOLEAN toggle) is what gates it. A real
+  // banner image arrives with the images root at step 14; re-add it then.
   /** Stored cover REFERENCE (root-relative), null = the lettermark face. */
   cover: string | null;
 }
@@ -84,7 +89,8 @@ export interface SiblingRow {
   rating: number | null;
   series: string | null;
   seriesOrder: number | null;
-  type: string | null;
+  // NO `type` (deleted 2026-08-04): `buildSeriesStrip` takes its noun from the
+  // OWNING entry's type, never a sibling's, so this was mapped for nobody.
 }
 
 export interface EntryBuildInput {
@@ -115,8 +121,8 @@ export interface RailFact {
 
 export interface RailSpec {
   /** Creation rail banner (dissolve band). Built per the 2026-07-23 ruling with
-   *  a disable option — the Settings control arrives at step 10; until then the
-   *  spec-level default is ON. */
+   *  a disable option — Settings → Appearance owns the toggle (2026-08-04),
+   *  read per spec build via settings/local. */
   banner: boolean;
   coverLabel: string;
   /** The cover ref the rail paints over its lettermark box (step 8). */
@@ -215,8 +221,9 @@ export interface GrowthSpec {
   /** Cumulative count points, x normalized 0–1 over the lifetime, y in units. */
   points: { x: number; y: number }[];
   vmax: number;
-  /** The running total at the curve's end — labelled at the endpoint dot. */
-  total: { value: number; label: string };
+  /** The running total at the curve's end — labelled at the endpoint dot.
+   *  LABEL ONLY (the `value` half was deleted 2026-08-04, unrendered). */
+  total: { label: string };
   /** The computed even y-axis ticks. */
   rungs: { value: number; label: string }[];
   /** Accent dots where the curve crosses a rung. */
@@ -265,9 +272,8 @@ export interface EntryModel {
 
 // ── Literals ──────────────────────────────────────────────────────────────────
 
-/** Rail-banner default until the Settings → (step 10) toggle exists —
- *  user-ruled 2026-07-23: "Build it, but I want the option to disable it." */
-const RAIL_BANNER_DEFAULT = true;
+/* The rail-banner toggle (user-ruled 2026-07-23: "Build it, but I want the
+ * option to disable it") lives in Settings → Appearance — getRailBanner. */
 
 /** Presentation vocab for the story-vs-wiki pie (the 2026-07-18 in-canvas
  *  ruling: the labels read Novel / Wiki) — keyed by def key like HERO_NOUN;
@@ -437,7 +443,7 @@ function buildRail(input: EntryBuildInput): RailSpec {
   if (!creation && entry.rating != null) {
     const same = siblings.filter((s) => s.rating === entry.rating).length;
     ratingSpec = {
-      stars: "★".repeat(entry.rating),
+      stars: stars(entry.rating),
       value: entry.rating.toFixed(1),
       context: `One of ${same} ${RATING_WORD[entry.rating]}-stars in ${input.habitName}`,
     };
@@ -466,7 +472,7 @@ function buildRail(input: EntryBuildInput): RailSpec {
       : "Source: manual";
 
   return {
-    banner: creation && RAIL_BANNER_DEFAULT,
+    banner: creation && getRailBanner(),
     coverLabel: initialism(entry.title, 12),
     cover: entry.cover,
     eyebrow: { habit: input.habitName, type: entry.type },
@@ -604,7 +610,7 @@ function buildCreationStrip(
     const bq = bestBucketBy(src, qKey);
     const by = bestBucketBy(src, yearKey);
     const rows: { k: string; v: string }[] = [];
-    if (bw) rows.push({ k: `wk ${isoWeek(bw.key).week}`, v: fmt(bw.value) });
+    if (bw) rows.push({ k: `wk ${weekNum(bw.key).week}`, v: fmt(bw.value) });
     if (bm) rows.push({ k: fmtMonY(bm.key), v: fmt(bm.value) });
     if (bq) rows.push({ k: fmtQtr(bq.key), v: fmt(bq.value) });
     if (by) rows.push({ k: by.key, v: fmt(by.value) });
@@ -1075,7 +1081,7 @@ function buildGrowth(
   return {
     points,
     vmax,
-    total: { value: totalCnt, label: `${groupInt(totalCnt)} ${unitAbbr}` },
+    total: { label: `${groupInt(totalCnt)} ${unitAbbr}` },
     rungs,
     crossings,
     shades,

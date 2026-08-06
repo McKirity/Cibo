@@ -236,7 +236,7 @@
                   color: var(--text-on-filled); font-family: var(--font-heading); font-size: var(--size-caption);
                   font-weight: var(--weight-bold); vertical-align: middle; }
 .setscreen .vsw .ico { width: 12px; height: 12px; color: var(--text-on-filled); }
-.setscreen .vgrp { margin-top: var(--space-5); }
+/* `.vgrp` deleted 2026-08-04 (no markup — VocabularyPane's group heads are `.mgrp`). */
 /* the explanatory line a settings row is allowed (Help is the only OTHER
    surface where prose is legitimate; these state a consequence, not a feature) */
 .setscreen .vnote { max-width: 68ch; margin: var(--space-4) 0 0; font-size: var(--size-small);
@@ -251,6 +251,15 @@
 .setscreen .keyin:focus { border-color: var(--accent); box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring); }
 .setscreen .keyin.num { min-width: 0; width: 8ch; text-align: right; }
 .setscreen .keyin.wide { min-width: 28rem; }
+/* the read-only value chip — a masked API key, a picked path, a backup slot id,
+   a hotkey, the version line. CLAIMED 2026-08-04: only the `.none` modifier
+   below had ever been written, so every one of its ~20 tenants rendered as
+   unstyled inline text where a bordered inset was drawn (the `.mgtag` story,
+   third instance). Mono because every tenant is a machine value. */
+.setscreen .field { display: inline-block; font-family: var(--font-mono); font-size: var(--size-caption);
+                    color: var(--text-secondary); background: var(--inset-background);
+                    border: var(--border-hairline) solid var(--border); border-radius: var(--radius-small);
+                    padding: var(--space-2) var(--space-3); word-break: break-all; }
 .setscreen .field.none { color: var(--text-muted); }
 /* the quiet aside on a row heading ("keyless · no setup", "archived").
    CLAIMED 2026-08-03 — slices 1–4 used this class nine times without it ever
@@ -326,6 +335,36 @@
 .setscreen .sword { font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary); }
 .setscreen .sword.ok { color: var(--verdict-done); }
 .setscreen .sword.err { color: var(--danger); }
+
+/* == step 13 (2026-08-04) — the Data Doctor's findings.
+   THE WARNING TIER, which the health home had never needed: it rides
+   --attention-dot ("needs you", distinct from --danger BY LAW), so no dial was
+   minted for it. The INFO tier is deliberately not a colour at all — an info
+   finding must not read as a problem, and entry-dedupe is the loud one. == */
+.setscreen .pip.warn { color: var(--attention-dot); }
+.setscreen .pip.info { color: var(--text-secondary); }
+.setscreen .sword.warn { color: var(--attention-dot); }
+.setscreen .sword.info { color: var(--text-secondary); }
+.setscreen .srow.finding.warn { background: color-mix(in oklch, var(--attention-dot), var(--window-background) var(--tint-mix));
+                                border-color: color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-border)); }
+
+/* the findings themselves — inset under their check row, so the row stays the
+   verdict and the list stays the evidence */
+.setscreen .ddcheck { display: flex; flex-direction: column; gap: var(--space-2); }
+.setscreen .dfind { display: flex; align-items: center; gap: var(--space-5);
+                    margin-left: var(--space-8); padding: var(--space-3) var(--space-5);
+                    background: var(--inset-background); border-radius: var(--radius-small);
+                    border-left: var(--border-heavy) solid var(--divider); }
+.setscreen .dfind.err { border-left-color: var(--danger); }
+.setscreen .dfind.warn { border-left-color: var(--attention-dot); }
+.setscreen .dfind.info { border-left-color: var(--text-muted); }
+.setscreen .dfid { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.setscreen .dfline { font-size: var(--size-small); color: var(--text-strong); text-wrap: pretty; }
+.setscreen .dfctx { font-size: var(--size-caption); color: var(--text-muted); text-wrap: pretty; }
+.setscreen .dfacts { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); flex: 0 0 auto; }
+/* the disclosure sits in the status row's action slot, so it needs the rotation
+   the management list gives its own — same idiom, different parent */
+.setscreen .sact .disc.on { transform: rotate(90deg); color: var(--text-strong); }
 /* the group head — CLAIMED 2026-08-03 (the .mgtag story again: the runline's
    margin-left:auto assumed a flex parent no rule ever declared, so every
    count rendered butted against its title — "Backups1 slot") */
@@ -413,7 +452,7 @@
 .setscreen .missing .ico { width: var(--icon-size-small); height: var(--icon-size-small); color: var(--text-muted); }
 .setscreen .missing.soft { color: var(--text-muted); }
 .setscreen .missing.soft .ico { color: var(--text-muted); }
-.setscreen .missing b { color: var(--text-strong); font-weight: var(--weight-medium); }
+/* `.missing b` deleted 2026-08-04 — ManagePane renders a <span>, never a <b>. */
 
 /* the keepsake paste-slot door (the creator's cosmetics anatomy) */
 .setscreen .snipslot { align-self: flex-start; max-width: var(--builder-w); display: flex; align-items: center; gap: var(--space-5);

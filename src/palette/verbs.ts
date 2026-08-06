@@ -1,5 +1,6 @@
 /**
- * THE PINNED ACTION INVENTORY — the palette's ten verbs, as DATA.
+ * THE PINNED ACTION INVENTORY — the palette's NINE verbs, as DATA (ten until
+ * 2026-08-04, when "Run import now" was removed — the note below).
  *
  * Split out of Palette.tsx 2026-08-02 (step 10, slice 4) because Settings →
  * Palette curates this roster and must list it without importing the overlay
@@ -13,7 +14,7 @@
  */
 export type VerbId =
   | "new-habit" | "new-entry" | "backup" | "test-connection" | "data-checks"
-  | "run-import" | "updates" | "theme" | "backups-folder" | "advanced";
+  | "updates" | "theme" | "backups-folder" | "advanced";
 
 export interface VerbMeta {
   id: VerbId;
@@ -36,11 +37,22 @@ export const PALETTE_VERBS: VerbMeta[] = [
   { id: "new-entry", title: "New entry", aliases: ["create entry"], live: true },
   // LIVE since step 12 — runs the one backup pipeline (health row's twin).
   { id: "backup", title: "Back up now", aliases: ["backup"], live: true, group: "Backups" },
-  { id: "test-connection", title: "Test connection", meta: "per importer + all", aliases: ["importer test"], live: false, group: "Health" },
-  { id: "data-checks", title: "Run data checks", aliases: ["data doctor", "health"], live: false, group: "Health" },
-  { id: "run-import", title: "Run import now", meta: "per importer", aliases: ["import"], live: false, group: "Importers" },
+  // LIVE 2026-08-04 (the completeness audit's re-wire batch) — lands on the
+  // health home and every importer row runs its probe (the ruled "per importer
+  // + test all", delivered as test-all; per-importer stays the rows' buttons).
+  { id: "test-connection", title: "Test connection", meta: "per importer + all", aliases: ["importer test"], live: true, group: "Health" },
+  // LIVE 2026-08-04 — the ruled form exactly: "triggers the Data Doctor scan
+  // WITHOUT navigating to Settings → Health". Full pass (fs tier included),
+  // feeds the rail dot, reports through the info toast.
+  { id: "data-checks", title: "Run data checks", aliases: ["data doctor", "health"], live: true, group: "Health" },
+  // "Run import now" was REMOVED 2026-08-04 (user-ruled at the completeness
+  // audit: "Remove that, that's pretty outdated now") — its ruled behaviour
+  // (a headless per-importer fetch) described machinery the explicit-submit
+  // importers never grew, and the library's Import door is the real path.
+  // The pinned inventory is NINE since.
   { id: "updates", title: "Check for updates", aliases: ["update"], live: false, group: "Updates" },
-  { id: "theme", title: "Switch theme", aliases: ["appearance"], live: false, group: "Appearance" },
+  // LIVE 2026-08-04 — the swap's door: Settings → Appearance owns the pick.
+  { id: "theme", title: "Switch theme", aliases: ["appearance"], live: true, group: "Appearance" },
   // LIVE since step 12 — reveals the backups root in the file manager.
   { id: "backups-folder", title: "Open backups folder", aliases: ["reveal backups"], live: true, group: "Backups" },
   { id: "advanced", title: "Advanced Search", meta: "filters this palette", aliases: ["search sets", "query"], live: true },

@@ -18,14 +18,8 @@ import { NonEmptyString100 } from "@evolu/common";
 import { stringListFromJson, type HabitId } from "../db/schema";
 import type { EntryRow, SessionRow } from "../metrics/shapes";
 
-const finalizedDaysQuery = evolu.createQuery((db) =>
-  db
-    .selectFrom("days")
-    .select(["date"])
-    .where("finalized", "=", 1)
-    .where("isDeleted", "is not", 1),
-);
 
+import { finalizedDaysQuery } from "./queries";
 // App-wide activity: DISTINCT session days across ALL habits — the "Total days
 // active · All types" reading (days the app itself was used). Grouped SQL-side
 // (still a slice, no aggregation of amounts) so the renderer never loads every

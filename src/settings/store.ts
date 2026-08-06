@@ -16,35 +16,34 @@
  *    pure and take inputs, not subscriptions. The cache is subscribed once at
  *    launch (`initSyncedSettings`, main.tsx). Staleness window: a dashboard
  *    reads the cache at MOUNT, and every navigation re-mounts (the shell keys
- *    per view), so a changed setting is live from the next navigation — the
- *    same freshness the localStorage stand-ins already have.
+ *    per view), so a changed setting is live from the next navigation (the
+ *    freshness doctrine the per-device file also follows).
  *
- * Consumers NOT yet wired (slice 1, recorded honestly): `week_start` and
- * `quarter_scheme` persist but nothing reads them — the aggregation layer is
- * built Monday/calendar throughout ([[Aggregation & Metrics Engine]] defaults)
- * and re-threading period boundaries is its own pass. The controls write real
- * rows so that pass changes readers, not storage.
+ * `week_start` IS WIRED (2026-08-04, the completeness audit's re-thread pass):
+ * the cache pushes it into metrics/dates' week-start dial, which every week
+ * boundary, calendar grid and week label reads. `quarter_scheme` was STRUCK
+ * the same day, user-ruled ("We can strike quarters") — quarters are calendar,
+ * fixed; the control is gone and any old synced row is simply unread.
  */
 import { NonEmptyString100, NonEmptyString1000 } from "@evolu/common";
 import { evolu } from "../db/evolu";
+import { setWeekStartDow } from "../metrics/dates";
 
+import { pad2 } from "../metrics/clock";
 // ── keys · defaults · clamps ─────────────────────────────────────────────────
 
 export const WEEK_START_KEY = "week_start"; // "monday" | "sunday"
-export const QUARTER_SCHEME_KEY = "quarter_scheme"; // "calendar" (the only ruled scheme)
 export const DAY_CUTOFF_KEY = "day_cutoff_hours"; // whole hours past midnight, 0–12
 export const WAVE_GAP_KEY = "wave_gap_default_days"; // the global wave-gap default
 export const LIST_CAP_KEY = "dashboard_list_cap"; // cadence expansion "+ N more" cap
 
-export const WEEK_START_DEFAULT = "monday";
-export const QUARTER_SCHEME_DEFAULT = "calendar";
+export const WEEK_START_DEFAULT = "monday" as const;
 export const DAY_CUTOFF_DEFAULT = 0; // midnight — [[Day Boundary & Logging Cutoff]]
 export const WAVE_GAP_DEFAULT = 30; // days — [[Aggregation & Metrics Engine]]
 export const LIST_CAP_DEFAULT = 10; // user-ruled 2026-07-23 ("Go with 10, make adjustable")
 
 const SETTING_KEYS = [
   WEEK_START_KEY,
-  QUARTER_SCHEME_KEY,
   DAY_CUTOFF_KEY,
   WAVE_GAP_KEY,
   LIST_CAP_KEY,
@@ -70,11 +69,8 @@ export const syncedSettingsQuery = evolu.createQuery((db) =>
     .where("isDeleted", "is not", 1),
 );
 
-export interface SettingRow {
-  id: string;
-  key: string;
-  value: string;
-}
+// `SettingRow` was DELETED 2026-08-04 — no consumer; panes read rows straight
+// off `useQuery(syncedSettingsQuery)`.
 
 /**
  * Write a setting. Update-or-insert against the loaded rows — and CHECK the
@@ -102,12 +98,13 @@ export const writeSyncedSetting = (
 // ── the module cache (assembly-hook readers) ─────────────────────────────────
 
 const cache = new Map<string, string>();
-let cacheReady = false;
 
 const readIntoCache = (rows: readonly { key: unknown; value: unknown }[]): void => {
   cache.clear();
   for (const r of rows) cache.set(String(r.key), String(r.value));
-  cacheReady = true;
+  // Push the week-start dial down into the metrics layer (dates.ts) — the one
+  // setting whose readers are pure helpers, not cache-calling hooks.
+  setWeekStartDow(weekStart() === "sunday" ? 0 : 1);
 };
 
 /** Launch wiring (main.tsx): prime the cache and keep it following the store. */
@@ -123,9 +120,10 @@ export function initSyncedSettings(): void {
   evolu.subscribeQuery(syncedSettingsQuery)(() => pull());
 }
 
-export const settingsCacheReady = (): boolean => cacheReady;
+// `settingsCacheReady` + its `cacheReady` flag were DELETED 2026-08-04: nothing
+// ever polled the getter, and the flag had no other reader.
 export const weekStart = (): "monday" | "sunday" =>
-  cache.get(WEEK_START_KEY) === "sunday" ? "sunday" : "monday";
+  cache.get(WEEK_START_KEY) === "sunday" ? "sunday" : WEEK_START_DEFAULT;
 export const dayCutoffHour = (): number =>
   clampDayCutoff(Number(cache.get(DAY_CUTOFF_KEY) ?? DAY_CUTOFF_DEFAULT));
 export const waveGapDefault = (): number =>
@@ -145,6 +143,5 @@ export const dashboardListCap = (): number =>
 export const defaultLogDay = (now: Date = new Date()): string => {
   const d = new Date(now);
   if (d.getHours() < dayCutoffHour()) d.setDate(d.getDate() - 1);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 };

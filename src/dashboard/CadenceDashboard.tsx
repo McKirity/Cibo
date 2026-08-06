@@ -15,7 +15,8 @@ import { buildCadenceModel, type CadenceModel, type HabitRowVM, type StripVM } f
 import { dashboardListCap } from "../settings/store";
 import { useCadenceData } from "./useCadenceData";
 import { todayLocal } from "../metrics/clock";
-import { Ico } from "../shell/icons";
+import { weekDayLetters, weekDayName } from "../metrics/dates";
+import { Ico, ICONS } from "../shell/icons";
 import type { CadenceScale } from "../metrics/cadence";
 import "./cadence.css";
 
@@ -46,8 +47,8 @@ export function CadenceDashboard({
   const model = useMemo(
     () =>
       data.ready
-        ? // listCap: the Settings → Tracking → Metrics value (step 10); read at
-          // build time — a changed cap is live from the next navigation.
+        ? // listCap: the Settings → Tracking → Metrics value; read at build
+          // time — a changed cap is live from the next navigation.
           buildCadenceModel(data, scale, anchor, today, { listCap: dashboardListCap() })
         : null,
     [data, scale, anchor, today],
@@ -119,7 +120,7 @@ function CadenceView({
       <div className="cpanel tighthead">
         <div className="perhead">
           <button className="arrow" title={m.header.prevTip} onClick={() => onNavigate({ scale: m.scale, anchor: m.bounds.prevAnchor })}>
-            <Ico d={["m15 18-6-6 6-6"]} />
+            <Ico d={ICONS.chevronLeft} />
           </button>
           <div className="idblock">
             <div className="pid">{m.header.id}</div>
@@ -140,7 +141,7 @@ function CadenceView({
               disabled={m.header.nextDead}
               onClick={() => onNavigate({ scale: m.scale, anchor: m.bounds.nextAnchor })}
             >
-              <Ico d={["m9 18 6-6-6-6"]} />
+              <Ico d={ICONS.chevronRight} />
             </button>
           </div>
         </div>
@@ -152,7 +153,10 @@ function CadenceView({
         {m.verdict.kind === "calendar" && (
           <div className="headliner">
             <div className="calside">
-              <div className="vhdr"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+              {/* weekDayLetters, never a literal row: the CELLS already shift
+                  with the week-start dial (verdict.lead is dial-aware), so a
+                  fixed M-T-W-T-F-S-S mislabeled every column under Sunday. */}
+              <div className="vhdr">{weekDayLetters().map((l, i) => <span key={i}>{l}</span>)}</div>
               <div className="vcal">
                 {Array.from({ length: m.verdict.lead }, (_, i) => <div key={`b${i}`} className="vc blank" />)}
                 {m.verdict.cells.map((c, i) => {
@@ -185,7 +189,7 @@ function CadenceView({
                    the column's appearance; the legend names the states and
                    the tooltip keeps the words. */
                 <div key={c.day ?? i} className={`wcol ${c.cls}${c.best ? " best" : ""}${go ? " door" : ""}`} title={c.tip ?? undefined} onClick={go} role={go ? "button" : undefined} tabIndex={go ? 0 : undefined} onKeyDown={go ? onKeyActivate(go) : undefined}>
-                  <span className="wdow">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}</span>
+                  <span className="wdow">{weekDayName(i)}</span>
                   <span className="wdate">{c.label}</span>
                   <span className="wcount">{c.done != null ? <>{c.done}<span className="u"> / {c.active}</span></> : "—"}</span>
                 </div>
@@ -238,7 +242,7 @@ function CadenceView({
             {m.compositionRows.map((r) => (
               <div key={r.habitKey} className="brow" title={`${r.name} · ${Math.round(r.minutes / 60)} h`}>
                 <span className="blabel"><span className="cdot" style={{ background: `var(--${r.colour})` }} />{r.name}</span>
-                <div className="btrack"><div className="bfill" style={{ width: `${r.pct}%`, background: `var(--${r.colour})` }} /></div>
+                <div className="btrack"><div className="bfill" style={{ width: `${r.pct}%`, ["--series" as string]: `var(--${r.colour})` }} /></div>
                 <span className="bval">{Math.round(r.minutes / 60)} h</span>
               </div>
             ))}
@@ -323,7 +327,7 @@ function CadenceView({
                 none — without this the numbers stack vertically). */}
             <span className="cells hnums" style={{ gridTemplateColumns: `repeat(${cellsN},1fr)` }}>
               {m.cellHeaders.kind === "daynums" && m.cellHeaders.count === 7 &&
-                ["M", "T", "W", "T", "F", "S", "S"].map((l, i) => <span key={i} className="hnum">{l}</span>)}
+                weekDayLetters().map((l, i) => <span key={i} className="hnum">{l}</span>)}
               {m.cellHeaders.kind === "daynums" && m.cellHeaders.count !== 7 &&
                 Array.from({ length: m.cellHeaders.count }, (_, i) => (
                   <span key={i} className="hnum">{i + 1 === 1 || (i + 1) % 5 === 0 ? i + 1 : ""}</span>
@@ -421,7 +425,7 @@ function HabitRowView({
         onClick={() => (r.expandable ? onToggle() : onOpen())}
         onKeyDown={onKeyActivate(() => (r.expandable ? onToggle() : onOpen()))}
       >
-        <span className={`chev${r.expandable ? "" : " none"}`}><Ico d={["m9 18 6-6-6-6"]} /></span>
+        <span className={`chev${r.expandable ? "" : " none"}`}><Ico d={ICONS.chevronRight} /></span>
         {/* Identity is clickable (shell law): the NAME doors to the habit even on
             expandable rows, where the row body itself toggles the strips. The
             frozen face is script-free and drew the whole row as one button with
@@ -438,7 +442,7 @@ function HabitRowView({
           title={`Open ${r.name}`}
           onClick={(e) => { e.stopPropagation(); onOpen(); }}
         >
-          <Ico d={["M5 12h14", "m12 5 7 7-7 7"]} />
+          <Ico d={ICONS.forward} />
         </span>
       </div>
       {r.expansion && open && (
@@ -519,7 +523,7 @@ function StripView({ s, story, onOpenEntry }: { s: StripVM; story?: boolean; onO
           {s.cells.map((c, i) => <span key={i} className={`cell ${c === "f" ? "fut" : c === "d" ? "d" : c === "u" ? "u" : "e"}`} />)}
         </span>
       )}
-      <span className="edoor">{s.door && <Ico d={["M5 12h14", "m12 5 7 7-7 7"]} />}</span>
+      <span className="edoor">{s.door && <Ico d={ICONS.forward} />}</span>
     </div>
   );
 }

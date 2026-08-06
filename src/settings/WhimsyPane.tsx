@@ -5,9 +5,11 @@
  *
  * Tagged **SYNCED** at the 2026-07-05 close, and it was "the one genuinely
  * untagged item" then: same person, same birthday, same house on both
- * machines, so it is preference rather than a machine fact. The STORE has not
- * moved yet — `whimsyConfig.ts` still writes localStorage, and relocating it
- * is the per-device-file pass's job, not this pane's. What changes here is the
+ * machines, so it is preference rather than a machine fact. The STORE rides
+ * the per-device settings file since 2026-08-04 (deviceStore — the localStorage
+ * era's mechanical successor); the move to SYNCED storage it is tagged for is
+ * PARKED ON STEP 15 (recorded at the completeness audit), which owns filling
+ * this config at first-run anyway. What changed here at step 10 was the
  * SOURCE (a real surface instead of a dev panel), exactly as that module's own
  * header predicted: "when those land they replace the SOURCE and nothing else".
  *
@@ -19,7 +21,9 @@
  * horoscope card's input and asking for it twice invites disagreement.
  */
 import { useState } from "react";
-import { Ico } from "../shell/icons";
+import { Ico, ICONS } from "../shell/icons";
+import { todayLocal } from "../metrics/clock";
+import { sunSign } from "../daily/almanac";
 import {
   loadWhimsyConfig,
   saveWhimsyConfig,
@@ -27,21 +31,10 @@ import {
   type WhimsyConfig,
 } from "../daily/whimsyConfig";
 
-/** Tropical sun sign from a `YYYY-MM-DD` birthdate — the cutoffs the card uses. */
-const SIGNS: [string, number, number][] = [
-  ["Capricorn", 1, 19], ["Aquarius", 2, 18], ["Pisces", 3, 20], ["Aries", 4, 19],
-  ["Taurus", 5, 20], ["Gemini", 6, 20], ["Cancer", 7, 22], ["Leo", 8, 22],
-  ["Virgo", 9, 22], ["Libra", 10, 22], ["Scorpio", 11, 21], ["Sagittarius", 12, 21],
-];
-const sunSign = (date: string | null): string | null => {
-  if (date == null || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  const m = Number(date.slice(5, 7));
-  const d = Number(date.slice(8, 10));
-  const row = SIGNS.find(([, mm, dd]) => m === mm && d <= dd);
-  if (row != null) return row[0];
-  // Past its month's cutoff → the next sign along; December rolls to Capricorn.
-  return SIGNS[m % 12][0];
-};
+/* The sun sign comes from `daily/almanac.sunSign` — the same derivation the
+   horoscope card and the feed fetch read. This pane carried its own 12-row
+   cutoff table with the same answers but no glyphs (2026-08-04): two tables
+   that agreed today and had nothing keeping them agreeing. */
 
 const CARDS: { key: string; label: string }[] = [
   { key: "sky", label: "Sky" },
@@ -60,7 +53,7 @@ export function WhimsyPane() {
     saveWhimsyConfig(next);
     setCfg(next);
   };
-  const sign = sunSign(cfg.birthdate);
+  const sign = sunSign(cfg.birthdate)?.name ?? null;
   const cards = cfg.cards ?? {};
   const setCard = (key: string, on: boolean) => write({ ...cfg, cards: { ...cards, [key]: on } });
 
@@ -193,7 +186,7 @@ export function WhimsyPane() {
                   data-tip="Remove"
                   onClick={() => write({ ...cfg, events: cfg.events.filter((x) => x.id !== ev.id) })}
                 >
-                  <Ico d={["M3 6h18", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"]} />
+                  <Ico d={ICONS.trash} />
                 </button>
               </span>
             </div>
@@ -206,13 +199,13 @@ export function WhimsyPane() {
             const ev: DatedEvent = {
               id: `e${Date.now()}`,
               label: "",
-              date: new Date().toISOString().slice(0, 10),
+              date: todayLocal(),
               recurring: false,
             };
             write({ ...cfg, events: [...cfg.events, ev] });
           }}
         >
-          <Ico d={["M12 5v14", "M5 12h14"]} /> Add a date
+          <Ico d={ICONS.plus} /> Add a date
         </button>
       </div>
 

@@ -40,5 +40,6 @@ export const subscribeHandoff = (fn: () => void): (() => void) => {
   return () => listeners.delete(fn);
 };
 
-/** How many items sit staged (the manage window's "waiting for the form" note). */
+/** How many items sit staged — `hasLiveClocks`'s quit-guard read (staged
+ *  minutes must not slip a close); no UI renders the count. */
 export const stagedCount = (): number => box.length;

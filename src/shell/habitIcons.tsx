@@ -72,21 +72,35 @@ const toKebab = (key: string): string =>
 /** normalized name → drawn nodes. Built once; the module is imported eagerly
  *  because the rail draws icons on first paint. */
 const NODES = new Map<string, IconNode[]>();
-/** The picker's inventory — every name, sorted. */
-const NAMES: string[] = [];
+/** Every raw lucide export key that carried node data — the seed the lazy
+ *  kebab roster below is built from, kept because `Object.keys` order is what
+ *  makes the first-wins `NODES` precedence deterministic. */
+const KEYS: string[] = [];
 
+// LAUNCH PATH — keep this loop cheap. It runs at module evaluation, before
+// first paint, over ~2,000 lucide exports.
 for (const key of Object.keys(LUCIDE)) {
   const nodes = (LUCIDE as unknown as Record<string, IconNode[]>)[key];
   if (!Array.isArray(nodes)) continue;
-  const kebab = toKebab(key);
   const norm = normalize(key);
   if (!NODES.has(norm)) NODES.set(norm, nodes);
-  NAMES.push(kebab);
+  KEYS.push(key);
 }
-NAMES.sort();
 
-/** The full roster, kebab-cased and sorted — `kit-picker-icon`'s inventory. */
-export const ICON_NAMES: readonly string[] = NAMES;
+/**
+ * The full roster, kebab-cased and sorted — `kit-picker-icon`'s inventory.
+ *
+ * LAZY since 2026-08-04, on `iconStats`'s precedent and for its reason: the
+ * kebab conversion is five chained regexes per key (~10,000 regex passes over
+ * the pinned set) plus a 2,000-element sort, and it ran AT LAUNCH ON THE
+ * CRITICAL PATH for a list only the Settings icon picker ever reads. `NODES`
+ * stays eager — the rail genuinely draws icons on first paint.
+ */
+let names: readonly string[] | null = null;
+export function iconNames(): readonly string[] {
+  if (names == null) names = KEYS.map(toKebab).sort();
+  return names;
+}
 
 /** The stored name's nodes, or null when the name is absent from the pinned
  *  set (the `unknown-icon` case — the caller draws its lettermark). */
@@ -109,7 +123,7 @@ export function iconStats(): { names: number; icons: number } {
   if (stats == null) {
     const drawings = new Set<string>();
     for (const nodes of NODES.values()) drawings.add(JSON.stringify(nodes));
-    stats = { names: NAMES.length, icons: drawings.size };
+    stats = { names: KEYS.length, icons: drawings.size };
   }
   return stats;
 }

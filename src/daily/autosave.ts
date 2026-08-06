@@ -105,8 +105,8 @@ export const flushWrites = (): { ok: true } | { ok: false; reason: string } => {
  * Ten minutes, the user's own figure. Held in `app_meta` rather than the local
  * per-device file because it is a PREFERENCE, and preferences sync
  * ([[Sync & Per-Device Settings]] — appearance levers and machine facts are
- * local; preferences are not). Settings → Tracking → Logging builds the control at step 10;
- * until then the dev panel stands in, exactly as it does for the whimsy config.
+ * local; preferences are not). Settings → Tracking → Logging owns the control
+ * (step 10, shipped — the dev stand-in that preceded it retired 2026-08-04).
  */
 export const AUTOSAVE_DEFAULT_MINUTES = 10;
 export const AUTOSAVE_KEY = "autosave_minutes";

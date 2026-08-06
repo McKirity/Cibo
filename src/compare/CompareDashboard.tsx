@@ -10,9 +10,10 @@
  * claims, so every claimed rule here is RE-SCOPED under `.csdash` (the
  * `.cadash`/`.wallscreen` precedent); the grid wears `.cs-shell`.
  *
- * Charts follow the FINAL's own render model (which is also the chunk-5
- * lesson): the SVG carries only bars/lines/gridlines under
- * preserveAspectRatio="none"; axis labels are HTML so nothing stretches.
+ * Charts: the SVG carries only bars/lines/gridlines and axis labels are HTML —
+ * and since 2026-08-04 the SVGs are BOX-SIZED via useBox (charts.tsx owns the
+ * conversion note), retiring this header's old preserveAspectRatio="none"
+ * claim with the stretch it named.
  */
 import { useMemo, useState, type ReactElement } from "react";
 import {
@@ -35,6 +36,7 @@ import {
   type ScopeCfg,
   type SplitField,
 } from "./compareSpec";
+import { CAT_SLOTS } from "../dashboard/specShared";
 import { useCompareData } from "./useCompareData";
 // The chart renderers + Legend + the window dash roster (split out 2026-07-30,
 // dedup pass wave 4) — pure functions of CmpChart/CmpSeries.
@@ -231,12 +233,16 @@ function SplitPanel({
         {capped.map((v) => {
           const on = selected.includes(v);
           // Colour by position in the SELECTION so the chip matches its series.
+          // CAT_SLOTS, never a literal 8: compareSpec retired its own `= 8`
+          // copy at the 6a sweep for being a second source of truth, and missed
+          // this one. The roster's length IS the cycle length.
           const pos = selected.indexOf(v);
+          const slot = CAT_SLOTS[(on ? pos : 0) % CAT_SLOTS.length];
           return (
             <span
               key={v}
               className={`chk${on ? " on" : ""}`}
-              style={{ ["--seriescolor" as never]: `var(--cat-${((on ? pos : 0) % 8) + 1})` }}
+              style={{ ["--seriescolor" as string]: `var(${slot})` }}
               onClick={() => onToggle(v)}
             >
               <span className="box">

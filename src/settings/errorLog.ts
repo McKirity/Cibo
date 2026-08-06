@@ -11,9 +11,9 @@
  * THIS machine (a failed fetch, a rejected write, an unreadable theme folder),
  * and a roster mixing both devices' failures would make neither legible.
  *
- * Bounded at 20, the ruled figure. localStorage rather than memory so the list
- * survives the relaunch that a crash forces — which is exactly the case it
- * exists for.
+ * Bounded at 20, the ruled figure. The per-device settings file rather than
+ * memory so the list survives the relaunch that a crash forces — which is
+ * exactly the case it exists for.
  *
  * TWO SOURCES, both existing: `showErrorToast` (every tier-③ background
  * failure already routes through it) and Evolu's `subscribeError` (the silent
@@ -29,12 +29,15 @@ export interface LoggedError {
   source: string;
 }
 
+import { deviceGet, deviceSet } from "./deviceStore";
+
+import { pad2 } from "../metrics/clock";
 const KEY = "cibo.errorLog";
 const CAP = 20;
 
 const read = (): LoggedError[] => {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = deviceGet(KEY);
     if (raw == null) return [];
     const parsed = JSON.parse(raw) as LoggedError[];
     return Array.isArray(parsed) ? parsed.filter((e) => typeof e?.message === "string") : [];
@@ -44,11 +47,7 @@ const read = (): LoggedError[] => {
 };
 
 const write = (rows: LoggedError[]): void => {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(rows.slice(0, CAP)));
-  } catch {
-    /* quota — the log is a convenience, never a gate */
-  }
+  deviceSet(KEY, JSON.stringify(rows.slice(0, CAP)));
 };
 
 type Listener = (rows: LoggedError[]) => void;
@@ -63,8 +62,7 @@ export function subscribeErrors(fn: Listener): () => void {
 
 const stamp = (): string => {
   const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 };
 
 export function logError(message: string, source = "App"): void {

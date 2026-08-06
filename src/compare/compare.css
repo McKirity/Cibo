@@ -46,8 +46,10 @@
    scope's field butted straight against it (user-reported). */
 .csdash .scopeblock + .scopeblock{margin-top:var(--space-6);}
 /* the scope-row (.scopetop/.scoperm) · split-search · menu-row interiors
-   (.mrow/.mdanger/.hico) · the chip-toggle family (.opts/.opt) — HOISTED to
-   kit.css 2026-07-30 (the dedup pass; scopes kept). */
+   (.mrow/.hico) · the chip-toggle family (.opts/.opt) — HOISTED to kit.css
+   2026-07-30 (the dedup pass; scopes kept). `.mdanger` was RETIRED at that
+   pass, not hoisted — this pointer listed it among the movers until
+   2026-08-04, sending readers to a class that exists nowhere. */
 
 /* ---- level-2 measure refinements (the panel's foot) ----
    EVERY ROW HOLDS ONE LINE (user-ruled 2026-07-27): the chip rows never wrap,
@@ -108,7 +110,10 @@
 .csdash .segpick button:disabled:hover{color:var(--text-muted);}
 
 /* CHART picker — preview cards; a disabled card is a shape this configuration can't draw */
-.csdash .chartpick{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--space-4);}
+/* The 4-column track list was DROPPED 2026-08-04: the only render site is
+   `chartpick three`, and `.three` below always overrides it — a dead base since
+   the six-shape re-cut of 2026-07-27. */
+.csdash .chartpick{display:grid; gap:var(--space-4);}
 /* six shapes, two rows of three (2026-07-27: area · ranked bar · donut) */
 .csdash .chartpick.three{grid-template-columns:repeat(3,1fr);}
 
@@ -173,8 +178,10 @@
 .csdash .chartsvg{width:100%; height:var(--chart-height); display:block;}
 
 /* grouped/stacked bar: SVG carries only bars + gridlines; axis labels are HTML
-   so preserveAspectRatio=none never distorts the text (the chunk-5 lesson,
-   already the FINAL's own model). */
+   so SVG scaling never touches text (the chunk-5 lesson, already the FINAL's
+   own model). Since 2026-08-04 the SVGs are box-sized (viewBox = measured px,
+   charts.tsx via useBox) — the stretch model and its preserveAspectRatio=none
+   are gone; these height dials are what the measure reads. */
 .csdash .gbchart{--gbh:calc(var(--chart-height) + var(--space-8) * 2); display:grid; grid-template-columns:40px 1fr; column-gap:var(--space-4);}
 .csdash .gb-yaxis{position:relative; height:var(--gbh);}
 .csdash .gb-yaxis span{position:absolute; right:0; transform:translateY(-50%); font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted);}

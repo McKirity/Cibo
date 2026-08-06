@@ -11,18 +11,19 @@
  * path — the UI must never advertise a restore it can't do.
  */
 import { invoke } from "@tauri-apps/api/core";
-import { getBackupsRoot } from "./backup";
-
-const inTauri = (): boolean =>
-  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-
-const sep = (root: string): string => (root.includes("/") && !root.includes("\\") ? "/" : "\\");
+// `join` + `storeName` are IMPORTED from backup.ts (2026-08-04), not re-derived:
+// this module used to hand-build `${root}${sep}${slotId}-store.tar.zst`, so a
+// retention-side rename of the archive suffix would have broken restore
+// silently — the one path where a mismatch cannot be recovered from.
+// `inTauri` likewise comes from settings/deviceStore, the one declaration.
+import { getBackupsRoot, join, storeName } from "./backup";
+import { inTauri } from "../settings/deviceStore";
 
 /** Arms the marker and relaunches — this call does not return on success. */
 export async function requestRestore(slotId: string): Promise<void> {
   const root = getBackupsRoot();
   if (root == null || !inTauri()) throw new Error("no backups folder set");
-  const archive = `${root}${sep(root)}${slotId}-store.tar.zst`;
+  const archive = join(root, storeName(slotId));
   await invoke("bk_request_restore", { archive });
 }
 

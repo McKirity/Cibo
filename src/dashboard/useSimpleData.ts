@@ -14,14 +14,8 @@ import { type HabitId } from "../db/schema";
 import type { SessionRow } from "../metrics/shapes";
 import type { SessionDef } from "./creationSpec";
 
-const finalizedDaysQuery = evolu.createQuery((db) =>
-  db
-    .selectFrom("days")
-    .select(["date"])
-    .where("finalized", "=", 1)
-    .where("isDeleted", "is not", 1),
-);
 
+import { finalizedDaysQuery } from "./queries";
 export interface SimpleData {
   ready: boolean;
   name: string;
@@ -81,6 +75,12 @@ export function useSimpleData(habitKey: string): SimpleData {
           .where("subunit_definitions.isDeleted", "is not", 1)
           .where("vocab_options.isDeleted", "is not", 1)
           .orderBy("subunit_definitions.createdAt")
+          // The `key` tiebreaker its two siblings call load-bearing: a seed
+          // batch writes a habit's definitions in ONE transaction, so their
+          // createdAt values tie and the tie broke arbitrarily. simpleSpec
+          // picks defs[0] as its catDef, so a second categorical would make
+          // the tile family non-deterministic without this.
+          .orderBy("subunit_definitions.key")
           .orderBy("vocab_options.sort_order"),
       ),
     [habitId],

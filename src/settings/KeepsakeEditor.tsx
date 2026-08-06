@@ -19,8 +19,10 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { evolu } from "../db/evolu";
+import { KEEPSAKE_SEEDS } from "../db/keepsakeSeeds";
 import { keepsakeValues, renderSnippet, type KeepsakeInput } from "../daily/keepsake";
 import { KeepsakeTile } from "../daily/KeepsakeTile";
+import { todayLocal } from "../metrics/clock";
 import { useOverlayEsc } from "../shell/overlayHooks";
 import { showErrorToast } from "../shell/toast";
 
@@ -33,6 +35,7 @@ interface PreviewData {
 
 export function KeepsakeEditor({
   habitId,
+  habitKey,
   habitName,
   colourSlot,
   measuresTime,
@@ -42,6 +45,8 @@ export function KeepsakeEditor({
   onClose,
 }: {
   habitId: string;
+  /** The habit `key` — how a canonical habit finds its supplied tile. */
+  habitKey: string | null;
   habitName: string;
   colourSlot: string;
   measuresTime: boolean;
@@ -53,6 +58,15 @@ export function KeepsakeEditor({
   useOverlayEsc(onClose);
   const [text, setText] = useState(stored ?? "");
   const [data, setData] = useState<PreviewData | null>(null);
+
+  // "Restore original tile" (user-ruled 2026-08-04, closing the 2026-07-26
+  // "still unruled — the revert control" flag): the six canonical habits'
+  // supplied tiles are baked into the app (keepsakeSeeds), so restore is a
+  // copy back into the TEXTAREA — previewable, and only Save commits it.
+  const original = useMemo(
+    () => (habitKey != null ? (KEEPSAKE_SEEDS.find((s) => s.key === habitKey)?.snippet ?? null) : null),
+    [habitKey],
+  );
 
   // One-shot: the habit's most recent logged day, with its categoricals and
   // stored true flags. Not a live query — the editor is a paste surface.
@@ -118,7 +132,7 @@ export function KeepsakeEditor({
           flags,
         });
       } else if (!dead) {
-        setData({ day: new Date().toISOString().slice(0, 10), rows: [], cats: {}, flags: [] });
+        setData({ day: todayLocal(), rows: [], cats: {}, flags: [] });
       }
     })();
     return () => {
@@ -230,6 +244,16 @@ export function KeepsakeEditor({
           >
             Clear
           </button>
+          {original != null && (
+            <button
+              className="btn-plain"
+              onClick={() => setText(original)}
+              disabled={text === original}
+              data-tip="Fills the editor with the app's supplied tile — Save commits it"
+            >
+              Restore original tile
+            </button>
+          )}
           <button className="btn-plain" onClick={onClose} style={{ marginLeft: "auto" }}>
             Cancel
           </button>

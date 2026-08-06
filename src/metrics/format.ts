@@ -66,6 +66,26 @@ export const fmtRange = (from: string, to: string): string => {
 export const stars = (n: number): string => "★".repeat(n);
 
 /**
+ * ELAPSED label (user-ruled 2026-07-29 for the palette's visit ledger: "show
+ * how many minutes/hours/days ago when I opened it" — precise, never a bucket
+ * word). Born in palette/recents; MOVED HERE 2026-08-04 when the Backups pane
+ * became its third consumer across a second area — a pure formatter belongs in
+ * the formatter module, not behind a cross-screen import.
+ *
+ * Pure when given both arguments; the default is the convenience the call
+ * sites want.
+ */
+export function relLabel(atMs: number, nowMs: number = Date.now()): string {
+  const mins = Math.floor((nowMs - atMs) / 60000);
+  if (!Number.isFinite(mins) || mins < 1) return "just now";
+  if (mins < 60) return `${mins} min${mins === 1 ? "" : "s"} ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+/**
  * HTML-escape for derived strings that land in innerHTML (review lines,
  * keepsake substitution). The FIVE-entity contract — & < > " ' — because an
  * escaped value sits in text AND attribute positions; a 3-entity escape

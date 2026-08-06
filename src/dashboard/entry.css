@@ -119,15 +119,19 @@
 /* ── the scrolling lane band (the 2026-07-24 band-geometry ruling) ──
    The band is the scroll port; the inner .wavescroll carries the computed
    content width. The scrollbar is CHROME and always visible: declaring the
-   WebKit pseudo-elements opts out of overlay scrollbars; scrollbar-width must
-   NOT also be set (it silently overrides the pseudos — the ruling's trap a);
-   the thumb takes a text-weight dial, never --border (trap b).
+   WebKit pseudo-elements opts out of overlay scrollbars; NEITHER
+   scrollbar-width NOR scrollbar-color may also be set — both silently override
+   the pseudos (the ruling's trap a). The thumb takes a text-weight dial, never
+   --border (trap b).
    THE ONE EXCEPTION to the app-wide overlay-minimal recipe (kit.css
    § Scrollbars, 2026-08-01) — this bar is always visible BY RULING, so it
    keeps its painted track and out-specifies the global block. Trap b was
-   generalized at that mint: the app's scrollbar dials are text-weight. */
-.waveband.lane { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain;
-                 scrollbar-color: var(--text-muted) var(--inset-background); }
+   generalized at that mint: the app's scrollbar dials are text-weight.
+   FIXED 2026-08-04: this rule set `scrollbar-color`, which the comment above
+   warned about only for `scrollbar-width`. It defeated all four pseudos below
+   — INCLUDING the height, while EntryDashboard reserves --wave-scrollbar-h px
+   of layout for a bar that was not that tall. */
+.waveband.lane { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
 .waveband.lane .wavescroll { position: relative; height: 100%; }
 .waveband.lane::-webkit-scrollbar { height: var(--wave-scrollbar-h); }
 .waveband.lane::-webkit-scrollbar-track { background: var(--inset-background); border-radius: var(--radius-full); }
@@ -179,6 +183,8 @@
 .wtable tr.sub .wlabel { padding-left: var(--space-6); }
 .wtable .chev { display: inline-block; width: 10px; color: var(--text-muted); transition: transform var(--motion-fast) var(--ease-standard); }
 .wtable tr.open .chev { transform: rotate(90deg); }
+/* NOTE 2026-08-04: WaveTable renders `.wlabel`/`.wdot`/`.chev`/`.ccell` — no
+   chip. (`.edash .chip` is a separate, LIVE rail rule; do not confuse them.) */
 .wtable .chip { font-family: var(--font-ui); font-size: var(--size-caption); font-weight: var(--weight-bold); color: var(--verdict-done);
              background: color-mix(in oklch, var(--verdict-done), transparent var(--tint-mix)); border-radius: var(--radius-full); padding: 0 var(--space-4); }
 .wtable .ccell { display: flex; align-items: center; gap: var(--space-4); min-width: 130px; }

@@ -23,8 +23,7 @@ import {
   parseTarget,
   type Clock,
   type TimerMode,
-  type TrackedItem,
-} from "./timerCore";
+  type TrackedItem, modeLabel} from "./timerCore";
 import {
   addTracked,
   closeManage,
@@ -84,7 +83,7 @@ const toHandoff = (items: TrackedItem[], clock: Clock) =>
 
 // ── the create flow ──────────────────────────────────────────────────────────
 
-/** The pomodoro default pair — Settings → Timers (step 10; per-clock values
+/** The pomodoro default pair — Settings → Timers owns it (per-clock values
  *  stay set at creation, this is only what the form opens with). */
 const DEFAULT_TARGET = "25:00";
 
@@ -149,7 +148,7 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
               <div className="segctl modeseg" role="tablist">
                 {(["stopwatch", "countdown", "pomodoro"] as const).map((m) => (
                   <button key={m} aria-pressed={mode === m} onClick={() => setMode(m)}>
-                    {m === "stopwatch" ? "Stopwatch" : m === "countdown" ? "Countdown" : "Pomodoro"}
+                    {modeLabel(m)}
                   </button>
                 ))}
               </div>

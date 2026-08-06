@@ -65,7 +65,9 @@ export function BulkEditModal({
 }) {
   // Hook rules: the fallback hook is called UNCONDITIONALLY and the prop's
   // value wins when present (Evolu dedupes the identical underlying queries).
-  const ownData = useLibraryData(habitKey);
+  // `dataProp != null` skips the derivation, not the subscription — the hook
+  // must still be called unconditionally.
+  const ownData = useLibraryData(habitKey, dataProp != null);
   const data = dataProp ?? ownData;
 
   const [selected, setSelected] = useState<Set<string>>(new Set());

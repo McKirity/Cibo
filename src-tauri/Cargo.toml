@@ -39,7 +39,7 @@ serde_json = "1"
 # metadata.db, a second SQLite entirely separate from Evolu; never writes
 # (Importer Runtime & External Access § the Calibre reader). `bundled` so the
 # build never depends on a system sqlite.
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 # Backups (step 12) — every artifact is compressed at write time (zstd, the
 # ruled codec) and the store-directory copy travels as a tar; the growth
 # spike's sizing amendment is why compression is not optional.

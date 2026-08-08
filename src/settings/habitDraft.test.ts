@@ -3,6 +3,7 @@ import type { DerivedRule } from "../db/schema";
 import {
   canCommit,
   definitionKey,
+  draftForKind,
   draftProblems,
   emptyDraft,
   fromDerivedRules,
@@ -276,5 +277,96 @@ describe("toMeasureColumns — a range habit declares no other measure", () => {
       measuresCount: false,
       countUnit: null,
     });
+  });
+});
+
+/**
+ * Changing kind clears what the old kind declared — user-ruled 2026-08-08,
+ * *"have everything clear every time I switch to a different habit type."*
+ *
+ * The ruling came out of the GUI tour for `creator-4`. That bug's stored-data
+ * half had been fixed by sanitizing the write, and the user found why that was
+ * not enough: the DRAFT still carried the old answers, so Simple → Range →
+ * Simple showed Time still ticked. **Sanitizing the write makes the store
+ * correct while leaving the screen lying about what it is about to save.**
+ */
+describe("draftForKind — a kind switch clears the old kind's declarations", () => {
+  const filled = (o: Partial<HabitDraft> = {}): HabitDraft => ({
+    ...emptyDraft("habit-1"),
+    name: "Reading",
+    kind: "simple",
+    measuresTime: true,
+    measuresCount: true,
+    countUnit: "pages",
+    mediums: [{ name: "Board", values: ["QK65"] }],
+    entryAttrs: ["status"],
+    derived: [{ type: "flag", name: "Took Medication" }],
+    ...o,
+  });
+
+  // THE SYMPTOM THE USER REPORTED: the round trip must not leave Time ticked.
+  it("clears measures on the way out AND on the way back", () => {
+    const toRange = draftForKind(filled(), "range");
+    expect(toRange.measuresTime).toBe(false);
+    expect(toRange.measuresCount).toBe(false);
+    const backToSimple = draftForKind(toRange, "simple");
+    expect(backToSimple.measuresTime).toBe(false);
+    expect(backToSimple.countUnit).toBe("");
+  });
+
+  it("clears every kind-scoped declaration, not just the measures", () => {
+    const next = draftForKind(filled(), "range");
+    expect(next.mediums).toEqual([]);
+    expect(next.entryAttrs).toEqual([]);
+    expect(next.derived).toEqual([]);
+    expect(next.measureless).toBe(false);
+  });
+
+  it("keeps what means the same under every kind", () => {
+    const next = draftForKind(filled({ icon: "moon" }), "project");
+    expect(next.name).toBe("Reading");
+    expect(next.icon).toBe("moon");
+    expect(next.colourSlot).toBe("habit-1");
+  });
+
+  // A mis-click on the already-selected kind must not wipe a filled-in form.
+  it("is a no-op when the kind does not actually change", () => {
+    const d = filled();
+    expect(draftForKind(d, "simple")).toBe(d);
+  });
+
+  it("sets the kind it was asked for", () => {
+    expect(draftForKind(filled(), "range").kind).toBe("range");
+  });
+});
+
+/**
+ * The save gate judges the value that will actually be STORED. This closes the
+ * dead-end found on the same tour: Count with no unit, then a switch to Range,
+ * left `unitMissing` true with the unit field inside the block Range hides — a
+ * permanently disabled Create button pointing at an invisible field.
+ */
+describe("draftProblems — the gate agrees with the write", () => {
+  const stuck = (): HabitDraft => ({
+    ...emptyDraft("habit-1"),
+    name: "Sleep",
+    kind: "range",
+    measuresCount: true,
+    countUnit: "",
+  });
+
+  it("does not demand a unit for a measure a range habit will not store", () => {
+    const p = draftProblems(stuck(), new Set());
+    expect(p.unitMissing).toBe(false);
+    expect(canCommit(p)).toBe(true);
+  });
+
+  it("still demands a unit where the count is real", () => {
+    const p = draftProblems(
+      { ...emptyDraft("habit-1"), name: "Steps", kind: "simple", measuresCount: true },
+      new Set(),
+    );
+    expect(p.unitMissing).toBe(true);
+    expect(canCommit(p)).toBe(false);
   });
 });

@@ -40,6 +40,7 @@ import { customSlotName, isValidHex, writeCustomColour } from "./customColours";
 import {
   canCommit,
   definitionKey,
+  draftForKind,
   draftProblems,
   emptyDraft,
   fromDerivedRules,
@@ -180,6 +181,13 @@ export function HabitCreator({
   const ladderRows = useQuery(globalLaddersQuery);
   const set = <K extends keyof HabitDraft>(k: K, v: HabitDraft[K]) =>
     setDraft((d) => ({ ...d, [k]: v }));
+
+  /**
+   * CHANGING KIND CLEARS EVERYTHING THE OLD KIND DECLARED — user-ruled
+   * 2026-08-08. The rule itself lives in `draftForKind`, pure and tested; this
+   * is only the wiring.
+   */
+  const setKind = (next: HabitKind) => setDraft((d) => draftForKind(d, next));
 
   // Existing session-level definitions, for the editor's medium pre-fill.
   const existingDefs = useQuery(
@@ -513,7 +521,7 @@ export function HabitCreator({
                   key={val}
                   className={`rcard${draft.kind === val ? " sel" : ""}`}
                   disabled={edit != null && edit.hasSessions && draft.kind !== val}
-                  onClick={() => set("kind", val)}
+                  onClick={() => setKind(val)}
                 >
                   <span className="rt">{title}</span>
                   <span className="rd">{desc}</span>

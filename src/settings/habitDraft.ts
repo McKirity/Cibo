@@ -169,12 +169,21 @@ export function draftProblems(
   takenNames: ReadonlySet<string>,
 ): DraftProblems {
   const name = draft.name.trim();
+  // THE GATE READS WHAT THE WRITE WILL WRITE, not the raw draft (2026-08-08).
+  // These used to read `draft.measuresCount` directly while the commit
+  // sanitized — the same gate-vs-write asymmetry as `creator-4`, and it had a
+  // sharper edge: ticking Count with no unit and then switching to Range left
+  // `unitMissing` true with the unit field inside the block Range hides, i.e. a
+  // permanently disabled Create button pointing at a field the user could not
+  // see. A gate must judge the value that is actually going to be stored.
+  const measures = toMeasureColumns(draft);
   return {
     nameMissing: name === "",
     nameTaken: name !== "" && takenNames.has(name.toLowerCase()),
     kindMissing: draft.kind == null,
-    unitMissing: draft.measuresCount && draft.countUnit.trim() === "",
-    measureMissing: draft.kind === "project" && !draft.measuresTime && !draft.measuresCount,
+    unitMissing: measures.measuresCount && draft.countUnit.trim() === "",
+    measureMissing:
+      draft.kind === "project" && !measures.measuresTime && !measures.measuresCount,
     mediumUnnamed: draft.mediums.some((m) => m.name.trim() === ""),
   };
 }
@@ -217,6 +226,47 @@ export function toMeasureColumns(draft: HabitDraft): MeasureColumns {
     measuresTime: draft.measuresTime,
     measuresCount: draft.measuresCount,
     countUnit: draft.measuresCount && unit !== "" ? unit : null,
+  };
+}
+
+/**
+ * The draft after a KIND CHANGE — everything the old kind declared is cleared
+ * (user-ruled 2026-08-08: *"have everything clear every time I switch to a
+ * different habit type"*).
+ *
+ * The ruling came out of `creator-4`, whose stored-data half had been fixed by
+ * sanitizing the write. That was not enough, and the user found why: the draft
+ * still carried the old kind's answers, so Simple → Range → Simple showed Time
+ * still ticked. **Sanitizing the write makes the store correct while leaving the
+ * screen lying about what it is about to save** — and a step that is hidden
+ * cannot be corrected by the person it is hidden from.
+ *
+ * It also closes a dead-end nothing had reported: Count with no unit, then a
+ * switch to Range, left `unitMissing` true with the unit field inside the block
+ * Range hides — a permanently disabled Create button pointing at an invisible
+ * field.
+ *
+ * IMPLEMENTATION NOTE (marked separately from the ruling): this clears the
+ * kind-scoped DECLARATIONS. Name, icon and colour survive — they mean the same
+ * under every kind, and re-typing a name after a mis-click would be its own
+ * bug. Selecting the kind already selected is a no-op, so it cannot wipe a
+ * filled-in form.
+ */
+export function draftForKind(draft: HabitDraft, next: HabitKind): HabitDraft {
+  if (draft.kind === next) return draft;
+  const fresh = emptyDraft(draft.colourSlot);
+  return {
+    ...draft,
+    kind: next,
+    subType: fresh.subType,
+    measuresTime: false,
+    measuresCount: false,
+    measureless: false,
+    countUnit: "",
+    maxMidnights: fresh.maxMidnights,
+    mediums: [],
+    entryAttrs: [],
+    derived: [],
   };
 }
 

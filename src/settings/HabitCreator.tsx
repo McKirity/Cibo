@@ -982,16 +982,32 @@ export function HabitCreator({
         </div>
       </div>
 
+      {/*
+        The picker is a SIBLING of `.mo`, not a child — it is `position: fixed`
+        off a measured anchor and must not be clipped by the modal's scroller.
+        But `.dimlayer` closes the creator on mousedown, and only `.mo` stops
+        that bubble: pressing the mouse on any icon therefore closed the whole
+        creator before the click could land on the icon (bug `creator-3`,
+        2026-08-08). The guard below is what `.mo` does for its own subtree.
+
+        `display: contents` so the wrapper catches the event without adding a
+        box — `.dimlayer` centres its children, and a real div here would push
+        the modal off-centre. Any future overlay rendered as a sibling of `.mo`
+        needs this same guard; the dim layer cannot tell "outside the modal"
+        from "inside the modal's popover".
+      */}
       {iconAnchor != null && (
-        <IconPicker
-          current={draft.icon}
-          anchor={iconAnchor}
-          onPick={(name) => {
-            set("icon", name);
-            setIconAnchor(null);
-          }}
-          onClose={() => setIconAnchor(null)}
-        />
+        <div style={{ display: "contents" }} onMouseDown={(e) => e.stopPropagation()}>
+          <IconPicker
+            current={draft.icon}
+            anchor={iconAnchor}
+            onPick={(name) => {
+              set("icon", name);
+              setIconAnchor(null);
+            }}
+            onClose={() => setIconAnchor(null)}
+          />
+        </div>
       )}
     </div>
   );

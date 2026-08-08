@@ -37,6 +37,13 @@ export interface RangeSessionRow extends SessionRow {
   end: string | null;
 }
 
+/**
+ * The unit a range habit is counted in. The range family is ruled Sleep-only
+ * screen composition, so this is a constant rather than a dial — but it is
+ * named once because the flag panels' subtitles are built from it.
+ */
+const NIGHTS = "nights";
+
 /** One declared flag definition (data_type "flag" — Sleep's `med`). */
 export interface FlagDef {
   key: string;
@@ -101,10 +108,35 @@ export interface RangeModel {
   };
   flags: { panels: FlagPanelSpec[]; noun: string };
   heatmap: {
-    cells: { day: string | null; level: number; tip: string }[];
+    views: HeatView[];
     months: { col: number; label: string }[];
     trio: TileSpec[];
   };
+}
+
+/** One square. `level` -1 = outside the window (drawn hidden), 0 = no session. */
+export interface HeatCell {
+  day: string | null;
+  level: number;
+  tip: string;
+}
+
+/**
+ * A heatmap readout. Duration is the founding one; every declared flag mints
+ * another beside it (user-ruled 2026-08-07, "add an up before noon and med
+ * view to the heatmaps") — definition-driven like the donuts, so a habit that
+ * declares a third flag gets a third view with no code change.
+ *
+ * `ramp` is what the two kinds of view differ by: duration spends the full
+ * four-step heat ramp, a flag has only yes/no and spends TWO levels — top for
+ * met, lowest for not — leaving an unlogged night blank. Reading a binary
+ * answer across four shades would invent precision the data does not have.
+ */
+export interface HeatView {
+  key: string;
+  label: string;
+  ramp: boolean;
+  cells: HeatCell[];
 }
 
 // ── Time helpers ──────────────────────────────────────────────────────────────
@@ -238,8 +270,15 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
   });
 
   // ── Flag panels — one per declared flag: derived rules first, stored after ──
+  //
+  // Each panel now hands back the MATCHING SESSIONS rather than a bare count,
+  // because the heatmap's flag views (2026-08-07) are built from the same
+  // predicate. One evaluation, two readouts — the donut says how often, the
+  // heatmap says which nights, and neither can drift from the other.
   const panels: FlagPanelSpec[] = [];
-  const pushPanel = (name: string, meta: string, days: number) => {
+  const flagHitDays: { name: string; days: Set<string> }[] = [];
+  const pushPanel = (name: string, meta: string, matched: RangeSessionRow[]) => {
+    const days = matched.length;
     const pct = nights > 0 ? Math.round((days / nights) * 100) : 0;
     panels.push({
       name,
@@ -248,13 +287,14 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
       pct,
       tip: `${name} · ${groupInt(days)} of ${groupInt(nights)} nights (${pct}%)`,
     });
+    flagHitDays.push({ name, days: new Set(matched.map((s) => s.day)) });
   };
   for (const rule of input.derivedRules) {
     if (rule.template === "duration" && rule.minutes != null) {
       const target = rule.minutes;
       const hit = sessScoped.filter((s) =>
         rule.op === "lte" ? durationMinutes(s) <= target : durationMinutes(s) >= target,
-      ).length;
+      );
       const hrs = `${Math.round(target / 60)}h`;
       pushPanel(
         rule.op === "lte" ? `Under ${hrs} nights` : `${hrs}+ nights`,
@@ -267,7 +307,7 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
       const endpointOf = (s: RangeSessionRow) => clockMinutes(rule.endpoint === "start" ? s.start! : s.end!);
       const hit = sessScoped.filter((s) =>
         rule.op === "after" ? endpointOf(s) > target : endpointOf(s) < target,
-      ).length;
+      );
       const verb = rule.endpoint === "start" ? "Down" : "Up";
       pushPanel(
         `${verb} ${rule.op === "after" ? "after" : "before"} ${rule.label}`,
@@ -276,9 +316,15 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
       );
     }
   }
+  // A stored flag's HEADER is its definition label and its subtitle is built
+  // from the same string — "Took Medication" → "Nights I took medication"
+  // (user-ruled 2026-08-07). The label is therefore authored as a completed
+  // action, which is what makes one template read for every flag a habit ever
+  // declares; nothing here knows which habit it is drawing, and the old
+  // "the <label> flag" wording described the machinery rather than the night.
   for (const def of input.flagDefs) {
-    const hit = sessScoped.filter((s) => input.flagBySession.get(s.id)?.[def.key] === "true").length;
-    pushPanel(def.label, `the ${def.label.toLowerCase()} flag`, hit);
+    const hit = sessScoped.filter((s) => input.flagBySession.get(s.id)?.[def.key] === "true");
+    pushPanel(def.label, `${NIGHTS[0].toUpperCase()}${NIGHTS.slice(1)} I ${def.label.toLowerCase()}`, hit);
   }
 
   // ── Duration heatmap (53 weeks ending at the scope edge; drawn cutoffs
@@ -289,15 +335,34 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
     if (m > 0) durByDay.set(s.day, (durByDay.get(s.day) ?? 0) + m);
   }
   const levelOf = (m: number): number => (m <= 0 ? 0 : m < 360 ? 1 : m < 420 ? 2 : m < 480 ? 3 : 4);
-  const cells = heatmapGrid<RangeModel["heatmap"]["cells"][number]>(
-    scopeTo,
-    (day) => {
-      const m = durByDay.get(day) ?? 0;
-      return { day, level: levelOf(m), tip: `${fmtDMY(day)} · ${m > 0 ? fmtDur(m) : "not logged"}` };
+  const gridOf = (fill: (day: string) => HeatCell): HeatCell[] =>
+    heatmapGrid<HeatCell>(scopeTo, fill, () => ({ day: null, level: -1, tip: "" }), {
+      from: isYear ? `${sel.year}-01-01` : null,
+    });
+  // A night the habit was logged at all — the third state the flag views need,
+  // since "did not take it" and "did not sleep here" must not draw the same.
+  const loggedDays = new Set(sessScoped.map((s) => s.day));
+  const views: HeatView[] = [
+    {
+      key: "duration",
+      label: "Duration",
+      ramp: true,
+      cells: gridOf((day) => {
+        const m = durByDay.get(day) ?? 0;
+        return { day, level: levelOf(m), tip: `${fmtDMY(day)} · ${m > 0 ? fmtDur(m) : "not logged"}` };
+      }),
     },
-    () => ({ day: null, level: -1, tip: "" }),
-    { from: isYear ? `${sel.year}-01-01` : null },
-  );
+    ...flagHitDays.map((f) => ({
+      key: f.name,
+      label: f.name,
+      ramp: false,
+      cells: gridOf((day) => {
+        if (!loggedDays.has(day)) return { day, level: 0, tip: `${fmtDMY(day)} · not logged` };
+        const on = f.days.has(day);
+        return { day, level: on ? 4 : 1, tip: `${fmtDMY(day)} · ${f.name}: ${on ? "yes" : "no"}` };
+      }),
+    })),
+  ];
   const allDurs = sessions.map((s) => ({ day: s.day, min: durationMinutes(s) })).filter((d) => d.min > 0);
   const allBest = allDurs.reduce<{ day: string; min: number } | null>((b, d) => (!b || d.min > b.min ? d : b), null);
   const allShort = allDurs.reduce<{ day: string; min: number } | null>((b, d) => (!b || d.min < b.min ? d : b), null);
@@ -327,7 +392,7 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
       avgBed: bedMean != null ? fmtHM(bedMean) : "—",
       avgWake: wakeMean != null ? fmtHM(wakeMean) : "—",
     },
-    flags: { panels, noun: "nights" },
-    heatmap: { cells, months: heatmapMonths(scopeTo), trio },
+    flags: { panels, noun: NIGHTS },
+    heatmap: { views, months: heatmapMonths(scopeTo), trio },
   };
 }

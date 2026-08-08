@@ -144,6 +144,11 @@ export type ScopeSel = { kind: "all" } | { kind: "year"; year: string };
 export interface BuildInput {
   colourSlot: string; // "habit-2"
   name: string;
+  /** "Archiving ends any running streak" — the CURRENT streak tile reads 0
+   *  while archived (user-ruled 2026-08-06, audit fork D — the minimal cut:
+   *  streaks clamp, every other tile keeps its face per the 08-04 option-A
+   *  ruling's silence on stats). The creation template's idiom, ported. */
+  archived: boolean;
   sessions: SessionRow[];
   entries: EntryRow[];
   finalized: Set<string>;
@@ -238,7 +243,11 @@ export function buildConsumptionDashboard(
   }
 
   const engagement: TileSpec[] = [
-    streakTile(isYear ? "Last streak" : "Current streak", isYear ? lastRunOf(st) : st.currentRun, st, true),
+    // Archived → the running streak is ENDED, not live (fork D; the year
+    // face's "Last streak" is historical and stands as-is).
+    input.archived && !isYear
+      ? { label: "Current streak", value: "0", unit: "d", subtitle: "archived — streaks ended" }
+      : streakTile(isYear ? "Last streak" : "Current streak", isYear ? lastRunOf(st) : st.currentRun, st, true),
     streakTile("Longest streak", longestRunOf(st), st, false),
     {
       label: "Total days active",

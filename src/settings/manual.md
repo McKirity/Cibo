@@ -91,7 +91,7 @@ machine facts stay put**:
 | Travels | Stays on this device |
 |---|---|
 | All your data — habits, entries, sessions, days | Theme choice |
-| Day cutoff, week start, quarter definition | UI scale, compact mode, reduce effects |
+| Day cutoff, week start | UI scale, compact mode, reduce effects |
 | Saved presets, palette curation | Window size and position |
 | Whimsy settings — dates, location, countdowns | The cloud-root path, the Calibre path |
 | Importer API keys | Timer sound and default pomodoro lengths |

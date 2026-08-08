@@ -90,7 +90,9 @@ const fetchWeather = async (lat: number, lon: number): Promise<WeatherSnap | nul
   }
   // 25 points: today's 24 local hours + tomorrow's midnight closes the 12a–12a axis.
   const hourlyC = hourly.slice(0, 25).map((v) => (typeof v === "number" && Number.isFinite(v) ? v : temp));
-  return { tempC: temp, hiC: hi, loC: lo, code, hourlyC, hour: new Date().getHours() };
+  // lat/lon = the fetch provenance — a later location change reads them to
+  // know this snapshot no longer describes "here" (feedData.WeatherSnap).
+  return { tempC: temp, hiC: hi, loC: lo, code, hourlyC, hour: new Date().getHours(), lat, lon };
 };
 
 const fetchHoroscope = async (birthdate: string | null): Promise<HoroscopeSnap | null> => {
@@ -185,14 +187,42 @@ export const ensureTodayFeeds = async (config: WhimsyConfig): Promise<void> => {
       // Tarot is local and infallible — the draw IS its fetch moment.
       if (have.tarot == null) additions.tarot = drawCard();
 
-      if (have.weather == null && shouldTry(day, "weather", now)) {
+      // STALENESS (step 15): a snapshot fetched for somewhere else — or for
+      // another sun sign — no longer describes today, because the config's
+      // fetch INPUTS changed (first-run setup · Settings → Whimsy). Stale
+      // counts as not-captured and refetches; the refetch bypasses the retry
+      // throttle, which guards failed-fetch loops, not user input changes. A
+      // failed refetch keeps the old snapshot (additions merge on success
+      // only). Missing provenance = a pre-provenance snapshot, stale once.
+      // Finalized days are untouched by construction — this only ever runs
+      // for TODAY. Epsilon 0.0005°: the fetch rounds to 4 decimals.
+      const near = (a: number | undefined, b: number): boolean =>
+        a != null && Math.abs(a - b) < 0.0005;
+      // A stale refetch that FAILS retries on its own throttle key — the
+      // coords in the key mean a further location change re-arms it at once.
+      const wStale =
+        have.weather != null &&
+        !(near(have.weather.lat, config.lat) && near(have.weather.lon, config.lon)) &&
+        shouldTry(day, `weather@${config.lat},${config.lon}`, now);
+      if (wStale || (have.weather == null && shouldTry(day, "weather", now))) {
         attempted.set(`${day}:weather`, now);
+        attempted.set(`${day}:weather@${config.lat},${config.lon}`, now);
         const w = await fetchWeather(config.lat, config.lon);
         if (w != null) additions.weather = w;
       }
 
-      if (have.horoscope == null && config.birthdate != null && shouldTry(day, "horoscope", now)) {
+      const wantSign = sunSign(config.birthdate)?.name ?? null;
+      const hStale =
+        have.horoscope != null &&
+        wantSign != null &&
+        have.horoscope.sign !== wantSign &&
+        shouldTry(day, `horoscope@${wantSign}`, now);
+      if (
+        hStale ||
+        (have.horoscope == null && config.birthdate != null && shouldTry(day, "horoscope", now))
+      ) {
         attempted.set(`${day}:horoscope`, now);
+        if (wantSign != null) attempted.set(`${day}:horoscope@${wantSign}`, now);
         const h = await fetchHoroscope(config.birthdate);
         if (h != null) additions.horoscope = h;
       }

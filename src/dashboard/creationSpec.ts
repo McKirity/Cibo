@@ -83,6 +83,13 @@ export interface CreationEntryRow {
   /** The stored arc bookends (creation stores them; consumption derives). */
   started: string | null;
   completed: string | null;
+  /** Banner ref — the masthead's art CYCLES through these (user-ruled
+   *  2026-08-06: "just cycle through the banners chosen for entry" — the
+   *  habit-level art is DERIVED from its entries, no habit column minted).
+   *  It is ALSO the hero card's own background, per the FINAL. */
+  banner: string | null;
+  /** Cover ref — the hero card's cover column. */
+  cover: string | null;
 }
 
 /** One session-scope picklist definition (writing_stage · gamedev_type · …). */
@@ -168,6 +175,14 @@ export interface HeroSpec {
   entryId: string;
   title: string;
   initial: string;
+  /** The card's art refs (2026-08-06). `writing-stats.html`'s kit-card-hero
+   *  contract: the BANNER *is* the card's background (masked dissolve, scrim
+   *  under the text column), and `.hcover` is the same hatch+lettermark box the
+   *  entry rail uses — so both take real art, the lettermark being the fallback
+   *  and never the only face. Both were drawn before anything wrote a ref, so
+   *  the card had painted its placeholder unconditionally until now. */
+  cover: string | null;
+  banner: string | null;
   pill: { label: string; colorVar: string } | null;
   /** The creation secondary field: Writing = Fandom, Gamedev = Engine, else absent. */
   secondary: { label: string; value: string } | null;
@@ -946,6 +961,8 @@ function buildHeroes(
       entryId: e.id,
       title: e.title,
       initial: initialism(e.title),
+      cover: e.cover,
+      banner: e.banner,
       pill: e.status ? { label: e.status, colorVar: STATUS_CAT[e.status] ?? "--cat-1" } : null,
       secondary: e.fandom
         ? { label: "Fandom", value: e.fandom }

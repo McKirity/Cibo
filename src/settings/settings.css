@@ -217,6 +217,13 @@
 .setscreen .vrow .vval { font-size: var(--size-small); color: var(--text-strong); overflow: hidden;
                          text-overflow: ellipsis; white-space: nowrap; }
 .setscreen .vrow .iconbtn { margin-left: auto; flex: 0 0 auto; }
+/* rename (2026-08-06, finding detailed-design-7): the pencil precedes the
+   remove control — only the FIRST iconbtn takes the row's auto margin, or the
+   slack would split between the two */
+.setscreen .vrow .iconbtn + .iconbtn { margin-left: 0; }
+/* the inline rename input fills the vval slot on the row's own chrome */
+.setscreen .vrow .keyin.vedit { flex: 1 1 auto; min-width: 0; font-family: inherit;
+                                padding: var(--space-2) var(--space-3); }
 .setscreen .vrow.locked { background: var(--window-background); border-style: dashed; }
 .setscreen .vrow.locked .vval { color: var(--text-secondary); }
 .setscreen .vrow.locked .ico { margin-left: auto; color: var(--text-muted); flex: 0 0 auto; }
@@ -470,8 +477,11 @@
 .setscreen .snipslot .cosact { margin-left: auto; font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--accent); flex: 0 0 auto; white-space: nowrap; }
 
 /* the quick-action pickers — kit-popover tenants, fixed off the trigger rect
-   (the mscroll pane scrolls; the NavCalendar popovers' lesson) */
-.setscreen .picker { position: fixed; z-index: 120; width: var(--popover-width);
+   (the mscroll pane scrolls; the NavCalendar popovers' lesson). z-45 = the
+   ladder's menu/popover rung (.libmenu's tier — above the modal overlay at
+   40, below the stacked confirm at 60; the old 120 was off-ladder and sat
+   above kit-tooltip's always-top 100 — audit finding kit-6). */
+.setscreen .picker { position: fixed; z-index: 45; width: var(--popover-width);
                      background: var(--raised-background); -webkit-backdrop-filter: var(--backdrop-blur); backdrop-filter: var(--backdrop-blur);
                      border: var(--border-hairline) solid var(--border); border-radius: var(--radius-medium);
                      box-shadow: var(--shadow-high); padding: var(--space-5);

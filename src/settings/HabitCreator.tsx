@@ -251,7 +251,10 @@ export function HabitCreator({
     try {
       const name = draft.name.trim();
       const s100 = (v: string) => NonEmptyString100.orThrow(v);
-      const rules = toDerivedRules(draft.derived);
+      // Derived rules are RANGE-ONLY (keystone § Habits): a draft that
+      // collected rules under kind=range then switched away must not carry
+      // them onto the new kind (audit finding schema-3).
+      const rules = isRange ? toDerivedRules(draft.derived) : [];
       const attrs = isProject ? draft.entryAttrs : [];
 
       const shared = {
@@ -277,7 +280,14 @@ export function HabitCreator({
       if (edit != null) {
         habitKey = edit.key;
         habitId = edit.id;
-        const res = evolu.update("habits", { id: edit.id as never, ...shared } as never);
+        // The typo-fix window persists: kind (+ sub_type) stays editable until
+        // the first session, and the UI's enabled buttons must mean what they
+        // say — the save was silently dropping the change (audit finding
+        // schema-2). Once sessions exist, kind is locked and never written.
+        const kindPatch = edit.hasSessions
+          ? {}
+          : { kind: draft.kind, sub_type: isProject ? draft.subType : null };
+        const res = evolu.update("habits", { id: edit.id as never, ...shared, ...kindPatch } as never);
         if (!res.ok) {
           console.error("creator: habit update rejected", res.error);
           showErrorToast("The habit could not be saved.");
@@ -533,6 +543,12 @@ export function HabitCreator({
                       spellCheck={false}
                       onChange={(e) => set("countUnit", e.target.value)}
                     />
+                  </div>
+                )}
+                {problems.measureMissing && (
+                  <div className="err-line">
+                    <Ico d={["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z", "M12 8v5", "M12 17h.01"]} />
+                    <span>A project habit always declares at least one measure — pick Time or Count.</span>
                   </div>
                 )}
                 {showMeasureless && (

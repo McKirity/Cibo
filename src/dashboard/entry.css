@@ -31,6 +31,16 @@
                 font-family: var(--font-mono); font-size: var(--size-caption); color: var(--text-on-filled);
                 background: var(--scrim); border-radius: var(--radius-small); padding: 2px var(--space-3); text-align: center;
                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The edit face's replace band — laid ACROSS the cover box (2026-08-06), which
+   paints the current art beneath it. Mid-box on purpose: `.cinit` is the foot
+   caption CoverInner draws when there is no art, so a foot band would stack on
+   it. Full-bleed left/right so it reads as a band, not a second pill. */
+.erail .cover .covband { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+                font-family: var(--font-mono); font-size: var(--size-caption); font-weight: var(--weight-bold);
+                color: var(--text-on-filled); background: var(--scrim); padding: var(--space-3) var(--space-3);
+                text-align: center; text-transform: uppercase; letter-spacing: .08em;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.erail .cover:hover .covband { background: var(--accent); }
 .erail .eyebrow { font-size: var(--size-caption); text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
 .erail .eyebrow .door { color: var(--text-secondary); text-decoration: underline dotted var(--border); text-underline-offset: 3px; cursor: pointer;
                 background: none; border: none; padding: 0; font: inherit; text-transform: inherit; letter-spacing: inherit;
@@ -88,15 +98,13 @@
 .frow2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
 .frow2.tight { gap: var(--space-3); grid-template-columns: 2fr 1fr; }
 
-/* creation rail banner — parametrized on --rail-hue (the FINAL transcribed
-   --habit-1; Build sets the habit's own hue inline). The 24%/6% stripe mixes
-   are the ruled-exempt placeholder-stripe amounts (a stand-in for real banner
-   art — an <img> once the images subsystem lands). */
-.railbanner { position: relative; margin: calc(-1 * var(--space-7)) calc(-1 * var(--space-7)) 0; height: var(--masthead-art-h);
-              background: repeating-linear-gradient(135deg, color-mix(in oklch, var(--rail-hue), var(--window-background) 24%) 0 18px, color-mix(in oklch, var(--rail-hue), var(--window-background) 6%) 18px 36px);
-              -webkit-mask-image: linear-gradient(to bottom, black 0, black 34%, transparent var(--rail-banner-fade));
-                      mask-image: linear-gradient(to bottom, black 0, black 34%, transparent var(--rail-banner-fade)); }
-.erail .cover.overbanner { margin-top: calc(-1 * var(--space-8)); position: relative; z-index: 1; }
+/* (The creation rail's banner band — `.railbanner`, its <img>, and the
+   `.cover.overbanner` overlap it forced — was DELETED 2026-08-06, user-ruled:
+   the FINAL draws it, but it read as clutter above the cover. The banner REF
+   survives whole; its display sites are now the Daily cover wall's creation
+   tile and the hero card's background. NOTE `--rail-banner-fade` is left
+   unread by this deletion — a roster dial, so retiring it is a ratified pass,
+   not a side effect of this one.) */
 
 /* ===== wave timeline — the signature zone ===== */
 .waveheadrow { display: flex; align-items: baseline; gap: var(--space-5); margin-bottom: var(--space-6); }

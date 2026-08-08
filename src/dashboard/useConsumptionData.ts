@@ -32,6 +32,9 @@ export interface ConsumptionData {
   ready: boolean;
   name: string;
   colourSlot: string;
+  icon: string | null;
+  /** Fork D (2026-08-06): the current-streak tile reads it. */
+  archived: boolean;
   sessions: SessionRow[];
   entries: EntryRow[];
   finalized: Set<string>;
@@ -47,7 +50,7 @@ export function useConsumptionData(habitKey: string): ConsumptionData {
       evolu.createQuery((db) =>
         db
           .selectFrom("habits")
-          .select(["id", "name", "colour_slot"])
+          .select(["id", "name", "colour_slot", "icon", "archived"])
           .where("key", "=", NonEmptyString100.orThrow(habitKey))
           .where("isDeleted", "is not", 1),
       ),
@@ -157,6 +160,8 @@ export function useConsumptionData(habitKey: string): ConsumptionData {
       ready: habit != null,
       name: habit?.name ?? habitKey,
       colourSlot: habit?.colour_slot ?? "habit-1", // habit-1: the app-wide null-slot fallback (unified 2026-07-30; this straggler caught at the 6a sweep)
+      icon: (habit?.icon as string | null) ?? null,
+      archived: (habit?.archived ?? 0) === 1,
       sessions,
       entries,
       finalized,

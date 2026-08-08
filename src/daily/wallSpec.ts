@@ -75,7 +75,13 @@ export interface BannerTile {
   title: string;
   /** The bout's own categorical line ("Rough Draft · Characters"), or null. */
   stage: string | null;
+  /** BOTH refs ride, and the tile shows both (user-ruled 2026-08-06: "I want
+   *  the tile to show both"). The banner is the card-spanning background; the
+   *  cover is a thumbnail in the info band. A banner-less entry promotes its
+   *  cover to the background rather than drawing it twice. Both null = the
+   *  slot-derived gradient field, still a designed look. */
   banner: string | null;
+  cover: string | null;
   nums: string;
   entryId: string;
   habitKey: string | null;
@@ -424,6 +430,7 @@ export function buildWall(input: WallInput): WallTile[] {
               title: entry.title,
               stage: parts.length > 0 ? parts.join(" · ") : null,
               banner: entry.banner,
+              cover: entry.cover,
               nums: nums === "" ? hoursMinutes(mins) : nums,
               entryId,
               habitKey: habit.key,

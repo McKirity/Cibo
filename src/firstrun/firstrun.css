@@ -1,0 +1,500 @@
+/* ============================================================================
+   FIRST-RUN SETUP (Build step 15) — canvas A of Final/first-run-setup.html,
+   translated. Scoped under .setupscreen (the re-scope-per-screen law); the
+   titlebar reuses shell.css's unscoped .tb family on purpose — same chrome,
+   one owner. Default theme only by construction (the boot gate applies the
+   picked theme at handoff, after this screen is gone), but the token law
+   applies in full: every value below reads a dial.
+
+   Build adaptations, flagged:
+   - The FINAL draws the stepper EXPANDED (its own annotation: "runtime = one
+     at a time, with Back / Next") — the panels render one at a time and the
+     stepper pills are buttons; Back/Next join the footer beside Finish.
+   - .datefield (a display-only span in the exhibit) becomes real inputs
+     (.fu-in / .coordval as an <input>); values kept.
+   - .setup-body scrolls (the exhibit's fixed 1440 canvas never had to).
+   - Event rows added at runtime carry label + date + yearly + remove — the
+     add affordance's editable form, which a static exhibit could not draw.
+   ========================================================================== */
+
+.setupscreen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--window-background);
+  color: var(--text-strong);
+  font-family: var(--font-ui);
+  font-size: var(--size-body);
+}
+
+.setupscreen .setup-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-8);
+  overflow-y: auto;
+}
+
+.setupscreen .setup-card {
+  width: var(--modal-manage-w);
+  max-width: 100%;
+  margin: auto; /* centers when short, scrolls when tall */
+  background: var(--panel-background);
+  border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-low);
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.setupscreen .welcome {
+  font-family: var(--font-heading);
+  font-size: var(--size-display);
+  font-weight: var(--weight-bold);
+  line-height: var(--line-tight);
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  margin: 0;
+}
+.setupscreen .welcomesub {
+  font-size: var(--size-body);
+  color: var(--text-secondary);
+  margin: var(--space-3) 0 0;
+  max-width: 64ch;
+  text-wrap: pretty;
+}
+
+/* ── stepper ── */
+.setupscreen .setup-stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-5) 0;
+  border-top: var(--border-hairline) solid var(--divider);
+  border-bottom: var(--border-hairline) solid var(--divider);
+}
+.setupscreen .sstep {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-family: var(--font-ui);
+  font-size: var(--size-small);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+  background: transparent;
+  border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-full);
+  padding: var(--space-3) var(--space-6);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+.setupscreen .sstep:hover {
+  background: var(--hover-wash);
+  color: var(--text-strong);
+}
+.setupscreen .sstep .num {
+  font-family: var(--font-mono);
+  font-size: var(--size-caption);
+  color: var(--text-muted);
+}
+.setupscreen .sstep.on {
+  color: var(--text-strong);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 var(--border-hairline) var(--accent);
+  background: var(--selected-wash);
+}
+.setupscreen .sstep.on .num {
+  color: var(--accent);
+}
+.setupscreen .setup-stepper .arr {
+  color: var(--border);
+  flex: 0 0 auto;
+}
+
+/* ── step panels — ALL THREE STACKED (user-ruled at the GUI pass 2026-08-06,
+      "have EVERYTHING on the screen"; the FINAL's expanded exhibit is the
+      runtime face and its panel divider rule applies) ── */
+.setupscreen .steppanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.setupscreen .steppanel + .steppanel {
+  padding-top: var(--space-7);
+  border-top: var(--border-hairline) solid var(--divider);
+}
+.setupscreen .stephdr {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+.setupscreen .stephdr .st {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+.setupscreen .stephdr .st .num {
+  font-family: var(--font-mono);
+  font-size: var(--size-small);
+  color: var(--accent);
+}
+.setupscreen .stephdr .st .lbl {
+  font-family: var(--font-heading);
+  font-size: var(--size-subheading);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+.setupscreen .fnote {
+  font-size: var(--size-small);
+  color: var(--text-muted);
+  text-wrap: pretty;
+  line-height: var(--line-normal);
+  margin: 0;
+}
+.setupscreen .fnote b {
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
+}
+
+/* ── field rows (the kit-row-control anatomy — Settings' .crow kin) ── */
+.setupscreen .frow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-5) var(--space-6);
+  background: var(--window-background);
+  border: var(--border-hairline) solid var(--divider);
+  border-radius: var(--radius-medium);
+}
+.setupscreen .frow .flabel {
+  font-size: var(--size-body);
+  font-weight: var(--weight-medium);
+  color: var(--text-strong);
+}
+.setupscreen .frow.evrow {
+  grid-template-columns: 1fr auto;
+}
+.setupscreen .evacts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* the real input on the exhibit's .datefield values */
+.setupscreen .fu-in {
+  font-family: var(--font-ui);
+  font-size: var(--size-body);
+  color: var(--text-strong);
+  background: var(--inset-background);
+  border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-small);
+  padding: var(--space-3) var(--space-5);
+  min-width: 0;
+}
+.setupscreen .fu-in::placeholder {
+  color: var(--text-muted);
+}
+/* ── the date chip (typed primary · kit .calpop popover fallback) — built
+      after the first GUI pass: WebView2's native date input stalled ~2s per
+      row while the identical React path measured 6 ms in Chromium; the app
+      idiom was never the native control (the FINAL's .datefield is a chip) ── */
+.setupscreen .fudate {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--inset-background);
+  border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-small);
+  padding: var(--space-3) var(--space-5);
+  cursor: text;
+}
+.setupscreen .fud-ico {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+  flex: 0 0 auto;
+  stroke: currentColor;
+  stroke-width: var(--icon-stroke);
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--text-muted);
+}
+.setupscreen .fudate-in {
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: var(--size-body);
+  color: var(--text-strong);
+  width: 11ch;
+  padding: 0;
+}
+.setupscreen .fudate-in:focus {
+  outline: none;
+}
+.setupscreen .fudate-in::placeholder {
+  color: var(--text-muted);
+}
+/* the popover anchors to the chip — z 6 = the named z-popover-inline tier */
+.setupscreen .fudate > .calpop {
+  display: none;
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 6;
+  text-align: left;
+}
+.setupscreen .fudate:focus-within > .calpop {
+  display: block;
+}
+.setupscreen .fudate.shut > .calpop {
+  display: none;
+}
+.setupscreen .calpop .caltop .nav .b .fud-ico {
+  color: inherit;
+}
+.setupscreen .fu-chip {
+  font-family: var(--font-ui);
+  font-size: var(--size-caption);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  background: transparent;
+  border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+.setupscreen .fu-chip:hover {
+  background: var(--hover-wash);
+  color: var(--text-strong);
+}
+.setupscreen .fu-chip.on {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--selected-wash);
+}
+.setupscreen .fu-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-small);
+  color: var(--text-muted);
+  padding: var(--space-2);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+.setupscreen .fu-x:hover {
+  background: var(--hover-wash);
+  color: var(--danger);
+}
+.setupscreen .fu-x .ico {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+}
+
+.setupscreen .adddate {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--size-small);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  background: transparent;
+  border: var(--border-hairline) dashed var(--border);
+  border-radius: var(--radius-small);
+  padding: var(--space-3) var(--space-5);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+.setupscreen .adddate:hover {
+  background: var(--hover-wash);
+  color: var(--text-strong);
+}
+.setupscreen .adddate .ico {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+  color: var(--text-muted);
+}
+
+/* ── location — coordinates outright ── */
+.setupscreen .coordgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+.setupscreen .coordcell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  background: var(--window-background);
+  border: var(--border-hairline) solid var(--divider);
+  border-radius: var(--radius-medium);
+}
+.setupscreen .coordlbl {
+  font-size: var(--size-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.setupscreen .coordval {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--size-subheading);
+  color: var(--text-strong);
+  background: var(--inset-background);
+  border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-small);
+  padding: var(--space-3) var(--space-5);
+  min-width: 0;
+}
+.setupscreen .coordval::placeholder {
+  color: var(--text-muted);
+}
+
+/* ── starting-habits multi-select (kit-cardset-radio's multi face) ── */
+.setupscreen .pickmeta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+.setupscreen .pickmeta.latertier {
+  margin-top: var(--space-6);
+}
+.setupscreen .arch-head {
+  font-size: var(--size-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.setupscreen .selcount {
+  font-family: var(--font-mono);
+  font-size: var(--size-small);
+  color: var(--text-secondary);
+}
+.setupscreen .hpickgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.setupscreen .hpick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  text-align: left;
+  cursor: pointer;
+  padding: var(--space-5);
+  background: var(--window-background);
+  border: var(--border-hairline) solid var(--divider);
+  border-radius: var(--radius-medium);
+  transition: background var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+.setupscreen .hpick:hover {
+  background: var(--hover-wash);
+}
+.setupscreen .hpick.on {
+  background: var(--selected-wash);
+  box-shadow: inset 0 0 0 var(--border-standard) var(--accent);
+}
+.setupscreen .hpick .hsw {
+  width: var(--swatch-size);
+  height: var(--swatch-size);
+  border-radius: var(--radius-small);
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-on-filled);
+  font-family: var(--font-heading);
+  font-size: var(--size-small);
+  font-weight: var(--weight-bold);
+}
+.setupscreen .hpick .hsw .ico {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+.setupscreen .hpick .hmeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.setupscreen .hpick .hn {
+  font-size: var(--size-subheading);
+  font-weight: var(--weight-medium);
+  color: var(--text-strong);
+}
+.setupscreen .hpick .hk {
+  font-size: var(--size-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.setupscreen .hpick .hbox {
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: var(--check-size);
+  height: var(--check-size);
+  border-radius: var(--radius-cell);
+  border: var(--border-standard) solid var(--border);
+  background: var(--panel-background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+}
+.setupscreen .hpick.on .hbox {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-filled);
+}
+.setupscreen .hpick .hbox .ico {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+}
+
+/* ── footer — the single exit (+ the visible location-required hint) ── */
+.setupscreen .setup-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding-top: var(--space-7);
+  border-top: var(--border-hairline) solid var(--divider);
+}
+.setupscreen .setup-foot .footnote {
+  text-align: center;
+}
+.setupscreen .setup-foot .b-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--size-subheading);
+  padding: var(--space-5) var(--space-8);
+}
+.setupscreen .setup-foot .b-primary .ico {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+}

@@ -33,7 +33,9 @@ import { EntryCreationModal } from "../library/EntryCreationModal";
 import { todayLocal } from "../metrics/clock";
 import { heatRowLabels } from "../metrics/dates";
 import { requestSettingsNav } from "../shell/navRequest";
+import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { HEAT_CLASS } from "./specShared";
+import { CoverInner, useCoverUrl } from "../kit/CoverArt";
 import "../dashboard.css";
 import "./screen.css";
 
@@ -93,8 +95,18 @@ export function CreationDashboard({
         <div className="gs">
           {/* ── 1 · Masthead (creation variant: no type row, no library door) ── */}
           <section className="panel mast">
-            <div className="art" style={{ background: `var(${color})` }}>
-              <span>{m.masthead.name[0]?.toUpperCase()}</span>
+            {/* TWO STEPS, in order: the habit ICON is the face (the FINALs draw
+                one here), the lettermark the last resort. The icon step was
+                missing entirely until 2026-08-06. A banner-art step above them
+                — cycling this visit's pick from the entries' banners — was
+                ruled in and back out the same day; the masthead is icon-or-
+                lettermark, and banners display on the cover wall + hero cards. */}
+            <div className="art" style={{ ["--habit-hue" as string]: `var(${color})` }}>
+              {hasIcon(data.icon) ? (
+                <HabitIcon icon={data.icon} />
+              ) : (
+                <span>{m.masthead.name[0]?.toUpperCase()}</span>
+              )}
             </div>
             <div className="idcol">
               <div className="idrow">
@@ -632,6 +644,7 @@ function HeroSpark({ s }: { s: HeroSpec["sparks"][number] }) {
 }
 
 function HeroCard({ h, onOpen }: { h: HeroSpec; onOpen?: (entryId: string) => void }) {
+  const bannerUrl = useCoverUrl(h.banner);
   const pillStyle: CSSProperties | undefined = h.pill
     ? {
         background: `color-mix(in oklch, var(${h.pill.colorVar}), var(--panel-background) var(--tint-mix))`,
@@ -647,11 +660,20 @@ function HeroCard({ h, onOpen }: { h: HeroSpec; onOpen?: (entryId: string) => vo
       title={onOpen ? `${h.title} — open entry` : undefined}
       onClick={onOpen ? () => onOpen(h.entryId) : undefined}
     >
-      <div className="hbanner" />
+      {/* Both art slots are LIVE (2026-08-06). The banner IS the card's
+          background per kit-card-hero's contract — it rides `.hbanner`'s
+          existing dissolve mask, and `.hscrim` keeps the text column legible
+          over it. `.hcover` is the entry rail's box exactly, so CoverInner
+          serves it: art when a ref resolves, the `.cinit` lettermark when not.
+          Until now both drew their placeholder unconditionally — the cards were
+          composed when nothing had ever written a ref. */}
+      <div className="hbanner">
+        {bannerUrl != null && <img src={bannerUrl} alt="" draggable={false} />}
+      </div>
       <div className="hscrim" />
       <div className="hbody">
         <div className="hcover" title={`${h.title} · cover`}>
-          <span className="cinit">{h.initial}</span>
+          <CoverInner cover={h.cover} label={h.initial} />
         </div>
         <div className="hmain">
           <div className="htitlerow">

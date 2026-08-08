@@ -21,6 +21,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { discardAllForQuit, hasLiveClocks } from "./timerStore";
 import { getBackupsRoot, runBackup } from "../backup/backup";
+import { flushStagedDeletions } from "../db/fileDeletion";
 
 let registered = false;
 let bypass = false;
@@ -63,9 +64,15 @@ const backupThenQuit = (): void => {
   bypass = true;
   showBackingUp?.();
   const cap = new Promise<void>((res) => window.setTimeout(res, 45_000));
-  void Promise.race([runBackup("close").then(() => undefined, () => undefined), cap]).finally(
-    quitNow,
-  );
+  // Staged file deletions commit BEFORE the backup: a quit inside someone's
+  // undo window would otherwise drop them (the toast dies with the webview,
+  // so the offered undo is gone either way) — and running first means the
+  // backup never archives a file the session already condemned
+  // (db/fileDeletion.ts, the completion-audit dock).
+  const work = flushStagedDeletions()
+    .catch(() => undefined)
+    .then(() => runBackup("close").then(() => undefined, () => undefined));
+  void Promise.race([work, cap]).finally(quitNow);
 };
 
 /** Register the one close listener. Safe to call on every Shell mount. */

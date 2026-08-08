@@ -6,7 +6,7 @@
  * else moved; the import order in here is still load-bearing (see the
  * decoration.css note).
  */
-import React from "react";
+import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { EvoluProvider } from "@evolu/react";
 // The bundled Default's dials, imported statically from the bundled package so
@@ -35,8 +35,11 @@ import App from "./App";
 // cascade (inert until a manifest publishes --deco-* properties).
 import "./theme/decoration.css";
 import { evolu } from "./db/evolu";
-import { ensureHabitIcons, runSeed } from "./db/seed";
+import { ensureHabitIcons, ensureSleepMedLabel, runSeed } from "./db/seed";
 import { ensureAppStartDate } from "./db/appStart";
+import { initWhimsyConfig } from "./daily/whimsyConfig";
+import { isFirstRunPending } from "./firstrun/firstRun";
+import { FirstRunSetup } from "./firstrun/FirstRunSetup";
 import { mountFatalLaunch } from "./shell/FatalLaunch";
 import { showErrorToast } from "./shell/toast";
 import { launchStaleCheck } from "./backup/backup";
@@ -51,10 +54,12 @@ import { takeRestoreResult } from "./backup/restore";
 // The ramp-complement dials derive from the static Default immediately (the
 // loader re-derives after any theme apply) — use-sites var() them from frame 1.
 applyDerivedDials();
-// The theme layer applies the per-device pick over the static Default. Fire and
-// forget: a slow scan just means the Default paints first (only a non-Default
-// pick ever re-paints), and a loader failure is logged, never a gate.
-void initTheme();
+// The theme layer's initTheme moved into the BOOT GATE (step 15): the setup
+// screen is Default-only by rule, so the picked theme applies at the gate's
+// shell resolution (or at first-run's Finish), never before. On a normal
+// launch that is moments after the seed check — the Default paints first
+// either way (only a non-Default pick ever re-paints), and a loader failure
+// stays logged, never a gate.
 // Compact — the density lever's root class; auto keys off window width.
 initCompact();
 // Decoration — reads the theme's decoration/manifest.json (inert while the
@@ -89,21 +94,40 @@ evolu.subscribeError(() => {
     );
 });
 
+// THE BOOT GATE (step 15): resolves to what the root should render — the
+// first-run setup screen (no `first_run_complete` flag; a store wipe re-arms
+// it by construction) or the shell. It also awaits the whimsy cache prime,
+// which is what keeps `loadWhimsyConfig`'s sync reads honest for every
+// consumer the shell can mount. Never rejects: a seed failure mounts the
+// fatal screen OVER the (blank) root instead.
+let resolveGate!: (mode: "setup" | "shell") => void;
+const bootGate = new Promise<"setup" | "shell">((r) => (resolveGate = r));
+
 // The version-gated seed append — runs at every launch, applies only newer batches.
 // The app's start date is established AFTER it, so a fresh install's backfill can
-// see batch 1's rows (appStart.ts). First-run setup (step 15) owns the write once
-// it exists; until then this is where it lands.
+// see batch 1's rows (appStart.ts).
 runSeed(evolu).then(
-  (r) => {
+  async (r) => {
     booted = true;
     console.info(
       `Seed: found version ${r.foundVersion}, ${r.applied ? "applied batch(es)" : "nothing to apply"}`,
     );
+    // The gate's two awaited reads (both tiny), then the render decision. The
+    // picked theme applies only on the shell path — the setup screen stays on
+    // the static Default by rule.
+    const pending = await isFirstRunPending();
+    await initWhimsyConfig();
+    if (!pending) void initTheme();
+    resolveGate(pending ? "setup" : "shell");
     void ensureAppStartDate(evolu);
     // The icon plant is an always-run reconciler, NOT gate-trusted: the gate
     // latched twice over transactions lost to mid-session reloads (batches
     // 7 and 9). Idempotent null-fill → a lost write heals next launch.
     void ensureHabitIcons(evolu);
+    // Same reasoning, same shape (2026-08-07): Sleep's flag label feeds the
+    // donut header AND its subtitle, so a rename that latches without landing
+    // shows as "Nights I med" — visibly wrong, but only on one panel.
+    void ensureSleepMedLabel(evolu, "launch");
     // Backups (step 12): the launch half — a failed restore surfaces (tier 3;
     // a SUCCESSFUL restore needs no toast: the restored data is the message),
     // then the ~7-day stale-check (crashes never fire the close hook).
@@ -126,10 +150,40 @@ runSeed(evolu).then(
   },
 );
 
+/**
+ * The root: blank (window-background) until the gate resolves, then the setup
+ * screen or the shell. First-run's Finish applies the picked theme (a fresh
+ * store has none — the Default stands) and swaps to the shell in place; the
+ * next launch takes the shell path directly.
+ */
+function Boot() {
+  const [mode, setMode] = useState<"wait" | "setup" | "shell">("wait");
+  useEffect(() => {
+    let live = true;
+    void bootGate.then((m) => {
+      if (live) setMode(m);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (mode === "wait") return null;
+  if (mode === "setup")
+    return (
+      <FirstRunSetup
+        onDone={() => {
+          void initTheme();
+          setMode("shell");
+        }}
+      />
+    );
+  return <App />;
+}
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <EvoluProvider value={evolu}>
-      <App />
+      <Boot />
     </EvoluProvider>
   </React.StrictMode>,
 );

@@ -51,6 +51,34 @@ const checked = (
   return true;
 };
 
+// ── Vocab quick-add ──────────────────────────────────────────────────────────
+
+/**
+ * The ruled quick-add from the log form ([[Vocabulary & Statuses]]: "quick-add
+ * from the log form" — logging never dead-ends on a missing value; built at the
+ * Phase-2 completion audit, finding detailed-design-3). Case-insensitive dedup:
+ * a value that already exists under any casing is NOT re-minted — the caller
+ * receives the canonical casing back and picks it (the importers' vocab law).
+ * Returns the value to pick, or null when the insert failed.
+ */
+export function quickAddVocabValue(
+  definitionId: SubunitDefinitionId,
+  existing: readonly string[],
+  raw: string,
+): string | null {
+  const v = raw.trim();
+  if (v === "") return null;
+  const canon = existing.find((e) => e.toLowerCase() === v.toLowerCase());
+  if (canon != null) return canon;
+  const res = evolu.insert("vocab_options", {
+    definition_fk: definitionId,
+    value: NonEmptyString100.orThrow(v.slice(0, 100)),
+    sort_order: FiniteNumber.orThrow(existing.length + 1),
+  });
+  if (!checked(res, "vocab quick-add")) return null;
+  return v;
+}
+
 // ── Sessions ─────────────────────────────────────────────────────────────────
 
 export interface NewSession {
@@ -220,10 +248,15 @@ export const updateRange = (
 ): WriteResult => {
   const span = validateRangeSpan(start, end, maxMidnights);
   if (!span.ok) return bad(span.reason);
+  // "A range session's owning day = its END date" holds BY CONSTRUCTION now
+  // (user-ruled 2026-08-06, audit fork A): an edit that moves the wake date
+  // re-files the session under the new day in the same write — the stored
+  // `day` can never silently diverge from the end date again.
   const res = evolu.update("sessions", {
     id: id as SessionId,
     start: DateTimeLocal.orThrow(start),
     end: DateTimeLocal.orThrow(end),
+    day: DateOnly.orThrow(end.slice(0, 10)),
   });
   return checked(res, "range update") ? good : bad("Write failed — see console.");
 };

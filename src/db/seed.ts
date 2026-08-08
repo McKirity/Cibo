@@ -36,7 +36,7 @@ const s100 = (v: string) => NonEmptyString100.orThrow(v);
 const s1000 = (v: string) => NonEmptyString1000.orThrow(v);
 const num = (v: number) => FiniteNumber.orThrow(v);
 
-export const SEED_VERSION = 9;
+export const SEED_VERSION = 10;
 
 type CiboEvolu = Evolu<typeof Schema>;
 
@@ -230,7 +230,10 @@ const BATCH_1: HabitSeed[] = [
     ] as DerivedRule[],
     definitions: [
       // Non-derivable stored flag (Subunits tri-split).
-      { key: "sleep_med", label: "Med", scope: "session", data_type: "flag", vocab: [] },
+      // The label is the flag panel's HEADER and the stem of its subtitle
+      // ("Nights I took medication"), so it reads as a completed action rather
+      // than a noun — user-ruled 2026-08-07. Renamed from "Med" by batch 10.
+      { key: "sleep_med", label: "Took Medication", scope: "session", data_type: "flag", vocab: [] },
     ],
   },
   {
@@ -356,7 +359,8 @@ export async function runSeed(evolu: CiboEvolu): Promise<SeedResult> {
   // the seven icon names absent. Batch 8 re-runs the same idempotent plant.
   if (foundVersion < 8) await seedBatch8(evolu);
   if (foundVersion < 9) await seedBatch9(evolu);
-  // Future batches: if (foundVersion < 10) await seedBatch10(evolu); …
+  if (foundVersion < 10) await seedBatch10(evolu);
+  // Future batches: if (foundVersion < 11) await seedBatch11(evolu); …
 
   // A batch that throws above skips this on purpose: the gate must never
   // record a version whose batch didn't verifiably land.
@@ -804,6 +808,64 @@ async function seedBatch8(evolu: CiboEvolu): Promise<void> {
  */
 async function seedBatch9(evolu: CiboEvolu): Promise<void> {
   await plantIcons(evolu, "batch 9");
+}
+
+/**
+ * Batch 10 (2026-08-07) — rename Sleep's `sleep_med` flag from "Med" to
+ * "Took Medication" (user-ruled at the completion audit's GUI pass).
+ *
+ * WHY A SEED BATCH AND NOT A CODE CONSTANT: the flag panel's header and
+ * subtitle are built from the definition's own label, with zero habit
+ * special-casing — the range dashboard has no idea which habit it is drawing.
+ * So the wording IS data, and a data change on an already-seeded store is a
+ * version-gated batch. A fresh store gets the new label at batch 1.
+ *
+ * The batch-4 pattern exactly: check the Result, await `onComplete`, re-read
+ * the row, and throw so runSeed never records a version whose write did not
+ * verifiably land. Idempotent — a definition already carrying the new label is
+ * skipped, and the key never moves (`sleep_med` addresses every stored answer).
+ */
+async function seedBatch10(evolu: CiboEvolu): Promise<void> {
+  await ensureSleepMedLabel(evolu, "batch 10");
+}
+
+const MED_OLD_LABEL = "Med";
+const MED_NEW_LABEL = "Took Medication";
+
+/**
+ * The rename itself, written as an ALWAYS-RUN RECONCILER rather than trusting
+ * the version gate — the project's own rule: version-gate what must run ONCE,
+ * reconcile-at-launch what is idempotent. A label rename is idempotent, and
+ * this gate has now latched-without-landing three times (batches 3, 7, 9), so
+ * a rename that only ever fires once is a rename that can silently not happen.
+ *
+ * NARROWLY SCOPED ON PURPOSE, the `ensureHabitIcons` discipline: it rewrites
+ * the label ONLY when it still reads the exact old string. Anything else —
+ * including a label the user has since changed themselves — is left alone, so
+ * the reconciler can never fight a deliberate edit. Never throws from the
+ * launch path; a failure just retries next launch and says so.
+ */
+export async function ensureSleepMedLabel(evolu: CiboEvolu, why: string): Promise<void> {
+  try {
+    const defQuery = evolu.createQuery((db) =>
+      db
+        .selectFrom("subunit_definitions")
+        .select(["id", "label"])
+        .where("key", "=", s100("sleep_med"))
+        .where("isDeleted", "is not", 1),
+    );
+    const stale = (await evolu.loadQuery(defQuery)).filter((d) => d.label === MED_OLD_LABEL);
+    if (stale.length === 0) return;
+    console.info(`Sleep med label: renaming ${stale.length} (${why})`);
+    for (const d of stale) {
+      await verifiedUpdate(
+        (opts) => evolu.update("subunit_definitions", { id: d.id, label: s100(MED_NEW_LABEL) }, opts),
+        `Sleep med label (${why})`,
+      );
+    }
+  } catch (e) {
+    console.error("Sleep med label: reconciliation failed (will retry next launch)", e);
+  }
 }
 
 /**

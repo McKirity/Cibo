@@ -25,6 +25,7 @@ export interface CreationData {
   ready: boolean;
   name: string;
   colourSlot: string;
+  icon: string | null;
   archived: boolean;
   /** True when the habit declares BOTH duration and count (Writing) — mints the words + efficiency rows. */
   measuresCount: boolean;
@@ -45,7 +46,7 @@ export function useCreationData(habitKey: string): CreationData {
       evolu.createQuery((db) =>
         db
           .selectFrom("habits")
-          .select(["id", "name", "colour_slot", "archived", "measures_count", "count_unit"])
+          .select(["id", "name", "colour_slot", "icon", "archived", "measures_count", "count_unit"])
           .where("key", "=", NonEmptyString100.orThrow(habitKey))
           .where("isDeleted", "is not", 1),
       ),
@@ -71,7 +72,7 @@ export function useCreationData(habitKey: string): CreationData {
       evolu.createQuery((db) =>
         db
           .selectFrom("entries")
-          .select(["id", "title", "status", "fandom", "gamedev_engine", "started", "completed"])
+          .select(["id", "title", "status", "fandom", "gamedev_engine", "started", "completed", "banner", "cover"])
           .where("habit_fk", "=", habitId)
           .where("isDeleted", "is not", 1),
       ),
@@ -165,6 +166,8 @@ export function useCreationData(habitKey: string): CreationData {
         engine: r.gamedev_engine,
         started: r.started,
         completed: r.completed,
+        banner: r.banner,
+        cover: r.cover,
       })),
     [entryRows],
   );
@@ -210,6 +213,7 @@ export function useCreationData(habitKey: string): CreationData {
       ready: habit != null,
       name: habit?.name ?? habitKey,
       colourSlot: habit?.colour_slot ?? "habit-1",
+      icon: (habit?.icon as string | null) ?? null,
       archived: habit?.archived === 1,
       measuresCount: habit?.measures_count === 1,
       countUnit: (habit?.count_unit as string | null) ?? null,

@@ -19,8 +19,9 @@
  * pair — provenance reads "manual".
  *
  * Deferred seam, recorded: the cover/banner REFERENCE inputs draw their hatch
- * faces but the drop is inert — there is no cloud root until step 14, so a
- * dropped file has nowhere to live. Entries wear the lettermark fallback.
+ * faces but the drop is inert HERE — not built in this modal yet. Both ARE
+ * settable from the entry dashboard's edit rail (fork J, 2026-08-06), so a new
+ * entry wears the lettermark until it is given art there.
  */
 import { useMemo, useState } from "react";
 import { NonEmptyString100, NonEmptyString1000, NonNegativeInt, PositiveInt } from "@evolu/common";
@@ -229,7 +230,7 @@ export function EntryCreationModal({
             {!creation && (
               <div
                 className="ec-cover ec-hatch"
-                title="Cover reference — the drop arrives with the cloud root (step 14)"
+                title="Cover reference — the drop is not built yet (home pending)"
               >
                 <Ico d={ICON.image} size={26} />
                 <span className="ecn">Drop cover</span>
@@ -296,22 +297,9 @@ export function EntryCreationModal({
             </div>
           </div>
 
-          {/* banner (creation) */}
-          {creation && (
-            <div className="ec-field">
-              <span className="ec-lbl">
-                Banner<span className="opt">reference · optional</span>
-              </span>
-              <span className="ec-ctrl block">
-                <span
-                  className="ec-banner ec-hatch"
-                  title="Banner reference — the drop arrives with the cloud root (step 14)"
-                >
-                  <span className="ecn">Drop banner</span>
-                </span>
-              </span>
-            </div>
-          )}
+          {/* (The creation BANNER drop the FINAL draws here was removed
+              2026-08-06, user-ruled: it was an inert hatch that did nothing on
+              click, so it advertised a capability the modal did not have.) */}
 
           {/* attributes */}
           <div className="ec-fields">

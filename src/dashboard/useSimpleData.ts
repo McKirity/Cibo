@@ -20,6 +20,7 @@ export interface SimpleData {
   ready: boolean;
   name: string;
   colourSlot: string;
+  icon: string | null;
   archived: boolean;
   measuresTime: boolean;
   measuresCount: boolean;
@@ -36,7 +37,7 @@ export function useSimpleData(habitKey: string): SimpleData {
       evolu.createQuery((db) =>
         db
           .selectFrom("habits")
-          .select(["id", "name", "colour_slot", "archived", "measures_time", "measures_count", "count_unit"])
+          .select(["id", "name", "colour_slot", "icon", "archived", "measures_time", "measures_count", "count_unit"])
           .where("key", "=", NonEmptyString100.orThrow(habitKey))
           .where("isDeleted", "is not", 1),
       ),
@@ -168,6 +169,7 @@ export function useSimpleData(habitKey: string): SimpleData {
       ready: habit != null,
       name: habit?.name ?? habitKey,
       colourSlot: habit?.colour_slot ?? "habit-1",
+      icon: (habit?.icon as string | null) ?? null,
       archived: habit?.archived === 1,
       measuresTime: habit?.measures_time === 1,
       measuresCount: habit?.measures_count === 1,

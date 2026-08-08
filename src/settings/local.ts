@@ -178,52 +178,19 @@ export const setForceOpaque = (on: boolean): void => {
   applyForceOpaque();
 };
 
-// ── banner fade ──────────────────────────────────────────────────────────────
+/* (`cibo.bannerFade` — the Appearance slider over --hero-banner-fade — was
+ * REMOVED 2026-08-06, user-ruled, with the rightward dissolve it drove: the
+ * hero card's banner now covers the card whole, so the dial has no reader and
+ * the slider had nothing to move. Any stored key is inert. Retiring the DIAL
+ * itself from the roster is a separate ratified pass. */
 
-export const BANNER_FADE_KEY = "cibo.bannerFade";
-
-/** Absent = the theme's own --hero-banner-fade stands (the honest default). */
-export const getBannerFade = (): number | null => {
-  const v = lsGet(BANNER_FADE_KEY);
-  if (v == null) return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : null;
-};
-
-export const applyBannerFade = (): void => {
-  const v = getBannerFade();
-  const root = document.documentElement;
-  if (v == null) root.style.removeProperty("--hero-banner-fade");
-  else root.style.setProperty("--hero-banner-fade", `${v}%`);
-};
-
-export const setBannerFade = (pct: number | null): void => {
-  lsSet(BANNER_FADE_KEY, pct == null ? null : String(pct));
-  applyBannerFade();
-};
-
-// ── writing rail banner ──────────────────────────────────────────────────────
-
-/**
- * The creation entry dashboard's rail banner (the dissolve band) — built per
- * the 2026-07-23 ruling "Build it, but I want the option to disable it"; the
- * disable half landed 2026-08-04 (the completeness audit). Absent key = ON,
- * the spec-level default the banner shipped with. Read at spec build
- * (dashboard/entrySpec.ts), so a toggle takes effect on the next dashboard
- * mount — no live re-render owed.
- */
-export const RAIL_BANNER_KEY = "cibo.railBanner";
-export const getRailBanner = (): boolean => lsGet(RAIL_BANNER_KEY) !== "0";
-export const setRailBanner = (on: boolean): void => lsSet(RAIL_BANNER_KEY, on ? "1" : "0");
-
-/** The theme's own default, for the slider's resting position. */
-export const themeBannerFade = (): number => {
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue("--hero-banner-fade")
-    .trim();
-  const n = parseFloat(raw);
-  return Number.isFinite(n) ? Math.round(n) : 58;
-};
+/* (`cibo.railBanner` — the creation rail banner's on/off, built per the
+ * 2026-07-23 ruling "Build it, but I want the option to disable it" and
+ * shipped 2026-08-04 — went with the BAND itself on 2026-08-06, user-ruled.
+ * The band is gone unconditionally, so there is nothing left to toggle. Any
+ * stored key is inert; nothing reads it. The "Banner fade" slider that sat
+ * beside it in Appearance went the same day, for the same reason — see the
+ * note above. */
 
 // ── timers ───────────────────────────────────────────────────────────────────
 
@@ -312,7 +279,6 @@ export function initLocalSettings(): void {
   // Stamp the icon set's install date before any surface asks for it.
   noteLucideVersion(LUCIDE_VERSION);
   document.documentElement.classList.toggle("reduce-effects", getReduceEffects());
-  applyBannerFade();
   void applyZoom();
   // Force-opaque re-derives per theme apply; the first run needs the body.
   const first = () => applyForceOpaque();
@@ -320,6 +286,5 @@ export function initLocalSettings(): void {
   else window.addEventListener("DOMContentLoaded", first, { once: true });
   window.addEventListener("cibo:theme-applied", () => {
     applyForceOpaque();
-    applyBannerFade();
   });
 }

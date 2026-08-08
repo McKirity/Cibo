@@ -35,7 +35,8 @@
  * "you type every day" is a fact about a life, not about a declaration.
  */
 import type { DerivedRule } from "../db/schema";
-import { dayFromIndex, dayGap, dayIndex } from "../metrics/dates";
+import { dayGap } from "../metrics/dates";
+import { streaks as streakShape, wavesForEntry } from "../metrics/shapes";
 import { groupInt, hoursMinutes } from "../metrics/format";
 import { sessionMinutes } from "../metrics/shapes";
 
@@ -197,6 +198,9 @@ export interface MilestoneInput {
   appStart: string | null;
   /** Global wave gap threshold in days (30 until Settings exists). */
   waveGapDefault: number;
+  /** Finalized days — the streak family's unknown-pass-through needs the
+   *  missed/unknown distinction (fork E, 2026-08-06). */
+  finalized: ReadonlySet<string>;
 }
 
 export type MilestoneFamily =
@@ -338,31 +342,37 @@ export const daySubjects = (
   return [{ label: habit.name, days }];
 };
 
-/** The run of consecutive days ending at `day`, or 0 if `day` is not in the set. */
-export const runEndingAt = (days: ReadonlyArray<string>, day: string): number => {
+/**
+ * The done-day run ending at `day` under SHAPE 5's semantics — unknown days
+ * pass through (never break, never count), a finalized absent day breaks.
+ * The old strict calendar count could disagree with the dashboards' streak
+ * tiles for the same habit (user-ruled 2026-08-06, audit fork E: one shared
+ * counter everywhere). Null when `day` itself is absent.
+ */
+export const runEndingAt = (
+  days: ReadonlyArray<string>,
+  day: string,
+  finalized: ReadonlySet<string>,
+): { days: number; start: string } | null => {
   const set = new Set(days);
-  if (!set.has(day)) return 0;
-  let n = 0;
-  let idx = dayIndex(day);
-  while (set.has(dayFromIndex(idx))) {
-    n++;
-    idx--;
-  }
-  return n;
+  if (!set.has(day)) return null;
+  const first = days.reduce((a, b) => (a < b ? a : b));
+  const st = streakShape(first, day, set, finalized as Set<string>);
+  const last = st.runs[st.runs.length - 1];
+  return last != null && last.end === day ? { days: last.days, start: last.start } : null;
 };
 
-/** The longest run anywhere in the set among days strictly before `day`. */
-export const bestRunBefore = (days: ReadonlyArray<string>, day: string): number => {
-  const before = days.filter((d) => d < day).sort();
-  let best = 0;
-  let run = 0;
-  let prev: string | null = null;
-  for (const d of before) {
-    run = prev != null && dayGap(prev, d) === 1 ? run + 1 : 1;
-    if (run > best) best = run;
-    prev = d;
-  }
-  return best;
+/** The longest run among days strictly before `day` — shape 5's counter. */
+export const bestRunBefore = (
+  days: ReadonlyArray<string>,
+  day: string,
+  finalized: ReadonlySet<string>,
+): number => {
+  const before = days.filter((d) => d < day);
+  if (before.length === 0) return 0;
+  const from = before.reduce((a, b) => (a < b ? a : b));
+  const to = before.reduce((a, b) => (a > b ? a : b));
+  return streakShape(from, to, new Set(before), finalized as Set<string>).longest;
 };
 
 /**
@@ -373,12 +383,15 @@ export const bestRunBefore = (days: ReadonlyArray<string>, day: string): number 
  * the failure this rule exists to prevent. `previousBest > 0` is rule 2: a
  * record needs something to beat, so the first-ever streak is silent.
  */
-export const streakOvertaken = (days: ReadonlyArray<string>, day: string): number | null => {
-  const run = runEndingAt(days, day);
-  if (run < 2) return null;
-  const runStart = dayFromIndex(dayIndex(day) - (run - 1));
-  const previousBest = bestRunBefore(days, runStart);
-  return previousBest > 0 && run === previousBest + 1 ? run : null;
+export const streakOvertaken = (
+  days: ReadonlyArray<string>,
+  day: string,
+  finalized: ReadonlySet<string>,
+): number | null => {
+  const run = runEndingAt(days, day, finalized);
+  if (run == null || run.days < 2) return null;
+  const previousBest = bestRunBefore(days, run.start, finalized);
+  return previousBest > 0 && run.days === previousBest + 1 ? run.days : null;
 };
 
 // ── The five families ────────────────────────────────────────────────────────
@@ -439,18 +452,17 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
         for (const v of crossed) items.push(item("threshold", ordinal(v), named, "count"));
       }
       // 3 · the streak record fires on OVERTAKING, never on extending
-      const run = runEndingAt(subject.days, day);
-      if (run >= 2) {
+      const run = runEndingAt(subject.days, day, input.finalized);
+      if (run != null && run.days >= 2) {
         continuingStreaks++;
-        const runStart = dayFromIndex(dayIndex(day) - (run - 1));
         streaks.push({
-          value: `${groupInt(run)} d`,
+          value: `${groupInt(run.days)} d`,
           subject: named,
-          longest: run > bestRunBefore(subject.days, runStart),
-          days: run,
+          longest: run.days > bestRunBefore(subject.days, run.start, input.finalized),
+          days: run.days,
         });
       }
-      const overtook = streakOvertaken(subject.days, day);
+      const overtook = streakOvertaken(subject.days, day, input.finalized);
       if (overtook != null)
         items.push(item("record", `${groupInt(overtook)} d`, `longest ${named} streak`));
     }
@@ -541,16 +553,16 @@ export function deriveMilestoneDay(input: MilestoneInput): MilestoneDay {
     if (habit.kind === "project") {
       const touched = new Set(today.map((s) => s.entry_fk).filter((e): e is string => e != null));
       for (const entryId of touched) {
-        const days = [...new Set(rows.filter((s) => s.entry_fk === entryId).map((s) => s.day))].sort();
-        const i = days.indexOf(day);
-        if (i <= 0) continue; // the entry's first day is not a "wave started"
-        const gap = dayGap(days[i - 1], day);
-        if (gap <= gapDays) continue; // same wave — nothing started
-        // Which wave is this? Count the gaps that precede it.
-        let waveNo = 1;
-        for (let k = 1; k <= i; k++) if (dayGap(days[k - 1], days[k]) > gapDays) waveNo++;
+        // Shape 10 does the clustering — the written-once law; this family
+        // used to re-derive it with an inline gap loop (audit finding
+        // metrics-3). A wave "starts" today iff a wave's start IS today and
+        // it is not the entry's first.
+        const waves = wavesForEntry(rows.filter((s) => s.entry_fk === entryId), gapDays);
+        const wi = waves.findIndex((w) => w.start === day);
+        if (wi <= 0) continue; // absent, or the entry's first wave
+        const gap = dayGap(waves[wi - 1].end, day);
         const title = input.entryTitle.get(entryId) ?? "an entry";
-        items.push(item("lifecycle", ordinal(waveNo), `wave of ${title}`));
+        items.push(item("lifecycle", ordinal(wi + 1), `wave of ${title}`));
         if (gap >= 365)
           items.push(
             item("lifecycle", "", `${title} back after ${Math.floor(gap / 365)}y away`),

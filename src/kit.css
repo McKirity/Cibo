@@ -245,7 +245,7 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
     border-bottom-width:var(--border-standard); border-radius:var(--radius-small);
     padding:0 var(--space-3); line-height:calc(var(--size-body) + var(--space-3)); display:inline-block;}
 
-/* ------- kit-toast — the one slide-in slot, two variants -------
+/* ------- kit-toast — the one slide-in slot, three variants (info ratified 2026-08-04) -------
    Verbatim from staging. The slot's POSITION is Build's: the corpus draws the
    toast as a bounded framed region standing in for the window, never a real
    fixed overlay, so no file carries its placement. `.toastslot` is positioning

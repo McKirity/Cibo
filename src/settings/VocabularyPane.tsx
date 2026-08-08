@@ -22,15 +22,31 @@
  * removed, because derived semantics key off those exact strings. They render
  * locked; add/remove applies to user-added statuses only.
  *
- * Rename is deliberately NOT offered on any vocab row. Rows store the STRING,
- * so a rename is an atomic bulk-update across every entry and session that
- * carries it ([[Vocab & Status]]) — real machinery that belongs with the
- * bulk-edit tier, not a text field that would silently orphan rows.
+ * RENAME IS LIVE (2026-08-06, user-ruled at the Phase-2 completion audit,
+ * finding detailed-design-7 — superseding this header's earlier "deliberately
+ * NOT offered" call). Rows store the STRING, so rename is the ruled ATOMIC
+ * BULK-UPDATE ([[Vocab & Status]] § Storage & edit semantics: "the set value +
+ * every referencing row in one transaction — renames never orphan"): the
+ * referencing rows are collected and every branded value validated FIRST, then
+ * the vocab_options row plus every reference update is issued in ONE
+ * synchronous tick, which Evolu batches into a single microtask transaction;
+ * every mutation Result is checked (the coding-migration lesson — unchecked
+ * Results drop silently). Reference sweep by the definition's level:
+ * global status (definition_fk null) → `entries.status` · entry-level
+ * `*_type` / `*_fandom` / `*_engine` → their entry columns (compare's
+ * key-suffix precedent) · `*_genre` → the `entries.genre` JSON list
+ * (decode → swap → re-encode, only rows carrying the old value) ·
+ * session-level definitions → `subunit_values` (the branch is machinery-
+ * complete though this pane rosters only the entry tier, per the shape above).
+ * Anchors get NO rename affordance; a case-insensitive collision with a
+ * sibling is refused with the pane's error idiom, while re-casing a value
+ * onto itself stays legal (a casing fix).
  */
 import { useMemo, useState } from "react";
 import { useQuery } from "@evolu/react";
-import { NonEmptyString100 } from "@evolu/common";
+import { NonEmptyString100, NonEmptyString1000 } from "@evolu/common";
 import { evolu } from "../db/evolu";
+import { stringListFromJson, stringListToJson } from "../db/schema";
 import { Ico, ICONS } from "../shell/icons";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { showErrorToast } from "../shell/toast";
@@ -82,6 +98,8 @@ export function VocabularyPane() {
   const vocab = useQuery(vocabQuery);
   const [selected, setSelected] = useState<string>("status");
   const [q, setQ] = useState("");
+  /** The vocab row currently under inline rename, by option id. */
+  const [editing, setEditing] = useState<string | null>(null);
 
   const lists = useMemo<VocabList[]>(() => {
     const out: VocabList[] = [
@@ -173,6 +191,159 @@ export function VocabularyPane() {
     }
   };
 
+  /**
+   * The ruled atomic bulk-update. Returns true when the editor may close
+   * (committed, or a no-op); false keeps it open (refused / failed).
+   *
+   * PLAN, then FIRE: every referencing row is collected (async) and every
+   * branded value validated BEFORE the first mutation goes out, so the updates
+   * all issue in one synchronous tick — Evolu batches same-tick mutations into
+   * ONE microtask transaction, which is what "renames never orphan" requires.
+   * A validation throw during planning aborts with ZERO writes issued.
+   */
+  const rename = async (
+    list: VocabList,
+    optId: string,
+    oldValue: string,
+    nextRaw: string,
+  ): Promise<boolean> => {
+    const next = nextRaw.trim();
+    if (next === "" || next === oldValue) return true; // nothing to do
+    // Belt over the UI's braces — anchors never reach here (no affordance).
+    if (list.id === "status" && isAnchor(oldValue)) return false;
+    const defId = list.id === "status" ? null : list.defId;
+    // Case-insensitive sibling collision is refused; the row ITSELF is
+    // excluded, so re-casing a value onto itself stays legal (a casing fix).
+    const siblings = vocab.filter(
+      (o) =>
+        (defId == null ? o.definition_fk == null : String(o.definition_fk) === defId) &&
+        String(o.id) !== optId,
+    );
+    if (siblings.some((o) => String(o.value).toLowerCase() === next.toLowerCase())) {
+      showErrorToast(`"${next}" is already in this list.`);
+      return false;
+    }
+
+    try {
+      const v100 = NonEmptyString100.orThrow(next);
+      const plans: (() => { ok: boolean })[] = [
+        () => evolu.update("vocab_options", { id: optId as never, value: v100 }),
+      ];
+
+      if (defId == null) {
+        // The ONE global status list → entries.status stores the string.
+        const rows = await evolu.loadQuery(
+          evolu.createQuery((db) =>
+            db
+              .selectFrom("entries")
+              .select(["id"])
+              .where("status", "=", oldValue as never)
+              .where("isDeleted", "is not", 1),
+          ),
+        );
+        for (const r of rows) plans.push(() => evolu.update("entries", { id: r.id as never, status: v100 }));
+      } else {
+        const def = defs.find((d) => String(d.id) === defId);
+        if (def == null) throw new Error(`definition ${defId} not found`);
+        const key = String(def.key);
+        if (String(def.scope) === "session") {
+          // Session-level → one subunit_values row per answering bout.
+          const v1000 = NonEmptyString1000.orThrow(next);
+          const rows = await evolu.loadQuery(
+            evolu.createQuery((db) =>
+              db
+                .selectFrom("subunit_values")
+                .select(["id"])
+                .where("definition_fk", "=", def.id as never)
+                .where("value", "=", oldValue as never)
+                .where("isDeleted", "is not", 1),
+            ),
+          );
+          for (const r of rows)
+            plans.push(() => evolu.update("subunit_values", { id: r.id as never, value: v1000 }));
+        } else if (key.endsWith("_genre")) {
+          // Entry-level genre → the entries.genre JSON list: decode, swap the
+          // element, re-encode — only rows that carry the old value.
+          const rows = await evolu.loadQuery(
+            evolu.createQuery((db) =>
+              db
+                .selectFrom("entries")
+                .select(["id", "genre"])
+                .where("habit_fk", "=", def.habit_fk as never)
+                .where("genre", "is not", null)
+                .where("isDeleted", "is not", 1),
+            ),
+          );
+          for (const r of rows) {
+            let stored: string[];
+            try {
+              stored = [...(stringListFromJson(r.genre as never) as readonly string[])];
+            } catch {
+              continue; // a malformed cell is the doctor's finding, not the rename's
+            }
+            if (!stored.includes(oldValue)) continue;
+            // Swap, then dedupe case-insensitively keeping first-seen order —
+            // the list may already carry the target value.
+            const seen = new Set<string>();
+            const swapped: string[] = [];
+            for (const g of stored.map((g) => (g === oldValue ? next : g))) {
+              const k = g.toLowerCase();
+              if (seen.has(k)) continue;
+              seen.add(k);
+              swapped.push(g);
+            }
+            const encoded = stringListToJson(swapped.map((g) => NonEmptyString1000.orThrow(g)));
+            plans.push(() => evolu.update("entries", { id: r.id as never, genre: encoded }));
+          }
+        } else {
+          // Entry-level single-value mediums live on their own entry columns
+          // (compare's key-suffix precedent): type · fandom · gamedev_engine.
+          const column = key.endsWith("_type")
+            ? ("type" as const)
+            : key.endsWith("_fandom")
+              ? ("fandom" as const)
+              : key.endsWith("_engine")
+                ? ("gamedev_engine" as const)
+                : null;
+          if (column != null) {
+            const rows = await evolu.loadQuery(
+              evolu.createQuery((db) =>
+                db
+                  .selectFrom("entries")
+                  .select(["id"])
+                  .where("habit_fk", "=", def.habit_fk as never)
+                  .where(column, "=", oldValue as never)
+                  .where("isDeleted", "is not", 1),
+              ),
+            );
+            for (const r of rows) {
+              const patch: Record<string, unknown> = { id: r.id, [column]: v100 };
+              plans.push(() => evolu.update("entries", patch as never));
+            }
+          }
+        }
+      }
+
+      // ONE tick: fire everything, then check EVERY Result — an unchecked
+      // Evolu Result drops silently (the coding-migration lesson).
+      const results = plans.map((p) => p());
+      const failed = results.filter((r) => !r.ok);
+      if (failed.length > 0) {
+        console.error(
+          `vocab rename "${oldValue}" → "${next}": ${failed.length}/${results.length} updates rejected`,
+          failed,
+        );
+        showErrorToast("The rename could not be applied.");
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error(`vocab rename "${oldValue}" → "${next}" aborted before any write`, e);
+      showErrorToast("The rename could not be applied.");
+      return false;
+    }
+  };
+
   // The roster, grouped — "Shared" first, then one group per habit that owns
   // an entry-level medium.
   const groups: { name: string; rows: VocabList[] }[] = [];
@@ -210,6 +381,7 @@ export function VocabularyPane() {
                     onClick={() => {
                       setSelected(l.id);
                       setQ("");
+                      setEditing(null);
                     }}
                   >
                     <span className="mt">{l.label}</span>
@@ -264,9 +436,21 @@ export function VocabularyPane() {
                 <div className="vlist">
                   {values.map((o) => {
                     const anchor = current.id === "status" && isAnchor(String(o.value));
+                    const editingThis = !anchor && editing === String(o.id);
                     return (
                       <span className={`vrow${anchor ? " locked" : ""}`} key={String(o.id)}>
-                        <span className="vval">{String(o.value)}</span>
+                        {editingThis ? (
+                          <RenameValue
+                            initial={String(o.value)}
+                            onCancel={() => setEditing(null)}
+                            onCommit={async (next) => {
+                              const ok = await rename(current, String(o.id), String(o.value), next);
+                              if (ok) setEditing(null);
+                            }}
+                          />
+                        ) : (
+                          <span className="vval">{String(o.value)}</span>
+                        )}
                         {anchor ? (
                           <Ico
                             d={[
@@ -275,10 +459,19 @@ export function VocabularyPane() {
                             ]}
                             size={13}
                           />
-                        ) : (
-                          <button className="iconbtn danger" aria-label="Remove" onClick={() => remove(o.id)}>
-                            <Ico d={ICONS.close} />
-                          </button>
+                        ) : editingThis ? null : (
+                          <>
+                            <button
+                              className="iconbtn"
+                              aria-label="Rename"
+                              onClick={() => setEditing(String(o.id))}
+                            >
+                              <Ico d={ICONS.edit} />
+                            </button>
+                            <button className="iconbtn danger" aria-label="Remove" onClick={() => remove(o.id)}>
+                              <Ico d={ICONS.close} />
+                            </button>
+                          </>
                         )}
                       </span>
                     );
@@ -296,6 +489,44 @@ export function VocabularyPane() {
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * The inline rename input — mounted in the vval slot of the row it edits.
+ * Enter commits, Esc cancels, blur cancels (commit is deliberate-only; the
+ * refusal toast keeps the editor open so the collision can be fixed in place).
+ */
+function RenameValue({
+  initial,
+  onCommit,
+  onCancel,
+}: {
+  initial: string;
+  onCommit: (next: string) => void | Promise<void>;
+  onCancel: () => void;
+}) {
+  const [v, setV] = useState(initial);
+  return (
+    <input
+      className="keyin vedit"
+      value={v}
+      autoFocus
+      maxLength={100}
+      spellCheck={false}
+      onChange={(e) => setV(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          void onCommit(v);
+        } else if (e.key === "Escape") {
+          // Contained — Settings is a screen, but Esc must not reach any
+          // overlay/top-layer handler while it means "cancel this input".
+          e.stopPropagation();
+          onCancel();
+        }
+      }}
+      onBlur={onCancel}
+    />
   );
 }
 

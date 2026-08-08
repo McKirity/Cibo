@@ -19,6 +19,7 @@ import { CreationTrend, DistPanel } from "./CreationDashboard";
 import { todayLocal } from "../metrics/clock";
 import { heatRowLabels } from "../metrics/dates";
 import { requestSettingsNav } from "../shell/navRequest";
+import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { HEAT_CLASS } from "./specShared";
 import "../dashboard.css";
 import "./screen.css";
@@ -69,8 +70,12 @@ export function SimpleDashboard({ habitKey }: { habitKey: string }) {
         <div className="gs">
           {/* ── 1 · Masthead (the simple/range face: no type row, no library door) ── */}
           <section className="panel mast">
-            <div className="art" style={{ background: `var(${color})` }}>
-              <span>{m.masthead.name[0]?.toUpperCase()}</span>
+            {/* The habit's icon, lettermark only as fallback — the frozen stats
+                FINALs all draw `<svg class="ico">` in this box. Restored
+                2026-08-06: the four dashboard mastheads had shipped with a
+                hardcoded letter and no icon path at all. */}
+            <div className="art" style={{ ["--habit-hue" as string]: `var(${color})` }}>
+              {hasIcon(data.icon) ? <HabitIcon icon={data.icon} /> : <span>{m.masthead.name[0]?.toUpperCase()}</span>}
             </div>
             <div className="idcol">
               <div className="idrow">

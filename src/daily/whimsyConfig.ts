@@ -1,18 +1,38 @@
 /**
  * The whimsy tier's inputs — location and the user's dated events.
  *
- * Settings → Whimsy is the live editor (step 10 — exactly the source-swap
- * this header always predicted: cards read `WhimsyConfig` and never learn
- * where it came from). First-run setup's steps 1–2 (important dates ·
- * coordinates) will FILL it at step 15; the dev whimsy panel lingers as a
- * dev-only duplicate door until then.
+ * Settings → Whimsy is the live editor (step 10); first-run setup's steps 1–2
+ * FILL it (step 15). Cards read `WhimsyConfig` and never learn where it came
+ * from.
+ *
+ * SYNCED since step 15 (2026-08-06) — the move the 2026-07-05 tag always
+ * called for ("same person, same birthday, same house on both machines"),
+ * parked on this step at the completeness audit. STORAGE follows the
+ * doctor-mutes lesson, never one big JSON row (`app_meta.value` caps at 1000
+ * chars, and a long event list would hit it SILENTLY): one `whimsy_config`
+ * row for the scalars + one `whimsy_event:<id>` row per dated event (the
+ * `cs_preset:<id>` shape). Reads stay SYNCHRONOUS over a cache primed at the
+ * boot gate (`initWhimsyConfig`, bootstrap.tsx — the settings/store.ts
+ * pattern); the gate awaits the prime, so no consumer can mount before it.
+ *
+ * WRITES ARE DEBOUNCED (~500 ms): Settings → Whimsy writes on every
+ * keystroke, and Evolu's history never compacts — an unbuffered mutation per
+ * keystroke is store growth with no reader. The in-memory config updates
+ * synchronously (read-your-writes); only the store flush coalesces. A quit
+ * inside the window can lose the last keystrokes — the autosave buffer's
+ * surfaced-and-taken trade, at a far smaller stake. `flushWhimsyConfig()` is
+ * the flush-now door (first-run's Finish takes it).
+ *
+ * One-way migration: the per-device `cibo.dev.whimsyConfig` key (2026-08-04 →
+ * 08-06 era) imports at first prime if the store carries no config row.
  *
  * Location is stored as coordinates outright — no place names, no geocoding
- * ([[Calendar & Whimsy]] § config). Per-device by nature — stored on the
- * per-device settings file (settings/deviceStore, 2026-08-04).
+ * ([[Calendar & Whimsy]] § config).
  */
+import { NonEmptyString100, NonEmptyString1000 } from "@evolu/common";
+import { evolu } from "../db/evolu";
 import { pad2 } from "../metrics/clock";
-import { deviceGet, deviceSet } from "../settings/deviceStore";
+import { deviceGet } from "../settings/deviceStore";
 
 export interface DatedEvent {
   id: string;
@@ -52,7 +72,11 @@ export interface WhimsyConfig {
 /** The one read the cards go through — absent key = on. */
 export const cardOn = (cfg: WhimsyConfig, key: string): boolean => cfg.cards?.[key] !== false;
 
-const KEY = "cibo.dev.whimsyConfig";
+/** The retired per-device key — read once by the migration, never written. */
+const LEGACY_DEVICE_KEY = "cibo.dev.whimsyConfig";
+
+const SCALARS_KEY = "whimsy_config";
+const EVENT_PREFIX = "whimsy_event:";
 
 /** A neutral, unremarkable default: London. Nothing here is a ruling. */
 export const DEFAULT_CONFIG: WhimsyConfig = {
@@ -72,22 +96,141 @@ export const DEFAULT_CONFIG: WhimsyConfig = {
   ],
 };
 
-export const loadWhimsyConfig = (): WhimsyConfig => {
-  try {
-    const raw = deviceGet(KEY);
-    if (!raw) return DEFAULT_CONFIG;
-    const parsed = JSON.parse(raw) as Partial<WhimsyConfig>;
-    // Merge over the default so a stored config written by an older panel
-    // shape can never leave a card reading `undefined`.
-    return { ...DEFAULT_CONFIG, ...parsed, events: parsed.events ?? [] };
-  } catch {
-    return DEFAULT_CONFIG;
+// ── the synced store (cache + rows) ─────────────────────────────────────────
+
+/** Last state read FROM the store (row ids ride alongside for the writes). */
+let cached: WhimsyConfig | null = null;
+let scalarRowId: string | null = null;
+const eventRowIds = new Map<string, string>();
+/** Unflushed local edits — authoritative over `cached` while they exist. */
+let pending: WhimsyConfig | null = null;
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+const whimsyQuery = evolu.createQuery((db) =>
+  db
+    .selectFrom("app_meta")
+    .select(["id", "key", "value"])
+    .where("key", "like", "whimsy%" as never)
+    .where("isDeleted", "is not", 1),
+);
+
+const readIntoCache = (
+  rows: readonly { id: unknown; key: unknown; value: unknown }[],
+): void => {
+  let scalars: Partial<WhimsyConfig> | null = null;
+  const events: DatedEvent[] = [];
+  scalarRowId = null;
+  eventRowIds.clear();
+  for (const r of rows) {
+    const k = String(r.key);
+    try {
+      if (k === SCALARS_KEY) {
+        scalars = JSON.parse(String(r.value)) as Partial<WhimsyConfig>;
+        scalarRowId = String(r.id);
+      } else if (k.startsWith(EVENT_PREFIX)) {
+        const ev = JSON.parse(String(r.value)) as Omit<DatedEvent, "id">;
+        const id = k.slice(EVENT_PREFIX.length);
+        events.push({ id, label: String(ev.label ?? ""), date: String(ev.date ?? ""), recurring: ev.recurring === true });
+        eventRowIds.set(id, String(r.id));
+      }
+    } catch {
+      // one bad row must not take the config down — skip it
+    }
   }
+  cached =
+    scalars == null
+      ? null
+      : { ...DEFAULT_CONFIG, ...scalars, events };
 };
 
+/** True once a real config row exists — first-run prefills only then. */
+export const hasStoredWhimsyConfig = (): boolean => pending != null || cached != null;
+
+export const loadWhimsyConfig = (): WhimsyConfig => pending ?? cached ?? DEFAULT_CONFIG;
+
 export const saveWhimsyConfig = (c: WhimsyConfig): void => {
-  deviceSet(KEY, JSON.stringify(c));
+  pending = c;
+  if (flushTimer != null) clearTimeout(flushTimer);
+  flushTimer = setTimeout(flushWhimsyConfig, 500);
 };
+
+/** Guard the row caps: key ≤ 100, value ≤ 1000 — orThrow must never throw. */
+const evJson = (ev: DatedEvent): string =>
+  JSON.stringify({ label: ev.label.slice(0, 200), date: ev.date, recurring: ev.recurring });
+
+/** Write-now (the debounce's flush; first-run's Finish calls it directly). */
+export const flushWhimsyConfig = (): void => {
+  if (flushTimer != null) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  const c = pending;
+  if (c == null) return;
+  pending = null;
+
+  // Scalars — one row, update-or-insert (the settings/store.ts shape).
+  const scalars = JSON.stringify({
+    lat: c.lat, lon: c.lon, label: c.label.slice(0, 200), birthdate: c.birthdate,
+    tempUnit: c.tempUnit, cards: c.cards,
+  });
+  const sres = scalarRowId != null
+    ? evolu.update("app_meta", { id: scalarRowId as never, value: NonEmptyString1000.orThrow(scalars) })
+    : evolu.insert("app_meta", { key: NonEmptyString100.orThrow(SCALARS_KEY), value: NonEmptyString1000.orThrow(scalars) });
+  if (!sres.ok) console.error("whimsy: config write failed", sres.error);
+  else if (scalarRowId == null) scalarRowId = String((sres.value as { id: unknown }).id);
+
+  // Events — one row each, diffed against the known rows.
+  const live = new Set<string>();
+  for (const ev of c.events) {
+    live.add(ev.id);
+    const rowId = eventRowIds.get(ev.id);
+    const res = rowId != null
+      ? evolu.update("app_meta", { id: rowId as never, value: NonEmptyString1000.orThrow(evJson(ev)) })
+      : evolu.insert("app_meta", {
+          key: NonEmptyString100.orThrow(`${EVENT_PREFIX}${ev.id}`.slice(0, 100)),
+          value: NonEmptyString1000.orThrow(evJson(ev)),
+        });
+    if (!res.ok) console.error(`whimsy: event "${ev.id}" write failed`, res.error);
+    else if (rowId == null) eventRowIds.set(ev.id, String((res.value as { id: unknown }).id));
+  }
+  for (const [id, rowId] of eventRowIds) {
+    if (live.has(id)) continue;
+    const res = evolu.update("app_meta", { id: rowId as never, isDeleted: 1 });
+    if (!res.ok) console.error(`whimsy: event "${id}" delete failed`, res.error);
+    else eventRowIds.delete(id);
+  }
+  cached = c;
+};
+
+/**
+ * Boot wiring — prime the cache, run the one-way device-file migration, and
+ * keep the cache following the store. The boot gate AWAITS this before any
+ * consumer can mount, which is what keeps `loadWhimsyConfig` honestly sync.
+ */
+export async function initWhimsyConfig(): Promise<void> {
+  try {
+    readIntoCache(await evolu.loadQuery(whimsyQuery));
+  } catch (e) {
+    console.error("whimsy: cache prime failed", e);
+  }
+  // Migration: a device-file config from the 2026-08-04 era, no synced rows yet.
+  if (cached == null) {
+    try {
+      const raw = deviceGet(LEGACY_DEVICE_KEY);
+      if (raw != null && raw !== "") {
+        const parsed = JSON.parse(raw) as Partial<WhimsyConfig>;
+        pending = { ...DEFAULT_CONFIG, ...parsed, events: parsed.events ?? [] };
+        flushWhimsyConfig();
+      }
+    } catch (e) {
+      console.error("whimsy: device-file migration failed", e);
+    }
+  }
+  // Any store change re-pulls (a handful of tiny rows — the store.ts doctrine).
+  evolu.subscribeQuery(whimsyQuery)(() => {
+    evolu.loadQuery(whimsyQuery).then(readIntoCache, () => undefined);
+  });
+}
 
 /**
  * Adversarial fixtures for the randomiser.

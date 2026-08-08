@@ -9,8 +9,9 @@
  * clock was retired 2026-08-01** at step 9's open (user-ruled), taking
  * `VignetteClock.tsx` and `--clock-max` with it.
  *
- * The dev seed/activation panels ride the Log view — the working loop that
- * turns seeds into rail habits: seed rich → activate → click → dashboard.
+ * The dev surface (the Log view, LogForm, DevPanels) was DELETED WHOLE
+ * 2026-08-05 (user-ruled); its survivors live as real Settings rows — the
+ * DEV-gated seeder and feed re-capture under Settings → Developer.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode} from "react";
 import { useQuery } from "@evolu/react";

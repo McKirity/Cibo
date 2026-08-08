@@ -928,6 +928,18 @@ button.doorlink:hover {
 /* Settings — anchored bottom */
 .rail .sec.settings {
   flex: 0 0 auto;
+  /* ANCHORED to the rail's visible bottom (user-ruled 2026-08-06, "anchor it
+     to the bottom of the screen so that it's always visible"): when the rail
+     overflows and scrolls — the known MacBook/small-window case — the
+     Settings row (and the health glance-dot riding it) stays on screen while
+     the sections scroll beneath. When nothing overflows, the ambience
+     absorber already holds it at the foot and sticky does nothing. The
+     ground is the rail's own dial so scrolled content can't show through;
+     a transparent-rail theme (the MV case) inherits that transparency —
+     acceptable: the row floats over its own rail's scenery. */
+  position: sticky;
+  bottom: 0;
+  background: var(--rail-background);
 }
 .settings-row {
   display: flex;

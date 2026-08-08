@@ -6,8 +6,9 @@
  *    (+ the shared edit mode) · conditional series strip · measure-grouped stat
  *    rows · the WAVE TIMELINE (the signature zone — the shape-10 catalog entry
  *    finally rendered) · trailing-53-week heatmap · the Year›Month day log;
- *  - the creation build-out (frozen `entry-dashboard-writing.html`): rail banner
- *    + Fandom + arc bookends · a words row with four-grain subtitle lists · the
+ *  - the creation build-out (frozen `entry-dashboard-writing.html`): Fandom +
+ *    arc bookends (the FINAL's rail BANNER band is deliberately NOT built —
+ *    user-ruled 2026-08-06) · a words row with four-grain subtitle lists · the
  *    word-growth curve (milestone ladder + wave shading + bookend) · the
  *    story-vs-wiki pie · the Stage⇄Wiki distribution pair (reusing chunk 2's
  *    per-metric shape family) · Words⇄Time heatmap · the work-diary day log.
@@ -42,7 +43,6 @@ import {
   stars,
 } from "../metrics/format";
 import type { TileSpec } from "./consumptionSpec";
-import { getRailBanner } from "../settings/local";
 import { CAT_SLOTS, dayCounts, initialism, longestRunOf, STATUS_CAT, streakTile } from "./specShared";
 import {
   buildDistributions,
@@ -73,10 +73,13 @@ export interface EntryIdentity {
   engine: string | null;
   started: string | null;
   completed: string | null;
-  // NO `banner` (deleted 2026-08-04): the stored ref was fetched and mapped but
-  // never read — the rail's `.railbanner` is a pure gradient stand-in, and
-  // `RailSpec.banner` (the separate BOOLEAN toggle) is what gates it. A real
-  // banner image arrives with the images root at step 14; re-add it then.
+  /** Stored banner REFERENCE (root-relative) — re-added 2026-08-06 exactly as
+   *  the 08-04 deletion note promised ("re-add it then"): the rail's real
+   *  banner image, user-approved at the completion audit's fork pass. Null =
+   *  the gradient stand-in, still a designed look. (Removed and restored again
+   *  the same day — the Daily cover wall's creation banner TILE is a second
+   *  consumer, and it is what makes the ref worth setting at all.) */
+  banner: string | null;
   /** Stored cover REFERENCE (root-relative), null = the lettermark face. */
   cover: string | null;
 }
@@ -120,10 +123,11 @@ export interface RailFact {
 }
 
 export interface RailSpec {
-  /** Creation rail banner (dissolve band). Built per the 2026-07-23 ruling with
-   *  a disable option — Settings → Appearance owns the toggle (2026-08-04),
-   *  read per spec build via settings/local. */
-  banner: boolean;
+  /** The stored banner ref. The rail no longer DRAWS a banner (the band was
+   *  removed 2026-08-06, user-ruled), but the rail's edit face is where a
+   *  banner is SET — so the ref rides here for the replace path's old-file
+   *  cleanup. Its display sites are the cover wall + the hero card. */
+  bannerRef: string | null;
   coverLabel: string;
   /** The cover ref the rail paints over its lettermark box (step 8). */
   cover: string | null;
@@ -272,8 +276,9 @@ export interface EntryModel {
 
 // ── Literals ──────────────────────────────────────────────────────────────────
 
-/* The rail-banner toggle (user-ruled 2026-07-23: "Build it, but I want the
- * option to disable it") lives in Settings → Appearance — getRailBanner. */
+/* (The rail-banner toggle — user-ruled 2026-07-23, "Build it, but I want the
+ * option to disable it" — went with the band itself on 2026-08-06: the band is
+ * gone unconditionally, so there is nothing left to toggle.) */
 
 /** Presentation vocab for the story-vs-wiki pie (the 2026-07-18 in-canvas
  *  ruling: the labels read Novel / Wiki) — keyed by def key like HERO_NOUN;
@@ -472,7 +477,7 @@ function buildRail(input: EntryBuildInput): RailSpec {
       : "Source: manual";
 
   return {
-    banner: creation && getRailBanner(),
+    bannerRef: entry.banner,
     coverLabel: initialism(entry.title, 12),
     cover: entry.cover,
     eyebrow: { habit: input.habitName, type: entry.type },

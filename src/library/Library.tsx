@@ -45,6 +45,7 @@ import { EntryCreationModal } from "./EntryCreationModal";
 import { BulkEditModal } from "./BulkEditModal";
 import { ImportModal } from "../importers/ImportModal";
 import { consumeLibraryImport } from "../shell/navRequest";
+import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { deviceGet, deviceSet } from "../settings/deviceStore";
 import "./library.css";
 
@@ -180,8 +181,10 @@ export function Library({
             a `.panel.mast` headliner like every other dashboard; the back-door
             to stats takes the door column the stats masthead gives Library) */}
         <section className="panel mast libmast">
-          <div className="art" style={{ background: `var(--${data.colourSlot})` }}>
-            <span>{data.name[0]?.toUpperCase()}</span>
+          {/* Icon first, per the same ruling: if the library wears the stats
+              masthead's anatomy it wears its icon too (user-ruled 2026-08-06). */}
+          <div className="art" style={{ ["--habit-hue" as string]: `var(--${data.colourSlot})` }}>
+            {hasIcon(data.icon) ? <HabitIcon icon={data.icon} /> : <span>{data.name[0]?.toUpperCase()}</span>}
           </div>
           <div className="idcol">
             <div className="idrow">

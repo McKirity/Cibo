@@ -32,6 +32,7 @@ import { duplicateReportFrom, causeNote } from "./duplicates";
 import { loadMutes, muteKey } from "./doctorMutes";
 import { hasIcon } from "../shell/habitIcons";
 import { stringListFromJson } from "./schema";
+import { getCloudRoot, underRoot } from "../settings/cloudRoot";
 
 import { pad2 } from "../metrics/clock";
 // ── vocabulary ───────────────────────────────────────────────────────────────
@@ -550,15 +551,19 @@ interface CoverScan {
 async function scanCovers(snap: Snapshot): Promise<CoverScan> {
   const broken: Finding[] = [];
   const orphans: Finding[] = [];
+  // Refs resolve against the cloud root (step 14). Unset root: the fs tier has
+  // nothing to scan — reporting every ref as broken would blame the data for a
+  // missing folder pick, so the tier goes silent (the Storage pane is the nag).
+  const root = getCloudRoot();
+  if (root == null) return { broken, orphans };
   const fs = await import("@tauri-apps/plugin-fs");
-  const base = { baseDir: fs.BaseDirectory.AppLocalData };
 
   // 6 · a stored ref pointing at nothing.
   for (const e of snap.entries) {
     if (e.cover == null) continue;
     let there = false;
     try {
-      there = await fs.exists(e.cover, base);
+      there = await fs.exists(underRoot(root, e.cover));
     } catch {
       there = false;
     }
@@ -578,13 +583,16 @@ async function scanCovers(snap: Snapshot): Promise<CoverScan> {
   // the tombstone and never runs the deferred file deletion.
   const referenced = new Set(snap.entries.flatMap((e) => (e.cover != null ? [e.cover] : [])));
   try {
-    if (await fs.exists("images", base)) {
-      for (const dir of await fs.readDir("images", base)) {
+    const imagesAbs = underRoot(root, "images");
+    if (await fs.exists(imagesAbs)) {
+      for (const dir of await fs.readDir(imagesAbs)) {
         if (!dir.isDirectory) continue;
         const rel = `images/${dir.name}`;
         const habit = snap.habits.find((h) => h.key === dir.name);
-        for (const file of await fs.readDir(rel, base)) {
+        for (const file of await fs.readDir(underRoot(root, rel))) {
           if (!file.isFile) continue;
+          // The path stays root-RELATIVE — mute keys and the delete action
+          // must survive the root moving to another folder or device.
           const path = `${rel}/${file.name}`;
           if (referenced.has(path)) continue;
           orphans.push({

@@ -44,7 +44,7 @@ import {
   type DayCellState,
   type PeriodBounds,
 } from "../metrics/cadence";
-import { dayFromIndex, dayGap, dayIndex, monthKey, weekStart, weekStartDow, weekThursday } from "../metrics/dates";
+import { dayFromIndex, dayIndex, monthKey, weekStart, weekStartDow, weekThursday } from "../metrics/dates";
 import {
   circularMeanMinutes,
   clockMinutes as minOfDay,
@@ -52,7 +52,8 @@ import {
   fmtHM as fmtClock,
 } from "../metrics/clockMath";
 import { escapeHtml, groupInt, MONTHS_LONG } from "../metrics/format";
-import { wavesForEntry, type SessionRow } from "../metrics/shapes";
+import { maxStr } from "./specShared";
+import { streaks, wavesForEntry, type SessionRow } from "../metrics/shapes";
 import type { CadenceData, CadHabit, CadSession } from "./useCadenceData";
 
 // ── Model types ───────────────────────────────────────────────────────────────
@@ -445,7 +446,7 @@ export function buildCadenceModel(
   if (scale === "week") {
     milestoneCards = milestones.slice(0, 4);
   } else {
-    const records = deriveRecords(roster, sessionsByHabit, bounds);
+    const records = deriveRecords(roster, sessionsByHabit, bounds, data.finalized);
     const anniversaries = deriveAnniversaries(roster, sessionsByHabit, entryTitle, bounds);
     reviewTitle =
       scale === "month"
@@ -944,6 +945,7 @@ function deriveRecords(
   roster: CadHabit[],
   allByHabit: Map<string, CadSession[]>,
   bounds: PeriodBounds,
+  finalized: Set<string>,
 ): { html: string }[] {
   const out: { html: string }[] = [];
   for (const h of roster) {
@@ -965,14 +967,15 @@ function deriveRecords(
         out.push({ html: `Best <b>${escapeHtml(h.name)}</b> month ever — <b>${monthName}${amount}</b>.` });
       }
     }
-    // All-time-longest streak ending inside this period
-    const played = [...new Set(all.map((s) => s.day))].sort();
-    let bestRun = 0, bestEnd = "", run = 0, prev: string | null = null;
-    for (const d of played) {
-      run = prev != null && dayGap(prev, d) === 1 ? run + 1 : 1;
-      if (run > bestRun) { bestRun = run; bestEnd = d; }
-      prev = d;
-    }
+    // All-time-longest streak ending inside this period — SHAPE 5's counter
+    // (unknown days pass through), never a local re-count: this section used
+    // strict calendar-consecutive runs and could disagree with the habit
+    // dashboards' streak tiles (user-ruled 2026-08-06, audit fork E).
+    const playedSet = new Set(all.map((s) => s.day));
+    const played = [...playedSet].sort();
+    const st = streaks(played[0], maxStr(played[played.length - 1], bounds.to), playedSet, finalized);
+    let bestRun = 0, bestEnd = "";
+    for (const r of st.runs) if (r.days > bestRun) { bestRun = r.days; bestEnd = r.end; }
     if (bestRun >= 7 && bestEnd >= bounds.from && bestEnd <= bounds.to)
       out.push({ html: `Longest <b>${escapeHtml(h.name)}</b> streak — <b>${bestRun} days</b>.` });
   }

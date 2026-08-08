@@ -16,6 +16,7 @@ export interface RangeData {
   ready: boolean;
   name: string;
   colourSlot: string;
+  icon: string | null;
   archived: boolean;
   sessions: RangeSessionRow[];
   flagDefs: FlagDef[];
@@ -29,7 +30,7 @@ export function useRangeData(habitKey: string): RangeData {
       evolu.createQuery((db) =>
         db
           .selectFrom("habits")
-          .select(["id", "name", "colour_slot", "archived", "derived_rules"])
+          .select(["id", "name", "colour_slot", "icon", "archived", "derived_rules"])
           .where("key", "=", NonEmptyString100.orThrow(habitKey))
           .where("isDeleted", "is not", 1),
       ),
@@ -144,6 +145,7 @@ export function useRangeData(habitKey: string): RangeData {
       ready: habit != null,
       name: habit?.name ?? habitKey,
       colourSlot: habit?.colour_slot ?? "habit-1",
+      icon: (habit?.icon as string | null) ?? null,
       archived: habit?.archived === 1,
       sessions,
       flagDefs,

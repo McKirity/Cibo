@@ -1,5 +1,6 @@
 /**
- * The ten-shape derived-metric catalog (Aggregation & Metrics Engine). Every
+ * The eleven-shape derived-metric catalog (Aggregation & Metrics Engine;
+ * eras joined as the eleventh, § Amended 2026-07-24). Every
  * number on every dashboard composes from these; each shape is written **once**
  * here and reused by every surface. Pure functions over already-fetched rows —
  * no Evolu, no clock, no dials — so they memoize trivially and test in isolation.

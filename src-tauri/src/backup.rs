@@ -204,6 +204,22 @@ fn tar_dir_into<W: Write>(
         if p.is_dir() {
             tar_dir_into(tarb, base, &p)?;
         } else {
+            // The LevelDB exclusivity lock (`…/Paths/LOCK`), skipped by name.
+            //
+            // This is NOT the transient byte-range lock read_with_retry rides
+            // out: Chromium takes it when the profile opens and holds it for
+            // the LIFETIME OF THE PROCESS, and the store copy runs from the
+            // running app by design. So the retry ladder could never win it —
+            // it just spent ~2.25 s losing before failing the whole backup
+            // (reported live 2026-08-07, os error 33).
+            //
+            // Safe to omit: LOCK carries no data. It is a zero-length marker
+            // LevelDB recreates on open, so a restored store makes its own.
+            // Everything that DOES carry data here — CURRENT, MANIFEST-*,
+            // *.ldb, *.log — still rides the retry path below.
+            if p.file_name().is_some_and(|n| n == "LOCK") {
+                continue;
+            }
             let rel = Path::new("File System").join(
                 p.strip_prefix(base).map_err(|e| e.to_string())?,
             );

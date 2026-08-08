@@ -50,6 +50,7 @@ import {
   finalizeDay,
   logBoard,
   overrideDerived,
+  quickAddVocabValue,
   quickCreateEntry,
   refreshDerived,
   removeBout,
@@ -1636,6 +1637,27 @@ function VocabSelect({
   const at = Math.max(0, def.vocab.indexOf(value));
   const [cursor, setCursor] = useState(at);
   const [shut, setShut] = useState(false);
+  // The ruled quick-add ("+ New value" inside the picklist — logging never
+  // dead-ends on a missing value). The row flips to an inline input; commit
+  // reuses an existing value case-insensitively (canonical casing wins) or
+  // mints the new one and picks it.
+  const [adding, setAdding] = useState(false);
+  const [newVal, setNewVal] = useState("");
+  const nearMatch =
+    newVal.trim() !== ""
+      ? (def.vocab.find(
+          (e) => e.toLowerCase() === newVal.trim().toLowerCase() && e !== newVal.trim(),
+        ) ?? null)
+      : null;
+  const commitNew = () => {
+    const picked = quickAddVocabValue(def.id as never, def.vocab, newVal);
+    setAdding(false);
+    setNewVal("");
+    if (picked != null) {
+      onPick(picked);
+      setShut(true);
+    }
+  };
   return (
     <span
       className={`inp sel pk-live${shut ? " shut" : ""}`}
@@ -1690,7 +1712,53 @@ function VocabSelect({
             <span className="pk-t">{v}</span>
           </div>
         ))}
-        {def.vocab.length === 0 && <div className="pk-none">No values yet.</div>}
+        {def.vocab.length === 0 && !adding && <div className="pk-none">No values yet.</div>}
+        {!adding ? (
+          <div
+            className="pk-new"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setAdding(true);
+            }}
+          >
+            <IPlus />
+            New value
+          </div>
+        ) : (
+          <div className="pk-new" onMouseDown={(e) => e.stopPropagation()}>
+            <input
+              className="pk-newin"
+              value={newVal}
+              placeholder="New value"
+              spellCheck={false}
+              autoFocus
+              onChange={(e) => setNewVal(e.target.value)}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitNew();
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  setAdding(false);
+                  setNewVal("");
+                }
+              }}
+              onBlur={() => {
+                setAdding(false);
+                setNewVal("");
+              }}
+            />
+            {/* ASCII ONLY, deliberately: this string is read through whatever
+                font the active theme registers, and the minted seats include
+                full-pixel display faces that carry no curly quotes and no
+                em-dash — a missing glyph draws an empty box, not a fallback. */}
+            {nearMatch != null && (
+              <span className="hint">"{nearMatch}" exists - Enter picks it</span>
+            )}
+          </div>
+        )}
       </div>
     </span>
   );

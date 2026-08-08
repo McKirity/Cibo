@@ -11,9 +11,10 @@
  *  - `useSyncedSettings()` — the live query, for the Settings panes (they
  *    need row ids to write against).
  *  - the module CACHE (`waveGapDefault()` · `dashboardListCap()` ·
- *    `dayCutoffHour()`) — synchronous getters for the assembly hooks
- *    (useCadenceData · useEntryData · useMilestoneDay) whose spec layers are
- *    pure and take inputs, not subscriptions. The cache is subscribed once at
+ *    `dayCutoffHour()` · `backupDailyDays()`) — synchronous getters for the
+ *    assembly hooks (useCadenceData · useEntryData · useMilestoneDay) whose
+ *    spec layers are pure and take inputs, not subscriptions, plus the backup
+ *    pipeline's retention read (backup/backup.ts). The cache is subscribed once at
  *    launch (`initSyncedSettings`, main.tsx). Staleness window: a dashboard
  *    reads the cache at MOUNT, and every navigation re-mounts (the shell keys
  *    per view), so a changed setting is live from the next navigation (the
@@ -36,17 +37,20 @@ export const WEEK_START_KEY = "week_start"; // "monday" | "sunday"
 export const DAY_CUTOFF_KEY = "day_cutoff_hours"; // whole hours past midnight, 0–12
 export const WAVE_GAP_KEY = "wave_gap_default_days"; // the global wave-gap default
 export const LIST_CAP_KEY = "dashboard_list_cap"; // cadence expansion "+ N more" cap
+export const BACKUP_DAILY_DAYS_KEY = "backup_daily_days"; // the daily-backup retention window
 
 export const WEEK_START_DEFAULT = "monday" as const;
 export const DAY_CUTOFF_DEFAULT = 0; // midnight — [[Day Boundary & Logging Cutoff]]
 export const WAVE_GAP_DEFAULT = 30; // days — [[Aggregation & Metrics Engine]]
 export const LIST_CAP_DEFAULT = 10; // user-ruled 2026-07-23 ("Go with 10, make adjustable")
+export const BACKUP_DAILY_DAYS_DEFAULT = 90; // "dials, not architecture" — [[Backups & Export]]
 
 const SETTING_KEYS = [
   WEEK_START_KEY,
   DAY_CUTOFF_KEY,
   WAVE_GAP_KEY,
   LIST_CAP_KEY,
+  BACKUP_DAILY_DAYS_KEY,
 ] as const;
 
 const clampInt = (v: unknown, lo: number, hi: number, dflt: number): number => {
@@ -57,6 +61,8 @@ const clampInt = (v: unknown, lo: number, hi: number, dflt: number): number => {
 export const clampDayCutoff = (h: number): number => clampInt(h, 0, 12, DAY_CUTOFF_DEFAULT);
 export const clampWaveGap = (d: number): number => clampInt(d, 2, 365, WAVE_GAP_DEFAULT);
 export const clampListCap = (n: number): number => clampInt(n, 3, 50, LIST_CAP_DEFAULT);
+export const clampBackupDailyDays = (d: number): number =>
+  clampInt(d, 7, 365, BACKUP_DAILY_DAYS_DEFAULT);
 
 // ── the live query (Settings panes) ──────────────────────────────────────────
 
@@ -115,8 +121,8 @@ export function initSyncedSettings(): void {
     });
   };
   pull();
-  // Evolu's subscribe fires on any store change; re-pulling five tiny rows is
-  // cheap and keeps this free of per-table bookkeeping.
+  // Evolu's subscribe fires on any store change; re-pulling a handful of tiny
+  // rows is cheap and keeps this free of per-table bookkeeping.
   evolu.subscribeQuery(syncedSettingsQuery)(() => pull());
 }
 
@@ -130,6 +136,8 @@ export const waveGapDefault = (): number =>
   clampWaveGap(Number(cache.get(WAVE_GAP_KEY) ?? WAVE_GAP_DEFAULT));
 export const dashboardListCap = (): number =>
   clampListCap(Number(cache.get(LIST_CAP_KEY) ?? LIST_CAP_DEFAULT));
+export const backupDailyDays = (): number =>
+  clampBackupDailyDays(Number(cache.get(BACKUP_DAILY_DAYS_KEY) ?? BACKUP_DAILY_DAYS_DEFAULT));
 
 // ── the day-cutoff consumer ──────────────────────────────────────────────────
 

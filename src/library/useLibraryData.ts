@@ -33,6 +33,7 @@ export interface LibraryData {
   habitId: HabitId | null;
   name: string;
   colourSlot: string;
+  icon: string | null;
   /** "consumption" | "creation" (project habits only own libraries/entries). */
   subType: string | null;
   entries: LibEntry[];
@@ -78,7 +79,7 @@ export function useLibraryData(habitKey: string, skipDerivation = false): Librar
       evolu.createQuery((db) =>
         db
           .selectFrom("habits")
-          .select(["id", "name", "colour_slot", "sub_type", "entry_attributes"])
+          .select(["id", "name", "colour_slot", "icon", "sub_type", "entry_attributes"])
           .where("key", "=", NonEmptyString100.orThrow(habitKey))
           .where("isDeleted", "is not", 1),
       ),
@@ -246,6 +247,7 @@ export function useLibraryData(habitKey: string, skipDerivation = false): Librar
       // habit-1: the app-wide null-slot fallback (unified 2026-07-30 — this
       // read habit-2 while five other screens read habit-1).
       colourSlot: habit?.colour_slot ?? "habit-1",
+      icon: (habit?.icon as string | null) ?? null,
       subType: (habit?.sub_type as string | null) ?? null,
       entries,
       typeVocab,

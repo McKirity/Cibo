@@ -1,5 +1,6 @@
 /**
- * SETTINGS → BACKUPS (Build step 12) — status · Back up now · the slot list ·
+ * SETTINGS → BACKUPS (Build step 12) — status · Back up now · the retention
+ * dials (built 2026-08-06, the Phase-2 audit's ruling) · the slot list ·
  * restore. Owning record: [[Backups & Export]].
  *
  * The rules this pane wears on its face:
@@ -9,13 +10,21 @@
  * · The restore confirm CARRIES THE DATE ("replaces ALL current data with the
  *   backup from <date>"); a safety copy is taken first, and the app restarts —
  *   the swap needs the store closed, so restore is a relaunch by construction.
- * · Unset root = backups PAUSE, never a gate. The folder picker here is the
- *   step-14 stand-in on the themes-root doctrine: the real cloud-root picker
- *   (Settings → Storage) replaces the SOURCE, nothing else.
+ * · Unset root = backups PAUSE, never a gate. The folder DERIVES from step
+ *   14's one cloud root (`<cloud root>/backups`); Settings → Storage owns the
+ *   pick — the stand-in picker this pane carried is retired.
  */
 import { useEffect, useState } from "react";
-import { Ico } from "../shell/icons";
+import { useQuery } from "@evolu/react";
+import { Ico, ICONS } from "../shell/icons";
 import { DangerConfirm } from "../shell/DangerConfirm";
+import {
+  BACKUP_DAILY_DAYS_DEFAULT,
+  BACKUP_DAILY_DAYS_KEY,
+  clampBackupDailyDays,
+  syncedSettingsQuery,
+  writeSyncedSetting,
+} from "./store";
 import {
   BACKUP_EVENT,
   backupRunning,
@@ -24,9 +33,9 @@ import {
   readBackupRecord,
   revealBackupsFolder,
   runBackup,
-  setBackupsRoot,
   type Slot,
 } from "../backup/backup";
+import { CLOUD_ROOT_EVENT } from "./cloudRoot";
 import { requestRestore } from "../backup/restore";
 import { showErrorToast } from "../shell/toast";
 import { relLabel } from "../metrics/format";
@@ -37,6 +46,7 @@ import { relLabel } from "../metrics/format";
 const relTime = (iso: string): string => relLabel(new Date(iso).getTime());
 
 export function BackupsPane() {
+  const settingRows = useQuery(syncedSettingsQuery);
   const [root, setRoot] = useState(getBackupsRoot());
   const [record, setRecord] = useState(readBackupRecord());
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -46,6 +56,7 @@ export function BackupsPane() {
   const [closing, setClosing] = useState<string | null>(null);
 
   const refresh = () => {
+    setRoot(getBackupsRoot());
     setRecord(readBackupRecord());
     setBusy(backupRunning());
     void listSlots().then(setSlots, () => setSlots([]));
@@ -53,7 +64,11 @@ export function BackupsPane() {
   useEffect(() => {
     refresh();
     window.addEventListener(BACKUP_EVENT, refresh);
-    return () => window.removeEventListener(BACKUP_EVENT, refresh);
+    window.addEventListener(CLOUD_ROOT_EVENT, refresh);
+    return () => {
+      window.removeEventListener(BACKUP_EVENT, refresh);
+      window.removeEventListener(CLOUD_ROOT_EVENT, refresh);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -62,19 +77,14 @@ export function BackupsPane() {
     void runBackup("manual").finally(refresh);
   };
 
-  const pickRoot = async () => {
-    try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const dir = await open({ directory: true, title: "Pick the backups folder" });
-      if (typeof dir === "string") {
-        setBackupsRoot(dir);
-        setRoot(dir);
-        refresh();
-      }
-    } catch (e) {
-      showErrorToast(`Folder pick failed — ${e instanceof Error ? e.message : String(e)}`, "Backups");
-    }
-  };
+  // The daily-window retention dial (drawn on the frozen pane; built
+  // 2026-08-06 at the Phase-2 audit's ruling). Synced app_meta, the
+  // autosave-interval shape; the prune in backup/backup.ts reads it through
+  // the settings cache, so an unset row keeps the standing 90-day behavior.
+  const dailyRow = settingRows.find((r) => String(r.key) === BACKUP_DAILY_DAYS_KEY);
+  const dailyDays = clampBackupDailyDays(Number(dailyRow?.value ?? BACKUP_DAILY_DAYS_DEFAULT));
+  const stepDaily = (dir: -1 | 1) =>
+    writeSyncedSetting(settingRows, BACKUP_DAILY_DAYS_KEY, String(clampBackupDailyDays(dailyDays + dir)));
 
   // The confirm's yes: narrate BEFORE the process dies — without this beat the
   // close reads as a crash (found live 2026-08-03, second rehearsal). The
@@ -98,10 +108,9 @@ export function BackupsPane() {
         <div className="crow two">
           <span className="clabel">Folder</span>
           <span className="cright">
-            {root != null && <span className="field">{root}</span>}
-            <button className="btn-plain btn-sm" onClick={() => void pickRoot()}>
-              {root == null ? "Pick a folder…" : "Change…"}
-            </button>
+            <span className={`field${root == null ? " none" : ""}`}>
+              {root ?? "set the cloud root in Settings → Storage"}
+            </span>
             {root != null && (
               <button className="btn-plain btn-sm" onClick={() => void revealBackupsFolder()}>
                 Open
@@ -129,6 +138,29 @@ export function BackupsPane() {
             </button>
           </span>
         </div>
+        {/* the retention dials — the drawn pair: a Daily-window stepper +
+            the Monthly-keepers row (drawn informational: one per month,
+            kept forever — the promotion is automatic, not a setting) */}
+        <div className="crow two">
+          <span className="clabel">Daily window</span>
+          <span className="cright">
+            <span className="stepper">
+              <button className="stepbtn" data-tip="Decrease" onClick={() => stepDaily(-1)}>
+                <Ico d={["M5 12h14"]} />
+              </button>
+              <span className="stepval">{dailyDays} days</span>
+              <button className="stepbtn" data-tip="Increase" onClick={() => stepDaily(1)}>
+                <Ico d={ICONS.plus} />
+              </button>
+            </span>
+          </span>
+        </div>
+        <div className="crow two">
+          <span className="clabel">Monthly keepers</span>
+          <span className="cright">
+            <span className="mgtag">One per month · kept forever</span>
+          </span>
+        </div>
       </div>
       <div className="hgroup">
         <p className="hglbl">
@@ -140,7 +172,7 @@ export function BackupsPane() {
         {slots.length === 0 ? (
           <p className="vnote">
             {root == null
-              ? "Pick a folder above and the first backup writes on the next close."
+              ? "Backups are paused — set the cloud root in Settings → Storage and the first backup writes on the next close."
               : "No backups here yet — close the app once, or press Back up now."}
           </p>
         ) : (

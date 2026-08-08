@@ -14,18 +14,18 @@
  *   JSON parse-back with row counts) → compress → RE-OPEN the archive.
  * · PROMOTE — temp-write into `.tmp/` then rename into the slot: a failed
  *   backup can never clobber the previous good one.
- * · RETENTION — dailies ~90 days; each month's last daily is promoted to the
- *   monthly keeper (`YYYY-MM-*`) rather than deleted; rotation works by
- *   FILENAME ONLY, never opening old files (the iCloud-eviction rule). The
+ * · RETENTION — dailies ~90 days (the synced `backup_daily_days` dial since
+ *   2026-08-06 — Settings → Backups owns the stepper); each month's last
+ *   daily is promoted to the monthly keeper (`YYYY-MM-*`) rather than
+ *   deleted; rotation works by FILENAME ONLY, never opening old files (the
+ *   iCloud-eviction rule). The
  *   .db thinning spares each month's keeper-designate (the month's last
  *   daily), so a promoted keeper still carries its .db — the implementation
  *   choice that honours both retention clauses at once.
  *
- * The BACKUPS ROOT is `<cloud root>/backups/`; the cloud root itself is
- * step 14's picker, so until then the root is a dev-hosted stand-in on the
- * themes-root doctrine (the per-device settings file; the real source
- * replaces this, nothing else). Unset root = backups PAUSE + the health nag —
- * never a gate.
+ * The BACKUPS ROOT is `<cloud root>/backups/` — DERIVED from step 14's one
+ * cloud-root setting (settings/cloudRoot; the dev-hosted stand-in key is
+ * retired). Unset root = backups PAUSE + the health nag — never a gate.
  */
 import { invoke } from "@tauri-apps/api/core";
 import { evolu } from "../db/evolu";
@@ -33,19 +33,16 @@ import { todayLocal } from "../metrics/clock";
 import { showErrorToast } from "../shell/toast";
 import { readAllTables, toCanonicalJson, toCsv, TABLES } from "./exporter";
 import { deviceGet, deviceSet, inTauri } from "../settings/deviceStore";
+import { cloudSub } from "../settings/cloudRoot";
+import { backupDailyDays } from "../settings/store";
 
 // inTauri is imported from settings/deviceStore (the one declaration; it lives
 // there because the boot shim needs a dependency-free module). Was a local copy.
 
-// ── the root (step-14 stand-in) ──────────────────────────────────────────────
+// ── the root (derived — Settings → Storage owns the pick) ────────────────────
 
-export const BACKUPS_ROOT_KEY = "cibo.dev.backupsRoot";
-
-export const getBackupsRoot = (): string | null => deviceGet(BACKUPS_ROOT_KEY);
-export const setBackupsRoot = (path: string | null): void => {
-  deviceSet(BACKUPS_ROOT_KEY, path);
-  emitRecord();
-};
+/** `<cloud root>/backups`, or null while the cloud root is unset (paused). */
+export const getBackupsRoot = (): string | null => cloudSub("backups");
 
 // ── the record (what health + the stale-check read) ──────────────────────────
 
@@ -233,12 +230,15 @@ async function doBackup(reason: BackupReason): Promise<BackupRecord> {
 
 // ── retention ────────────────────────────────────────────────────────────────
 
-const DAILY_KEEP_DAYS = 90; // dials, not architecture ([[Backups & Export]])
+// The daily window is a DIAL since 2026-08-06 ("dials, not architecture" —
+// [[Backups & Export]]): `backup_daily_days` in app_meta (synced, default 90,
+// clamped 7–365), read through settings/store's cache at prune time so the
+// close-time run sees the live value. Settings → Backups owns the stepper.
 const DB_KEEP_DAILIES = 30;
 
 const dayMs = 86_400_000;
 const cutoffDate = (today: string): string =>
-  new Date(new Date(`${today}T00:00:00`).getTime() - DAILY_KEEP_DAYS * dayMs)
+  new Date(new Date(`${today}T00:00:00`).getTime() - backupDailyDays() * dayMs)
     .toISOString()
     .slice(0, 10);
 

@@ -266,12 +266,8 @@
 .ec-cover .ecn { font-family: var(--font-mono); font-size: var(--size-caption); letter-spacing: .06em;
   text-transform: uppercase; line-height: 1.4; }
 .ec-cover .ecsub { font-size: var(--size-caption); line-height: 1.3; }
-.ec-banner { width: 100%; height: 112px; border-radius: var(--radius-medium);
-  border: var(--border-standard) dashed var(--border); display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: var(--space-2); color: var(--text-muted); cursor: pointer;
-  transition: border-color var(--motion-fast) var(--ease-standard); }
-.ec-banner:hover { border-color: var(--accent); }
-.ec-banner .ecn { font-family: var(--font-mono); font-size: var(--size-caption); letter-spacing: .06em; text-transform: uppercase; }
+/* (`.ec-banner` — the creation banner drop the FINAL draws in this modal — was
+   DELETED 2026-08-06, user-ruled: the control was inert.) */
 .ec-primary { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-5); }
 .ec-titrow { display: flex; flex-direction: column; gap: var(--space-3); }
 .ec-caplbl { font-size: var(--size-caption); text-transform: uppercase; letter-spacing: .05em;

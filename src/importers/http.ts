@@ -69,6 +69,12 @@ export const importFetch = async (url: string, init?: RequestInit): Promise<Resp
     res = await rustFetch(url, init);
   } catch (e) {
     // Transport-level failure (offline, DNS, timeout) — one retry too.
+    // Implementation, user-accepted 2026-08-06 (Phase-2 completion audit):
+    // this retry class is DISTINCT from the ruled one-backoff-retry on
+    // 429/5xx below — transport failure is not the rate-limit case that
+    // ruling guarded. Composite worst case (transport retry → 429 → backoff)
+    // is three requests, accepted as recorded. The record lives in
+    // [[Importer Runtime & External Access]] § Error / rate-limit policy.
     await sleep(DEFAULT_BACKOFF_S * 1000);
     res = await rustFetch(url, init);
   }

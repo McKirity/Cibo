@@ -18,6 +18,20 @@
    (.habitgrid vs .tools), never by the bare block — wiring the bare block
    would collapse the 5a/5b asset split (the 2026-07-14 ruling).
 
+   ⚠ THEME AUTHORS — THE CHANNEL OWNS ITS PROPERTIES, AND IT WINS SILENTLY.
+   Every attachment in this sheet claims one property on its selectors, and
+   the `:root `-prefixed ones ((0,3,0) + last in the bundle) beat any theme
+   rule a drop-in can write — the theme's declaration simply vanishes, no
+   warning, even when no decoration pack is loaded (the fallback paints
+   `none`, but the CLAIM still outranks you). Concretely: `background-image`
+   is decoration's on `.daily .finalize` · `.emptybox` · `.milestone .emblem`
+   · `.cadash .perhead .fin .dotm` (the stamp tier), and
+   `border-image-source` is decoration's on every frame/strip selector below.
+   A theme that wants light or texture on those surfaces must use a property
+   this sheet does NOT claim (inset box-shadow is the proven route — Blame!'s
+   finalize emission) or a pseudo-element. Raised on the theme bench
+   2026-08-06 after a vanished rule cost a seating real time.
+
    Deliberately shallow until Phase-2 asset work (the geometry lives in the
    manifest's reserved slice/scale keys): 9-slice insets, the timer ring's
    SVG texture, bar-tip glyph placement, and the divider ornament's band

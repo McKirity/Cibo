@@ -201,6 +201,7 @@ export function useEntryData(entryId: string): EntryData {
       engine: raw.gamedev_engine,
       started: raw.started,
       completed: raw.completed,
+      banner: raw.banner,
       cover: raw.cover,
     };
   }, [raw]);

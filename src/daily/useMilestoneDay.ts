@@ -76,6 +76,15 @@ const appStartQuery = evolu.createQuery((db) =>
     .where("isDeleted", "is not", 1),
 );
 
+// The streak family's missed/unknown distinction (fork E, 2026-08-06).
+const finalizedDaysQuery = evolu.createQuery((db) =>
+  db
+    .selectFrom("days")
+    .select(["date"])
+    .where("finalized", "=", 1)
+    .where("isDeleted", "is not", 1),
+);
+
 const parseLadders = (raw: string | null): LadderOverrides | null => {
   if (raw == null) return null;
   try {
@@ -96,12 +105,13 @@ export function useMilestoneDay(dayKey: string, revision: string): MilestoneDay 
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
-      const [habitRows, sessionRows, entryRows, swapRows, metaRows] = await Promise.all([
+      const [habitRows, sessionRows, entryRows, swapRows, metaRows, finalizedRows] = await Promise.all([
         evolu.loadQuery(habitsQuery),
         evolu.loadQuery(sessionsQuery),
         evolu.loadQuery(entriesQuery),
         evolu.loadQuery(swapValuesQuery),
         evolu.loadQuery(appStartQuery),
+        evolu.loadQuery(finalizedDaysQuery),
       ]);
       if (cancelled) return;
 
@@ -158,6 +168,7 @@ export function useMilestoneDay(dayKey: string, revision: string): MilestoneDay 
             })),
           appStart: (metaRows[0]?.value as string | undefined) ?? null,
           waveGapDefault: waveGapDefault(), // Settings → Tracking → Metrics (step 10)
+          finalized: new Set(finalizedRows.flatMap((r) => (r.date != null ? [r.date as string] : []))),
         }),
       );
     };

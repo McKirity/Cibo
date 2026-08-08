@@ -19,6 +19,15 @@ export interface WeatherSnap {
   hourlyC: number[];
   /** Local hour (0–23) at fetch — where a past day's "as of" marker sits. */
   hour: number;
+  /**
+   * Fetch provenance (step 15, 2026-08-06): the coordinates this snapshot was
+   * fetched FOR. A location change (first-run setup · Settings → Whimsy) makes
+   * today's weather stale — without these there was no way to know, and the
+   * card silently wore the old place's weather until midnight. Absent on
+   * pre-provenance snapshots, which `ensureTodayFeeds` treats as stale once.
+   */
+  lat?: number;
+  lon?: number;
 }
 
 export interface HoroscopeSnap {

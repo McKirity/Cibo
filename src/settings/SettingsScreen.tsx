@@ -11,10 +11,9 @@
  * local state, never routes.
  *
  * ALL 13 SECTIONS LIVE since 2026-08-04 (built in five slices, Tracking ·
- * Appearance · Timers · Developer first). The one pending face left is
- * Storage, which waits on step 14's cloud root — `PENDING` below is its
- * single entry, and the quiet note it renders is build glue, not a drawn
- * state.
+ * Appearance · Timers · Developer first). Storage, the last pending face,
+ * went REAL at step 14 (2026-08-05) — the cloud-root picker lives in
+ * StoragePane, and the pending-pane machinery left with its only tenant.
  *
  * Tracking's tabs are Periods · Metrics · LOGGING — the third is the
  * 2026-07-27 autosave ruling's home ([[Settings & Configuration]] § Tracking),
@@ -40,18 +39,14 @@ import {
 } from "./store";
 import {
   clampUiScale,
-  getBannerFade,
   getForceOpaque,
   getMacBookPreview,
   getParityZoom,
   getPomoBreak,
   getPomoWork,
-  getRailBanner,
   getReduceEffects,
   getSignalStyle,
   getUiScale,
-  setBannerFade,
-  setRailBanner,
   setForceOpaque,
   setMacBookPreview,
   setParityZoom,
@@ -60,11 +55,10 @@ import {
   setReduceEffects,
   setSignalStyle,
   setUiScale,
-  themeBannerFade,
   UI_SCALE_STEP,
   type SignalStyle,
 } from "./local";
-import { getPick, getThemesRoot, scanThemes, setTheme, setThemesRoot, type ThemeEntry } from "../theme/loader";
+import { getPick, scanThemes, setTheme, type ThemeEntry } from "../theme/loader";
 import { getCompactMode, setCompactMode, type CompactMode } from "../theme/compact";
 import {
   autosaveQuery,
@@ -80,6 +74,7 @@ import { WhimsyPane } from "./WhimsyPane";
 import { HealthPane } from "./HealthPane";
 import { HelpPane } from "./HelpPane";
 import { BackupsPane } from "./BackupsPane";
+import { StoragePane } from "./StoragePane";
 import { LadderEditor } from "./LadderEditor";
 import { globalLaddersQuery, laddersFrom, writeGlobalLadders } from "./ladderStore";
 import { iconStats, LUCIDE_VERSION } from "../shell/habitIcons";
@@ -105,13 +100,6 @@ export const SECTIONS: { key: SettingsSection; name: string; icon: string[] }[] 
   { key: "developer", name: "Developer", icon: ["m16 18 6-6-6-6", "m8 6-6 6 6 6"] },
   { key: "help", name: "Help", icon: ["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z", "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3", "M12 17h.01"] },
 ];
-
-/** What each pending section will hold — the door's one honest line.
- *  (The backups row left 2026-08-04: step 12 shipped its pane, so the string
- *  had been unreachable dead data.) */
-const PENDING: Partial<Record<SettingsSection, string>> = {
-  storage: "The cloud root picker (arrives with step 14's readiness checkpoint).",
-};
 
 export function SettingsScreen({
   section,
@@ -212,7 +200,11 @@ export function SettingsScreen({
             </div>
           </Pane>
         ) : (
-          <PendingPane section={section} />
+          <Pane title="Storage">
+            <div className="pbody">
+              <StoragePane />
+            </div>
+          </Pane>
         )}
       </div>
     </div>
@@ -358,23 +350,6 @@ function Pane({ title, children }: { title: string; children: React.ReactNode })
       </div>
       {children}
     </section>
-  );
-}
-
-function PendingPane({ section }: { section: SettingsSection }) {
-  const meta = SECTIONS.find((s) => s.key === section);
-  return (
-    <Pane title={meta?.name ?? "Settings"}>
-      <p className="pending">
-        Not built yet — this pane arrives with a later step.
-        {PENDING[section] != null && (
-          <>
-            {" "}
-            It will hold: {PENDING[section]}
-          </>
-        )}
-      </p>
-    </Pane>
   );
 }
 
@@ -605,13 +580,10 @@ function TrackingPane() {
 function AppearancePane() {
   const [themes, setThemes] = useState<ThemeEntry[]>([]);
   const [pick, setPick] = useState(getPick());
-  const [themesRoot, setThemesRootState] = useState(getThemesRoot());
   const [scale, setScale] = useState(getUiScale());
   const [compact, setCompact] = useState<CompactMode>(getCompactMode());
   const [reduce, setReduce] = useState(getReduceEffects());
   const [opaque, setOpaque] = useState(getForceOpaque());
-  const [fade, setFade] = useState<number>(() => getBannerFade() ?? themeBannerFade());
-  const [railBanner, setRailBannerState] = useState(getRailBanner());
 
   useEffect(() => {
     scanThemes().then(
@@ -643,60 +615,9 @@ function AppearancePane() {
                 />
               </span>
             </div>
-            {/* The drop-in themes ROOT - the ONE surviving dev-panel stand-in,
-                re-homed here when the dev panel was deleted (2026-08-04,
-                user-ruled "no longer need the dev panel at all"). Step 14's
-                cloud root supersedes it, on the Backups pane's folder-picker
-                precedent. recursive: true is load-bearing - without it the
-                scan can list the root but not read inside a theme, silently
-                skipping every folder (paid for at the 6a decoration test). */}
-            <div className="crow">
-              <span className="clabel">Drop-in folder</span>
-              <DevMark />
-              <span className="cright">
-                {themesRoot != null && <span className="field">{themesRoot}</span>}
-                <button
-                  className="btn-plain btn-sm"
-                  onClick={() => {
-                    void (async () => {
-                      try {
-                        const { open } = await import("@tauri-apps/plugin-dialog");
-                        const dir = await open({
-                          directory: true,
-                          recursive: true,
-                          title: "Pick the drop-in themes folder",
-                        });
-                        if (typeof dir === "string") {
-                          setThemesRoot(dir);
-                          setThemesRootState(dir);
-                          const sc = await scanThemes();
-                          setThemes(sc.themes);
-                        }
-                      } catch (e) {
-                        console.error("Settings: themes-root pick failed", e);
-                      }
-                    })();
-                  }}
-                >
-                  Browse…
-                </button>
-                {themesRoot != null && (
-                  <button
-                    className="btn-plain btn-sm"
-                    onClick={() => {
-                      setThemesRoot(null);
-                      setThemesRootState(null);
-                      scanThemes().then(
-                        (sc) => setThemes(sc.themes),
-                        (e) => console.error("Settings: theme rescan failed", e),
-                      );
-                    }}
-                  >
-                    Clear
-                  </button>
-                )}
-              </span>
-            </div>
+            {/* The drop-in themes root is `<cloud root>/themes` since step 14
+                — Settings → Storage owns the pick; the stand-in picker this
+                row carried (the last dev-panel survivor) is retired. */}
             <div className="crow">
               <span className="clabel">UI scale</span>
               <DevMark />
@@ -759,39 +680,6 @@ function AppearancePane() {
                   onPick={(v) => {
                     setForceOpaque(v === "on");
                     setOpaque(v === "on");
-                  }}
-                />
-              </span>
-            </div>
-            <div className="crow">
-              <span className="clabel">Banner fade amount</span>
-              <DevMark />
-              <span className="cright">
-                <Slider
-                  value={fade}
-                  min={0}
-                  max={100}
-                  format={(v) => `${v}%`}
-                  onChange={(v) => {
-                    setBannerFade(v);
-                    setFade(v);
-                  }}
-                />
-              </span>
-            </div>
-            <div className="crow">
-              <span className="clabel">Writing rail banner</span>
-              <DevMark />
-              <span className="cright">
-                <Seg
-                  value={railBanner ? "on" : "off"}
-                  options={[
-                    { v: "on", label: "On" },
-                    { v: "off", label: "Off" },
-                  ]}
-                  onPick={(v) => {
-                    setRailBanner(v === "on");
-                    setRailBannerState(v === "on");
                   }}
                 />
               </span>
@@ -904,6 +792,19 @@ function DeveloperPane() {
       }
     })();
   };
+  const [rearmStatus, setRearmStatus] = useState("");
+  const rearmSetup = () => {
+    void (async () => {
+      try {
+        const { rearmFirstRun } = await import("../firstrun/firstRun");
+        const ok = await rearmFirstRun();
+        setRearmStatus(ok ? "armed — setup shows at next launch" : "failed (see console)");
+      } catch (e) {
+        setRearmStatus(`error: ${String(e)}`);
+        console.error(e);
+      }
+    })();
+  };
   const [feedStatus, setFeedStatus] = useState("");
   const recaptureFeeds = () => {
     void (async () => {
@@ -955,6 +856,16 @@ function DeveloperPane() {
                   setParity(v);
                 }}
               />
+            </span>
+          </div>
+          <div className="crow">
+            <span className="clabel">First-run setup</span>
+            <DevMark />
+            <span className="cright">
+              {rearmStatus !== "" && <span className="mgtag">{rearmStatus}</span>}
+              <button className="btn-plain btn-sm" onClick={rearmSetup}>
+                Show again at next launch
+              </button>
             </span>
           </div>
           <div className="crow">

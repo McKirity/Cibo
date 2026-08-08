@@ -2,15 +2,18 @@
  * THE THEME LOADER — Build step 6a ([[Theme Layer]] · [[Theme Package Format]]).
  *
  * Two roots, one code path (ruled 2026-07-19): the app's bundled resource
- * directory and the drop-in folder (<cloud root>/themes/ — stood in for by a
- * dev-picked folder until step 14's cloud-root picker exists; the pick + root
- * persist on the per-device file, settings/deviceStore). The folder name IS the theme
+ * directory and the drop-in folder — `<cloud root>/themes/`, DERIVED from
+ * step 14's one cloud-root setting (settings/cloudRoot; the dev stand-in key
+ * is retired; the pick persists on the per-device file, settings/deviceStore).
+ * The folder name IS the theme
  * name · `_`-prefixed folders are skipped · theme.css is the only required
  * file · a malformed folder is skipped, never a crash (its health-row entry
  * lives in the health home — recorded in the scan meanwhile).
  *
- * CASCADE MODEL: main.tsx keeps its static import of the bundled Default's
- * theme.css — since 6a that compiled-in copy is the ULTIMATE FALLBACK, not a
+ * CASCADE MODEL: bootstrap.tsx keeps the static import of the bundled Default's
+ * theme.css (it moved there from main.tsx at the 2026-08-04 shim split — main.tsx
+ * is now the device-store shim) — since 6a that compiled-in copy is the
+ * ULTIMATE FALLBACK, not a
  * stand-in (the Default never retires). Applying a theme injects its sheet as
  * a <style> appended to <head>, which follows every bundled stylesheet and so
  * wins the cascade at equal (:root) specificity; applying the Default simply
@@ -37,12 +40,11 @@ import { showErrorToast } from "../shell/toast";
 import { applyDerivedDials } from "./derived";
 import { applyThemeFonts } from "./fonts";
 import { deviceGet as lsGet, deviceSet as lsSet, inTauri } from "../settings/deviceStore";
+import { cloudSub } from "../settings/cloudRoot";
 
 export const DEFAULT_THEME = "Default (neutral light)";
 /** The per-device theme pick (Settings → Appearance owns the control). */
 export const THEME_PICK_KEY = "cibo.themePick";
-/** Dev stand-in for <cloud root>/themes/ until step 14's cloud-root picker. */
-export const THEMES_ROOT_KEY = "cibo.dev.themesRoot";
 const MISSING_NOTICED_KEY = "cibo.themeMissingNoticed";
 const STYLE_ID = "cibo-theme-css";
 
@@ -65,8 +67,8 @@ export interface ThemeScan {
 // inTauri is imported from settings/deviceStore (the one declaration; it lives
 // there because the boot shim needs a dependency-free module). Was a local copy.
 
-export const getThemesRoot = (): string | null => lsGet(THEMES_ROOT_KEY);
-export const setThemesRoot = (path: string | null): void => lsSet(THEMES_ROOT_KEY, path);
+/** `<cloud root>/themes` — the drop-in root; null while the root is unset. */
+export const getThemesRoot = (): string | null => cloudSub("themes");
 export const getPick = (): string => lsGet(THEME_PICK_KEY) ?? DEFAULT_THEME;
 
 /** The applied theme (the Default until a pick lands). Ambience reads this. */

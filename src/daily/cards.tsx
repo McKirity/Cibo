@@ -18,6 +18,7 @@
  * permanent and the copy says so.
  */
 import { useState, type CSSProperties } from "react";
+import { TarotArt } from "./tarotArt";
 import {
   buildWxCurve,
   displayTemp,
@@ -713,6 +714,11 @@ function Ring({ pct, stroke, label }: { pct: number; stroke: string; label: stri
           strokeLinecap="round"
           strokeDasharray={on.toFixed(2) + " " + RING_C}
           transform="rotate(-90 32 32)"
+          // color mirrors stroke because drop-shadow() reads `color`, never
+          // stroke — without it a theme cannot light this arc in its own hue
+          // (the ring's hue is per-instance, e.g. a --month-* slot, so no
+          // theme can name it). Render-neutral for every theme that doesn't.
+          style={{ color: stroke }}
         />
         <text
           x="32"
@@ -824,10 +830,11 @@ export function HoroscopeCard({
 }
 
 /**
- * With a draw in the snapshot the face renders WHOLE — numeral, emblem, name,
- * keywords. The star emblem is the deck's shared face for every card
- * (network-tier fork D, user-ruled 2026-07-27: per-card SVGs are authored once
- * the network is confirmed working). A reversed draw turns the pictorial group
+ * With a draw in the snapshot the face renders WHOLE — numeral, art, name,
+ * keywords. The art is the drawn card's OWN face since 2026-08-06, closing
+ * network-tier fork D ("per-card SVGs are authored once the network is
+ * confirmed working", user-ruled 2026-07-27); the shared star emblem it
+ * replaces survives as card 17. A reversed draw turns the pictorial group
  * upside down — the numeral and name stay readable.
  *
  * Without one the face is DELIBERATELY blank of a named card: inventing
@@ -846,25 +853,7 @@ export function TarotCard({ draw, isToday }: { draw: TarotSnap | null; isToday: 
             <text x="52" y="26" textAnchor="middle" fontFamily="var(--font-heading)" fontSize="11" letterSpacing="1.5" fill="var(--whimsy-ink)">
               {draw.numeral}
             </text>
-            <g transform={draw.reversed ? "rotate(180 52 96)" : undefined}>
-              <g fill="var(--whimsy-star)">
-                <path d="M52 49 L55.9 62.1 L69 66 L55.9 69.9 L52 83 L48.1 69.9 L35 66 L48.1 62.1 Z" />
-                <path d="M60.5 57.5 L56 66 L60.5 74.5 L52 70 L43.5 74.5 L48 66 L43.5 57.5 L52 62 Z" />
-                <circle cx="24" cy="34" r="1.6" />
-                <circle cx="80" cy="30" r="1.4" />
-                <circle cx="52" cy="31" r="1.5" />
-                <circle cx="30" cy="58" r="1.2" />
-                <circle cx="74" cy="60" r="1.3" />
-                <circle cx="20" cy="88" r="1.2" />
-                <circle cx="84" cy="90" r="1.4" />
-              </g>
-              <g fill="none" stroke="var(--whimsy-ink)" strokeWidth="1.3" strokeLinecap="round">
-                <path d="M46 98 q-3 13 -5 28" />
-                <path d="M60 98 q3 13 6 28" />
-                <path d="M14 132 q11 -6 22 0 t22 0 t22 0" />
-                <path d="M14 144 q11 -6 22 0 t22 0 t22 0" opacity="0.6" />
-              </g>
-            </g>
+            <TarotArt n={draw.n} reversed={draw.reversed} />
             <text
               x="52"
               y="169"

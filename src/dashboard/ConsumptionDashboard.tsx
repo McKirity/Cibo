@@ -13,6 +13,7 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { todayLocal } from "../metrics/clock";
 import { requestLibraryImport, requestSettingsNav } from "../shell/navRequest";
+import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { useConsumptionData } from "./useConsumptionData";
 import { buildConsumptionDashboard, type DashboardModel, type ScopeSel } from "./consumptionSpec";
 import { HEAT_CLASS } from "./specShared";
@@ -64,6 +65,7 @@ export function ConsumptionDashboard({
       {
         colourSlot: data.colourSlot,
         name: data.name,
+        archived: data.archived,
         sessions: data.sessions,
         entries: data.entries,
         finalized: data.finalized,
@@ -107,8 +109,10 @@ export function ConsumptionDashboard({
         <div className="gs">
           {/* ── Masthead ── */}
           <section className="panel mast">
-            <div className="art" style={{ background: `var(${color})` }}>
-              <span>{m.masthead.name[0]?.toUpperCase()}</span>
+            {/* Icon first, lettermark as fallback — the FINALs draw an icon here
+                (restored 2026-08-06; see SimpleDashboard's note). */}
+            <div className="art" style={{ ["--habit-hue" as string]: `var(${color})` }}>
+              {hasIcon(data.icon) ? <HabitIcon icon={data.icon} /> : <span>{m.masthead.name[0]?.toUpperCase()}</span>}
             </div>
             <div className="idcol">
               <div className="idrow">

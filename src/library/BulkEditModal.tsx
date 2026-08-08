@@ -158,7 +158,7 @@ export function BulkEditModal({
   const doDelete = async () => {
     const ids = selectedEntries.map((e) => e.id);
     setConfirmOpen(false);
-    const res = await deleteEntriesCascade(ids);
+    const res = await deleteEntriesCascade(ids, "permanent");
     if (!res.ok) showErrorToast("Bulk delete: some rows were rejected — check the error log.");
     setSelected(new Set());
   };

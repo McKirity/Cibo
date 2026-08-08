@@ -5,13 +5,12 @@
  *
  * Tagged **SYNCED** at the 2026-07-05 close, and it was "the one genuinely
  * untagged item" then: same person, same birthday, same house on both
- * machines, so it is preference rather than a machine fact. The STORE rides
- * the per-device settings file since 2026-08-04 (deviceStore — the localStorage
- * era's mechanical successor); the move to SYNCED storage it is tagged for is
- * PARKED ON STEP 15 (recorded at the completeness audit), which owns filling
- * this config at first-run anyway. What changed here at step 10 was the
- * SOURCE (a real surface instead of a dev panel), exactly as that module's own
- * header predicted: "when those land they replace the SOURCE and nothing else".
+ * machines, so it is preference rather than a machine fact. **SYNCED FOR REAL
+ * since step 15 (2026-08-06)** — whimsyConfig.ts stores app_meta rows (one
+ * scalars row + one per event) behind the same load/save API, so nothing here
+ * changed but the truth of the tag; writes it makes are debounced there.
+ * What changed here at step 10 was the SOURCE (a real surface instead of a
+ * dev panel), exactly as that module's own header predicted.
  *
  * Location is COORDINATES outright — no place names, no geocoding
  * ([[Calendar & Whimsy]] § config). The label is kept as a plain nickname for

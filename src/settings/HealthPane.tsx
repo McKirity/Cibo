@@ -47,6 +47,7 @@ import {
   runBackup,
 } from "../backup/backup";
 import { deleteEntriesCascade } from "../library/entryDelete";
+import { resolveRef } from "./cloudRoot";
 import { clearErrors, recentErrors, subscribeErrors, type LoggedError } from "./errorLog";
 import { LUCIDE_VERSION } from "../shell/habitIcons";
 import {
@@ -424,13 +425,28 @@ function DataTab({ onOpenDay, onOpenEntry, onOpenHabits }: HealthNav) {
     setBusy(true);
     try {
       if (action.kind === "delete-session") {
+        // Uniform cascade (user-ruled 2026-08-06, audit fork B): the
+        // session's value rows die with it, same as every other delete path.
+        const vals = await evolu.loadQuery(
+          evolu.createQuery((db) =>
+            db.selectFrom("subunit_values").select(["id"]).where("session_fk", "=", action.id as never).where("isDeleted", "is not", 1),
+          ),
+        );
+        for (const v of vals) {
+          const vr = evolu.update("subunit_values", { id: v.id as never, isDeleted: 1 });
+          if (!vr.ok) console.error("doctor: value delete rejected", vr.error);
+        }
         const res = evolu.update("sessions", { id: action.id as never, isDeleted: 1 });
         if (!res.ok) console.error("doctor: session delete rejected", res.error);
       } else if (action.kind === "delete-entries") {
-        await deleteEntriesCascade(action.ids);
+        await deleteEntriesCascade(action.ids, "permanent");
       } else {
+        // The finding's path is root-relative (stable mute keys); it meets
+        // this device's cloud root only here, at the moment of the delete.
+        const abs = resolveRef(action.path);
+        if (abs == null) throw new Error("no cloud root set");
         const fs = await import("@tauri-apps/plugin-fs");
-        await fs.remove(action.path, { baseDir: fs.BaseDirectory.AppLocalData });
+        await fs.remove(abs);
       }
       await run();
     } catch (e) {

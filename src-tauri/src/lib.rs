@@ -157,6 +157,19 @@ mod backup;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Single instance MUST register first (its docs' own rule): a second
+        // launch never starts a second process — two writers on one store is
+        // never allowed ([[App Lifecycle & OS Integration]]). The second
+        // launch's argv lands here in the FIRST process; we just surface the
+        // existing window.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            use tauri::Manager;
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.unminimize();
+                let _ = w.show();
+                let _ = w.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_fs::init())

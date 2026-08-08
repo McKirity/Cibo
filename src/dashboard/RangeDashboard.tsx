@@ -17,6 +17,7 @@ import { fmtHM } from "../metrics/clockMath";
 import { todayLocal } from "../metrics/clock";
 import { heatRowLabels } from "../metrics/dates";
 import { requestSettingsNav } from "../shell/navRequest";
+import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import type { ScopeSel } from "./creationSpec";
 import { HEAT_CLASS } from "./specShared";
 import { heatPoolStyle, Panel, StatGroup, StatTile } from "./kit";
@@ -28,6 +29,18 @@ export function RangeDashboard({ habitKey }: { habitKey: string }) {
   const data = useRangeData(habitKey);
   const [today] = useState(todayLocal);
   const [scope, setScope] = useState<ScopeSel>({ kind: "all" });
+  // Which heatmap the panel is showing, by view KEY rather than index — the
+  // view list is definition-driven, so a flag added or removed between renders
+  // must not silently slide the selection onto a different readout. An unknown
+  // key falls back to duration, which is the one view every range habit has.
+  const [heatView, setHeatView] = useState("duration");
+  // THE DAYS ⇄ % TOGGLE IS STRUCK (user-ruled 2026-08-07, at the completion
+  // audit's GUI pass: "this is rather redundant. Just stick with days, no need
+  // for the % view"). It was built the day before off the frozen face and
+  // kit-panel-flag's variant axis; seeing it live reversed both. The donut
+  // reads days, the arc still carries the share, and the percentage readout is
+  // gone from the panel entirely — so the FINAL and the kit sheet are now stale
+  // on this control by ruling, not by drift.
 
   const { model, ms } = useMemo(() => {
     if (!data.ready) return { model: null as RangeModel | null, ms: 0 };
@@ -53,6 +66,7 @@ export function RangeDashboard({ habitKey }: { habitKey: string }) {
 
   const m = model;
   const color = m.colorVar;
+  const heat = m.heatmap.views.find((v) => v.key === heatView) ?? m.heatmap.views[0];
 
   return (
     <div className="gsdash rangedash" style={{ "--heat-hue": `var(${color})` } as CSSProperties}>
@@ -66,8 +80,10 @@ export function RangeDashboard({ habitKey }: { habitKey: string }) {
       ) : (
         <div className="gs">
           <section className="panel mast">
-            <div className="art" style={{ background: `var(${color})` }}>
-              <span>{m.masthead.name[0]?.toUpperCase()}</span>
+            {/* Icon first, lettermark as fallback — the FINALs draw an icon here
+                (restored 2026-08-06; see SimpleDashboard's note). */}
+            <div className="art" style={{ ["--habit-hue" as string]: `var(${color})` }}>
+              {hasIcon(data.icon) ? <HabitIcon icon={data.icon} /> : <span>{m.masthead.name[0]?.toUpperCase()}</span>}
             </div>
             <div className="idcol">
               <div className="idrow">
@@ -107,7 +123,7 @@ export function RangeDashboard({ habitKey }: { habitKey: string }) {
               </div>
             </Panel>
 
-            {/* ── 4 · One flag donut per declared flag ── */}
+            {/* ── 4 · One flag donut per declared flag — days only ── */}
             {m.flags.panels.length > 0 && (
               <Panel title="Flags">
                 <div className="flags" style={{ display: "grid", gridTemplateColumns: `repeat(${m.flags.panels.length},1fr)`, gap: "var(--space-7)" }}>
@@ -133,27 +149,42 @@ export function RangeDashboard({ habitKey }: { habitKey: string }) {
                           <span className="dsub">{m.flags.noun}</span>
                         </div>
                       </div>
-                      <div className="fpct">
-                        {f.pct}%<span> of {m.flags.noun}</span>
-                      </div>
                     </div>
                   ))}
                 </div>
               </Panel>
             )}
 
-            {/* ── 5 · Duration heatmap + trio ── */}
+            {/* ── 5 · Heatmap (duration + one view per declared flag) + trio ── */}
             <Panel
-              title="Duration heatmap"
+              title={`${heat.label} heatmap`}
               right={
-                <span className="pmeta ramp">
-                  {[0, 1, 2, 3, 4].map((k) => (
-                    <span key={k} className={`sw sw${k}`} />
-                  ))}
-                </span>
+                <>
+                  {m.heatmap.views.length > 1 && (
+                    <span className="toggle" role="group" aria-label="Heatmap view">
+                      {m.heatmap.views.map((v) => (
+                        <button
+                          key={v.key}
+                          className={`t${v.key === heat.key ? " on" : ""}`}
+                          onClick={() => setHeatView(v.key)}
+                        >
+                          {v.label}
+                        </button>
+                      ))}
+                    </span>
+                  )}
+                  {/* The legend spends only the levels the view uses — a flag
+                      has two answers and showing five swatches would promise
+                      shades that can never appear. */}
+                  <span className="pmeta ramp">
+                    {(heat.ramp ? [0, 1, 2, 3, 4] : [1, 4]).map((k) => (
+                      <span key={k} className={`sw sw${k}`} />
+                    ))}
+                  </span>
+                </>
               }
             >
-              <div className="heat" style={heatPoolStyle(m.heatmap.cells, (c) => c.level)}>
+              <div className="heat" style={heatPoolStyle(heat.cells, (c) => c.level)}>
                 <div className="weekdays">
                   <span className="wd" />
                   {heatRowLabels().map((d, i) => (
@@ -171,7 +202,7 @@ export function RangeDashboard({ habitKey }: { habitKey: string }) {
                     ))}
                   </div>
                   <div className="cells">
-                    {m.heatmap.cells.map((c, i) => (
+                    {heat.cells.map((c, i) => (
                       <div
                         key={i}
                         className={`hcell${c.level > 0 ? ` l${c.level}` : ""}`}

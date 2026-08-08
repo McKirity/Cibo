@@ -52,6 +52,7 @@ import {
 } from "./wallSpec";
 import { packWall, DEFAULT_BUDGET_HALF_ROWS, type Span } from "./wallPack";
 import { KeepsakeTile } from "./KeepsakeTile";
+import { TarotArt } from "./tarotArt";
 import { useCoverUrl } from "../kit/CoverArt";
 import { useWallData } from "./useWallData";
 import { useMilestoneDay } from "./useMilestoneDay";
@@ -738,15 +739,22 @@ function Banner({ t }: { t: BannerTile }) {
   // useCoverUrl, never the raw stored ref — the same fix the COVER half of this
   // component took on 2026-07-31. A stored ref is a root-relative path the
   // webview resolves against the dev server and 404s; the bytes come back
-  // Rust-side as a blob URL. Latent until banners become droppable at step 14,
-  // and it fails SILENTLY into the gradient field, so it would not have
-  // announced itself then either.
-  const src = useCoverUrl(t.banner);
-  return (
+  // Rust-side as a blob URL.
+  //
+  // BOTH refs draw since 2026-08-06 (user-ruled: "I want the tile to show
+  // both"). Banner = the card-spanning background; cover = the band's thumb.
+  // A banner-less entry PROMOTES its cover to the background instead of
+  // drawing it twice — which is also the bug that surfaced all this: the tile
+  // read the banner alone, so an entry carrying only a cover drew nothing, and
+  // the empty face looked designed rather than broken (the silent-fallback
+  // lesson, third instance on this one component).
+  const bg = t.banner ?? t.cover;
+  const src = useCoverUrl(bg);
+  // Null when the cover IS the background — hooks stay unconditional.
+  const covSrc = useCoverUrl(t.cover !== bg ? t.cover : null);
+
+  const info = (
     <>
-      {src != null && (
-        <img className="art" src={src} alt="" onError={(e) => e.currentTarget.remove()} />
-      )}
       <span className="kind">{t.eyebrow}</span>
       <div className="foot">
         <div className="ttl">{t.title}</div>
@@ -754,6 +762,20 @@ function Banner({ t }: { t: BannerTile }) {
           {t.stage != null && <span className="stage">{t.stage}</span>}
           <span className="nums">{t.nums}</span>
         </div>
+      </div>
+    </>
+  );
+
+  // THE NO-ART FACE IS UNCHANGED AND BAND-LESS — it reads perfectly on its flat
+  // slot field, exactly as the cover tile's does. Only art defeats text.
+  if (src == null) return info;
+
+  return (
+    <>
+      <img className="art" src={src} alt="" onError={(e) => e.currentTarget.remove()} />
+      <div className="bvinfo">
+        {covSrc != null && <img className="bcov" src={covSrc} alt="" draggable={false} />}
+        <div className="bvtext">{info}</div>
       </div>
     </>
   );
@@ -1016,9 +1038,16 @@ function HoroscopeWall({ t }: { t: HoroscopeWallTile }) {
 }
 
 /**
- * The mini card face — the state-2 FINAL's own tarot anatomy (fewer stars, no
- * figure lines) with the drawn draw's numeral and name in place of the frozen
- * sample's. Reversed turns the pictorial group, as on state 1.
+ * The mini card face — the same chassis and the SAME art group as Daily's card,
+ * at the wall's ≈half size.
+ *
+ * It used to carry a reduced anatomy transcribed from the state-2 FINAL (fewer
+ * stars, no figure lines), which was only ever a thinning of the shared Star
+ * emblem — with a per-card face (2026-08-06) that anatomy would draw a star on
+ * every card and the tile would misreport the draw. The exhibit's grammar was
+ * authored against this size for exactly that reason: bold silhouettes, no two
+ * cards alike at half scale, verified in its silhouette audit strip. The FINAL
+ * is stale on this zone by consequence, as `kit-timeline-waves` is.
  */
 function TarotWall({ t }: { t: TarotWallTile }) {
   const longName = t.snap.name.length > 11;
@@ -1029,20 +1058,7 @@ function TarotWall({ t }: { t: TarotWallTile }) {
       <text x="52" y="26" textAnchor="middle" fontFamily="var(--font-heading)" fontSize="11" letterSpacing="1.5" fill="var(--whimsy-ink)">
         {t.snap.numeral}
       </text>
-      <g transform={t.snap.reversed ? "rotate(180 52 91)" : undefined}>
-        <g fill="var(--whimsy-star)">
-          <path d="M52 49 L55.9 62.1 L69 66 L55.9 69.9 L52 83 L48.1 69.9 L35 66 L48.1 62.1 Z" />
-          <circle cx="24" cy="34" r="1.6" />
-          <circle cx="80" cy="30" r="1.4" />
-          <circle cx="52" cy="31" r="1.5" />
-          <circle cx="30" cy="58" r="1.2" />
-          <circle cx="74" cy="60" r="1.3" />
-        </g>
-        <g fill="none" stroke="var(--whimsy-ink)" strokeWidth="1.3" strokeLinecap="round">
-          <path d="M14 128 q11 -6 22 0 t22 0 t22 0" />
-          <path d="M14 140 q11 -6 22 0 t22 0 t22 0" opacity="0.6" />
-        </g>
-      </g>
+      <TarotArt n={t.snap.n} reversed={t.snap.reversed} />
       <text
         x="52"
         y="169"

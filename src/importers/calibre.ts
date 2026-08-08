@@ -103,15 +103,16 @@ export const calibreCoverBytes = async (bookPath: string): Promise<Uint8Array> =
 
 const coverRef = (b: CalibreBook): string | null => (b.has_cover ? `calibre:${b.path}` : null);
 
+// TITLE-ONLY, the ruled filter ([[Importer modal]] § Amended 2026-08-01:
+// "it should just filter for title"). This method is currently unreachable —
+// the catalog area does its own filtering and the modal guards this lane out —
+// but the interface requires it, so it conforms rather than contradicts
+// (audit finding importers-3, aligned 2026-08-06).
 const search = async (term: string): Promise<ImportCandidate[]> => {
   const books = await ensureScan();
   const needle = term.toLowerCase();
   return books
-    .filter(
-      (b) =>
-        b.title.toLowerCase().includes(needle) ||
-        b.authors.some((a) => a.toLowerCase().includes(needle)),
-    )
+    .filter((b) => b.title.toLowerCase().includes(needle))
     .slice(0, 60)
     .map((b) => ({
       externalId: b.uuid,

@@ -32,6 +32,7 @@ import { Ico, ICONS } from "../shell/icons";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { DangerConfirm } from "../shell/DangerConfirm";
 import { showErrorToast } from "../shell/toast";
+import { deleteRefFiles } from "../db/fileDeletion";
 import { milestoneLaddersFromJson, parseDerivedRules, type EntryAttribute } from "../db/schema";
 import type { LadderOverrides } from "../daily/milestones";
 
@@ -200,12 +201,13 @@ export function ManagePane({
     setDeleting(null);
     // Tombstone the cascade: sessions + entries + the habit row itself
     // ("delete = hard, cascades to the habit's sessions and entries"). Cover
-    // FILES have no deletion half until the cloud root exists (step 14) —
-    // the entryDelete.ts precedent.
+    // FILES delete immediately behind the danger confirm — tier 1 offers no
+    // undo (db/fileDeletion.ts, the deferred-file pipeline; docked at the
+    // Phase-2 completion audit, 2026-08-06).
     const [entries, sessions] = await Promise.all([
       evolu.loadQuery(
         evolu.createQuery((db) =>
-          db.selectFrom("entries").select(["id"]).where("habit_fk", "=", habit.id as never).where("isDeleted", "is not", 1),
+          db.selectFrom("entries").select(["id", "cover", "banner"]).where("habit_fk", "=", habit.id as never).where("isDeleted", "is not", 1),
         ),
       ),
       evolu.loadQuery(
@@ -214,7 +216,39 @@ export function ManagePane({
         ),
       ),
     ]);
+    // The definition tail dies with the habit — uniform cascade since
+    // 2026-08-06 (user-ruled, audit fork B): the sessions' value rows, the
+    // habit's subunit definitions, and their vocab all tombstone with it
+    // (a live definition on a dead habit would only ever feed doctor lints).
+    const sessionIdSet = sessions.map((s) => s.id as never);
+    const [defs, values] = await Promise.all([
+      evolu.loadQuery(
+        evolu.createQuery((db) =>
+          db.selectFrom("subunit_definitions").select(["id"]).where("habit_fk", "=", habit.id as never).where("isDeleted", "is not", 1),
+        ),
+      ),
+      sessionIdSet.length > 0
+        ? evolu.loadQuery(
+            evolu.createQuery((db) =>
+              db.selectFrom("subunit_values").select(["id"]).where("session_fk", "in", sessionIdSet).where("isDeleted", "is not", 1),
+            ),
+          )
+        : Promise.resolve([] as { id: unknown }[]),
+    ]);
+    const defIdSet = defs.map((d) => d.id as never);
+    const vocabRows =
+      defIdSet.length > 0
+        ? await evolu.loadQuery(
+            evolu.createQuery((db) =>
+              db.selectFrom("vocab_options").select(["id"]).where("definition_fk", "in", defIdSet).where("isDeleted", "is not", 1),
+            ),
+          )
+        : [];
     let ok = true;
+    for (const v of values) {
+      const r = evolu.update("subunit_values", { id: v.id as never, isDeleted: 1 });
+      if (!r.ok) ok = false;
+    }
     for (const s of sessions) {
       const r = evolu.update("sessions", { id: s.id, isDeleted: 1 });
       if (!r.ok) ok = false;
@@ -223,9 +257,26 @@ export function ManagePane({
       const r = evolu.update("entries", { id: e.id, isDeleted: 1 });
       if (!r.ok) ok = false;
     }
+    for (const o of vocabRows) {
+      const r = evolu.update("vocab_options", { id: o.id as never, isDeleted: 1 });
+      if (!r.ok) ok = false;
+    }
+    for (const d of defs) {
+      const r = evolu.update("subunit_definitions", { id: d.id as never, isDeleted: 1 });
+      if (!r.ok) ok = false;
+    }
     const hr = evolu.update("habits", { id: habit.id, isDeleted: 1 });
     if (!hr.ok) ok = false;
     if (!ok) showErrorToast(`Deleting ${habit.name} did not fully apply — see the console.`);
+    if (ok) {
+      const refs = entries.flatMap((e) => {
+        const out: string[] = [];
+        if (e.cover != null) out.push(String(e.cover));
+        if (e.banner != null) out.push(String(e.banner));
+        return out;
+      });
+      void deleteRefFiles(refs);
+    }
   };
 
   const addVocab = (defId: unknown, value: string) => {

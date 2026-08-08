@@ -41,6 +41,8 @@ import {
 } from "./entrySpec";
 import { heatPoolStyle, Panel, StatGroup } from "./kit";
 import { CoverInner } from "../kit/CoverArt";
+import { pickAndStoreEntryImage } from "../importers/covers";
+import { deleteRefFiles } from "../db/fileDeletion";
 import { useBox } from "./useBox";
 import { DistPanel } from "./CreationDashboard";
 import { deleteEntriesCascade } from "../library/entryDelete";
@@ -240,12 +242,13 @@ function RailView({
   onEdit: () => void;
 }) {
   const r = m.rail;
+  // The rail's banner BAND was removed 2026-08-06 (user-ruled) — the rail opens
+  // on the cover, as the consumption face always has. The banner REF lives on:
+  // it feeds the Daily cover wall's creation tile and the hero card's
+  // background, and it is still set from this rail's edit face.
   return (
     <div className="erail view">
-      {r.banner && (
-        <div className="railbanner" style={{ "--rail-hue": `var(${m.colorVar})` } as CSSProperties} />
-      )}
-      <div className={`cover${r.banner ? " overbanner" : ""}`} title={`${r.title} · cover`}>
+      <div className="cover" title={`${r.title} · cover`}>
         <CoverInner cover={r.cover} label={r.coverLabel} />
       </div>
       <div className="eyebrow">
@@ -348,6 +351,37 @@ function RailEdit({
   const hasBundle = (attr: string) => data.bundle.includes(attr);
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+  // Fork J (user-ruled 2026-08-06): the drawn replace-by-file drop, as a
+  // dialog pick (the grant rides the pick). The replaced file's old ref is
+  // best-effort deleted — a changed extension would otherwise orphan it into
+  // the doctor's lap.
+  //
+  // BOTH KINDS AGAIN since 2026-08-07: the banner door was removed a day
+  // earlier as redundant, which left the app with readers and no writer — the
+  // cover wall's creation tile and the creation hero card both READ a banner
+  // ref, and both fail into a designed gradient, so an unsettable banner looked
+  // exactly like a banner nobody had set yet. The user reversed it on sight
+  // ("write replace banner back in"). One function, `kind` the only difference.
+  const replaceImage = async (kind: "cover" | "banner") => {
+    if (data.entryId == null) return;
+    const rel = await pickAndStoreEntryImage(data.habitKey, data.entryId, kind);
+    if (rel == null) return; // cancel / unset root — never an error
+    const old = kind === "cover" ? m.rail.cover : m.rail.bannerRef;
+    const res = evolu.update("entries", { id: data.entryId, [kind]: rel } as never);
+    if (!res.ok) {
+      setErr("Image save failed — see console.");
+      console.error("entry image update failed", res.error);
+      return;
+    }
+    // Clean up only the app's OWN canonical copy (<entry-id>.<ext>, and the
+    // banner's own `-banner` variant). A curated in-place file (the
+    // pick-from-the-habit-folder model, re-ruled 2026-08-06) may be shared by
+    // other entries — never deleted on replace.
+    const canonical = new RegExp(`/${data.entryId}(-banner)?\\.[a-z0-9]+$`, "i");
+    if (typeof old === "string" && old !== "" && old !== rel && canonical.test(old))
+      void deleteRefFiles([old]);
+  };
+
   const save = () => {
     setErr(null);
     if (title.trim().length === 0) return setErr("Title can't be empty.");
@@ -406,12 +440,41 @@ function RailEdit({
 
   return (
     <div className="erail edit">
-      {/* The edit face's cover box stays a plain placeholder: the DROP half
-          (replace-by-file) is step 14's cloud root. The VIEW face above paints
-          real art via CoverInner — display landed at step 8. */}
-      <div className="cover" title="Replace cover — file drop arrives with the cloud root (step 14)">
-        <span className="cinit">✎ REPLACE COVER</span>
+      {/* The replace-by-file half is LIVE (fork J, 2026-08-06): click opens
+          the image pick; the file lands as images/<habit-key>/<entry-id>.<ext>
+          and the ref writes through.
+          The box paints the CURRENT cover exactly as the view face does — a
+          replace target that hides what it is replacing is the deficiency this
+          face had — with the REPLACE COVER band laid across it. The band sits
+          mid-box, not at the foot, because CoverInner's own `.cinit` lettermark
+          occupies the foot whenever there is no art yet. */}
+      <div
+        className="cover"
+        role="button"
+        tabIndex={0}
+        title="Replace cover — pick an image file"
+        onClick={() => void replaceImage("cover")}
+        onKeyDown={(ev) => {
+          if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            void replaceImage("cover");
+          }
+        }}
+      >
+        <CoverInner cover={m.rail.cover} label={m.rail.coverLabel} />
+        <span className="covband">✎ REPLACE COVER</span>
       </div>
+      {/* The banner gets a plain door rather than a click-target of its own:
+          the rail stopped DRAWING a banner band on 2026-08-06 (user-ruled), so
+          there is no picture here to click. It is still set from this face —
+          it displays on the cover wall's creation tile and the hero card. */}
+      <button
+        className="btn-plain"
+        title="Replace banner — pick an image file"
+        onClick={() => void replaceImage("banner")}
+      >
+        ✎ {m.rail.bannerRef ? "Replace banner…" : "Set banner…"}
+      </button>
       <div className="finput">
         <span className="flabel">Title</span>
         <input className="fbox" value={title} onChange={(ev) => setTitle(ev.target.value)} />

@@ -130,6 +130,15 @@ export interface DraftProblems {
   nameTaken: boolean;
   kindMissing: boolean;
   unitMissing: boolean;
+  /**
+   * Measureless is SIMPLE-ONLY (keystone § Habits, "an app-enforced validity
+   * rule, gated in the creator"): a project with zero declared measures would
+   * be unloggable — every session write it could receive is refused by
+   * validateSessionAgainstHabit. Gate added at the Phase-2 completion audit
+   * (2026-08-06, finding schema-1); it enforces the keystone's rule alongside
+   * the ruled name + kind + unit-when-count roster.
+   */
+  measureMissing: boolean;
   /** Non-blocking, but worth saying. */
   mediumUnnamed: boolean;
 }
@@ -150,12 +159,13 @@ export function draftProblems(
     nameTaken: name !== "" && takenNames.has(name.toLowerCase()),
     kindMissing: draft.kind == null,
     unitMissing: draft.measuresCount && draft.countUnit.trim() === "",
+    measureMissing: draft.kind === "project" && !draft.measuresTime && !draft.measuresCount,
     mediumUnnamed: draft.mediums.some((m) => m.name.trim() === ""),
   };
 }
 
 export const canCommit = (p: DraftProblems): boolean =>
-  !p.nameMissing && !p.nameTaken && !p.kindMissing && !p.unitMissing;
+  !p.nameMissing && !p.nameTaken && !p.kindMissing && !p.unitMissing && !p.measureMissing;
 
 // ── the derived-rule bridge ──────────────────────────────────────────────────
 

@@ -15,7 +15,7 @@
  * The old TMDB cover-filename collision (movie 500 and TV 500 both wrote
  * `tmdb-500.jpg`) is dead by construction here — the filename is the ENTRY id.
  */
-import { importFetch } from "./http";
+import { importBytes } from "./http";
 import { cloudSub, resolveRef, underRoot } from "../settings/cloudRoot";
 
 const extFromUrl = (url: string): string => {
@@ -45,8 +45,10 @@ export const saveCover = async (
       bytes = await calibreCoverBytes(coverUrl.slice("calibre:".length));
       ext = "jpg";
     } else {
-      const res = await importFetch(coverUrl);
-      bytes = new Uint8Array(await res.arrayBuffer());
+      // `importBytes`, not fetch-then-read: the body read belongs inside the
+      // retry/timeout (`ao3-1`). This is the image pipeline's WRITE half, so a
+      // download cut mid-flight would otherwise land a truncated file on disk.
+      bytes = await importBytes(coverUrl);
       ext = extFromUrl(coverUrl);
     }
     if (bytes.byteLength === 0) return null;

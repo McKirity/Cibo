@@ -683,8 +683,16 @@ export function ImportModal({ habitKey, onClose }: { habitKey: string; onClose: 
               <div className="queuerow">
                 <span className="qlabel">Queue</span>
                 <div className="qchips">
+                  {/* Just "Queue is empty" — user-ruled 2026-08-08. The old copy
+                      read "Queue is empty — click a cover to add it", which is
+                      wrong on AO3: fanfic has NO cover art by rule, so the
+                      instruction pointed at something that is never on screen.
+                      Written when the modal's only tenants were cover-bearing
+                      sources. Same family as the library's caption and the
+                      wall's channel tile: COPY COMPOSED AROUND ART IS
+                      PROVISIONAL UNTIL A SOURCE ARRIVES THAT HAS NONE. */}
                   {queuedItems.length === 0 ? (
-                    <span className="qempty">Queue is empty — click a cover to add it</span>
+                    <span className="qempty">Queue is empty</span>
                   ) : (
                     queuedItems.map((it) => (
                       <span className="qchip" key={pairKey(it.source, it.externalId)}>

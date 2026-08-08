@@ -50,6 +50,7 @@ import {
   simpleFlavor,
   toDerivedRules,
   toFlagDefinitions,
+  toMeasureColumns,
   type DerivedDraft,
   type HabitDraft,
   type HabitKind,
@@ -274,14 +275,20 @@ export function HabitCreator({
       // them onto the new kind (audit finding schema-3).
       const rules = isRange ? toDerivedRules(draft.derived) : [];
       const attrs = isProject ? draft.entryAttrs : [];
+      // The measure columns come from the bridge, which refuses to declare a
+      // measure on a range habit (finding `creator-4`) — the same reason rules
+      // and flags leave through bridges of their own. WHEN A GUARD LANDS, SWEEP
+      // THE FIELDS BESIDE IT: this one sat a line above `schema-3`'s guard,
+      // which is this defect in the opposite direction, and was missed.
+      const measures = toMeasureColumns(draft);
 
       const shared = {
         name: s100(name),
         colour_slot: s100(draft.colourSlot),
         icon: draft.icon != null ? s100(draft.icon) : null,
-        measures_time: (draft.measuresTime ? 1 : 0) as never,
-        measures_count: (draft.measuresCount ? 1 : 0) as never,
-        count_unit: draft.measuresCount && draft.countUnit.trim() !== "" ? s100(draft.countUnit.trim()) : null,
+        measures_time: (measures.measuresTime ? 1 : 0) as never,
+        measures_count: (measures.measuresCount ? 1 : 0) as never,
+        count_unit: measures.countUnit != null ? s100(measures.countUnit) : null,
         range_max_midnights: isRange ? NonNegativeInt.orThrow(draft.maxMidnights) : null,
         entry_attributes: attrs.length > 0 ? entryAttributesToJson(attrs) : null,
         derived_rules: rules.length > 0 ? derivedRulesToJson(rules) : null,

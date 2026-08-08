@@ -182,6 +182,44 @@ export function draftProblems(
 export const canCommit = (p: DraftProblems): boolean =>
   !p.nameMissing && !p.nameTaken && !p.kindMissing && !p.unitMissing && !p.measureMissing;
 
+// ── the measure bridge ───────────────────────────────────────────────────────
+
+/** The three measure columns a draft resolves to. */
+export interface MeasureColumns {
+  measuresTime: boolean;
+  measuresCount: boolean;
+  /** Trimmed, or null when there is no count measure to label. */
+  countUnit: string | null;
+}
+
+/**
+ * Draft → the stored measure columns, structurally incapable of declaring a
+ * measure on a RANGE habit (finding `creator-4`, 2026-08-08).
+ *
+ * `kind: "range"` implies its own measure — the seeded Sleep carries
+ * `measures_time`/`measures_count` false, and `validateSessionAgainstHabit`
+ * only ever admits a `range` row on it. But the creator hides the measures step
+ * for range while `set()` is a plain field merge with no cross-field reset, so
+ * ticking Time under kind=simple and *then* switching to Range used to save a
+ * measure the user could no longer see or untick — and the daily form drew a
+ * Time box beside the range picker for it.
+ *
+ * This lives here, pure and tested, for the reason `toDerivedRules` does: the
+ * guard belongs in the bridge, where it cannot be forgotten by a caller, rather
+ * than in the commit block where its three sibling guards sit one line apart and
+ * the fourth was missed.
+ */
+export function toMeasureColumns(draft: HabitDraft): MeasureColumns {
+  if (draft.kind === "range")
+    return { measuresTime: false, measuresCount: false, countUnit: null };
+  const unit = draft.countUnit.trim();
+  return {
+    measuresTime: draft.measuresTime,
+    measuresCount: draft.measuresCount,
+    countUnit: draft.measuresCount && unit !== "" ? unit : null,
+  };
+}
+
 // ── the derived-rule bridge ──────────────────────────────────────────────────
 
 /**

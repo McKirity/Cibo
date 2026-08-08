@@ -31,6 +31,7 @@ import {
   validateRangeSpan,
   validateSessionAgainstHabit,
   validateSessionMeasure,
+  type ValidationResult,
 } from "../db/validate";
 import { resolveKeyboardWrite, writingWordsForDay } from "../db/derivedKeyboard";
 import type { Bout, SpineHabit } from "./spineSpec";
@@ -92,10 +93,18 @@ export interface NewSession {
   source?: "manual" | "timer" | "import" | "derived";
 }
 
-/** Validate + insert one session row, returning its id (or the failure reason). */
-export const insertSession = (
-  s: NewSession,
-): { ok: true; id: SessionId } | { ok: false; reason: string } => {
+/**
+ * EVERY check a session row must pass, in one place — so a caller that wants to
+ * pre-flight a row asks the same question the write will ask.
+ *
+ * Extracted at finding `spine-1`: `createBout` used to dry-run its plan with
+ * `validateSessionMeasure` ALONE while `insertSession` enforced all three, so
+ * the two it skipped fired only after earlier rows in the plan had already been
+ * written — making a half-written bout reachable under a comment promising it
+ * was impossible. Splitting the checks out is what keeps the two lists from
+ * drifting again; a new rule added here reaches the pre-flight for free.
+ */
+export const checkSession = (s: NewSession): ValidationResult => {
   const checks = [
     validateSessionAgainstHabit(
       {
@@ -115,8 +124,15 @@ export const insertSession = (
       ? [validateRangeSpan(s.start, s.end, s.habit.range_max_midnights ?? 0)]
       : []),
   ];
-  const failed = checks.find((c) => !c.ok);
-  if (failed && !failed.ok) return { ok: false, reason: failed.reason };
+  return checks.find((c) => !c.ok) ?? { ok: true };
+};
+
+/** Validate + insert one session row, returning its id (or the failure reason). */
+export const insertSession = (
+  s: NewSession,
+): { ok: true; id: SessionId } | { ok: false; reason: string } => {
+  const failed = checkSession(s);
+  if (!failed.ok) return { ok: false, reason: failed.reason };
 
   try {
     const res = evolu.insert("sessions", {
@@ -144,8 +160,17 @@ export const insertSession = (
  * rows from one block, and every row carries the SAME categorical answers —
  * `seedRich.seedWriting`'s existing convention, which every dashboard reads.
  *
- * All-or-nothing at the session layer: a measure that fails validation aborts
- * before anything is written, so a half-written bout is impossible.
+ * All-or-nothing at the SESSION layer: every row is checked through
+ * `checkSession` — the same function the write uses — before any row is
+ * written, so no validation failure can leave a partial set of session rows.
+ *
+ * ⚠ THE CATEGORICAL TAIL IS NOT COVERED BY THAT, and the limit is stated rather
+ * than implied (finding `spine-1`): the `subunit_values` inserts below run after
+ * every session row is committed, so a failure there returns `{ok:false}` with
+ * the sessions already in the store. It is not reachable from the UI — values
+ * come from picklists, well inside the 1000-char column — and making it atomic
+ * would mean a rollback path the store has no primitive for. Recorded as a
+ * known edge, not a claim of atomicity.
  */
 export const createBout = (args: {
   habit: SpineHabit;
@@ -192,14 +217,11 @@ export const createBout = (args: {
     });
   if (plan.length === 0) return { ok: false, reason: "Nothing to log yet." };
 
-  // Validate every row BEFORE writing any of them.
+  // Validate every row BEFORE writing any of them — through `checkSession`, the
+  // SAME function the write uses, so the pre-flight cannot be narrower than the
+  // thing it is flying ahead of (finding `spine-1`).
   for (const p of plan) {
-    const dry = validateSessionMeasure({
-      measure_kind: p.measure,
-      value: p.value,
-      start: p.start,
-      end: p.end,
-    });
+    const dry = checkSession(p);
     if (!dry.ok) return { ok: false, reason: dry.reason };
   }
 

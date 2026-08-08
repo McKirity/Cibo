@@ -9,6 +9,7 @@ import {
   habitKeyFrom,
   toDerivedRules,
   toFlagDefinitions,
+  toMeasureColumns,
   type DerivedDraft,
   type HabitDraft,
 } from "./habitDraft";
@@ -201,5 +202,79 @@ describe("key derivation", () => {
 
   it("slugs a habit name", () => {
     expect(habitKeyFrom("Video Games")).toBe("video-games");
+  });
+});
+
+/**
+ * The measure bridge — the regression pin for bug `creator-4` (Phase 2 step 2,
+ * found by the static sweep 2026-08-08).
+ *
+ * The bug: the creator hides its measures step for `kind: "range"`, but `set()`
+ * is a plain field merge with no cross-field reset — so ticking Time under
+ * kind=simple and *then* switching to Range saved `measures_time: 1` onto a
+ * range habit. The user could not see or untick it (the step is gone), and
+ * neither validation gate looked: `validateHabitShape` returns ok immediately
+ * for range, and `draftProblems` raises `measureMissing` for projects only.
+ * Downstream the daily form drew a Time box beside the range picker.
+ *
+ * The fix routes the columns through `toMeasureColumns`, which is structurally
+ * incapable of declaring a measure on a range habit — the same shape the flag
+ * split took, and for the same reason: the guard belongs in the bridge, not in
+ * a commit block where three sibling guards sit a line apart and the fourth was
+ * missed.
+ */
+describe("toMeasureColumns — a range habit declares no other measure", () => {
+  const draft = (o: Partial<HabitDraft> = {}): HabitDraft => ({
+    ...emptyDraft("habit-1"),
+    name: "Sleep",
+    kind: "simple",
+    ...o,
+  });
+
+  it("passes a simple habit's measures through untouched", () => {
+    expect(toMeasureColumns(draft({ measuresTime: true }))).toEqual({
+      measuresTime: true,
+      measuresCount: false,
+      countUnit: null,
+    });
+  });
+
+  it("carries a count's trimmed unit label", () => {
+    expect(
+      toMeasureColumns(draft({ measuresCount: true, countUnit: "  words  " })),
+    ).toEqual({ measuresTime: false, measuresCount: true, countUnit: "words" });
+  });
+
+  it("drops a unit label with no count measure behind it", () => {
+    expect(toMeasureColumns(draft({ countUnit: "words" })).countUnit).toBe(null);
+  });
+
+  it("drops a blank unit label rather than storing whitespace", () => {
+    expect(
+      toMeasureColumns(draft({ measuresCount: true, countUnit: "   " })).countUnit,
+    ).toBe(null);
+  });
+
+  // THE BUG ITSELF: ticks collected under another kind must not survive the
+  // switch to range, because the step that would let you clear them is gone.
+  it("refuses every measure on a range habit, however the draft got there", () => {
+    expect(
+      toMeasureColumns(
+        draft({
+          kind: "range",
+          measuresTime: true,
+          measuresCount: true,
+          countUnit: "words",
+        }),
+      ),
+    ).toEqual({ measuresTime: false, measuresCount: false, countUnit: null });
+  });
+
+  it("matches the seeded Sleep, which declares neither measure", () => {
+    expect(toMeasureColumns(draft({ kind: "range" }))).toEqual({
+      measuresTime: false,
+      measuresCount: false,
+      countUnit: null,
+    });
   });
 });

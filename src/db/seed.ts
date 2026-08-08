@@ -323,6 +323,29 @@ export interface SeedResult {
 }
 
 /**
+ * The stored `seed_version` as a number — **absent OR unreadable reads as 0**
+ * (finding `seed-1`, 2026-08-08).
+ *
+ * This was a bare `Number(value)`, and `Number()` yields **NaN** for anything
+ * that does not parse. Every comparison against NaN is false, so a garbled row
+ * used to slip past the `>= SEED_VERSION` early return, then past every
+ * `foundVersion < N` guard — **running no batch at all** — and fall through to
+ * the recording step, stamping the store as fully migrated while it carried
+ * none of them. That is exactly the batch-3 / batch-7 failure class (a version
+ * recorded for batches that did not land), arriving through the one door this
+ * file did not watch: not a lost write, but a value that will not parse. Such a
+ * row reaches the store by sync or corruption rather than through the UI.
+ *
+ * Failing toward RE-RUNNING is the safe direction: every batch is written to be
+ * idempotent and verifies itself before the gate records a version, so a
+ * needless re-run costs a little work and a wrong skip is unrecoverable.
+ */
+export function parseSeedVersion(value: unknown): number {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+/**
  * Runs at every launch. Reads the applied seed version from app_meta, applies
  * only newer batches, records the new version. Safe to call repeatedly.
  */
@@ -336,7 +359,7 @@ export async function runSeed(evolu: CiboEvolu): Promise<SeedResult> {
   );
   const metaRows = await evolu.loadQuery(metaQuery);
   const liveMeta = metaRows[0];
-  const foundVersion = liveMeta ? Number(liveMeta.value) : 0;
+  const foundVersion = parseSeedVersion(liveMeta?.value);
 
   if (foundVersion >= SEED_VERSION) return { foundVersion, applied: false };
 

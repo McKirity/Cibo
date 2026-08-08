@@ -534,14 +534,17 @@
      `vector-effect:non-scaling-stroke` makes --icon-stroke mean 1.5px RENDERED
      rather than 1.5 viewBox units scaled down to a hairline.
 
-     The 64px is the FINAL's own literal, already flagged as a live dial
-     candidate now that a second surface exists; it is bound to `--seal` here so
-     the glyph derives from it instead of repeating it. */
-    .milestone .emblem { --seal:64px; width:var(--seal); height:var(--seal); flex:0 0 auto;
+     The 64px was the FINAL's own literal, flagged as a live dial candidate the
+     day a second surface appeared; PROMOTED TO THE ROSTER 2026-08-07 as
+     --milestone-seal (252 → 253). It was the one real derivation-law breach in
+     this family — a raw px in a component sheet — where the exhibit's other
+     three promotion candidates (--mo-ring · --gbchart-h · --lochart-h) are
+     calc()s of dials that already exist and stay legal where they live. */
+    .milestone .emblem { width:var(--milestone-seal); height:var(--milestone-seal); flex:0 0 auto;
                          border-radius:var(--radius-full);
                          background:var(--whimsy-ink); border:var(--border-hairline) solid var(--whimsy-star);
                          display:flex; align-items:center; justify-content:center; color:var(--whimsy-star); }
-  .milestone .emblem .ico { width:calc(var(--seal) * .6); height:calc(var(--seal) * .6);
+  .milestone .emblem .ico { width:calc(var(--milestone-seal) * .6); height:calc(var(--milestone-seal) * .6);
                               vector-effect:non-scaling-stroke; }
   .milestone .mh { font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); line-height:var(--line-tight); }
   /* empty form state — the .emptybox BASE is the claimed kit-state-empty block
@@ -1123,31 +1126,135 @@
             background:linear-gradient(165deg,
               color-mix(in oklch, var(--slot), var(--text-strong) 12%),
               color-mix(in oklch, var(--slot), var(--text-strong) 48%)); }
-  .banner > img.art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; }
-  /* THE INFO BAND (2026-08-06, user-ruled: the text "can be very hard to read
-     depending on the theme and the banner background, and will need a
-     background to improve readability"). This is the answer the COVER tile
-     took on 2026-08-02, for the same reason: a scrim over UNKNOWN art cannot
-     promise contrast under every theme, but an opaque band can — it is a
-     filled surface, so the ordinary text dials apply and legibility stops
-     depending on the picture. The art keeps the whole card (it is
-     absolute/inset-0, so the band overlays its bottom rather than shrinking
-     it) and the band carries the eyebrow, the COVER THUMB and the numbers.
-     The full-card ::after scrim went with the move: nothing sits on the art
-     any more, so it was only dimming a picture the tile exists to show. */
-  .banner:has(> img.art) { padding:0; justify-content:flex-end; }
-  .bvinfo { position:relative; z-index:2; flex:0 0 auto; display:flex; align-items:center;
-            gap:var(--space-5); padding:var(--space-4) var(--space-5);
-            background:var(--panel-background); color:var(--text-strong); }
-  .bvinfo .bcov { width:var(--cover-w); height:var(--cover-h); flex:0 0 auto; display:block;
-                  object-fit:cover; border-radius:var(--radius-small); box-shadow:var(--shadow-low); }
-  .bvinfo .bvtext { min-width:0; display:flex; flex-direction:column; gap:var(--space-2); }
-  /* On the band the text is on a PANEL, not on art — so it takes the panel's
-     own ink dials, not --text-on-filled and not the on-art eyebrow mix. */
-  .bvinfo .kind { color:var(--text-muted); }
-  .bvinfo .ttl { font-size:var(--size-subheading); color:var(--text-strong); }
-  .bvinfo .stage { background:var(--slot); color:var(--text-on-filled); }
-  .bvinfo .nums { color:var(--text-strong); }
+  /* ---- THE ART FACE — RE-CUT 2026-08-07, user-ruled: *"A banner is usually a
+     wallpaper style image (wider than tall), while a cover is your standard
+     cover (taller than wider). I want the banner to be FULLY SHOWN in the
+     keepsake tile, and like the cover tiles for the consumption habits, the box
+     FLEXES to accommodate it. In this case, it should set a MAX WIDTH and the
+     height will be whatever it is at that width."*
+     This is the COVER tile's anatomy verbatim — an in-flow art card at the
+     picture's own aspect — because it is the same problem. The only difference
+     is which axis is bound: a cover is portrait and flexes under a HEIGHT
+     ceiling (--art-h); a banner is wallpaper-shaped and flexes under a WIDTH one.
+     RETIRED HERE: `.banner > img.art` (absolute · inset:0 · object-fit:cover)
+     and the `:has(> img.art)` reset that went with it. That composition made
+     the picture fit a drawn box; this tile exists to show the picture. ---- */
+  .banner:has(> .bnart) { padding:0; justify-content:flex-start; }
+  /* A CEILING, never a size. The tile stretches its drawn columns and stops at
+     4u wide; the height is then whatever the ratio makes at that width. The
+     second term binds ONLY on portrait art — a cover promoted for want of a
+     banner — where a width cap alone builds a tower.
+     THE TWO CEILINGS ARE DERIVED FROM --wall-unit, NOT MINTED (2026-08-07): the
+     exhibit proposed --banner-max-w/-max-h as roster dials at 512/384px, which
+     is exactly 4u and 3u. One use-site, and a literal pair would silently stop
+     tracking a theme that moved the unit — so they are written as the
+     derivation they are. `align-self:start` + `height:auto` are the pair the
+     cover already carries inline, written into the sheet: the packer still
+     reserves the measured rows. Nothing may crop this art either. */
+  .banner[data-art] { width:auto; height:auto; align-self:start;
+                      max-width:min(calc(var(--wall-unit) * 4),
+                                    calc(var(--wall-unit) * 3 / var(--art-ratio))); }
+  .bnart { position:relative; flex:1 1 auto; min-height:0; width:100%; }
+  /* THE FLOOR THAT SEATS THE WORDS AND THE HERO COVER. Both are sized by their
+     own content, so on a very short picture — a 21:9 banner at a narrow drawn
+     span — they stood taller than the art and spilled off it. Clamping THEM is
+     not the fix: a clamp stops the box while the text keeps going. So the ART
+     CARD carries a floor — the cover's own height plus its room — and the
+     picture stays whole inside it: object-fit is `contain`, so when the floor
+     binds the art letterboxes onto the tile's slot gradient rather than being
+     cropped. That trade is already settled law next door on the cover tile:
+     *a whole picture with a sliver of slot showing beats a cropped one.* At
+     every ordinary size the box IS the art's aspect, so `contain` and `cover`
+     draw the same pixels and the floor is invisible. */
+  .banner[data-art] .bnart { flex:0 0 auto; aspect-ratio:1 / var(--art-ratio);
+                             min-height:calc(var(--cover-h) + var(--space-8) * 2); }
+  .bnart .art { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  /* THE VEIL — the readability method, replacing every panel the words used to
+     sit on (user-ruled 2026-08-07: the opaque panel *"blocks out the artwork"*).
+     It shades the picture's bottom edge rather than covering it, and the art
+     reads through it the whole way.
+     ITS TWO COLOURS ARE THE THEME'S EXISTING POLES, NOT A NEW PAIR (2026-08-07):
+     the exhibit proposed --banner-veil/--banner-ink as roster dials, valued at
+     #f7f7fa/#14141a here and swapped on Void. Those are --window-background and
+     --text-strong to within a shade nobody can see — and --text-strong ALREADY
+     inverts per theme, so reading the existing pair makes the swap STRUCTURAL
+     rather than something each future theme author must remember to do in the
+     right direction. It also satisfies the mint's own clause — *"neither may be
+     re-derived alone"* — by construction, since text-strong is by definition the
+     ink for the theme's ground.
+     Mixed in oklab: ground→transparent is a saturated/neutral pair and the oklch
+     hue arc invents hues between them (the 2026-07-26 derivation-law clause).
+     ITS STOPS ARE IN PIXELS, NOT PERCENT. Percent stops are a fraction of a box
+     whose height is the ART'S RATIO — so on a short banner the words rose clean
+     out of the veil and stood on bare picture. The words are a fixed pixel
+     stack; the shade under them must be measured the same way.
+     AND IT IS DELIBERATELY NOT ENOUGH ON ITS OWN. Making a veil opaque enough to
+     carry ink over blown-white art is just the panel again, spray-painted. The
+     veil grounds the corner; the GLYPH STROKE below is what guarantees it. */
+  .bnart::after { content:""; position:absolute; inset:0; z-index:1; pointer-events:none;
+                  background:linear-gradient(to top,
+                    color-mix(in oklab, var(--window-background), transparent 22%) 0,
+                    color-mix(in oklab, var(--window-background), transparent 46%) calc(var(--space-8) * 2),
+                    color-mix(in oklab, var(--window-background), transparent 74%) calc(var(--space-8) * 4),
+                    color-mix(in oklab, var(--window-background), transparent 100%) calc(var(--space-8) * 6)); }
+  /* THE WORDS, ON THE PICTURE (2026-08-07). Three tries got here: a band under
+     the art (*"creating an empty space below"*), a full-width opaque plate on it
+     (*"it covers a lot of the banner"*), then plate fragments (*"a lot of opaque
+     panels"*). Each was an honest reading of the same argument the 2026-08-06
+     band was built on — a scrim over unknown art cannot promise contrast under
+     every theme, an opaque surface can. What all three missed is that the
+     surface does not have to be a BOX: it can be the outline of the letters.
+     NO SURFACE SURVIVES. Nothing is drawn behind the text, so the picture is
+     whole edge to edge and only shaded where it has to be.
+     LEGIBILITY IS CARRIED BY THE GLYPHS THEMSELVES. Every word is drawn twice:
+     the ground colour as a STROKE under the fill (`paint-order: stroke fill`, so
+     the outline sits behind the letter and only its outer half shows), then the
+     ink on top. Because the two are the theme's opposite poles, that edge holds
+     WHATEVER THE PICTURE DOES — a bright banner is no harder than a dark one,
+     because the contrast never comes from the picture. It occludes a few pixels
+     around each letter instead of a slab; the art shows BETWEEN the letters.
+     THE COVER IS THE HERO: it stands the full inset height at the library's own
+     portrait ratio, so it scales with the banner instead of sitting on it as a
+     60×84 stamp. It is the one OPAQUE thing left on the art — and it is a
+     picture, not a panel, so it hides nothing the tile is trying to show.
+     Everything below is scoped through `.banner` (0,3,0): the on-art
+     `.banner .kind / .ttl / .stage` rules are LATER in this sheet and would
+     otherwise win the tie. */
+  .bvinfo { position:absolute; z-index:2; inset:var(--space-5); display:flex;
+            align-items:flex-end; gap:var(--space-5); color:var(--text-strong); }
+  .banner .bvinfo .bcov { height:100%; width:auto; aspect-ratio:var(--lib-cover-ratio);
+                          flex:0 0 auto; display:block; object-fit:cover;
+                          border-radius:var(--radius-small);
+                          border:var(--border-hairline) solid var(--border);
+                          box-shadow:var(--shadow-high); }
+  .banner .bvinfo .bvtext { min-width:0; display:flex; flex-direction:column;
+                            align-items:flex-start; gap:var(--space-2);
+                            padding-bottom:var(--space-2); }
+  .banner .bvinfo .foot { max-width:100%; gap:var(--space-3); }
+  /* THE STROKE. -webkit-text-stroke paints under the fill once `paint-order` is
+     set, so a stroke reads as HALF its width as an outline and the counters stay
+     open. The soft shadow is a second, wider ground, for the same reason a
+     poster carries one.
+     The exhibit tuned two weights — 2.5px on the title and numbers, 2px on the
+     smaller eyebrow ("thicker reads as sticker type, thinner loses the
+     counters"). Written as --border-heavy (2px) and a 1.25× derivation of it
+     rather than as raw px, the way --milestone-seal's glyph derives at .6. */
+  .banner .bvinfo :is(.kind, .ttl, .nums) {
+    -webkit-text-stroke:calc(var(--border-heavy) * 1.25) var(--window-background);
+    paint-order:stroke fill;
+    text-shadow:0 1px 7px color-mix(in oklab, var(--window-background), transparent 15%); }
+  .banner .bvinfo .kind { align-self:flex-start; -webkit-text-stroke-width:var(--border-heavy);
+                          color:color-mix(in oklab, var(--text-strong),
+                          var(--window-background) var(--fade)); }
+  /* TWO LINES, like the cover band's title. The text stack is bottom-anchored
+     inside the picture, so a third line does not lengthen the title — it pushes
+     the stack off the top of the art, and the tile clips. The clamp is the guard. */
+  .banner .bvinfo .ttl { font-size:var(--size-subheading); color:var(--text-strong);
+                         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+                         overflow:hidden; }
+  /* the one filled thing in the text: a slot chip, which is IDENTITY, not a ground */
+  .banner .bvinfo .stage { background:var(--slot); color:var(--text-on-filled); text-shadow:none; }
+  .banner .bvinfo .nums { color:var(--text-strong); }
   .banner .kind { position:relative; z-index:2; font-family:var(--font-mono); font-size:var(--size-caption);
                   text-transform:uppercase; letter-spacing:.18em;
                   color: color-mix(in oklch, var(--slot), var(--text-on-filled) var(--cover-scrim)); }

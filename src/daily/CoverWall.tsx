@@ -50,6 +50,7 @@ import {
   type WeatherWallTile,
   type WhimsyWhich,
 } from "./wallSpec";
+import { BANNER_COLS } from "./wallSpec";
 import { packWall, DEFAULT_BUDGET_HALF_ROWS, type Span } from "./wallPack";
 import { KeepsakeTile } from "./KeepsakeTile";
 import { TarotArt } from "./tarotArt";
@@ -225,7 +226,15 @@ export function CoverWall({
   // below needs the REAL column width: a wall column is 1fr of the stretched
   // 15-track grid (~131px), not one --wall-unit (128), and a 2% error in the
   // width compounds straight into a wrongly-quantised height.
-  const [grid, setGrid] = useState<{ colW: number; gap: number; step: number } | null>(null);
+  const [grid, setGrid] = useState<{
+    colW: number;
+    gap: number;
+    step: number;
+    /** The masonry unit — the banner's two ceilings derive from it (4u × 3u). */
+    unit: number;
+    /** The banner art card's floor, mirroring the sheet's own min-height. */
+    bannerFloor: number;
+  } | null>(null);
   useLayoutEffect(() => {
     const el = wrapRef.current;
     if (el == null) return;
@@ -235,6 +244,9 @@ export function CoverWall({
       const gap = parseFloat(cs.getPropertyValue("--wall-gap")) || 12;
       const pad = (parseFloat(cs.getPropertyValue("--space-6")) || 16) * 2;
       const padX = (parseFloat(cs.getPropertyValue("--space-7")) || 24) * 2;
+      const coverH = parseFloat(cs.getPropertyValue("--cover-h")) || 84;
+      const space8 = parseFloat(cs.getPropertyValue("--space-8")) || 32;
+      const bannerFloor = coverH + space8 * 2;
       const step = (unit - gap) / 2 + gap;
       // n half-rows occupy n·step − gap, so n = (h + gap) / step.
       const n = Math.floor((el.clientHeight - pad + gap) / step);
@@ -246,7 +258,7 @@ export function CoverWall({
       setGrid((prev) =>
         prev != null && prev.gap === gap && prev.step === step && Math.abs(prev.colW - colW) < 0.5
           ? prev
-          : { colW, gap, step },
+          : { colW, gap, step, unit, bannerFloor },
       );
     };
     compute();
@@ -318,6 +330,34 @@ export function CoverWall({
     const capHalfRows = (budget ?? DEFAULT_BUDGET_HALF_ROWS) * COVER_CAP_SHARE;
     const capPx = Math.max(2, capHalfRows) * grid.step - grid.gap;
     const widthOf = (c: number) => c * grid.colW + (c - 1) * grid.gap;
+    // ── the BANNER pass (2026-08-07) ───────────────────────────────────────
+    // Same machinery, opposite axis. A cover is portrait and spends WIDTH to
+    // stay under a height ceiling; a banner is wallpaper-shaped, so its ceiling
+    // is the WIDTH (4u) and the height is whatever the ratio makes there. The
+    // 3u term binds only on portrait art — a cover promoted for want of a
+    // banner — where a width cap alone builds a tower. Both mirror the sheet's
+    // own `max-width: min(4u, 3u / ratio)`; this side only has to RESERVE the
+    // rows the sheet will draw, never to size the tile.
+    for (const t of tiles) {
+      if (t.body.kind !== "banner") continue;
+      const ratio = aspects.get(t.id);
+      if (ratio == null) continue; // no art → the drawn 6×2 span stands
+      const drawn = widthOf(BANNER_COLS);
+      const w = Math.min(drawn, grid.unit * 4, (grid.unit * 3) / ratio);
+      // The art card's floor (the sheet's min-height): on very short art the
+      // box holds at the floor and the picture letterboxes inside it, so the
+      // reservation has to follow the floor, not the ratio.
+      const h = Math.max(w * ratio, grid.bannerFloor);
+      // Reserve only the columns the tile actually draws into — a promoted
+      // portrait cover can come out barely two columns wide, and reserving six
+      // would punch a hole in the wall beside it.
+      const cols = Math.max(
+        2,
+        Math.min(BANNER_COLS, Math.ceil((w + grid.gap) / (grid.colW + grid.gap))),
+      );
+      const halfRows = Math.max(2, Math.ceil((h + grid.gap) / grid.step));
+      boxes.set(t.id, { span: { cols, halfRows }, ratio, capPx: null });
+    }
     for (const t of tiles) {
       if (t.body.kind !== "cover") continue;
       const ratio = aspects.get(t.id);
@@ -490,6 +530,7 @@ interface CoverBox {
  *  line, the title line and the chip row, plus the band's padding. */
 const BAND_ESTIMATE = 78;
 
+
 /**
  * A measured cover's ART BOX draws at its art's EXACT aspect: `aspect-ratio`
  * supplies whichever dimension the grid does not. Uncapped, the columns give
@@ -605,7 +646,7 @@ function TileBody({
     case "cover":
       return <Cover t={b} tileId={tile.id} onArt={onArt} onBand={onBand} />;
     case "banner":
-      return <Banner t={b} />;
+      return <Banner t={b} tileId={tile.id} onArt={onArt} />;
     case "keepsake":
       return <Keepsake t={b} />;
     case "whimsy":
@@ -735,7 +776,15 @@ function Cover({
  * gradient field; a 404 removes itself and the field shows, per the
  * fail-to-fallback law.
  */
-function Banner({ t }: { t: BannerTile }) {
+function Banner({
+  t,
+  tileId,
+  onArt,
+}: {
+  t: BannerTile;
+  tileId: string;
+  onArt?: (id: string, w: number, h: number) => void;
+}) {
   // useCoverUrl, never the raw stored ref — the same fix the COVER half of this
   // component took on 2026-07-31. A stored ref is a root-relative path the
   // webview resolves against the dev server and 404s; the bytes come back
@@ -770,9 +819,27 @@ function Banner({ t }: { t: BannerTile }) {
   // slot field, exactly as the cover tile's does. Only art defeats text.
   if (src == null) return info;
 
+  // THE ART CARD (2026-08-07). `.bnart` is an in-flow box at the picture's own
+  // aspect, exactly like the cover tile's `.cvart` — the banner is SHOWN WHOLE
+  // and the tile flexes to it rather than the picture being cropped into a
+  // drawn 6×2. The art reports its natural size the moment it loads, which is
+  // what lets the banner pass above reserve the right number of rows; nothing
+  // is fetched twice. The words then ride ON the picture in `.bvinfo` —
+  // outlined ink over the veil, no panel anywhere.
   return (
     <>
-      <img className="art" src={src} alt="" onError={(e) => e.currentTarget.remove()} />
+      <div className="bnart">
+        <img
+          className="art"
+          src={src}
+          alt=""
+          draggable={false}
+          onLoad={(e) =>
+            onArt?.(tileId, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)
+          }
+          onError={(e) => e.currentTarget.remove()}
+        />
+      </div>
       <div className="bvinfo">
         {covSrc != null && <img className="bcov" src={covSrc} alt="" draggable={false} />}
         <div className="bvtext">{info}</div>

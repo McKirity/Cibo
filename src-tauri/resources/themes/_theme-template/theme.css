@@ -248,6 +248,17 @@
   --bar-row-h:       20px;
   --tile-height:     128px;   /* kit-tile-stat — a FLOOR (min-height); subtitles wrap */
 
+  /* -- Milestone emblem (1) — PROMOTED 2026-08-07 (roster 252 → 253) --------
+     Was a raw `64px` on `.milestone .emblem` in daily.css — the one real
+     derivation-law breach in the cover wall's keepsake family, a raw value
+     living outside a theme sheet, and flagged there as a dial candidate the
+     day a second surface appeared. The glyph inside the disc derives at .6,
+     so the disc is the only number a theme ever sets.
+     (Three sibling promotions were proposed the same day and DECLINED —
+     --mo-ring · --gbchart-h · --lochart-h are calc()s of dials that already
+     exist, so they are legal use-site derivations, not raw values.) */
+  --milestone-seal: 64px;
+
   /* -- Cover-wall masonry dims (2) — theme-invariant ------------------ */
   --wall-unit:   128px;  /* the invisible masonry unit u */
   --wall-gap:     12px;  /* the mortar between wall tiles */

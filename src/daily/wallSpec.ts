@@ -173,12 +173,18 @@ export interface WallTile {
 // spans 2N half-rows and is therefore pixel-identical to its frozen geometry.
 // Only the milestone cards use the odd steps, and theirs are measured.
 
+/** The creation banner's DRAWN column span. Exported because the wall's banner
+ *  pass (CoverWall) starts from it and may reserve fewer columns once the art
+ *  reports its aspect — two copies of the number would drift the first time
+ *  this one moved. */
+export const BANNER_COLS = 6;
+
 const SPANS = {
   coverBig: { cols: 2, halfRows: 8 },   // 2×4
   cover: { cols: 2, halfRows: 6 },      // 2×3, the drawn default
   square: { cols: 2, halfRows: 4 },     // 2×2 — YouTube channels, simple keepsakes
   sleep: { cols: 4, halfRows: 4 },      // 4×2, the seed
-  banner: { cols: 6, halfRows: 4 },     // 6×2, the widest mass
+  banner: { cols: BANNER_COLS, halfRows: 4 },  // 6×2, the widest mass
   glance: { cols: 1, halfRows: 2 },     // 1×1
   sliver: { cols: 2, halfRows: 2 },     // 2×1
   strip: { cols: 3, halfRows: 2 },      // 3×1

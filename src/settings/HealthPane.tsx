@@ -499,6 +499,13 @@ function DataTab({ onOpenDay, onOpenEntry, onOpenHabits }: HealthNav) {
                   <span className="sact">
                     {!c.ran ? (
                       <span className="sword idle">Not checked</span>
+                    ) : c.error != null ? (
+                      // "Looked and failed" is its own face. Drawing `Clean`
+                      // over a scan that threw is what let a broken filesystem
+                      // check read as a healthy one (bug `doctor-1`).
+                      <span className="sword err" title={c.error}>
+                        Couldn’t check
+                      </span>
                     ) : lit ? (
                       <>
                         <span className={`sword ${tier}`}>{found.length} found</span>

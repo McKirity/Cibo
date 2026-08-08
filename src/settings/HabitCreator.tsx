@@ -49,6 +49,7 @@ import {
   mediumsAllowed,
   simpleFlavor,
   toDerivedRules,
+  toFlagDefinitions,
   type DerivedDraft,
   type HabitDraft,
   type HabitKind,
@@ -206,19 +207,25 @@ export function HabitCreator({
     ),
   );
 
-  // Pre-fill the mediums ONCE from the store (the editor's own rows), rather
-  // than on every query tick — the user is editing them.
+  // Pre-fill the mediums AND the stored flags ONCE from the store (the editor's
+  // own rows), rather than on every query tick — the user is editing them.
+  //
+  // The flag half is load-bearing since 2026-08-07 (bug `creator-1`): flags are
+  // `subunit_definitions` rows now, and the save below tombstones this habit's
+  // flag rows that the draft no longer carries. If they were not pre-filled,
+  // opening Sleep in the editor and pressing Save would DELETE its "Took
+  // Medication" flag and every night's answer would lose its question.
   const filled = useRef(false);
   useEffect(() => {
     if (edit == null || filled.current || existingDefs.length === 0) return;
-    filled.current = true;
-    const mine = existingDefs.filter(
-      (d) => String(d.habit_fk) === edit.id && String(d.data_type) !== "flag",
-    );
+    const mine = existingDefs.filter((d) => String(d.habit_fk) === edit.id);
     if (mine.length === 0) return;
+    filled.current = true;
+    const mediums = mine.filter((d) => String(d.data_type) !== "flag");
+    const flags = mine.filter((d) => String(d.data_type) === "flag");
     setDraft((d) => ({
       ...d,
-      mediums: mine.map((def) => ({
+      mediums: mediums.map((def) => ({
         id: String(def.id),
         key: String(def.key),
         name: String(def.label),
@@ -226,6 +233,17 @@ export function HabitCreator({
           .filter((o) => o.definition_fk === def.id)
           .map((o) => String(o.value)),
       })),
+      // Computed checks first, stored flags after — the order the range
+      // dashboard draws its panels in.
+      derived: [
+        ...d.derived,
+        ...flags.map((def) => ({
+          type: "flag" as const,
+          name: String(def.label),
+          id: String(def.id),
+          key: String(def.key),
+        })),
+      ],
     }));
   }, [edit, existingDefs, existingVocab]);
 
@@ -378,10 +396,48 @@ export function HabitCreator({
           }
         }
       }
+      // Bundled flags → session-scope `flag` definitions, the same shape Sleep's
+      // seeded "Took Medication" has (bug `creator-1`, fixed 2026-08-07). They
+      // were previously written as `derived_rules` entries with template "flag",
+      // which NOTHING read: a flag cannot be derived from the two timestamps, so
+      // every evaluator skipped it and the flag was both unloggable and
+      // invisible. As a stored definition it needs no new read code at all —
+      // the log form's strip builder and the range dashboard's flag panels both
+      // already handle any session-scope flag a habit declares.
+      for (const f of toFlagDefinitions(draft.derived)) {
+        if (f.id != null) {
+          const ur = evolu.update("subunit_definitions", {
+            id: f.id as never,
+            label: s100(f.label),
+          });
+          if (!ur.ok) console.error("creator: flag update rejected", ur.error);
+          keptDefIds.add(f.id);
+          continue;
+        }
+        const dr = evolu.insert("subunit_definitions", {
+          habit_fk: habitId as never,
+          key: s100(definitionKey(habitKey, f.label)),
+          label: s100(f.label),
+          // Session scope: a flag is answered per bout, not once per entry.
+          scope: "session",
+          data_type: "flag",
+        });
+        if (!dr.ok) {
+          console.error("creator: flag insert rejected", dr.error);
+          showErrorToast(`"${f.label}" could not be saved.`);
+          continue;
+        }
+        keptDefIds.add(String(dr.value.id));
+      }
+
       if (edit != null) {
         for (const def of existingDefs) {
           if (String(def.habit_fk) !== habitId) continue;
-          if (String(def.data_type) === "flag") continue;
+          // Flag rows are only sweepable when the builder that expresses them
+          // was on screen — it renders for range habits alone. Without this
+          // guard, editing a non-range habit that carries a flag would tombstone
+          // it silently, the draft having had no way to hold it.
+          if (String(def.data_type) === "flag" && !isRange) continue;
           if (keptDefIds.has(String(def.id))) continue;
           const dr = evolu.update("subunit_definitions", { id: def.id, isDeleted: 1 });
           if (!dr.ok) console.error("creator: definition tombstone rejected", dr.error);
@@ -992,7 +1048,7 @@ const DTYPE: Record<DerivedDraft["type"], string> = {
 function defaultRule(t: DerivedDraft["type"]): DerivedDraft {
   if (t === "time") return { type: "time", name: "", endpoint: "end", dir: "before", time: "22:00" };
   if (t === "duration") return { type: "duration", name: "", cmp: "atleast", hours: "8" };
-  return { type: "flag", name: "", measure: "measureless", unit: "" };
+  return { type: "flag", name: "" };
 }
 
 function DerivedBuilder({
@@ -1010,7 +1066,7 @@ function DerivedBuilder({
     <div className="fld">
       <div className="lbl">
         <span className="l">Checks &amp; flags</span>
-        <span className="opt">computed from the times — optional</span>
+        <span className="opt">computed from the times, or ticked as you log — optional</span>
       </div>
       <div className="derlist">
         {rules.map((d, i) => (
@@ -1085,7 +1141,7 @@ function DerivedBuilder({
             )}
             {d.type === "flag" && (
               <div className="derrule">
-                <span className="rword">a plain logged flag</span>
+                <span className="rword">a yes/no you tick each time you log</span>
               </div>
             )}
           </div>

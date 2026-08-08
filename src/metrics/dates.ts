@@ -135,8 +135,14 @@ export interface MonthGridCell {
 export function monthGridCells(year: number, month0: number): MonthGridCell[] {
   const first = `${year}-${pad2(month0 + 1)}-01`;
   const firstIdx = dayIndex(first);
-  // epoch day 0 = Thursday, so getUTCDay(firstIdx) = (firstIdx + 4) % 7.
-  const lead = (firstIdx + 4 - WEEK_START_DOW + 7) % 7;
+  // The weekday comes from `getUTCDay`, the same form `weekStart` uses — NOT
+  // from the "epoch day 0 is a Thursday" shortcut `(firstIdx + 4) % 7`. That
+  // identity holds only for non-negative day indices: JavaScript's `%` takes
+  // the sign of the dividend, so a pre-1970 month produced a NEGATIVE lead,
+  // emitted no pad cells, and drew the 1st in the first column whatever weekday
+  // it really was (bug `calendar-1`, 2026-08-07).
+  const dow = new Date(firstIdx * 86_400_000).getUTCDay();
+  const lead = (dow - WEEK_START_DOW + 7) % 7;
   const total = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
   const cells: MonthGridCell[] = [];
   for (let i = lead; i > 0; i--) cells.push({ day: dayFromIndex(firstIdx - i), out: true });

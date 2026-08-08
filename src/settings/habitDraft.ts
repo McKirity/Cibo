@@ -22,11 +22,26 @@ export interface MediumDraft {
   key?: string;
 }
 
-/** The three ruled rule templates, in the shape the drawn builder collects. */
+/**
+ * The three ruled subunit templates, in the shape the drawn builder collects
+ * ([[Habit Creator]] § Derived subunits).
+ *
+ * The builder collects three, but they do NOT all land in the same place, and
+ * that split is the whole point (bug `creator-1`, Phase 2 step 2): `time` and
+ * `duration` are **computed** from the session's own two timestamps, so they
+ * are rules-as-data on `habits.derived_rules`. A `flag` is **not computable
+ * from anything** — it is a plain answer the user ticks — so it is a stored
+ * session subunit exactly like Sleep's seeded "Took Medication", i.e. a
+ * `subunit_definitions` row with `data_type: "flag"`.
+ *
+ * Storing a flag as a derived rule was the defect: nothing can derive it, so
+ * every evaluator ignored it and the flag was unloggable and invisible.
+ */
 export type DerivedDraft =
   | { type: "time"; name: string; endpoint: "start" | "end"; dir: "before" | "after"; time: string }
   | { type: "duration"; name: string; cmp: "atleast" | "atmost"; hours: string }
-  | { type: "flag"; name: string; measure: "measureless" | "time" | "count"; unit: string };
+  /** Existing definition row, when editing — absent means "mint on save". */
+  | { type: "flag"; name: string; id?: string; key?: string };
 
 export interface HabitDraft {
   name: string;
@@ -170,11 +185,8 @@ export const canCommit = (p: DraftProblems): boolean =>
 // ── the derived-rule bridge ──────────────────────────────────────────────────
 
 /**
- * Draft rules → the stored `derived_rules` shape. The drawn builder collects
- * `flag` rules alongside the two computed checks, but the STORED rule union
- * only carries the two computed templates plus `flag`; a bundled flag whose
- * measure is time/count is a MEASURE the habit declares, not a rule, so only
- * its label survives here (the measure rides the habit's own columns).
+ * Draft rules → the stored `derived_rules` shape — the COMPUTED two only.
+ * Flag drafts leave through `toFlagDefinitions` instead; see `DerivedDraft`.
  */
 export function toDerivedRules(drafts: readonly DerivedDraft[]): DerivedRule[] {
   const out: DerivedRule[] = [];
@@ -182,47 +194,90 @@ export function toDerivedRules(drafts: readonly DerivedDraft[]): DerivedRule[] {
     const label = d.name.trim();
     if (label === "") continue;
     if (d.type === "time") {
+      const at = d.time.trim();
+      // An empty endpoint time would store a rule whose `time` violates its own
+      // NonEmptyString100 brand, and a check with no time to check against is
+      // not a check. Same shape as the hours guard below.
+      if (at === "") continue;
       out.push({
         template: "timeOfDay",
         label,
         endpoint: d.endpoint,
         op: d.dir,
-        time: d.time.trim(),
+        time: at,
       } as DerivedRule);
     } else if (d.type === "duration") {
-      const hours = Number(d.hours);
-      if (!Number.isFinite(hours)) continue;
+      // `Number("")` is 0, NOT NaN — so an emptied hours field slipped past the
+      // finite check and stored a "span is at least 0 hours" rule, which every
+      // session on earth satisfies (bug `creator-2`, 2026-08-07). Blank and
+      // negative are both rejected explicitly; only a real number survives.
+      const raw = d.hours.trim();
+      if (raw === "") continue;
+      const hours = Number(raw);
+      if (!Number.isFinite(hours) || hours < 0) continue;
       out.push({
         template: "duration",
         label,
         op: d.cmp === "atleast" ? "gte" : "lte",
         minutes: Math.round(hours * 60),
       } as DerivedRule);
-    } else {
-      out.push({ template: "flag", label } as DerivedRule);
     }
   }
   return out;
 }
 
-/** The inverse, for the editor's pre-fill. */
+/** One flag the builder collected, ready to mint as a session subunit. */
+export interface FlagDefinitionDraft {
+  label: string;
+  /** The existing `subunit_definitions` row, when editing. */
+  id?: string;
+}
+
+/**
+ * Draft rules → the flags that become `subunit_definitions` rows. Named rather
+ * than filtered inline at the call site so this module stays the single owner
+ * of the draft-to-storage bridge, both halves of it.
+ *
+ * Labels are the panel HEADER and the stem of its subtitle on the range
+ * dashboard ("Took Medication" → "Nights I took medication", user-ruled
+ * 2026-08-07), which is why the trimmed label travels verbatim.
+ */
+export function toFlagDefinitions(drafts: readonly DerivedDraft[]): FlagDefinitionDraft[] {
+  const out: FlagDefinitionDraft[] = [];
+  for (const d of drafts) {
+    if (d.type !== "flag") continue;
+    const label = d.name.trim();
+    if (label === "") continue;
+    out.push({ label, id: d.id });
+  }
+  return out;
+}
+
+/**
+ * The inverse, for the editor's pre-fill — the computed two only. Flag drafts
+ * are rebuilt from the habit's flag DEFINITIONS instead (the creator's prefill
+ * effect), so a legacy `flag`-template rule — one written by the creator before
+ * 2026-08-07, which never did anything — is dropped here and cleared from
+ * `derived_rules` on the next save.
+ */
 export function fromDerivedRules(rules: readonly DerivedRule[]): DerivedDraft[] {
-  return rules.map((r): DerivedDraft => {
+  const out: DerivedDraft[] = [];
+  for (const r of rules) {
     if (r.template === "timeOfDay")
-      return {
+      out.push({
         type: "time",
         name: r.label,
         endpoint: (r.endpoint as "start" | "end") ?? "end",
         dir: (r.op as "before" | "after") ?? "before",
         time: r.time ?? "22:00",
-      };
-    if (r.template === "duration")
-      return {
+      });
+    else if (r.template === "duration")
+      out.push({
         type: "duration",
         name: r.label,
         cmp: r.op === "lte" ? "atmost" : "atleast",
         hours: String((r.minutes ?? 480) / 60),
-      };
-    return { type: "flag", name: r.label, measure: "measureless", unit: "" };
-  });
+      });
+  }
+  return out;
 }

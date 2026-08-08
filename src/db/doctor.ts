@@ -78,6 +78,13 @@ export interface CheckReport {
   findings: Finding[];
   /** How many of this check's findings were muted out of the list. */
   muted: number;
+  /**
+   * Set when the check RAN but could not complete — so the surface can say
+   * "couldn't check" instead of drawing the clean face over an empty result
+   * (bug `doctor-1`). Distinct from `ran: false`, which means the tier was not
+   * asked for at all: one is "didn't look", this is "looked and failed".
+   */
+  error?: string;
 }
 
 export interface DoctorReport {
@@ -173,7 +180,23 @@ interface Definition {
   dataType: string;
 }
 
-interface Snapshot {
+/**
+ * Exported, with the eight `db`-tier checks below, for their unit tests
+ * (Phase 2 step 2). Each check is a pure `(Snapshot) => Finding[]` and the
+ * snapshot is plain data, so a synthetic one exercises them with no app.
+ *
+ * WHY THAT MATTERS MORE HERE than it usually would: the doctor's ERROR tier has
+ * never fired in the app's life, and the standing note assumed the first real
+ * error finding would be what tested it. It won't be. Two of the three error
+ * checks guard against states **the write layer already refuses** —
+ * `impossible-range` cannot be created because `validateRangeSpan` rejects
+ * `end <= start` on both the create and the update path, and `orphan-session`
+ * cannot be created because deleting an entry cascades to its sessions. They
+ * exist for rows arriving by sync or corruption, which is right for a CRDT app
+ * and also means **normal use will never produce one**. A synthetic snapshot is
+ * the only way to exercise them short of hand-editing the store.
+ */
+export interface Snapshot {
   habits: Habit[];
   entries: Entry[];
   sessions: Session[];
@@ -296,7 +319,7 @@ const entryTarget = (snap: Snapshot, entry: Entry): FixTarget | null => {
 };
 
 /** 1 · A session pointing at an entry that is gone. */
-function orphanSessions(snap: Snapshot): Finding[] {
+export function orphanSessions(snap: Snapshot): Finding[] {
   const out: Finding[] = [];
   for (const s of snap.sessions) {
     if (s.entryId == null || snap.entryById.has(s.entryId)) continue;
@@ -318,7 +341,7 @@ function orphanSessions(snap: Snapshot): Finding[] {
  * STRING, not a foreign key (rename = an atomic bulk-update), which is exactly
  * why removing a value can strand rows — this is the check that ruling bought.
  */
-function unknownVocab(snap: Snapshot): Finding[] {
+export function unknownVocab(snap: Snapshot): Finding[] {
   const out: Finding[] = [];
   const statusList = snap.vocab.get("") ?? new Set<string>();
 
@@ -390,7 +413,7 @@ function unknownVocab(snap: Snapshot): Finding[] {
 }
 
 /** 3 · A range session that ends at or before it starts — an impossible bout. */
-function impossibleRange(snap: Snapshot): Finding[] {
+export function impossibleRange(snap: Snapshot): Finding[] {
   const out: Finding[] = [];
   for (const s of snap.sessions) {
     if (s.measure !== "range" || s.start == null || s.end == null) continue;
@@ -408,7 +431,7 @@ function impossibleRange(snap: Snapshot): Finding[] {
 }
 
 /** 4 · A range session longer than its habit's max-span rule allows. */
-function overMaxSpan(snap: Snapshot): Finding[] {
+export function overMaxSpan(snap: Snapshot): Finding[] {
   const out: Finding[] = [];
   for (const s of snap.sessions) {
     if (s.measure !== "range" || s.start == null || s.end == null) continue;
@@ -438,7 +461,7 @@ function overMaxSpan(snap: Snapshot): Finding[] {
  * will not open. Deleting it is therefore the only repair the app can offer,
  * and offering a door that bounces would be worse than saying so.
  */
-function futureDated(snap: Snapshot): Finding[] {
+export function futureDated(snap: Snapshot): Finding[] {
   const today = todayKey();
   const out: Finding[] = [];
   for (const s of snap.sessions) {
@@ -458,7 +481,7 @@ function futureDated(snap: Snapshot): Finding[] {
 
 /** 7 · An entry carrying no cover reference at all. Ruled in 2026-08-04 —
  *  a flag the user can ignore per row, because some things never have art. */
-function missingCover(snap: Snapshot): Finding[] {
+export function missingCover(snap: Snapshot): Finding[] {
   const out: Finding[] = [];
   for (const e of snap.entries) {
     if (e.cover != null) continue;
@@ -475,7 +498,7 @@ function missingCover(snap: Snapshot): Finding[] {
 }
 
 /** 9 · A habit pointing at an icon name the pinned lucide set doesn't carry. */
-function unknownIcon(snap: Snapshot): Finding[] {
+export function unknownIcon(snap: Snapshot): Finding[] {
   const out: Finding[] = [];
   for (const h of snap.habits) {
     if (h.icon == null || hasIcon(h.icon)) continue;
@@ -499,7 +522,7 @@ function unknownIcon(snap: Snapshot): Finding[] {
  * module's own stated "one load per pass" rule. `duplicateReportFrom` is the
  * same arithmetic with the rows passed in, so the wrap is still a wrap.
  */
-function entryDedupe(snap: Snapshot): Finding[] {
+export function entryDedupe(snap: Snapshot): Finding[] {
   const out: Finding[] = [];
   const entriesByHabit = new Map<string, typeof snap.entries>();
   for (const e of snap.entries) {
@@ -546,6 +569,13 @@ function entryDedupe(snap: Snapshot): Finding[] {
 interface CoverScan {
   broken: Finding[];
   orphans: Finding[];
+  /**
+   * Why the orphan sweep could not complete, when it could not. A check that
+   * cannot say "I could not look" is indistinguishable from one that looked and
+   * found nothing (bug `doctor-1`, 2026-08-08) — and this sweep's entire job is
+   * noticing things, so a silent zero is the worst answer it can give.
+   */
+  orphanScanError?: string;
 }
 
 async function scanCovers(snap: Snapshot): Promise<CoverScan> {
@@ -590,7 +620,21 @@ async function scanCovers(snap: Snapshot): Promise<CoverScan> {
         const rel = `images/${dir.name}`;
         const habit = snap.habits.find((h) => h.key === dir.name);
         for (const file of await fs.readDir(underRoot(root, rel))) {
-          if (!file.isFile) continue;
+          // Skip SUBDIRECTORIES, not "anything that isn't a plain file". This
+          // read `!file.isFile` until 2026-08-08, which silently discarded every
+          // entry the OS would not classify — and on a cloud-synced root that is
+          // a routine state, not an exotic one: Google Drive presents a
+          // not-yet-materialised file as a reparse point, so `isFile` is false
+          // while Explorer shows it plainly. A hand-dropped image was therefore
+          // invisible to this sweep until a rename forced Drive to materialise
+          // it (bug `doctor-1`).
+          //
+          // The inversion is the point: files the app WROTE always classify
+          // cleanly, and files it did not are exactly what this check exists to
+          // catch — so the old test was blindest precisely where it mattered.
+          // A directory is the one thing here that is certainly not a stray
+          // image, so it is the one thing worth skipping.
+          if (file.isDirectory) continue;
           // The path stays root-RELATIVE — mute keys and the delete action
           // must survive the root moving to another folder or device.
           const path = `${rel}/${file.name}`;
@@ -608,6 +652,10 @@ async function scanCovers(snap: Snapshot): Promise<CoverScan> {
     }
   } catch (err) {
     console.warn("doctor: image scan failed (non-fatal)", err);
+    // Non-fatal to the PASS, but never silent to the SURFACE: returning bare
+    // `orphans: []` here is what made a permission or IO failure render as a
+    // clean row for as long as this check has existed.
+    return { broken, orphans, orphanScanError: String(err) };
   }
 
   return { broken, orphans };
@@ -672,10 +720,15 @@ export async function runDoctor(opts: DoctorOptions): Promise<DoctorReport> {
 
   if (!skipInfo) raw.set("entry-dedupe", entryDedupe(snap));
 
+  // Scoped to `orphan-image` alone, deliberately: the broken-cover half fails
+  // per-entry into "the file is missing", which is a LOUD wrong answer rather
+  // than a silent empty one. Only the orphan sweep can fail wholesale.
+  let orphanScanError: string | undefined;
   if (withFs) {
-    const { broken, orphans } = await scanCovers(snap);
-    raw.set("broken-cover", broken);
-    raw.set("orphan-image", orphans);
+    const scan = await scanCovers(snap);
+    raw.set("broken-cover", scan.broken);
+    raw.set("orphan-image", scan.orphans);
+    orphanScanError = scan.orphanScanError;
   }
 
   const checks: CheckReport[] = CHECK_SPECS.map((spec) => {
@@ -687,6 +740,7 @@ export async function runDoctor(opts: DoctorOptions): Promise<DoctorReport> {
       ran,
       findings,
       muted: all.length - findings.length,
+      error: spec.id === "orphan-image" ? orphanScanError : undefined,
     };
   });
 

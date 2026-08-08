@@ -1764,7 +1764,24 @@ function VocabSelect({
   );
 }
 
-/** Session-scope flags — the non-derivable stored ones (Sleep's `Med`). */
+/**
+ * Session-scope flags — the non-derivable stored ones (Sleep's "Took
+ * Medication"), and since 2026-08-07 any flag the creator mints.
+ *
+ * COPY, and why the chip no longer builds a phrase. The FINAL draws this row as
+ * a label column reading "Meds" beside a checkbox reading "took meds", and the
+ * build translated that as `Took ${label.toLowerCase()}` — correct while the
+ * stored label was the noun "Med". The 2026-08-07 ruling re-authored flag
+ * labels as **completed actions** ("Took Medication") so the range dashboard
+ * could build its header and subtitle from the one string with zero habit
+ * special-casing; this reader kept its own prefix and started rendering "Took
+ * took medication".
+ *
+ * The label is now the phrase, so the row states it once and the chip carries
+ * the ANSWER. That keeps the strip's row anatomy (label column + control) and
+ * stays definition-driven: it reads correctly for any flag a user ever authors,
+ * which a prefix cannot.
+ */
 function FlagRows({
   spec,
   value,
@@ -1781,11 +1798,7 @@ function FlagRows({
         return (
           <div className="row" key={def.key}>
             <span className="flbl">{def.label}</span>
-            <ToggleChip
-              label={`Took ${def.label.toLowerCase()}`}
-              on={on}
-              onToggle={() => onToggle(def, !on)}
-            />
+            <ToggleChip label="Yes" on={on} onToggle={() => onToggle(def, !on)} />
           </div>
         );
       })}

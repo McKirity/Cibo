@@ -5,9 +5,23 @@
  *
  * Unlike 4a, correctness matters here: realistic streaks, gaps, misses,
  * multi-session days, replay **waves**, per-session categoricals, and lived-in
- * habit **lifecycles**. Still deterministic (seeded PRNG) and idempotent
- * (self-clears its prior output), still throwaway dev tooling driven from a
- * dev-panel button.
+ * habit **lifecycles**. Deterministic (seeded PRNG) and idempotent — verified
+ * on a real store 2026-08-07: two consecutive runs cleared exactly the previous
+ * run's row count and rebuilt identical totals. Throwaway dev tooling, driven
+ * from Settings → Developer and DEV-gated there.
+ *
+ * ⚠ "SELF-CLEARS ITS PRIOR OUTPUT" IS TOO KIND, and this line used to say it.
+ * `clearRichSeed` tombstones **every live row** in `sessions`, `entries`,
+ * `days` and `subunit_values` — it has no way to tell a seeded row from one you
+ * logged by hand, because nothing marks provenance at the row level. On a store
+ * holding only fixtures that is the same thing; on a store holding real work it
+ * is a wipe. The 2026-08-07 run demonstrated it: the first press cleared 488
+ * rows MORE than the seeder had ever written (finding `seeder-1`).
+ *
+ * Left as-is by design rather than fixed: distinguishing the two would need a
+ * provenance marker on four tables, the control is DEV-gated so no release
+ * build can reach it, and the store is wiped at Phase 2's end regardless. What
+ * was wrong was the description, not the behaviour.
  *
  * Habit lifecycles (user-ruled 2026-07-21):
  *  - CONSTANTS, active the whole span: Writing · Gaming · Reading · Media · Sleep.
@@ -642,6 +656,11 @@ function makeCreations(ctx: Ctx, hk: string, cat: Creation[]): EntryRef[] {
 
 // ── Clear (idempotent) ────────────────────────────────────────────────────────
 
+/**
+ * Tombstones **every live row** in the four tables the seeder populates — not
+ * merely the rows it wrote. See the file header: there is no row-level
+ * provenance to filter on, so this is a table wipe wearing a narrower name.
+ */
 export async function clearRichSeed(evolu: CiboEvolu): Promise<{ removed: number }> {
   let removed = 0;
   for (const table of ["subunit_values", "sessions", "entries", "days"] as const) {

@@ -322,8 +322,12 @@ export function daySets(
   const habits = picked.map((p) => p.habit);
   const out = [{ id: "active", label: "Active days" }];
   for (const f of data.flagDefs.get(habits[0].id) ?? []) {
+    // "Days I took medication", not "Took Medication days" — flag labels are
+    // authored as completed ACTIONS since 2026-08-07, so a label appended to a
+    // noun reads as a stutter. Same idiom the range dashboard's flag subtitles
+    // use ("Nights I took medication"), which is the ruled wording.
     if (habits.every((h) => (data.flagDefs.get(h.id) ?? []).some((g) => g.key === f.key)))
-      out.push({ id: `flag:${f.key}`, label: `${cap(f.label)} days` });
+      out.push({ id: `flag:${f.key}`, label: `Days I ${f.label.toLowerCase()}` });
   }
   return out;
 }

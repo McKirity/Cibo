@@ -47,7 +47,7 @@ const search = async (term: string): Promise<ImportCandidate[]> => {
     undefined,
     AO3_TIMEOUT_MS,
   );
-  const doc = parseDoc(page.value);
+  const doc = parseDoc(page.value ?? "");
   const out: ImportCandidate[] = [];
   for (const li of doc.querySelectorAll("li.work.blurb.group")) {
     const link = li.querySelector('h4.heading a[href*="/works/"]');
@@ -84,41 +84,54 @@ const AO3_TIMEOUT_MS = 40_000;
 const LOGIN_REDIRECT = /\/users\/login/;
 
 /**
- * What a redirect-to-login actually licenses us to say.
+ * **THE LOGIN REDIRECT IS THE RESTRICTED SIGNAL — user-ruled 2026-08-08:** *"use
+ * the login redirect as the main indicator that the work is restricted, and as
+ * soon as it detects, it cancels the import and just says that work is
+ * restricted."*
  *
- * It is **ambiguous** and was being reported as certain (`ao3-2`): AO3 sends it
- * for a genuinely restricted work *and* when it is turning a client away. So
- * the message states the OBSERVATION and names both causes — the same
- * correction the 403 got in `probe()` below, one signal over.
+ * A restricted work redirects a logged-out client straight to `/users/login`;
+ * it never reaches the adult-content interstitial, because you must be signed
+ * in to be asked. That makes the redirect a clean, immediate answer, and the
+ * ruling is to treat it as one.
  *
- * `sawPublicPage` is the half the app already knew and threw away: **a
- * restricted work never reaches the adult interstitial** — you must be logged
- * in to be asked. So if we have just been shown that warning for this work, the
- * work is public, and a login redirect on the very next request cannot mean
- * "restricted". Reporting it as such contradicted evidence in hand a moment
- * earlier, and did it *instantly*, which is what made it read as authoritative.
+ * *Recorded because it was briefly built the other way (finding `ao3-2`, VOID):
+ * Claude inferred from a timed-out first attempt that the work must have been
+ * public, and softened this into a two-cause message naming possible
+ * throttling. The inference was wrong — the work was restricted all along — and
+ * the softening replaced a correct definite answer with a vague one. The
+ * definite reading is restored deliberately, not by reversion.*
  */
-const loginRedirectReason = (sawPublicPage: boolean): string =>
-  sawPublicPage
-    ? "AO3 redirected to its login page — but it had just served this work's adult-content warning, which a restricted work never does. The archive is turning this app away, most likely rate-limiting after a failed request. Wait a few minutes and try again."
-    : "AO3 redirected to its login page. Either the work is restricted to logged-in users (not supported), or the archive is temporarily turning this app away — if you can open it in a browser while signed out, it is the latter; wait a few minutes.";
+const RESTRICTED = "restricted work — only available to logged-in AO3 users (not supported)";
+
+/** Detected at the HEADER, so the login page is never downloaded — "as soon as
+ *  it detects" in the ruling's sense. `res.url` is final, redirects followed. */
+const isLoginRedirect = (res: Response): boolean => LOGIN_REDIRECT.test(res.url);
 
 /** Fetch a work page, riding out the login redirect and the adult
  * interstitial (both verified live — see the header). */
 const fetchWorkPage = async (
   id: string,
 ): Promise<{ doc: Document } | { failed: string }> => {
-  let page = await importText(`${HOST}/works/${id}?view_adult=true`, undefined, AO3_TIMEOUT_MS);
-  if (LOGIN_REDIRECT.test(page.url)) return { failed: loginRedirectReason(false) };
-  if (page.value.includes("Adult Content Warning")) {
+  let page = await importText(
+    `${HOST}/works/${id}?view_adult=true`,
+    undefined,
+    AO3_TIMEOUT_MS,
+    isLoginRedirect,
+  );
+  if (page.stopped) return { failed: RESTRICTED };
+  if ((page.value ?? "").includes("Adult Content Warning")) {
     // The /works → /chapters redirect dropped the param; re-append it on the
     // effective URL. One extra request, only on interstitial pages.
     const sep = page.url.includes("?") ? "&" : "?";
-    page = await importText(`${page.url}${sep}view_adult=true`, undefined, AO3_TIMEOUT_MS);
-    // `true`: the interstitial we just read PROVES the work is public.
-    if (LOGIN_REDIRECT.test(page.url)) return { failed: loginRedirectReason(true) };
+    page = await importText(
+      `${page.url}${sep}view_adult=true`,
+      undefined,
+      AO3_TIMEOUT_MS,
+      isLoginRedirect,
+    );
+    if (page.stopped) return { failed: RESTRICTED };
   }
-  return { doc: parseDoc(page.value) };
+  return { doc: parseDoc(page.value ?? "") };
 };
 
 const fetchItem = async (id: string): Promise<FetchOutcome> => {
@@ -188,7 +201,7 @@ const fetchItem = async (id: string): Promise<FetchOutcome> => {
 const probe = async (): Promise<{ ok: boolean; detail: string }> => {
   try {
     const page = await importText(`${HOST}/`, undefined, AO3_TIMEOUT_MS);
-    return page.value.includes("Archive of Our Own")
+    return (page.value ?? "").includes("Archive of Our Own")
       ? { ok: true, detail: "AO3 reachable" }
       : { ok: false, detail: "AO3 responded but the page was unexpected" };
   } catch (e) {

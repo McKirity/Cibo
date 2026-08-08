@@ -155,15 +155,40 @@ export const importFetch = async (
  * Reading inside the protected region also means a body-phase failure now gets
  * the same one polite retry a header-phase failure has always had.
  */
+export interface ReadResult<T> {
+  /** The body, or null when `stopIf` stopped us before reading it. */
+  value: T | null;
+  /** The response's FINAL url, after redirects. */
+  url: string;
+  stopped: boolean;
+}
+
 const importRead = async <T,>(
   url: string,
   read: (res: Response) => Promise<T>,
   init?: RequestInit,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
-): Promise<{ value: T; url: string }> => {
-  const once = async (): Promise<{ value: T; url: string }> => {
+  /**
+   * Inspect the response BEFORE its body is read, and stop if it is not worth
+   * reading. Runs after headers (so `res.url` is final, redirects followed) and
+   * before a single byte of body is pulled.
+   *
+   * AO3 is the tenant: a restricted work answers with a redirect to the login
+   * page, and the app used to download that whole page only to throw it away
+   * once it checked the url. Detecting at the header is what makes "cancel the
+   * import as soon as it detects" true rather than approximately true.
+   */
+  stopIf?: (res: Response) => boolean,
+): Promise<ReadResult<T>> => {
+  const once = async (): Promise<ReadResult<T>> => {
     const res = await importFetch(url, init, timeoutMs);
-    return { value: await read(res), url: res.url };
+    if (stopIf?.(res) === true) {
+      // Release the stream we are declining to read, rather than leaving the
+      // Rust side holding a body nobody will consume.
+      void res.body?.cancel().catch(() => {});
+      return { value: null, url: res.url, stopped: true };
+    }
+    return { value: await read(res), url: res.url, stopped: false };
   };
   try {
     return await once();
@@ -190,8 +215,8 @@ export const importText = (
   url: string,
   init?: RequestInit,
   timeoutMs?: number,
-): Promise<{ value: string; url: string }> =>
-  importRead(url, (r) => r.text(), init, timeoutMs);
+  stopIf?: (res: Response) => boolean,
+): Promise<ReadResult<string>> => importRead(url, (r) => r.text(), init, timeoutMs, stopIf);
 
 /** JSON convenience — body read inside the protected call, as above. */
 export const importJson = async (
@@ -210,10 +235,12 @@ export const importBytes = async (
   url: string,
   init?: RequestInit,
   timeoutMs?: number,
-): Promise<Uint8Array> =>
-  new Uint8Array(
-    (await importRead(url, (r) => r.arrayBuffer(), init, timeoutMs)).value,
-  );
+): Promise<Uint8Array> => {
+  // No `stopIf` here, so `value` is always present; the null is the stopped
+  // case, which only the AO3 caller can produce.
+  const read = await importRead(url, (r) => r.arrayBuffer(), init, timeoutMs);
+  return new Uint8Array(read.value ?? new ArrayBuffer(0));
+};
 
 // ── Thumb cache (blob URLs for the results grid) ─────────────────────────────
 

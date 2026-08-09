@@ -8,6 +8,7 @@
  * `Final/habit-creator.html` (the drawn face this fills).
  */
 import type { DerivedRule, EntryAttribute } from "../db/schema";
+import { validateHabitName, validateHabitShape } from "../db/validate";
 import type { LadderOverrides } from "../daily/milestones";
 
 export type HabitKind = "simple" | "project" | "range";
@@ -168,7 +169,6 @@ export function draftProblems(
   draft: HabitDraft,
   takenNames: ReadonlySet<string>,
 ): DraftProblems {
-  const name = draft.name.trim();
   // THE GATE READS WHAT THE WRITE WILL WRITE, not the raw draft (2026-08-08).
   // These used to read `draft.measuresCount` directly while the commit
   // sanitized — the same gate-vs-write asymmetry as `creator-4`, and it had a
@@ -177,13 +177,37 @@ export function draftProblems(
   // permanently disabled Create button pointing at a field the user could not
   // see. A gate must judge the value that is actually going to be stored.
   const measures = toMeasureColumns(draft);
+  // ADOPTED, not reimplemented (finding `debt-roster-4`, 2026-08-08).
+  //
+  // `validateHabitShape` owns both of these rules — measureless-is-simple-only
+  // and count-needs-a-unit — and step 1's `schema-1` fix wrote a fresh inline
+  // copy of the first one right here, which is the finding's own pattern
+  // repeated by its own remedy. The shapes differ (this returns a per-field
+  // problems object for the UI; the validator returns one ok/reason), so the
+  // adoption reads the validator and maps its reason back onto the field.
+  const shape =
+    draft.kind == null
+      ? { ok: true as const }
+      : validateHabitShape({
+          kind: draft.kind,
+          measures_time: measures.measuresTime,
+          measures_count: measures.measuresCount,
+          count_unit: measures.countUnit,
+        });
+  // The CODE, never the reason's wording — a first draft regexed the message
+  // and that is `http-3` in a new place: a decision parsed out of prose, which
+  // any rewording breaks silently.
+  const failed = shape.ok ? undefined : shape.code;
+  // `takenNames` already excludes the edit target's own name, so no
+  // `ownCurrentName` is needed here — the caller has done that narrowing.
+  const nameCheck = validateHabitName(draft.name, [...takenNames]);
+  const nameFailed = nameCheck.ok ? undefined : nameCheck.code;
   return {
-    nameMissing: name === "",
-    nameTaken: name !== "" && takenNames.has(name.toLowerCase()),
+    nameMissing: nameFailed === "name-empty",
+    nameTaken: nameFailed === "name-taken",
     kindMissing: draft.kind == null,
-    unitMissing: measures.measuresCount && draft.countUnit.trim() === "",
-    measureMissing:
-      draft.kind === "project" && !measures.measuresTime && !measures.measuresCount,
+    unitMissing: failed === "unit-missing",
+    measureMissing: failed === "measureless-project",
     mediumUnnamed: draft.mediums.some((m) => m.name.trim() === ""),
   };
 }

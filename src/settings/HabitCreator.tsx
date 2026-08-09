@@ -21,7 +21,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@evolu/react";
-import { NonEmptyString100, NonNegativeInt } from "@evolu/common";
+import { booleanToSqliteBoolean, NonEmptyString100, NonNegativeInt } from "@evolu/common";
 import { evolu } from "../db/evolu";
 import {
   derivedRulesToJson,
@@ -294,8 +294,11 @@ export function HabitCreator({
         name: s100(name),
         colour_slot: s100(draft.colourSlot),
         icon: draft.icon != null ? s100(draft.icon) : null,
-        measures_time: (measures.measuresTime ? 1 : 0) as never,
-        measures_count: (measures.measuresCount ? 1 : 0) as never,
+        // `booleanToSqliteBoolean`, not `as never` (finding `schema-7`): the
+        // brand has a real converter, so the cast was hiding a check that
+        // Evolu is happy to perform.
+        measures_time: booleanToSqliteBoolean(measures.measuresTime),
+        measures_count: booleanToSqliteBoolean(measures.measuresCount),
         count_unit: measures.countUnit != null ? s100(measures.countUnit) : null,
         range_max_midnights: isRange ? NonNegativeInt.orThrow(draft.maxMidnights) : null,
         entry_attributes: attrs.length > 0 ? entryAttributesToJson(attrs) : null,
@@ -351,7 +354,7 @@ export function HabitCreator({
           keepsake_snippet: null,
           // Created habits arrive LIVE — "land on the new habit's dashboard,
           // it's loggable immediately". Only seeds arrive archived.
-          archived: 0 as never,
+          archived: booleanToSqliteBoolean(false),
           sort_order: nextSortOrder(draft.kind, existing) as never,
         } as never);
         if (!res.ok) {

@@ -34,6 +34,7 @@
  * `first_run_complete` flag.
  */
 import { useEffect, useMemo, useState } from "react";
+import { booleanToSqliteBoolean } from "@evolu/common";
 import { evolu } from "../db/evolu";
 import { winAction } from "../shell/safeWindow";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
@@ -318,7 +319,7 @@ export function FirstRunSetup({ onDone }: { onDone: () => void }) {
     // unchecked active habit is left untouched (the ruled scope).
     for (const h of habits ?? []) {
       if (!selected.has(String(h.id)) || !h.archived) continue;
-      const res = evolu.update("habits", { id: h.id as never, archived: 0 });
+      const res = evolu.update("habits", { id: h.id as never, archived: booleanToSqliteBoolean(false) });
       if (!res.ok) console.error(`firstRun: activating "${h.key}" failed`, res.error);
     }
 

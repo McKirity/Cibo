@@ -6,32 +6,72 @@
  *
  * Pure functions over already-loaded rows — no Evolu dependency.
  *
- * ⚠ **ADOPTION IS PARTIAL, and this header used to overstate it** (finding
- * `debt-roster-4`; corrected 2026-08-08). It read *"every later step (forms,
- * importers, the creator) calls the same checks"*, which is false: only
- * `spineWrites.ts` imports from this file. `validateHabitName` ·
- * `validateHabitKey` · `validateEntryExternalIdentity` · `validateDayDate` ·
- * `validateHabitShape` · `validateDerivedRules` have **no callers** — the
- * creator does its own uniqueness check, the importers' dedup lives in
- * `engine.ts`, and the entry modal grew its own date validation.
+ * **ADOPTION, stated exactly** (finding `debt-roster-4`, resolved 2026-08-08).
+ * The header once claimed *"every later step (forms, importers, the creator)
+ * calls the same checks"*, which was false and is the reason this section
+ * exists. Where each validator is actually enforced:
  *
- * **Nothing is silently wrong:** all nine are unit-tested and correct in both
- * polarities (`validate.test.ts`), and every rule IS enforced somewhere. The
- * cost is duplication that can drift, not a gap.
+ *  · `validateSessionAgainstHabit` · `validateSessionMeasure` ·
+ *    `validateRangeSpan` — called by `spineWrites.checkSession`, which the
+ *    session write AND its pre-flight both go through.
+ *  · `validateHabitShape` · `validateHabitName` — **adopted 2026-08-08** by
+ *    `settings/habitDraft.draftProblems`, the creator's gate, which previously
+ *    reimplemented both inline. (Step 1's `schema-1` fix wrote one of those
+ *    copies, so the remedy for "the helpers get bypassed" had itself bypassed
+ *    the helper.)
+ *  · `validateHabitKey` — no caller. The creator derives a key and resolves
+ *    collisions against the live roster itself; the seed batches match on key
+ *    directly.
+ *  · `validateEntryExternalIdentity` — no caller. `importers/engine.ts` owns
+ *    pair uniqueness through its `seenPairs` set, which must be batch-local as
+ *    well as store-wide and so cannot be a pure per-row check.
+ *  · `validateDayDate` — no caller. One-row-per-date is held by the day
+ *    ledger's own upsert path.
+ *  · `validateDerivedRules` — no caller. The creator's commit block guards
+ *    `derived_rules` behind `isRange` structurally, which is stronger than a
+ *    check after the fact.
  *
- * **The fork is open and needs a ruling:** adopt the six at their real call
- * sites and delete the duplicates, or delete the six and let each site own its
- * check. What it must not stay is both — which is why this note replaces the
- * claim rather than merely softening it.
+ * **The four caller-less ones are KEPT deliberately, not forgotten.** Each is
+ * the canonical statement of an app-enforced rule the CRDT cannot hold, each is
+ * tested in both polarities, and each names its real enforcement site above. A
+ * rule stated once and enforced elsewhere is navigable; the failure this
+ * finding caught was the header claiming an adoption that did not exist.
+ *
+ * **When adding an enforcement site for any rule above, call the validator**
+ * rather than writing a third copy.
  */
 import type { DerivedRule, MeasureKind } from "./schema";
 
 export type ValidationResult =
   | { ok: true }
-  | { ok: false; reason: string };
+  | {
+      ok: false;
+      reason: string;
+      /**
+       * A machine-readable tag for callers that must react to WHICH rule
+       * failed, rather than merely report it.
+       *
+       * Added 2026-08-08 when `draftProblems` adopted `validateHabitShape`: the
+       * creator needs to light a specific field, and the first attempt did that
+       * by running a regex over `reason` — which is `http-3` all over again, a
+       * decision parsed out of prose, silently broken by any rewording. **A
+       * message is for a reader; a code is for a program.**
+       */
+      code?: ValidationCode;
+    };
+
+export type ValidationCode =
+  | "measureless-project"
+  | "unit-missing"
+  | "name-empty"
+  | "name-taken";
 
 const ok: ValidationResult = { ok: true };
-const fail = (reason: string): ValidationResult => ({ ok: false, reason });
+const fail = (reason: string, code?: ValidationCode): ValidationResult => ({
+  ok: false,
+  reason,
+  code,
+});
 
 // ── Uniqueness (app-enforced) ────────────────────────────────────────────────
 
@@ -43,13 +83,15 @@ export const validateHabitName = (
   ownCurrentName?: string,
 ): ValidationResult => {
   const normalized = name.trim().toLowerCase();
-  if (normalized.length === 0) return fail("Habit name cannot be empty.");
+  if (normalized.length === 0) return fail("Habit name cannot be empty.", "name-empty");
   const clash = existingNames.some(
     (n) =>
       n.trim().toLowerCase() === normalized &&
       n.trim().toLowerCase() !== ownCurrentName?.trim().toLowerCase(),
   );
-  return clash ? fail(`A habit named "${name.trim()}" already exists.`) : ok;
+  return clash
+    ? fail(`A habit named "${name.trim()}" already exists.`, "name-taken")
+    : ok;
 };
 
 /** `habits.key` is unique among built-ins (seed batches match on it). */
@@ -141,9 +183,12 @@ export interface HabitShapeInput {
 export const validateHabitShape = (h: HabitShapeInput): ValidationResult => {
   if (h.kind === "range") return ok; // kind = range implies its measure
   if (!h.measures_time && !h.measures_count && h.kind !== "simple")
-    return fail("Measureless is simple-only — a project habit declares at least one measure.");
+    return fail(
+      "Measureless is simple-only — a project habit declares at least one measure.",
+      "measureless-project",
+    );
   if (h.measures_count && (h.count_unit == null || h.count_unit.trim() === ""))
-    return fail("A count measure needs a unit label.");
+    return fail("A count measure needs a unit label.", "unit-missing");
   return ok;
 };
 

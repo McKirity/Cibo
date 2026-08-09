@@ -38,14 +38,14 @@ export const unlockAudio = (): void => {
 };
 
 /** A three-note rising chime, synthesized — no bundled asset, no network. */
-const chime = () => {
+const chime = (delay = 0) => {
   try {
     ctx ??= new AudioContext();
     if (ctx.state === "suspended") {
       // last-ditch resume — succeeds when a prior gesture unlocked the page
       void ctx.resume().catch(() => {});
     }
-    const t0 = ctx.currentTime;
+    const t0 = ctx.currentTime + delay;
     for (const [freq, at] of [
       [880, 0],
       [1174.66, 0.16],
@@ -65,6 +65,38 @@ const chime = () => {
   } catch {
     /* no audio device — the visual state change is the fallback */
   }
+};
+
+/**
+ * How long the Settings test tone runs — user-ruled 3 s (2026-08-08).
+ *
+ * It is deliberately longer than the real signal, and the reason is the OS
+ * rather than the app: **Windows lists an application in its Volume mixer only
+ * while that application is actually producing audio**, so per-app output-device
+ * selection is unreachable for a program whose only sound is a one-second
+ * chime. There is no window in which to catch it. Three seconds is enough to
+ * open the mixer and find the app; Windows then remembers the device choice.
+ *
+ * Found the plain way: a user's chime was going to a speaker they no longer
+ * used, and the OS remedy could not be applied because Cibo never appeared in
+ * the list. *The signal machinery was correct throughout — the sound was simply
+ * arriving somewhere nobody was listening.*
+ */
+export const PREVIEW_MS = 3_000;
+
+/**
+ * The Settings → Timers test tone: the REAL chime, repeated to fill the window.
+ *
+ * Repeating the actual signal rather than synthesizing a different, longer tone
+ * is the point — a test of something other than the thing that fires would
+ * confirm the wrong machinery. It also plays regardless of the Chime/Silent
+ * setting: the user pressed a button labelled "Test sound", so silence would be
+ * its own small confusion.
+ */
+export const previewSignal = (): void => {
+  unlockAudio();
+  // 0.95 s apart, so the last chime's tail lands just under the 3 s budget.
+  for (let at = 0; at < PREVIEW_MS / 1000 - 1; at += 0.95) chime(at);
 };
 
 const flagAttention = () => {

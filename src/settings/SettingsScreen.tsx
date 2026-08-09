@@ -20,6 +20,7 @@
  * absent from the frozen face because it post-dates the freeze.
  */
 import { useEffect, useState } from "react";
+import { PREVIEW_MS, previewSignal } from "../timers/signal";
 import { useQuery } from "@evolu/react";
 import { Ico, ICONS } from "../shell/icons";
 import { Menu } from "../kit/Menu";
@@ -697,6 +698,14 @@ function TimersPane() {
   const [signal, setSignal] = useState<SignalStyle>(getSignalStyle());
   const [work, setWork] = useState(getPomoWork());
   const [brk, setBrk] = useState(getPomoBreak());
+  // Disabled while it plays, so a second press cannot stack a second run of
+  // oscillators on top of the first.
+  const [previewing, setPreviewing] = useState(false);
+  useEffect(() => {
+    if (!previewing) return;
+    const t = setTimeout(() => setPreviewing(false), PREVIEW_MS);
+    return () => clearTimeout(t);
+  }, [previewing]);
   return (
     <Pane title="Timers">
       <div className="pbody">
@@ -718,6 +727,33 @@ function TimersPane() {
               />
             </span>
           </div>
+          {/* TEST SOUND (user-ruled 2026-08-08, 3 s). Two jobs: hear the chime
+              without waiting for a pomodoro boundary, and — the reason it is
+              seconds rather than instant — give Windows a window in which to
+              LIST Cibo in its Volume mixer, since it only shows apps that are
+              actively producing audio. Per-app output-device selection is
+              otherwise unreachable for an app whose only sound is a one-second
+              chime. No `DevMark`: this is an action, not a stored setting. */}
+          <div className="crow">
+            <span className="clabel">Test sound</span>
+            <span className="cright">
+              <button
+                className="btn-plain btn-sm"
+                disabled={previewing}
+                onClick={() => {
+                  setPreviewing(true);
+                  previewSignal();
+                }}
+              >
+                {previewing ? "Playing…" : "Play test sound"}
+              </button>
+            </span>
+          </div>
+          <p className="fieldnote" style={{ marginTop: "calc(-1 * var(--space-4))" }}>
+            Plays the chime for 3 seconds, whatever the signal style is set to. Windows only lists
+            an app in its Volume mixer while that app is making sound — use this to catch Cibo there
+            and give it its own output device.
+          </p>
           <div className="crow">
             <span className="clabel">Default pomodoro</span>
             <DevMark />

@@ -20,7 +20,7 @@
  * Planned · genre BLANK deliberately (only Calibre + AO3 import genres).
  */
 import type { FetchOutcome, ImportCandidate, ImporterSource } from "./types";
-import { importJson } from "./http";
+import { HttpFail, importJson } from "./http";
 import { cleanTitle } from "./titles";
 import { cleanDescription, foldYear } from "./text";
 import { getImporterKey } from "./keys";
@@ -184,9 +184,13 @@ const probe = async (): Promise<{ ok: boolean; detail: string }> => {
       : { ok: false, detail: "TMDB responded but the probe payload was unexpected" };
   } catch (e) {
     const msg = String(e);
+    // The status, not the message (`http-3`).
     return {
       ok: false,
-      detail: /HTTP 401/.test(msg) ? "TMDB rejected the API key (401)" : `TMDB unreachable — ${msg}`,
+      detail:
+        e instanceof HttpFail && e.status === 401
+          ? "TMDB rejected the API key (401)"
+          : `TMDB unreachable — ${msg}`,
     };
   }
 };

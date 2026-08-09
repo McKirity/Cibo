@@ -4,8 +4,25 @@
  * so the DB cannot block a collision at write time. The app checks on write
  * (these functions), the Data Doctor lints for escapes, and repair is manual.
  *
- * Pure functions over already-loaded rows — no Evolu dependency, so every
- * later step (forms, importers, the creator) calls the same checks.
+ * Pure functions over already-loaded rows — no Evolu dependency.
+ *
+ * ⚠ **ADOPTION IS PARTIAL, and this header used to overstate it** (finding
+ * `debt-roster-4`; corrected 2026-08-08). It read *"every later step (forms,
+ * importers, the creator) calls the same checks"*, which is false: only
+ * `spineWrites.ts` imports from this file. `validateHabitName` ·
+ * `validateHabitKey` · `validateEntryExternalIdentity` · `validateDayDate` ·
+ * `validateHabitShape` · `validateDerivedRules` have **no callers** — the
+ * creator does its own uniqueness check, the importers' dedup lives in
+ * `engine.ts`, and the entry modal grew its own date validation.
+ *
+ * **Nothing is silently wrong:** all nine are unit-tested and correct in both
+ * polarities (`validate.test.ts`), and every rule IS enforced somewhere. The
+ * cost is duplication that can drift, not a gap.
+ *
+ * **The fork is open and needs a ruling:** adopt the six at their real call
+ * sites and delete the duplicates, or delete the six and let each site own its
+ * check. What it must not stay is both — which is why this note replaces the
+ * claim rather than merely softening it.
  */
 import type { DerivedRule, MeasureKind } from "./schema";
 

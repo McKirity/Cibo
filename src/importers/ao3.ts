@@ -31,7 +31,7 @@
  * Planned · NO cover ever — the lettermark is the legitimate look.
  */
 import type { FetchOutcome, ImportCandidate, ImporterSource } from "./types";
-import { HttpTimeout, importText } from "./http";
+import { HttpFail, HttpTimeout, importText } from "./http";
 import { cleanTitle } from "./titles";
 
 const HOST = "https://archiveofourown.org";
@@ -213,14 +213,15 @@ const probe = async (): Promise<{ ok: boolean; detail: string }> => {
     // the wrong way (2026-08-03): AO3 was up in a browser on the same machine
     // while every app request 403'd for want of a User-Agent. The three-way
     // diagnosis calls this "our side" — something to fix here, not there.
-    if (/HTTP 403/.test(msg))
+    // Read the STATUS, not the message (`http-3`). These used to match
+    // /HTTP 403/ against the human text, which coupled a diagnosis to wording
+    // that was rewritten twice in one day — surviving only because the new
+    // messages happened to keep their `HTTP <n>` prefix.
+    if (e instanceof HttpFail && e.status === 403)
       return { ok: false, detail: "AO3 refused the request (403) — the archive is up, but it is turning this app away" };
-    return {
-      ok: false,
-      detail: /HTTP 429/.test(msg)
-        ? "AO3 is rate-limiting this address — wait a while before importing"
-        : `AO3 unreachable — ${msg}`,
-    };
+    if (e instanceof HttpFail && e.status === 429)
+      return { ok: false, detail: "AO3 is rate-limiting this address — wait a while before importing" };
+    return { ok: false, detail: `AO3 unreachable — ${msg}` };
   }
 };
 

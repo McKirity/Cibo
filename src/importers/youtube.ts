@@ -18,7 +18,7 @@
  * status **"Finished"** (already-followed, the one exception to Planned).
  */
 import type { FetchOutcome, ImportCandidate, ImporterSource } from "./types";
-import { importJson } from "./http";
+import { HttpFail, importJson } from "./http";
 import { cleanTitle } from "./titles";
 import { getImporterKey } from "./keys";
 
@@ -125,11 +125,14 @@ const probe = async (): Promise<{ ok: boolean; detail: string }> => {
       : { ok: false, detail: "YouTube responded but the probe payload was unexpected" };
   } catch (e) {
     const msg = String(e);
+    // The status, not the message (`http-3`). 4xx from this endpoint means the
+    // key or the quota; anything else is reachability.
     return {
       ok: false,
-      detail: /HTTP 4\d\d/.test(msg)
-        ? `YouTube rejected the key or quota (${msg})`
-        : `YouTube unreachable — ${msg}`,
+      detail:
+        e instanceof HttpFail && e.status >= 400 && e.status < 500
+          ? `YouTube rejected the key or quota (${msg})`
+          : `YouTube unreachable — ${msg}`,
     };
   }
 };

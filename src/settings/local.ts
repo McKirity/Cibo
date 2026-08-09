@@ -28,6 +28,9 @@ import { LUCIDE_VERSION } from "../shell/habitIcons";
 import { deviceGet as lsGet, deviceSet as lsSet, inTauri } from "./deviceStore";
 
 import { pad2 } from "../metrics/clock";
+// The ruled interval floor has ONE owner (timerCore) — the settings clamp reads
+// it rather than re-typing a 2 the machine would not know had changed.
+import { MIN_INTERVALS } from "../timers/timerCore";
 // inTauri is imported from settings/deviceStore (the one declaration; it lives
 // there because the boot shim needs a dependency-free module). Was a local copy.
 
@@ -210,6 +213,19 @@ export const getPomoWork = (): number => clampPomo(lsGet(POMO_WORK_KEY) ?? 25, 2
 export const getPomoBreak = (): number => clampPomo(lsGet(POMO_BREAK_KEY) ?? 5, 5, 60);
 export const setPomoWork = (min: number): void => lsSet(POMO_WORK_KEY, String(clampPomo(min, 25, 180)));
 export const setPomoBreak = (min: number): void => lsSet(POMO_BREAK_KEY, String(clampPomo(min, 5, 60)));
+
+/* The third leg of the default pomodoro (user-ruled 2026-08-08, with the
+ * interval-plan amendment): how many WORK intervals a new pomodoro opens with.
+ * Its own clamp, because the floor is 2 — the ruled minimum — where the
+ * work/break pair floors at 1. */
+export const POMO_INTERVALS_KEY = "cibo.pomoIntervals";
+const clampIntervals = (v: unknown): number => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(24, Math.max(MIN_INTERVALS, Math.round(n))) : 4;
+};
+export const getPomoIntervals = (): number => clampIntervals(lsGet(POMO_INTERVALS_KEY) ?? 4);
+export const setPomoIntervals = (n: number): void =>
+  lsSet(POMO_INTERVALS_KEY, String(clampIntervals(n)));
 
 // ── the lucide pin's install date ────────────────────────────────────────────
 

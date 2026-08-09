@@ -21,7 +21,10 @@ import { useSyncExternalStore } from "react";
 import {
   advance,
   fold,
+  pomoPlanDone,
+  restartPomo,
   resumeClock,
+  type Boundary,
   type Clock,
   type TimerMode,
   type TrackedItem,
@@ -123,16 +126,50 @@ const mutate = (fn: (s: TimerState) => TimerState) => {
 let tickHandle: ReturnType<typeof setInterval> | null = null;
 let lastBeat = 0;
 
+/** Does this boundary stop the clock and hand it to the user? */
+const opensManage = (b: Boundary): boolean => b === "countdown-zero" || b === "pomo-end";
+
+/**
+ * Walk a clock across EVERY boundary it has passed, not just the next one.
+ *
+ * Accrual is wall-clock, so a machine that slept through three pomodoro phases
+ * wakes with all three already behind it. One boundary per 500 ms tick would
+ * step through them in real time — three chimes, the ring visibly replaying a
+ * cycle that is already over. This lands on the true phase in one tick and
+ * reports the LAST boundary crossed, so exactly one signal sounds and a plan
+ * that finished during the sleep opens its window immediately.
+ *
+ * The cap is a runaway guard, not a limit anyone should reach (a slept week at
+ * a 25/5 pair is ~336 phases): past it the clock is left mid-catch-up and the
+ * next tick continues, which degrades to the old one-per-tick behaviour rather
+ * than freezing the ticker.
+ */
+const CATCH_UP_CAP = 512;
+
+const advanceAll = (c: Clock, now: number): { clock: Clock; boundary: Boundary } => {
+  let clock = c;
+  let last: Boundary = null;
+  for (let i = 0; i < CATCH_UP_CAP; i++) {
+    const step = advance(clock, now);
+    if (step.boundary == null) break;
+    clock = step.clock;
+    last = step.boundary;
+  }
+  return { clock, boundary: last };
+};
+
 const tick = () => {
   const now = Date.now();
   let changed = false;
   const clocks = state.clocks.map((c) => {
-    const { clock, boundary } = advance(c, now);
+    const { clock, boundary } = advanceAll(c, now);
     if (boundary != null) {
       changed = true;
       fireSignal(boundary);
-      if (boundary !== "break-end") {
-        // functionally a stop → the SAME management window (one block)
+      if (opensManage(boundary)) {
+        // the run is over → the management window (a stop and the last
+        // interval's end are ONE block). A mid-plan work end and a break end
+        // chime and roll on: no dialog (user-ruled 2026-08-08).
         state = { ...state, manageId: clock.id, focusedId: clock.id };
       }
     }
@@ -178,6 +215,8 @@ export interface NewClockConfig {
   targetMs?: number | null;
   workMs?: number | null;
   breakMs?: number | null;
+  /** pomodoro: how many work intervals to run (the ruled minimum is 2). */
+  intervals?: number | null;
 }
 
 export const createClock = (cfg: NewClockConfig): void => {
@@ -193,6 +232,7 @@ export const createClock = (cfg: NewClockConfig): void => {
     targetMs: cfg.mode === "countdown" ? (cfg.targetMs ?? null) : null,
     workMs: cfg.mode === "pomodoro" ? (cfg.workMs ?? null) : null,
     breakMs: cfg.mode === "pomodoro" ? (cfg.breakMs ?? null) : null,
+    intervals: cfg.mode === "pomodoro" ? (cfg.intervals ?? null) : null,
     phase: "work",
     interval: 1,
     phaseBaseMs: 0,
@@ -206,9 +246,20 @@ const patchClock = (id: number, fn: (c: Clock) => Clock) =>
 export const pauseClock = (id: number): void =>
   patchClock(id, (c) => ({ ...fold(c, Date.now()), running: false, resumedAt: null }));
 
+/**
+ * The board's Resume. A pomodoro whose plan is DONE cannot simply resume — its
+ * work phase is already past its length, so it would boundary again on the
+ * next tick and re-open the window in half a second. It routes to the
+ * management window instead, which is where the re-run form lives.
+ */
 export const runClock = (id: number): void => {
   unlockAudio();
-  patchClock(id, (c) => resumeClock(c, Date.now()));
+  const c = state.clocks.find((x) => x.id === id);
+  if (c != null && pomoPlanDone(c)) {
+    mutate((s) => ({ ...s, manageId: id, focusedId: id }));
+    return;
+  }
+  patchClock(id, (x) => resumeClock(x, Date.now()));
 };
 
 /** A user stop: fold + pause + open the management window. */
@@ -233,6 +284,23 @@ export const resumeFromManage = (id: number): void => {
     ...s,
     manageId: null,
     clocks: s.clocks.map((c) => (c.id === id ? resumeClock(c, Date.now()) : c)),
+  }));
+};
+
+/**
+ * Run another pomodoro plan on the same clock (user-ruled 2026-08-08 — what
+ * "resume" means at the end of the last interval). The tracked set and every
+ * accumulator carry over; only the plan is new.
+ */
+export const restartPomodoro = (
+  id: number,
+  cfg: { intervals: number; workMs: number; breakMs: number },
+): void => {
+  unlockAudio();
+  mutateAnd((s) => ({
+    ...s,
+    manageId: null,
+    clocks: s.clocks.map((c) => (c.id === id ? restartPomo(c, cfg, Date.now()) : c)),
   }));
 };
 

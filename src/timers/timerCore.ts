@@ -15,8 +15,14 @@
  *  - countdown records ACTUAL ELAPSED, never the target;
  *  - the pomodoro accumulated total sums WORK intervals only — breaks tick the
  *    phase clock but never an accumulator;
- *  - a pomodoro work-interval boundary is functionally a STOP (the same
- *    management window; stop-window ≡ interval-window, one block);
+ *  - A POMODORO RUNS A SET NUMBER OF INTERVALS (user-ruled 2026-08-08,
+ *    AMENDING the 2026-07-03 "an interval end is functionally a stop" ruling):
+ *    1 interval = 1 work period, breaks sit BETWEEN intervals only — never
+ *    first, never last — so N intervals schedule N−1 breaks. A work end that
+ *    is not the last chimes and rolls STRAIGHT into the break; a break end
+ *    chimes and rolls straight into the next interval. Only the LAST
+ *    interval's end opens the management window. The minimum is TWO
+ *    (user-ruled: "there's no point in just one interval").
  *  - exclusivity: one clock per simple habit, per ENTRY for project habits
  *    (the entry is picked at join).
  *
@@ -54,8 +60,19 @@ export interface Clock {
   /** pomodoro: the user-set pair (Settings → Timers owns the defaults). */
   workMs: number | null;
   breakMs: number | null;
+  /**
+   * pomodoro: how many WORK intervals the run is planned for (≥ 2 — the ruled
+   * minimum). Breaks are the gaps between them, so the plan is
+   * work·break·work…·work and never opens or closes on a break.
+   *
+   * NULL is the legacy shape — a clock persisted by a build older than
+   * 2026-08-08, recovered from the heartbeat file. It has no plan, so every
+   * work end is treated as the last one: exactly the pre-amendment behaviour,
+   * which is the honest thing to give a clock that was started under it.
+   */
+  intervals: number | null;
   phase: "work" | "break";
-  /** 1-based work-interval index (the cycle dots + "Interval N"). */
+  /** 1-based work-interval index (the cycle dots + "Interval N of M"). */
   interval: number;
   /** elapsed in the CURRENT phase, excluding the live span (folded base). */
   phaseBaseMs: number;
@@ -109,31 +126,75 @@ export const fold = (c: Clock, now: number): Clock => {
   };
 };
 
-export type Boundary = "countdown-zero" | "work-end" | "break-end" | null;
+export type Boundary = "countdown-zero" | "work-end" | "break-end" | "pomo-end" | null;
+
+/** The ruled floor on a pomodoro plan (user, 2026-08-08). */
+export const MIN_INTERVALS = 2;
+
+/** Is this work interval the last one the plan calls for? (A legacy plan-less
+ *  clock answers YES at every work end — see `Clock.intervals`.) */
+const isLastInterval = (c: Clock): boolean =>
+  c.intervals == null || c.interval >= c.intervals;
+
+/**
+ * Has a pomodoro finished the interval it was planned for? True only while it
+ * sits paused past the end of its LAST work interval — the one state the
+ * management window offers a re-run out of rather than a plain Resume.
+ */
+export const pomoPlanDone = (c: Clock): boolean =>
+  c.mode === "pomodoro" &&
+  c.phase === "work" &&
+  c.workMs != null &&
+  c.phaseBaseMs >= c.workMs &&
+  isLastInterval(c);
 
 /**
  * Advance a clock across a phase boundary if one has been reached.
  *  - countdown at zero: functionally a stop — fold + pause (the caller opens
  *    the management window and sounds the signal);
- *  - pomodoro work end: fold + pause — SAME (stop ≡ interval-end, one window);
- *  - pomodoro break end: roll into the next work interval, still running.
+ *  - pomodoro work end, more intervals to come: chime and roll STRAIGHT into
+ *    the break, still running — no dialog (the 2026-08-08 amendment);
+ *  - pomodoro break end: chime and roll into the next work interval;
+ *  - pomodoro LAST work end: fold + pause — the one boundary that opens the
+ *    management window.
  */
 export const advance = (clock: Clock, now: number): { clock: Clock; boundary: Boundary } => {
   const c = clock;
   if (!c.running) return { clock: c, boundary: null };
   if (c.mode === "countdown" && c.targetMs != null && clockMs(c, now) >= c.targetMs) {
-    const f = fold(c, now);
+    // fold at the instant it hit zero, not at the tick that noticed
+    const f = fold(c, now - (clockMs(c, now) - c.targetMs));
     return { clock: { ...f, running: false, resumedAt: null }, boundary: "countdown-zero" };
   }
   if (c.mode === "pomodoro") {
     const len = c.phase === "work" ? c.workMs : c.breakMs;
     if (len != null && phaseMs(c, now) >= len) {
-      const f = fold(c, now);
-      if (c.phase === "work")
-        return { clock: { ...f, running: false, resumedAt: null }, boundary: "work-end" };
+      /*
+       * THE BOUNDARY INSTANT, not the tick instant. A tick lands up to 500 ms
+       * late — and after a machine sleeps, minutes or hours late. Folding at
+       * `now` would credit that overshoot to the phase that just ENDED (sleep
+       * counted as work) and then start the next phase from zero at the tick,
+       * so every boundary shed its own lateness and the clock drifted.
+       *
+       * Folding at `now − overshoot` credits each phase exactly its own
+       * length and re-anchors THERE, which leaves the overshoot sitting in
+       * the new phase's live span — so a caller looping `advance` at one
+       * fixed `now` walks the whole sleep, phase by phase, with every span
+       * landing in the phase that actually owns it (breaks still never
+       * accrue: `fold` asks `accrues` per phase).
+       */
+      const at = now - (phaseMs(c, now) - len);
+      const f = fold(c, at);
+      if (c.phase === "break")
+        return {
+          clock: { ...f, phase: "work", interval: f.interval + 1, phaseBaseMs: 0 },
+          boundary: "break-end",
+        };
+      if (isLastInterval(c))
+        return { clock: { ...f, running: false, resumedAt: null }, boundary: "pomo-end" };
       return {
-        clock: { ...f, phase: "work", interval: f.interval + 1, phaseBaseMs: 0, resumedAt: now },
-        boundary: "break-end",
+        clock: { ...f, phase: "break", phaseBaseMs: 0 },
+        boundary: "work-end",
       };
     }
   }
@@ -141,20 +202,44 @@ export const advance = (clock: Clock, now: number): { clock: Clock; boundary: Bo
 };
 
 /**
- * Resume out of the management window. If a pomodoro sits at a finished work
- * interval, resuming ENTERS THE BREAK (the window opened "before the next
- * interval counts down"); otherwise it just re-anchors and runs.
+ * Resume out of the management window — a plain re-anchor.
+ *
+ * The old "a finished work interval resumes INTO the break" branch is GONE:
+ * breaks now start themselves at the boundary, so the only clock that can sit
+ * paused past a work end is one whose plan is DONE, and that one is re-run
+ * through `restartPomo` (the user picks a fresh count and pair) rather than
+ * resumed.
  */
-export const resumeClock = (c: Clock, now: number): Clock => {
-  if (
-    c.mode === "pomodoro" &&
-    c.phase === "work" &&
-    c.workMs != null &&
-    c.phaseBaseMs >= c.workMs
-  )
-    return { ...c, phase: "break", phaseBaseMs: 0, running: true, resumedAt: now };
-  return { ...c, running: true, resumedAt: now };
-};
+export const resumeClock = (c: Clock, now: number): Clock => ({
+  ...c,
+  running: true,
+  resumedAt: now,
+});
+
+/**
+ * Start a fresh pomodoro plan on an existing clock — the ruled answer to
+ * "resume" at the end of the last interval (user, 2026-08-08: *"it prompts me
+ * to set another amount of intervals + work time + breaks"*).
+ *
+ * The ACCUMULATORS SURVIVE: this is the same clock over the same tracked set,
+ * still heading for one summed session per item, which is exactly what makes
+ * it a re-run rather than a new clock. Only the plan resets.
+ */
+export const restartPomo = (
+  c: Clock,
+  cfg: { intervals: number; workMs: number; breakMs: number },
+  now: number,
+): Clock => ({
+  ...c,
+  intervals: Math.max(MIN_INTERVALS, Math.round(cfg.intervals)),
+  workMs: cfg.workMs,
+  breakMs: cfg.breakMs,
+  phase: "work",
+  interval: 1,
+  phaseBaseMs: 0,
+  running: true,
+  resumedAt: now,
+});
 
 /** Exclusivity — the units already spoken for across every clock. */
 export const takenUnits = (
@@ -208,6 +293,19 @@ export const parseTarget = (raw: string): number | null => {
   else seconds = nums[0] * 3600 + nums[1] * 60 + nums[2];
   if (seconds <= 0) return null;
   return seconds * 1000;
+};
+
+/**
+ * Parse the pomodoro interval count (null on nonsense OR below the ruled
+ * minimum of 2). Deliberately NOT clamping a "1" up to 2: a typed 1 is a
+ * statement, and answering it by silently running two intervals would be the
+ * gate lying about what it will do — the field reads invalid instead.
+ */
+export const parseIntervals = (raw: string): number | null => {
+  const t = raw.trim();
+  if (!/^\d+$/.test(t)) return null;
+  const n = Number(t);
+  return n >= MIN_INTERVALS ? n : null;
 };
 
 /** An accumulator handed to the log form: whole minutes, floor 1. */

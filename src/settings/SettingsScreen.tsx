@@ -21,6 +21,7 @@
  */
 import { useEffect, useState } from "react";
 import { PREVIEW_MS, previewSignal } from "../timers/signal";
+import { MIN_INTERVALS } from "../timers/timerCore";
 import { useQuery } from "@evolu/react";
 import { Ico, ICONS } from "../shell/icons";
 import { Menu } from "../kit/Menu";
@@ -44,6 +45,7 @@ import {
   getMacBookPreview,
   getParityZoom,
   getPomoBreak,
+  getPomoIntervals,
   getPomoWork,
   getReduceEffects,
   getSignalStyle,
@@ -52,6 +54,7 @@ import {
   setMacBookPreview,
   setParityZoom,
   setPomoBreak,
+  setPomoIntervals,
   setPomoWork,
   setReduceEffects,
   setSignalStyle,
@@ -698,6 +701,7 @@ function TimersPane() {
   const [signal, setSignal] = useState<SignalStyle>(getSignalStyle());
   const [work, setWork] = useState(getPomoWork());
   const [brk, setBrk] = useState(getPomoBreak());
+  const [ivals, setIvals] = useState(getPomoIntervals());
   // Disabled while it plays, so a second press cannot stack a second run of
   // oscillators on top of the first.
   const [previewing, setPreviewing] = useState(false);
@@ -778,6 +782,21 @@ function TimersPane() {
                       const next = Math.min(60, Math.max(1, brk + d));
                       setPomoBreak(next);
                       setBrk(next);
+                    }}
+                  />
+                </span>
+                {/* the third leg, with the interval-plan amendment (user-ruled
+                    2026-08-08). Floors at 2, not 1: breaks sit BETWEEN
+                    intervals, so a single-interval pomodoro is a countdown
+                    wearing the wrong face. */}
+                <span className="pomoside">
+                  <span className="sglbl">Intervals</span>
+                  <Stepper
+                    value={`${ivals}`}
+                    onStep={(d) => {
+                      const next = Math.min(24, Math.max(MIN_INTERVALS, ivals + d));
+                      setPomoIntervals(next);
+                      setIvals(next);
                     }}
                   />
                 </span>

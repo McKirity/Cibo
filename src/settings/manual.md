@@ -94,7 +94,7 @@ machine facts stay put**:
 | Day cutoff, week start | UI scale, compact mode, reduce effects |
 | Saved presets, palette curation | Window size and position |
 | Whimsy settings — dates, location, countdowns | The cloud-root path, the Calibre path |
-| Importer API keys | Timer sound and default pomodoro lengths |
+| Importer API keys | Timer sound and the default pomodoro plan |
 | Muted Data Doctor findings | How you left the Library — its sort and filters |
 
 Appearance settings deliberately do **not** travel: a size that reads well on a large monitor is
@@ -345,11 +345,17 @@ Three modes:
 - **Stopwatch** — counts up until you stop it.
 - **Countdown** — counts down from a length you set. It records the time that actually elapsed,
   so stopping early logs what you really did.
-- **Pomodoro** — alternating work and break intervals.
+- **Pomodoro** — a set number of work intervals with breaks between them. You choose how many
+  (at least two), and how long work and break run; Settings → Timers holds the defaults. Breaks
+  sit between intervals only, so a run starts and ends on work. Cibo chimes at every changeover
+  and moves straight on — work to break, break to the next interval, no interruption. Only when
+  the last interval ends does it stop and ask what to do with the time. If you want to keep
+  going from there, it asks for a fresh number of intervals and lengths, and carries on with the
+  time you have already banked.
 
-Stopping a clock and reaching the end of an interval are the same event: you get the same prompt,
-and logging writes an ordinary session into today's form. Anything a timer produces you could have
-typed by hand.
+Stopping a clock yourself and reaching the end of a run are the same event: you get the same
+prompt, and logging writes an ordinary session into today's form. Anything a timer produces you
+could have typed by hand.
 
 Timers make a sound at the end of an interval by default. Minimizing Cibo puts running clocks in
 the tray. There is no global hotkey — a timer is something you start on purpose.

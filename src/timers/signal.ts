@@ -106,8 +106,11 @@ const flagAttention = () => {
 };
 
 export const fireSignal = (boundary: Exclude<Boundary, null>): void => {
-  // Every boundary sounds; a break-end is quieter business (the clock keeps
-  // running) but still a completion the user scheduled.
+  // EVERY boundary sounds, and since the 2026-08-08 interval-plan amendment
+  // that is load-bearing rather than incidental: a mid-plan work end and a
+  // break end no longer stop the clock or open anything, so the chime is the
+  // ONLY announcement that the phase changed. Silence there would leave the
+  // user working through their own break.
   void boundary;
   // The Settings → Timers signal style: Silent sheds the sound only —
   // the OS attention ask is the point of the signal and always fires.

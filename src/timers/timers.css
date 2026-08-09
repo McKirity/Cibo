@@ -85,6 +85,10 @@
 .timerscreen .pdot.work { background: var(--text-secondary); border-color: var(--text-secondary); }
 .timerscreen .pdot.brk { background: transparent; border-style: dashed; }
 .timerscreen .pdot.now { background: transparent; border-color: var(--text-strong); border-width: var(--border-heavy); }
+/* the plan's REMAINDER is drawn too since 2026-08-08 (a plan has an end), so a
+   break needs two weights: bare .brk = still to come, .brk.done = behind us.
+   The plain .pdot ring already reads as a pending work interval. */
+.timerscreen .pdot.brk.done { border-color: var(--text-secondary); }
 
 /* accumulated (the honest total — work intervals only on pomodoro) */
 .timerscreen .faccrued { font-family: var(--font-ui); font-size: var(--size-small); color: var(--text-muted); }
@@ -308,3 +312,16 @@
 .timer-mo .minifield { display: inline-flex; align-items: center; gap: var(--space-4); background: var(--inset-background); border: var(--border-hairline) solid transparent; border-radius: var(--radius-small); padding: var(--space-3) var(--space-5); font-family: var(--font-mono); font-size: var(--size-body); color: var(--text-strong); transition: border-color var(--motion-fast) var(--ease-standard); }
 .timer-mo .minifield:hover, .timer-mo .minifield:focus-within { border-color: var(--border); }
 .timer-mo .minifield input { background: transparent; border: none; outline: none; font: inherit; color: inherit; width: var(--input-inline-w); }
+
+/* the pomodoro plan, stated in words under its three fields (2026-08-08) — a
+   count of intervals does not say where the breaks fall, and BETWEEN-only is
+   the whole of the amendment */
+.timer-mo .planline { margin: var(--space-4) 0 0; padding-left: 128px; font-size: var(--size-small); color: var(--text-muted); }
+
+/* the end-of-plan re-run, in the FOOTER where Resume stood (it replaces it) —
+   the fields sit inline so the footer never becomes a second body */
+.timer-mo .rerun { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.timer-mo .rerun .rerunfields { display: flex; align-items: center; gap: var(--space-3); }
+/* the label column collapses here: these three fields are read as a phrase
+   ("4 × 25:00 / 5:00"), not as a form */
+.timer-mo .rerun .setlbl { width: auto; }

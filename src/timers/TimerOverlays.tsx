@@ -18,9 +18,13 @@ import { useQuery } from "@evolu/react";
 import {
   clockMs,
   fmtMs,
+  fmtTarget,
   handoffMinutes,
   itemMs,
+  parseIntervals,
   parseTarget,
+  pomoPlanDone,
+  MIN_INTERVALS,
   type Clock,
   type TimerMode,
   type TrackedItem, modeLabel} from "./timerCore";
@@ -30,6 +34,7 @@ import {
   createClock,
   discardClock,
   removeTracked,
+  restartPomodoro,
   resumeFromManage,
   recoveryContinue,
   recoveryDiscard,
@@ -48,7 +53,7 @@ import {
 } from "./TrackedPicker";
 import { Ico, ICONS } from "../shell/icons";
 import { useOverlayEsc } from "../shell/overlayHooks";
-import { getPomoBreak, getPomoWork } from "../settings/local";
+import { getPomoBreak, getPomoIntervals, getPomoWork } from "../settings/local";
 import "./timers.css";
 
 // Glyphs from the shell roster (dedup pass 2026-07-30) — paths verified
@@ -94,6 +99,7 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
   const [target, setTarget] = useState(DEFAULT_TARGET);
   const [work, setWork] = useState(() => `${getPomoWork()}:00`);
   const [brk, setBrk] = useState(() => `${getPomoBreak()}:00`);
+  const [ivals, setIvals] = useState(() => String(getPomoIntervals()));
 
   // Esc closes — the shared overlay stack (top overlay only).
   useOverlayEsc(onClose);
@@ -102,9 +108,12 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
   const targetMs = parseTarget(target);
   const workMs = parseTarget(work);
   const breakMs = parseTarget(brk);
+  const intervals = parseIntervals(ivals);
   const configOk =
     mode === "stopwatch" ||
-    (mode === "countdown" ? targetMs != null : workMs != null && breakMs != null);
+    (mode === "countdown"
+      ? targetMs != null
+      : workMs != null && breakMs != null && intervals != null);
   const canStart = items.length > 0 && configOk;
 
   const start = () => {
@@ -115,6 +124,7 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
       targetMs: targetMs,
       workMs,
       breakMs,
+      intervals,
     });
     onClose();
   };
@@ -178,6 +188,16 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
               {mode === "pomodoro" && (
                 <>
                   <div className="setrow">
+                    <span className="setlbl">Intervals</span>
+                    <span className="minifield">
+                      <input
+                        value={ivals}
+                        onChange={(e) => setIvals(e.target.value)}
+                        aria-invalid={intervals == null}
+                      />
+                    </span>
+                  </div>
+                  <div className="setrow">
                     <span className="setlbl">Work</span>
                     <span className="minifield">
                       <input
@@ -197,6 +217,17 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
                       />
                     </span>
                   </div>
+                  {/* The plan in one sentence, because "4 intervals" alone
+                      does not say where the breaks fall — and the whole point
+                      of the amendment is that they fall BETWEEN, never at
+                      either end. */}
+                  <p className="planline">
+                    {intervals != null && workMs != null && breakMs != null
+                      ? `${intervals} work intervals of ${fmtTarget(workMs)}, with ${
+                          intervals - 1
+                        } × ${fmtTarget(breakMs)} break${intervals - 1 === 1 ? "" : "s"} between them.`
+                      : `Intervals must be ${MIN_INTERVALS} or more — breaks sit between them.`}
+                  </p>
                 </>
               )}
             </div>
@@ -219,11 +250,76 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
 
 // ── the management window (kit-prompt-interval) ──────────────────────────────
 
+/**
+ * The end-of-plan re-run (user-ruled 2026-08-08: *"At the last interval, if I
+ * want to resume, it prompts me to set another amount of intervals + work time
+ * + breaks"*). It replaces Resume in the footer for exactly one state — a
+ * pomodoro that has finished its last interval — because resuming a spent plan
+ * has no meaning: the fields ARE the resume.
+ *
+ * Pre-filled with the plan just finished: the common re-run is "same again",
+ * and a blank form would make the common case the expensive one.
+ */
+function PomoRerun({ clock }: { clock: Clock }) {
+  const [open, setOpen] = useState(false);
+  const [ivals, setIvals] = useState(() => String(clock.intervals ?? getPomoIntervals()));
+  const [work, setWork] = useState(() => fmtTarget(clock.workMs ?? getPomoWork() * 60_000));
+  const [brk, setBrk] = useState(() => fmtTarget(clock.breakMs ?? getPomoBreak() * 60_000));
+
+  const intervals = parseIntervals(ivals);
+  const workMs = parseTarget(work);
+  const breakMs = parseTarget(brk);
+  const ok = intervals != null && workMs != null && breakMs != null;
+
+  if (!open)
+    return (
+      <button className="btn-plain" onClick={() => setOpen(true)}>
+        <IPlay />
+        Run another set…
+      </button>
+    );
+
+  return (
+    <div className="rerun">
+      <div className="rerunfields">
+        <span className="setlbl">Intervals</span>
+        <span className="minifield">
+          <input value={ivals} onChange={(e) => setIvals(e.target.value)} aria-invalid={intervals == null} />
+        </span>
+        <span className="setlbl">Work</span>
+        <span className="minifield">
+          <input value={work} onChange={(e) => setWork(e.target.value)} aria-invalid={workMs == null} />
+        </span>
+        <span className="setlbl">Break</span>
+        <span className="minifield">
+          <input value={brk} onChange={(e) => setBrk(e.target.value)} aria-invalid={breakMs == null} />
+        </span>
+      </div>
+      <button
+        className="btn-accent"
+        aria-disabled={!ok}
+        onClick={() => {
+          if (!ok) return;
+          restartPomodoro(clock.id, { intervals, workMs, breakMs });
+        }}
+      >
+        <IPlay />
+        Start
+      </button>
+      <button className="btn-plain" onClick={() => setOpen(false)}>
+        Cancel
+      </button>
+    </div>
+  );
+}
+
 function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => void }) {
   const [adding, setAdding] = useState(false);
   const [selection, setSelection] = useState<PickerSelection>({});
   const { habits, entryTitles } = usePickerData();
   const now = Date.now();
+  // The one state that gets the re-run instead of Resume.
+  const planDone = pomoPlanDone(clock);
 
   // Esc closes — the shared overlay stack (top overlay only).
   useOverlayEsc(closeManage);
@@ -272,12 +368,13 @@ function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => v
             <span className="mo-title">Manage clock</span>
             {/* the modal's SUBJECT rides the chassis's subtitle slot (2026-07-28) */}
             <span className="mo-sub">
-              {clock.mode === "stopwatch"
-                ? "Stopwatch"
-                : clock.mode === "countdown"
-                  ? "Countdown"
-                  : "Pomodoro"}{" "}
-              · <span className="mono">{fmtMs(clockMs(clock, now))}</span> · paused
+              {modeLabel(clock.mode)} ·{" "}
+              <span className="mono">{fmtMs(clockMs(clock, now))}</span> ·{" "}
+              {planDone
+                ? `${clock.intervals ?? clock.interval} interval${
+                    (clock.intervals ?? clock.interval) === 1 ? "" : "s"
+                  } done`
+                : "paused"}
             </span>
           </div>
           <div className="mo-esc">
@@ -336,10 +433,14 @@ function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => v
               Log all
             </button>
           )}
-          <button className="btn-plain" onClick={() => resumeFromManage(clock.id)}>
-            <IPlay />
-            Resume
-          </button>
+          {planDone ? (
+            <PomoRerun clock={clock} />
+          ) : (
+            <button className="btn-plain" onClick={() => resumeFromManage(clock.id)}>
+              <IPlay />
+              Resume
+            </button>
+          )}
           <span style={{ marginLeft: "auto" }} />
           {/* Per-clock scrap (user-ruled 2026-07-28): every clock can be
               discarded whole from its own window. No ceremony — nothing was

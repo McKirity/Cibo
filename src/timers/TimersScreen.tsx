@@ -17,7 +17,7 @@
  * review).
  */
 import { useState } from "react";
-import { clockMs, fmtMs, fmtTarget, itemMs, remainingMs, type Clock, modeLabel} from "./timerCore";
+import { clockMs, fmtMs, fmtTarget, itemMs, pomoPlanDone, remainingMs, type Clock, modeLabel} from "./timerCore";
 import { focusClock, pauseClock, runClock, stopClock, useTimers } from "./timerStore";
 import { CreateClockModal } from "./TimerOverlays";
 import { clockChipReadout } from "./GlobalTimerTray";
@@ -88,6 +88,36 @@ function TrackedRows({
     </div>
   );
 }
+
+/**
+ * The cycle dots for a whole pomodoro plan: N work dots with a break dot in
+ * each gap (N−1 of them — breaks are BETWEEN intervals, so the row can neither
+ * open nor close on one, which is the amendment said in shapes).
+ *
+ * A plan-less legacy clock (`intervals == null`) keeps the drawn open-ended
+ * face: everything behind it, plus the dot it is on.
+ */
+const pomoDots = (c: Clock) => {
+  const total = c.intervals ?? c.interval;
+  const spent = pomoPlanDone(c); // the whole plan is behind it
+  const dots = [];
+  for (let n = 1; n <= total; n++) {
+    if (n > 1) {
+      // the break sitting between interval n−1 and interval n
+      const passed = spent || c.interval >= n;
+      const isNow = !spent && c.phase === "break" && c.interval === n - 1;
+      dots.push(
+        <span key={`b${n}`} className={`pdot brk${passed ? " done" : ""}${isNow ? " now" : ""}`} aria-hidden />,
+      );
+    }
+    const finished = spent || c.interval > n || (c.interval === n && c.phase === "break");
+    const isNow = !finished && c.interval === n;
+    dots.push(
+      <span key={`w${n}`} className={`pdot${finished ? " work" : isNow ? " now" : ""}`} aria-hidden />,
+    );
+  }
+  return dots;
+};
 
 /** Run-state — word + glyph, never colour alone. */
 function RunState({ clock }: { clock: Clock }) {
@@ -160,6 +190,7 @@ export function TimersScreen({
             {c.mode === "pomodoro" && c.workMs != null && c.breakMs != null && (
               <span className="fcfg">
                 {fmtTarget(c.workMs)} / {fmtTarget(c.breakMs)}
+                {c.intervals != null && ` × ${c.intervals}`}
               </span>
             )}
             <RunState clock={c} />
@@ -186,7 +217,13 @@ export function TimersScreen({
           {c.mode === "pomodoro" && c.workMs != null && c.breakMs != null && (
             <div className="focus-face">
               <div className="fphase">
-                {c.phase === "break" ? "Break" : `Interval ${c.interval}`}
+                {c.phase === "break"
+                  ? c.intervals != null
+                    ? `Break · next up ${c.interval + 1} of ${c.intervals}`
+                    : "Break"
+                  : c.intervals != null
+                    ? `Interval ${c.interval} of ${c.intervals}`
+                    : `Interval ${c.interval}`}
               </div>
               <Ring
                 fraction={
@@ -195,14 +232,14 @@ export function TimersScreen({
                 time={fmtMs(remainingMs(c, now))}
                 cap={`of ${fmtTarget(c.phase === "work" ? c.workMs : c.breakMs)}`}
               />
-              {/* cycle dots — phase-shapes: ● finished work · ◌ break · ◉ now */}
-              <div className="pomo">
-                {Array.from({ length: c.interval - 1 }, (_, i) => [
-                  <span key={`w${i}`} className="pdot work" />,
-                  <span key={`b${i}`} className="pdot brk" />,
-                ])}
-                <span className="pdot now" />
-              </div>
+              {/* cycle dots — phase-shapes: ● finished work · ◌ break · ◉ now.
+                  ADDITION TO THE DRAWN FACE (user-ruled 2026-08-08 with the
+                  interval plan): the FINAL draws the past plus a "now" dot,
+                  because the cycle was open-ended when it was drawn. A plan
+                  has an END, so the whole row is drawn — pending phases as
+                  faint rings — and the dots become the progress readout the
+                  ring cannot be (the ring only knows this phase). */}
+              <div className="pomo">{pomoDots(c)}</div>
               {/* the honest total — work intervals only */}
               <div className="faccrued">
                 Accumulated <b>{fmtMs(clockMs(c, now))}</b>
@@ -218,9 +255,12 @@ export function TimersScreen({
                 Pause
               </button>
             ) : (
+              // A spent pomodoro plan cannot resume — `runClock` routes it to
+              // the management window, where the re-run form lives, so the
+              // button says what it will actually do.
               <button className="cbtn accent" onClick={() => runClock(c.id)}>
                 <IPlay />
-                Resume
+                {pomoPlanDone(c) ? "Run another set…" : "Resume"}
               </button>
             )}
             <button className="cbtn plain" onClick={() => stopClock(c.id)}>

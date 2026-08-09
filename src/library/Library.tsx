@@ -68,7 +68,20 @@ const perPage = (): number => {
   return perPageCache;
 };
 
-const storageKey = (habitKey: string) => `cibo.libraryView.${habitKey}`;
+/**
+ * The per-device key holding a habit's library sort + filters — **the only
+ * persisted view state in the app** ([[Shell Mechanics]]).
+ *
+ * EXPORTED because the habit DELETE has to clear it (2026-08-09): the cascade
+ * tombstones six tables and knew nothing about this file, so a deleted habit
+ * left its view state behind forever. Found by reading the per-device file
+ * after a real delete rather than by trusting the cascade's own account of
+ * itself. Exported rather than re-typed at the deleter so the key format keeps
+ * ONE author — a second copy of this template is how the delete would come to
+ * clear a key nobody writes any more.
+ */
+export const libraryViewKey = (habitKey: string) => `cibo.libraryView.${habitKey}`;
+const storageKey = libraryViewKey;
 
 const loadViewState = (habitKey: string): LibraryViewState => {
   try {
@@ -156,6 +169,43 @@ export function Library({
   );
 
   const hasType = data.typeVocab.length > 0;
+
+  /**
+   * WHICH FILTER CHIPS THE HABIT ACTUALLY EARNS. The entry-attribute bundle is
+   * the habit's declaration of what its entries carry, and until 2026-08-09
+   * this toolbar was the ONE surface that ignored it (bug `library-1`, found by
+   * the user): the entry creation modal, the bulk-edit modal and the entry
+   * dashboard all gate on it, and the ruling was even applied HERE — to `Type`
+   * alone (*"ABSENT, not dashed, where none is declared"*, 2026-07-27) — while
+   * the five chips beside it kept offering filters for qualities the entry form
+   * will not even write. Filtering by one could only ever return nothing.
+   *
+   * Genre stays visible on the DECLARATION, not on having options yet
+   * (user-ruled 2026-08-09: *"Add genre in, just have it show all"*) — an empty
+   * picklist is a habit you have not filled in, not a habit without genres.
+   */
+  const has = useCallback((attr: string) => data.bundle.has(attr), [data.bundle]);
+
+  /**
+   * ⚠ AND CLEAR WHAT WE STOP DRAWING. Filters persist per habit, so hiding a
+   * chip whose filter is SET would leave the list silently narrowed with no
+   * control on screen to undo it — an empty library and nothing to point at.
+   * That is `creator-5`'s exact shape (a gate judging a field the UI hides), so
+   * the chip and its value are removed together. Runs only when something is
+   * actually set, so it cannot loop.
+   */
+  useEffect(() => {
+    if (!data.ready) return;
+    const stale: Partial<LibraryViewState> = {};
+    if (state.status != null && !data.bundle.has("status")) stale.status = null;
+    if (state.genre != null && !data.bundle.has("genre")) stale.genre = null;
+    if (state.priority != null && !data.bundle.has("priority")) stale.priority = null;
+    if (state.rating != null && !data.bundle.has("rating")) stale.rating = null;
+    if (state.owned && !data.bundle.has("purchased")) stale.owned = false;
+    if (state.type != null && data.typeVocab.length === 0) stale.type = null;
+    if (Object.keys(stale).length > 0) setState((s) => ({ ...s, ...stale }));
+  }, [data.ready, data.bundle, data.typeVocab, state]);
+
   const empty = data.ready && data.entries.length === 0;
   const allCurrent = useMemo(
     () => data.entries.filter((e) => e.status === "Current"),
@@ -244,20 +294,22 @@ export function Library({
                   patch(state.sort === key ? { flipped: !state.flipped } : { sort: key, flipped: false }),
               }))}
             />
-            <FilterChip
-              k="Status"
-              value={state.status ?? "All"}
-              active={state.status != null}
-              items={[
-                { key: "", label: "All", selected: state.status == null, onPick: () => patch({ status: null }) },
-                ...data.statusVocab.map((v) => ({
-                  key: v,
-                  label: v,
-                  selected: state.status === v,
-                  onPick: () => patch({ status: v }),
-                })),
-              ]}
-            />
+            {has("status") && (
+              <FilterChip
+                k="Status"
+                value={state.status ?? "All"}
+                active={state.status != null}
+                items={[
+                  { key: "", label: "All", selected: state.status == null, onPick: () => patch({ status: null }) },
+                  ...data.statusVocab.map((v) => ({
+                    key: v,
+                    label: v,
+                    selected: state.status === v,
+                    onPick: () => patch({ status: v }),
+                  })),
+                ]}
+              />
+            )}
             {/* Type is ABSENT (not dashed) where no type is declared — user-ruled
                 2026-07-27, overriding the FINAL's dashed-inert delta face. */}
             {hasType && (
@@ -276,65 +328,73 @@ export function Library({
                 ]}
               />
             )}
-            <FilterChip
-              k="Genre"
-              value={state.genre ?? "All"}
-              active={state.genre != null}
-              items={[
-                { key: "", label: "All", selected: state.genre == null, onPick: () => patch({ genre: null }) },
-                ...genreOptions.map((g) => ({
-                  key: g.value,
-                  label: g.label,
-                  selected: state.genre === g.value,
-                  onPick: () => patch({ genre: g.value }),
-                })),
-              ]}
-            />
-            <FilterChip
-              k="Priority"
-              value={state.priority == null ? "All" : String(state.priority)}
-              active={state.priority != null}
-              items={[
-                { key: "", label: "All", selected: state.priority == null, onPick: () => patch({ priority: null }) },
-                ...[0, 1, 2, 3].map((p) => ({
-                  key: String(p),
-                  label: p === 0 ? "None (0)" : String(p),
-                  selected: state.priority === p,
-                  onPick: () => patch({ priority: p }),
-                })),
-              ]}
-            />
-            <FilterChip
-              k="Rating"
-              value={
-                state.rating == null ? "All" : state.rating === "none" ? "Unrated" : stars(state.rating)
-              }
-              active={state.rating != null}
-              items={[
-                { key: "", label: "All", selected: state.rating == null, onPick: () => patch({ rating: null }) },
-                ...[5, 4, 3, 2, 1].map((r) => ({
-                  key: String(r),
-                  label: stars(r),
-                  selected: state.rating === r,
-                  onPick: () => patch({ rating: r }),
-                })),
-                {
-                  key: "none",
-                  label: "Unrated",
-                  selected: state.rating === "none",
-                  onPick: () => patch({ rating: "none" as const }),
-                },
-              ]}
-            />
-            <button
-              className={`towned${state.owned ? " on" : ""}`}
-              onClick={() => patch({ owned: !state.owned })}
-            >
-              <span className="box">
-                <Ico d={ICON.check} size={12} />
-              </span>
-              Owned
-            </button>
+            {has("genre") && (
+              <FilterChip
+                k="Genre"
+                value={state.genre ?? "All"}
+                active={state.genre != null}
+                items={[
+                  { key: "", label: "All", selected: state.genre == null, onPick: () => patch({ genre: null }) },
+                  ...genreOptions.map((g) => ({
+                    key: g.value,
+                    label: g.label,
+                    selected: state.genre === g.value,
+                    onPick: () => patch({ genre: g.value }),
+                  })),
+                ]}
+              />
+            )}
+            {has("priority") && (
+              <FilterChip
+                k="Priority"
+                value={state.priority == null ? "All" : String(state.priority)}
+                active={state.priority != null}
+                items={[
+                  { key: "", label: "All", selected: state.priority == null, onPick: () => patch({ priority: null }) },
+                  ...[0, 1, 2, 3].map((p) => ({
+                    key: String(p),
+                    label: p === 0 ? "None (0)" : String(p),
+                    selected: state.priority === p,
+                    onPick: () => patch({ priority: p }),
+                  })),
+                ]}
+              />
+            )}
+            {has("rating") && (
+              <FilterChip
+                k="Rating"
+                value={
+                  state.rating == null ? "All" : state.rating === "none" ? "Unrated" : stars(state.rating)
+                }
+                active={state.rating != null}
+                items={[
+                  { key: "", label: "All", selected: state.rating == null, onPick: () => patch({ rating: null }) },
+                  ...[5, 4, 3, 2, 1].map((r) => ({
+                    key: String(r),
+                    label: stars(r),
+                    selected: state.rating === r,
+                    onPick: () => patch({ rating: r }),
+                  })),
+                  {
+                    key: "none",
+                    label: "Unrated",
+                    selected: state.rating === "none",
+                    onPick: () => patch({ rating: "none" as const }),
+                  },
+                ]}
+              />
+            )}
+            {has("purchased") && (
+              <button
+                className={`towned${state.owned ? " on" : ""}`}
+                onClick={() => patch({ owned: !state.owned })}
+              >
+                <span className="box">
+                  <Ico d={ICON.check} size={12} />
+                </span>
+                Owned
+              </button>
+            )}
             {(isFilterActive(state) || search !== "") && (
               <button
                 className="tclear"

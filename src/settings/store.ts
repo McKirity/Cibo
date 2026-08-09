@@ -73,6 +73,16 @@ const clampInt = (v: unknown, lo: number, hi: number, dflt: number): number => {
   return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : dflt;
 };
 
+/**
+ * 0–12, whole hours past midnight — a cutoff past noon would hand more than
+ * half the day to yesterday.
+ *
+ * *(Raised to 24 for a few minutes on 2026-08-09 and restored the same sitting:
+ * the rule fires only while the current hour is below the cutoff, so at this
+ * bound it can only be walked before noon. Noted because the constraint is
+ * permanent — whoever walks the day-cutoff probe again needs a MORNING, or this
+ * same temporary raise.)*
+ */
 export const clampDayCutoff = (h: number): number => clampInt(h, 0, 12, DAY_CUTOFF_DEFAULT);
 export const clampWaveGap = (d: number): number => clampInt(d, 2, 365, WAVE_GAP_DEFAULT);
 export const clampListCap = (n: number): number => clampInt(n, 3, 50, LIST_CAP_DEFAULT);

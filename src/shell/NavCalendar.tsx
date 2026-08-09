@@ -93,10 +93,22 @@ function monthGrid(anchor: string): {
 
 export function NavCalendar({
   today,
+  viewingDay,
   openDay,
   onCadence,
 }: {
   today: string;
+  /**
+   * The day the Daily screen is currently showing, when it is showing one — the
+   * "you are here" marker (user-ruled 2026-08-09).
+   *
+   * The grid drew `today` and nothing else, so it could never say which day you
+   * were LOOKING at. That gap existed on every back-dated visit; the day-cutoff
+   * walk is merely what made it visible, because with a cutoff set the app OPENS
+   * on a day the rail is not pointing at (the form read Aug 8 while the rail lit
+   * Aug 9 — both correct, and together confusing).
+   */
+  viewingDay?: string | null;
   openDay: (day: string) => void;
   onCadence: (scale: CadenceScale, anchor: string) => void;
 }) {
@@ -267,6 +279,7 @@ export function NavCalendar({
               current={isCurrentWeek}
               cells={row}
               today={today}
+              viewingDay={viewingDay}
               marks={marks}
               openDay={openDay}
               onCadence={onCadence}
@@ -565,6 +578,7 @@ function Row({
   current,
   cells,
   today,
+  viewingDay,
   marks,
   openDay,
   onCadence,
@@ -574,6 +588,7 @@ function Row({
   current: boolean;
   cells: Cell[];
   today: string;
+  viewingDay?: string | null;
   marks: Map<string, boolean>;
   openDay: (day: string) => void;
   onCadence: (scale: CadenceScale, anchor: string) => void;
@@ -591,6 +606,12 @@ function Row({
         const finalized = marks.get(c.day);
         const isToday = c.day === today;
         const future = c.day > today;
+        // "YOU ARE HERE" — and ONLY when it has something to say. On today the
+        // cell already reads as today, so a second marker would add nothing and
+        // would make the rail's ordinary resting state (which is today, nearly
+        // always) permanently louder. Scoped in-month for the same reason `.unf`
+        // is: a spill day's story belongs to its own month.
+        const viewing = viewingDay != null && c.day === viewingDay && c.inMonth && !isToday;
         // Class order mirrors the frozen face's own vocabulary so the drawn CSS
         // reads unchanged: out · future · today · fin · unf · empty.
         const cls = [
@@ -604,6 +625,7 @@ function Row({
           // month being shown, so a spill day never lights the rail.
           finalized === false && c.inMonth ? "unf" : "",
           finalized === undefined && !future && !isToday ? "empty" : "",
+          viewing ? "viewing" : "",
         ]
           .filter(Boolean)
           .join(" ");

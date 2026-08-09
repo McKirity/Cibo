@@ -32,21 +32,30 @@
  * synchronous tick, which Evolu batches into a single microtask transaction;
  * every mutation Result is checked (the coding-migration lesson — unchecked
  * Results drop silently). Reference sweep by the definition's level:
- * global status (definition_fk null) → `entries.status` · entry-level
- * `*_type` / `*_fandom` / `*_engine` → their entry columns (compare's
- * key-suffix precedent) · `*_genre` → the `entries.genre` JSON list
- * (decode → swap → re-encode, only rows carrying the old value) ·
- * session-level definitions → `subunit_values` (the branch is machinery-
- * complete though this pane rosters only the entry tier, per the shape above).
+ * global status (definition_fk null) → `entries.status` · entry-level →
+ * whichever entry column **`db/entryMedium.ts`** names, `genre` decoding and
+ * re-encoding the JSON list (only rows carrying the old value) and the rest
+ * updating in place · session-level definitions → `subunit_values` (the branch
+ * is machinery-complete though this pane rosters only the entry tier).
  * Anchors get NO rename affordance; a case-insensitive collision with a
  * sibling is refused with the pane's error idiom, while re-casing a value
  * onto itself stays legal (a casing fix).
+ *
+ * THE COLUMN IS ASKED, NEVER GUESSED (bug `vocab-1`, 2026-08-09). This read the
+ * column off the definition's KEY SUFFIX until then — a rule that fitted all
+ * eleven seeded habits and none of the ones a user makes, since keys are minted
+ * `<habitKey>_<label-slug>`: a consumption medium labelled "Format" renamed its
+ * picklist and left every entry holding the old string, with nothing to say so.
+ * The library and the Data Doctor had both always derived it from `sub_type` +
+ * `data_type`; that derivation is now one function all three call, and a column
+ * this pane cannot name aborts the rename instead of half-applying it.
  */
 import { useMemo, useState } from "react";
 import { useQuery } from "@evolu/react";
 import { NonEmptyString100, NonEmptyString1000 } from "@evolu/common";
 import { evolu } from "../db/evolu";
 import { stringListFromJson, stringListToJson } from "../db/schema";
+import { entryMediumColumn } from "../db/entryMedium";
 import { Ico, ICONS } from "../shell/icons";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { showErrorToast } from "../shell/toast";
@@ -58,7 +67,9 @@ const isAnchor = (v: string) => ANCHORS.some((a) => a.toLowerCase() === v.toLowe
 const habitsQuery = evolu.createQuery((db) =>
   db
     .selectFrom("habits")
-    .select(["id", "key", "name", "colour_slot", "icon", "archived", "sort_order"])
+    // `sub_type` is read by the rename: it is half of what names the entry
+    // column a medium's values live in (db/entryMedium.ts).
+    .select(["id", "key", "name", "colour_slot", "icon", "archived", "sort_order", "sub_type"])
     .where("isDeleted", "is not", 1)
     .orderBy("sort_order"),
 );
@@ -246,6 +257,16 @@ export function VocabularyPane() {
         const def = defs.find((d) => String(d.id) === defId);
         if (def == null) throw new Error(`definition ${defId} not found`);
         const key = String(def.key);
+        // WHICH COLUMN the referencing rows live in — asked of the one owner
+        // (db/entryMedium.ts), never guessed from the key. Guessing is what
+        // bug `vocab-1` was: it matched every seeded habit and missed every
+        // habit the user creates, renaming the picklist and orphaning the rows.
+        const habit = habits.find((h) => String(h.id) === String(def.habit_fk));
+        const column = entryMediumColumn(
+          habit?.sub_type == null ? null : String(habit.sub_type),
+          String(def.data_type),
+          key,
+        );
         if (String(def.scope) === "session") {
           // Session-level → one subunit_values row per answering bout.
           const v1000 = NonEmptyString1000.orThrow(next);
@@ -261,7 +282,7 @@ export function VocabularyPane() {
           );
           for (const r of rows)
             plans.push(() => evolu.update("subunit_values", { id: r.id as never, value: v1000 }));
-        } else if (key.endsWith("_genre")) {
+        } else if (column === "genre") {
           // Entry-level genre → the entries.genre JSON list: decode, swap the
           // element, re-encode — only rows that carry the old value.
           const rows = await evolu.loadQuery(
@@ -296,30 +317,32 @@ export function VocabularyPane() {
             plans.push(() => evolu.update("entries", { id: r.id as never, genre: encoded }));
           }
         } else {
-          // Entry-level single-value mediums live on their own entry columns
-          // (compare's key-suffix precedent): type · fandom · gamedev_engine.
-          const column = key.endsWith("_type")
-            ? ("type" as const)
-            : key.endsWith("_fandom")
-              ? ("fandom" as const)
-              : key.endsWith("_engine")
-                ? ("gamedev_engine" as const)
-                : null;
-          if (column != null) {
-            const rows = await evolu.loadQuery(
-              evolu.createQuery((db) =>
-                db
-                  .selectFrom("entries")
-                  .select(["id"])
-                  .where("habit_fk", "=", def.habit_fk as never)
-                  .where(column, "=", oldValue as never)
-                  .where("isDeleted", "is not", 1),
-              ),
+          // Entry-level single-value mediums live on their own entry columns:
+          // type (consumption) · fandom / gamedev_engine (creation).
+          //
+          // A column we cannot name is a REFUSAL, not a no-op. Falling through
+          // silently is precisely the shape of `vocab-1`: the vocab row renames
+          // and the rows it governs keep the old string, which no surface
+          // reports as a rename failure. Throwing here aborts inside the
+          // plan-then-fire contract, so ZERO writes have been issued.
+          if (column == null)
+            throw new Error(
+              `no entry column for definition ${key} (sub_type ${String(habit?.sub_type)}, ` +
+                `data_type ${String(def.data_type)}) — refusing a rename that would orphan its rows`,
             );
-            for (const r of rows) {
-              const patch: Record<string, unknown> = { id: r.id, [column]: v100 };
-              plans.push(() => evolu.update("entries", patch as never));
-            }
+          const rows = await evolu.loadQuery(
+            evolu.createQuery((db) =>
+              db
+                .selectFrom("entries")
+                .select(["id"])
+                .where("habit_fk", "=", def.habit_fk as never)
+                .where(column, "=", oldValue as never)
+                .where("isDeleted", "is not", 1),
+            ),
+          );
+          for (const r of rows) {
+            const patch: Record<string, unknown> = { id: r.id, [column]: v100 };
+            plans.push(() => evolu.update("entries", patch as never));
           }
         }
       }

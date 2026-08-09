@@ -203,65 +203,8 @@
 .setupscreen .fu-in::placeholder {
   color: var(--text-muted);
 }
-/* ── the date chip (typed primary · kit .calpop popover fallback) — built
-      after the first GUI pass: WebView2's native date input stalled ~2s per
-      row while the identical React path measured 6 ms in Chromium; the app
-      idiom was never the native control (the FINAL's .datefield is a chip) ── */
-.setupscreen .fudate {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-3);
-  background: var(--inset-background);
-  border: var(--border-hairline) solid var(--border);
-  border-radius: var(--radius-small);
-  padding: var(--space-3) var(--space-5);
-  cursor: text;
-}
-.setupscreen .fud-ico {
-  width: var(--icon-size-small);
-  height: var(--icon-size-small);
-  flex: 0 0 auto;
-  stroke: currentColor;
-  stroke-width: var(--icon-stroke);
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  color: var(--text-muted);
-}
-.setupscreen .fudate-in {
-  border: none;
-  background: transparent;
-  font-family: var(--font-mono);
-  font-size: var(--size-body);
-  color: var(--text-strong);
-  width: 11ch;
-  padding: 0;
-}
-.setupscreen .fudate-in:focus {
-  outline: none;
-}
-.setupscreen .fudate-in::placeholder {
-  color: var(--text-muted);
-}
-/* the popover anchors to the chip — z 6 = the named z-popover-inline tier */
-.setupscreen .fudate > .calpop {
-  display: none;
-  position: absolute;
-  top: calc(100% + var(--space-2));
-  left: 0;
-  z-index: 6;
-  text-align: left;
-}
-.setupscreen .fudate:focus-within > .calpop {
-  display: block;
-}
-.setupscreen .fudate.shut > .calpop {
-  display: none;
-}
-.setupscreen .calpop .caltop .nav .b .fud-ico {
-  color: inherit;
-}
+/* the date chip moved to kit.css as .datefield 2026-08-09 (two tenants:
+   this screen and Settings → Whimsy). Component: kit/DateField.tsx. */
 .setupscreen .fu-chip {
   font-family: var(--font-ui);
   font-size: var(--size-caption);

@@ -441,6 +441,31 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
 .calpop .cd.sel { background:var(--accent); color:var(--text-on-filled); }
 .calpop .cd.today { box-shadow:inset 0 0 0 var(--border-hairline) var(--accent); }
 
+/* == the date chip (.datefield) — typed primary, .calpop popover fallback ====
+   Hoisted from firstrun.css 2026-08-09 (user-ruled "Just swap") when Settings →
+   Whimsy replaced the app's last native `<input type="date">` with it. UNSCOPED
+   like `.calpop` above, because it is now a shared piece with two tenants; the
+   re-scope-per-screen law governs rules CLAIMED for one screen, and this is the
+   other case. `.datefield` is the FINAL's own name (first-run-setup.html draws
+   the chip twice) — the app carried `.fudate` only because the component was
+   born inside the first-run file. All three names verified free app-wide at the
+   hoist. Component: kit/DateField.tsx. */
+.datefield { position:relative; display:inline-flex; align-items:center; gap:var(--space-3); background:var(--inset-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); padding:var(--space-3) var(--space-5); cursor:text; }
+.datefield-ico { width:var(--icon-size-small); height:var(--icon-size-small); flex:0 0 auto; stroke:currentColor; stroke-width:var(--icon-stroke); fill:none; stroke-linecap:round; stroke-linejoin:round; color:var(--text-muted); }
+/* `min-width:0` is load-bearing, not tidiness: a form control carries a UA
+   `min-width:auto`, so this 11ch input is a FLOOR inside any flex or grid track
+   and would push the chip across its neighbour in a narrow one (the lesson the
+   Subnautica pass paid for twice — `.subadd-in` held 183px in a 54px track).
+   Whimsy's countdown rows are exactly such a track. */
+.datefield-in { border:none; background:transparent; font-family:var(--font-mono); font-size:var(--size-body); color:var(--text-strong); width:11ch; min-width:0; padding:0; }
+.datefield-in:focus { outline:none; }
+.datefield-in::placeholder { color:var(--text-muted); }
+/* the popover anchors to the chip — z 6 = the named z-popover-inline tier */
+.datefield > .calpop { display:none; position:absolute; top:calc(100% + var(--space-2)); left:0; z-index:6; text-align:left; }
+.datefield:focus-within > .calpop { display:block; }
+.datefield.shut > .calpop { display:none; }
+.calpop .caltop .nav .b .datefield-ico { color:inherit; }
+
 /* == kit-menu — the anchored popover menu (.libmenu) =========================
    Hoisted from library.css 2026-07-30 (the dedup pass, wave 2) with the kit
    Menu component (src/kit/Menu.tsx) — CS and Advanced Search made it three

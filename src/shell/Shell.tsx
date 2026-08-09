@@ -401,6 +401,9 @@ export function Shell() {
         <div className="sec">
           <NavCalendar
             today={today}
+            // Only Daily is a DAY view — a cadence or habit screen is not "a day
+            // you are looking at", so the marker stays off rather than guessing.
+            viewingDay={view.kind === "daily" ? view.day : null}
             openDay={openDay}
             onCadence={(scale, anchor) => setView({ kind: "cadence", scale, anchor })}
           />

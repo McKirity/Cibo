@@ -95,6 +95,8 @@ export function ConsumptionDashboard({
       {m.masthead.empty ? (
         <EmptyState
           name={m.masthead.name}
+          entryCount={data.entries.length}
+          onOpenLibrary={onOpenLibrary}
           onAddEntries={() => setCreationOpen(true)}
           onRunImport={
             onOpenLibrary == null
@@ -294,28 +296,61 @@ export function ConsumptionDashboard({
   );
 }
 
+/**
+ * The zero state. `empty` is computed from SESSIONS alone (consumptionSpec's
+ * `fullFirst == null`), which is right for a stats screen — with nothing logged
+ * there are no statistics to draw.
+ *
+ * ⚠ BUT ENTRIES CAN EXIST WHILE SESSIONS DO NOT, and until 2026-08-09 this face
+ * hid them (bug `dash-1`, found by the user at Phase 2 tour 7 while setting up
+ * `vocab-1`'s test habit). The only route to a populated library was **"Run an
+ * import"** — which does navigate there, but by asking for something the user
+ * did not want and opening a modal over the thing they did. The copy said
+ * *"Nothing tracked yet"* to someone looking at a habit whose entries they had
+ * just created.
+ *
+ * So the door and the words are both conditioned on entries now. **This is an
+ * ADDITION to the drawn face** (recorded as such, not as a conform): the FINAL
+ * draws three doors, composed when the only way to get entries into a
+ * consumption habit was an importer that also logs sessions. FOURTH instance of
+ * this project's most-repeated copy failure — the library caption, the wall's
+ * channel tile and the AO3 queue's "click a cover" were all written around a
+ * state that a later state contradicted.
+ */
 function EmptyState({
   name,
+  entryCount = 0,
   onAddEntries,
+  onOpenLibrary,
   onRunImport,
 }: {
   name: string;
+  entryCount?: number;
   onAddEntries?: () => void;
+  onOpenLibrary?: () => void;
   onRunImport?: () => void;
 }) {
+  const hasEntries = entryCount > 0;
   return (
     <div className="gs-empty" style={{ display: "block" }}>
       <div className="emptybox gen">
-        <div className="eh">Nothing tracked yet</div>
+        <div className="eh">{hasEntries ? "Nothing logged yet" : "Nothing tracked yet"}</div>
         <div className="es">
-          {name} has no sessions yet — log one, run an import, or set an icon to bring this
-          dashboard to life.
+          {hasEntries
+            ? `${name} has ${entryCount} ${entryCount === 1 ? "entry" : "entries"} but nothing logged against them yet — log a session to bring this dashboard to life.`
+            : `${name} has no sessions yet — log one, run an import, or set an icon to bring this dashboard to life.`}
         </div>
-        {/* All three doors live since 2026-08-04 (the re-wire batch): "Run an
-            import" opens the library WITH its import modal (the one-shot
-            navRequest pattern); "Set an icon" routes to Settings → Habits. */}
+        {/* The original three doors are live since 2026-08-04 (the re-wire
+            batch): "Run an import" opens the library WITH its import modal (the
+            one-shot navRequest pattern); "Set an icon" routes to Settings →
+            Habits. "Open library" joins them only when there is a library worth
+            opening — an empty habit's library is the same nothing this screen
+            is already showing, and a door onto nothing is noise. */}
         <div className="edoors">
           <button className="btn-accent" type="button" onClick={onAddEntries}>Add entries</button>
+          {hasEntries && onOpenLibrary != null && (
+            <button className="btn-plain" type="button" onClick={onOpenLibrary}>Open library</button>
+          )}
           <button className="btn-plain" type="button" disabled={onRunImport == null} onClick={onRunImport}>Run an import</button>
           <button className="btn-plain" type="button" title="Opens Settings → Habits" onClick={() => requestSettingsNav("habits")}>Set an icon</button>
         </div>

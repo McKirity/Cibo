@@ -59,6 +59,29 @@
 .deltachip.down{color:var(--verdict-missed); background:color-mix(in oklch, var(--verdict-missed), var(--window-background) var(--tint-mix));}
 /* (the `.emptybox` family moved to kit.css § kit-state-empty, 2026-07-30) */
 .gs-empty{display:none;}
+/* The creation zero state's entry list — a habit with entries but no sessions
+   still has to show them, since a creation habit has no library and its hero
+   cards need session arithmetic to say anything (bug `dash-1`, user-ruled
+   2026-08-09: "just something simple like a bullet list"). SCOPED HERE, not
+   added to kit.css § kit-state-empty: one screen uses it, and widening a kit
+   block's contract is a ratified mint, not a side effect. A second tenant makes
+   it a kit question; until then it is this screen's own.
+
+   ROW CARDS WITH AN ACCENTED, BOLD NAME — user-ruled 2026-08-09. A middle pass
+   rebuilt these as a `.doorlink` bullet list (dotted underline, secondary ink)
+   and was rejected on sight; the ruling restored the card and moved the "this
+   is a door" signal into the NAME instead of the box.
+
+   ⚠ THE BOLD IS LOAD-BEARING, not garnish: **never colour alone**. A theme may
+   set `--accent` to pure white — Blame! does, with 255 reserved — so an accent
+   name carrying no second signal would read as ordinary text on that seat.
+   Weight is the second signal, per the app-wide port. Do not "tidy" it away. */
+.emptybox .eelist{list-style:none; margin:0 auto var(--space-6); padding:0; max-width:56ch; text-align:left; display:flex; flex-direction:column; gap:var(--space-2);}
+.emptybox .eelist button{width:100%; display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-4); padding:var(--space-3) var(--space-4); border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-small); background:var(--panel-background); font-size:var(--size-body); cursor:pointer; text-align:left;}
+.emptybox .eelist button:hover:not(:disabled){background:var(--hover-wash);}
+.emptybox .eelist button:disabled{cursor:default;}
+.emptybox .eelist .ename{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--accent); font-weight:var(--weight-bold);}
+.emptybox .eelist .estatus{flex:0 0 auto; font-size:var(--size-caption); color:var(--text-muted);}
 .hall .cover{height:var(--hall-h); width:calc(var(--hall-h) * var(--lib-cover-ratio)); flex:0 0 auto;}
 /* (the hall's own scrollbar rules retired 2026-08-01 at the scrollbar mint — it
    rides the app-wide overlay-minimal recipe, kit.css § Scrollbars) */

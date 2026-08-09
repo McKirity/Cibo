@@ -90,7 +90,12 @@ export function CreationDashboard({
       </div>
 
       {m.masthead.empty ? (
-        <EmptyState name={m.masthead.name} onNew={() => setCreationOpen(true)} />
+        <EmptyState
+          name={m.masthead.name}
+          entries={data.entries}
+          onOpenEntry={onOpenEntry}
+          onNew={() => setCreationOpen(true)}
+        />
       ) : (
         <div className="gs">
           {/* ── 1 · Masthead (creation variant: no type row, no library door) ── */}
@@ -726,15 +731,80 @@ function HeroCard({ h, onOpen }: { h: HeroSpec; onOpen?: (entryId: string) => vo
   );
 }
 
-function EmptyState({ name, onNew }: { name: string; onNew?: () => void }) {
+/**
+ * The zero state. `empty` is session-derived, which is right for a stats screen
+ * — but a creation habit's ENTRIES are not stats, and this face used to hide
+ * them completely (bug `dash-1`, 2026-08-09).
+ *
+ * ⚠ WORSE HERE THAN ON THE CONSUMPTION TEMPLATE, because a creation habit has
+ * NO LIBRARY: hero cards on this screen ARE its library. So an entry made
+ * before the first session was unreachable from its own habit — only the Map's
+ * Content trunk and the palette could still find it. And the copy named the
+ * very action that did not work: *"the one door that fills it is a first
+ * entry"*, said to someone who had just made one.
+ *
+ * THE FIX IS A LIST, NOT THE DASHBOARD — user-ruled 2026-08-09: *"can it just
+ * be something simple like a bullet list of entries that exist? Once we
+ * actually start tracking, we can render the actual dashboard."* The empty
+ * state stays (a stats screen with no sessions has no statistics to draw); it
+ * just stops pretending the entries are not there. Hero cards need per-entry
+ * session arithmetic to say anything — at zero sessions every one of them would
+ * draw a card of blanks, which is a worse answer than a name you can click.
+ *
+ * The split against the consumption template is deliberate and follows the
+ * sub-type distinction the app already makes: consumption is high-volume and
+ * has a library, so it gets a DOOR; creation is *few and rich*, so it gets the
+ * LIST itself. **Both are additions to the drawn face**, recorded as additions.
+ */
+function EmptyState({
+  name,
+  entries = [],
+  onOpenEntry,
+  onNew,
+}: {
+  name: string;
+  entries?: readonly { id: string; title: string; status: string | null }[];
+  onOpenEntry?: (entryId: string) => void;
+  onNew?: () => void;
+}) {
+  const has = entries.length > 0;
   return (
     <div className="gs-empty" style={{ display: "block" }}>
       <div className="emptybox gen">
-        <div className="eh">Nothing tracked yet</div>
+        <div className="eh">{has ? "Nothing logged yet" : "Nothing tracked yet"}</div>
         <div className="es">
-          {name}'s stats appear here once it has sessions — its projects live on this same screen as
-          hero cards, so the one door that fills it is a first entry.
+          {has
+            ? `${name} has ${entries.length} ${entries.length === 1 ? "entry" : "entries"} but no sessions against ${entries.length === 1 ? "it" : "them"} yet — log one and this screen becomes the full dashboard.`
+            : `${name}'s stats appear here once it has sessions — its projects live on this same screen as hero cards, so the one door that fills it is a first entry.`}
         </div>
+        {/* Each row is a card whose NAME is accented and bold — user-ruled
+            2026-08-09 after a `.doorlink` bullet-list pass was tried and
+            rejected ("go back to the previous version and make the text
+            accented and bolded").
+
+            The bold is not styling garnish, it is what keeps this legal:
+            **never colour alone**. A theme may set `--accent` to pure white
+            (Blame! does, with 255 reserved), so an accent-coloured name that
+            carried no second signal would be indistinguishable from ordinary
+            text on that seat. Weight is the second signal here, exactly as the
+            app-wide port ruled — colour + weight, or colour + wash, or colour +
+            underline; never colour by itself.
+
+            `.ename`, NOT `.et` — `.emptybox .et` is already this box's own
+            title style in kit.css (heading font, heading size, bold), so an
+            entry name wearing it would render as a second headline. */}
+        {has && (
+          <ul className="eelist">
+            {entries.map((e) => (
+              <li key={e.id}>
+                <button type="button" onClick={() => onOpenEntry?.(e.id)} disabled={onOpenEntry == null}>
+                  <span className="ename">{e.title}</span>
+                  {e.status != null && <span className="estatus">{e.status}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         <div className="edoors">
           <button className="btn-accent" type="button" onClick={onNew}>+ New entry</button>
           {/* Routes to Settings → Habits since 2026-08-04 (the re-wire batch). */}

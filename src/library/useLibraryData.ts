@@ -17,6 +17,7 @@ import {
 } from "../db/schema";
 import type { LibEntry } from "./librarySpec";
 import { orderedStatusVocab } from "./librarySpec";
+import { entryMediumColumn } from "../db/entryMedium";
 
 /** The ONE global status list — definition_fk empty, anchors seeded first. */
 const statusVocabQuery = evolu.createQuery((db) =>
@@ -211,13 +212,16 @@ export function useLibraryData(habitKey: string, skipDerivation = false): Librar
     if (subType !== "creation") return null;
     const def = defRows.find((d) => d.data_type === "picklist");
     if (def?.id == null) return null;
+    // The column comes from db/entryMedium.ts — the one owner of this
+    // derivation since bug `vocab-1`. Same answer this made for itself; the
+    // point is that the vocabulary rename now reads it from the same place.
+    const column = entryMediumColumn("creation", String(def.data_type), String(def.key ?? ""));
+    if (column !== "fandom" && column !== "gamedev_engine") return null;
     return {
       label: (def.label as string | null) ?? "Fandom",
       vocab: picklistValues,
       definitionId: def.id as SubunitDefinitionId,
-      column: (String(def.key ?? "").endsWith("engine") ? "gamedev_engine" : "fandom") as
-        | "fandom"
-        | "gamedev_engine",
+      column,
     };
   }, [subType, defRows, picklistValues]);
   const statusVocab = useMemo(

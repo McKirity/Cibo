@@ -33,6 +33,8 @@ import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { DangerConfirm } from "../shell/DangerConfirm";
 import { showErrorToast } from "../shell/toast";
 import { deleteRefFiles } from "../db/fileDeletion";
+import { deviceSet } from "./deviceStore";
+import { libraryViewKey } from "../library/Library";
 import { cloudSub, underRoot } from "./cloudRoot";
 import { milestoneLaddersFromJson, parseDerivedRules, type EntryAttribute } from "../db/schema";
 import type { LadderOverrides } from "../daily/milestones";
@@ -277,6 +279,18 @@ export function ManagePane({
         return out;
       });
       void deleteRefFiles(refs);
+      // The PER-DEVICE leftover, cleared 2026-08-09: a habit's saved library
+      // sort + filters live in settings.json, outside Evolu, so the cascade —
+      // which only knows about store tables — left them behind for good. Inert
+      // (nothing reads them once the habit is gone) but unbounded: every habit
+      // ever deleted kept a row in a file that is never otherwise pruned.
+      //
+      // ⚠ IT IS ONLY EVER PER-DEVICE. This clears THIS machine's copy; the Mac
+      // will keep its own until the same habit is deleted there, which cannot
+      // happen because the habit is already gone from the synced store. That is
+      // a real limit of the per-device tier, not an oversight — recorded rather
+      // than papered over.
+      if (habit.key != null) deviceSet(libraryViewKey(String(habit.key)), null);
     }
   };
 

@@ -39,9 +39,8 @@ import { evolu } from "../db/evolu";
 import { winAction } from "../shell/safeWindow";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { Ico, ICONS } from "../shell/icons";
-import { pad2, todayLocal } from "../metrics/clock";
-import { monthGridCells, weekDayLetters } from "../metrics/dates";
-import { MONTHS_LONG } from "../metrics/format";
+import { todayLocal } from "../metrics/clock";
+import { DateField } from "../kit/DateField";
 import {
   DEFAULT_CONFIG,
   flushWhimsyConfig,
@@ -86,155 +85,6 @@ const kindLabel = (h: HabitRow): string => {
 };
 
 const STEPS = ["Important dates", "Location", "Starting habits"] as const;
-
-/** "YYYY-M-D" (typed) → canonical "YYYY-MM-DD", or null if not a real date. */
-const parseDay = (raw: string): string | null => {
-  const m = raw.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (!m) return null;
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const d = Number(m[3]);
-  const dt = new Date(y, mo - 1, d);
-  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
-  return `${y}-${pad2(mo)}-${pad2(d)}`;
-};
-
-/**
- * The date chip — typed date primary, calendar popover fallback (the
- * DateTimePicker discipline: focus-within opens, `.shut` is a state not a
- * blur; the popover surface is kit.css's shared `.calpop`, this component
- * only anchors it). Built after the first GUI pass: the native
- * `<input type="date">` stalled ~2s per row in WebView2 while the identical
- * React path measured 6 ms in Chromium — and the app's idiom was never the
- * native control anyway (the FINAL draws `.datefield` as an app chip).
- *
- * FUTURE DATES ARE LEGAL HERE, deliberately: events are countdowns, and the
- * "future = dead route" law governs day DOORS (logging surfaces), not an
- * event's date. Year chevrons join the month pair because a birthday lives
- * decades back — typing stays the fast path.
- */
-function FuDateField({ value, onChange }: { value: string; onChange: (d: string) => void }) {
-  const [typed, setTyped] = useState<string | null>(null);
-  const [cursor, setCursor] = useState<{ y: number; m: number } | null>(null);
-  const [shut, setShut] = useState(false);
-  const today = todayLocal();
-  const anchor = value !== "" ? value : today;
-  const view = cursor ?? { y: Number(anchor.slice(0, 4)), m: Number(anchor.slice(5, 7)) - 1 };
-  const cells = monthGridCells(view.y, view.m);
-  const shown = typed ?? value;
-
-  const stepMonth = (delta: number) => {
-    const m = view.m + delta;
-    setCursor({ y: view.y + Math.floor(m / 12), m: ((m % 12) + 12) % 12 });
-  };
-  const stepYear = (dy: number) => setCursor({ y: view.y + dy, m: view.m });
-
-  const commit = () => {
-    if (typed == null) return;
-    if (typed.trim() === "") onChange("");
-    else {
-      const d = parseDay(typed);
-      if (d != null) onChange(d);
-    }
-    setTyped(null);
-  };
-
-  return (
-    <span
-      className={`fudate${shut ? " shut" : ""}`}
-      onMouseDown={(e) => {
-        setShut(false);
-        // The chip is bigger than the field inside it — clicking the glyph or
-        // padding must still focus the input (the DateTimePicker fix).
-        if (e.target instanceof HTMLInputElement) return;
-        const input = e.currentTarget.querySelector<HTMLInputElement>(".fudate-in");
-        if (input == null) return;
-        e.preventDefault();
-        input.focus();
-      }}
-    >
-      <svg className="fud-ico" viewBox="0 0 24 24">
-        <rect x="3" y="4" width="18" height="18" rx="2" />
-        <path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" />
-      </svg>
-      <input
-        className="fudate-in"
-        placeholder="YYYY-MM-DD"
-        maxLength={10}
-        value={shown}
-        spellCheck={false}
-        onFocus={() => setShut(false)}
-        onChange={(e) => {
-          setTyped(e.target.value);
-          setShut(false);
-        }}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            commit();
-            setShut(true);
-          }
-          if (e.key === "Escape") {
-            setTyped(null);
-            setShut(true);
-          }
-        }}
-      />
-      <div className="calpop">
-        <div className="caltop">
-          <span className="m">
-            {MONTHS_LONG[view.m]} {view.y}
-          </span>
-          <span className="nav">
-            <span className="b" title="Previous year" onMouseDown={(e) => (e.preventDefault(), stepYear(-1))}>
-              <svg className="fud-ico" viewBox="0 0 24 24"><path d="m11 17-5-5 5-5" /><path d="m18 17-5-5 5-5" /></svg>
-            </span>
-            <span className="b" title="Previous month" onMouseDown={(e) => (e.preventDefault(), stepMonth(-1))}>
-              <svg className="fud-ico" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>
-            </span>
-            <span className="b" title="Next month" onMouseDown={(e) => (e.preventDefault(), stepMonth(1))}>
-              <svg className="fud-ico" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
-            </span>
-            <span className="b" title="Next year" onMouseDown={(e) => (e.preventDefault(), stepYear(1))}>
-              <svg className="fud-ico" viewBox="0 0 24 24"><path d="m13 17 5-5-5-5" /><path d="m6 17 5-5-5-5" /></svg>
-            </span>
-          </span>
-        </div>
-        <div className="cgrid">
-          {weekDayLetters().map((d, i) => (
-            <div className="cdow" key={i}>{d}</div>
-          ))}
-          {cells.map((c) => {
-            const cls = [
-              "cd",
-              c.out ? "out" : "",
-              c.day === today ? "today" : "",
-              c.day === value ? "sel" : "",
-            ]
-              .filter(Boolean)
-              .join(" ");
-            return (
-              <div
-                className={cls}
-                key={c.day}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation(); // the wrapper's mousedown would re-open
-                  if (c.out) return;
-                  onChange(c.day);
-                  setTyped(null);
-                  setShut(true);
-                }}
-              >
-                {Number(c.day.slice(8))}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </span>
-  );
-}
 
 export function FirstRunSetup({ onDone }: { onDone: () => void }) {
   const [habits, setHabits] = useState<HabitRow[] | null>(null);
@@ -385,7 +235,7 @@ export function FirstRunSetup({ onDone }: { onDone: () => void }) {
               </div>
               <div className="frow">
                 <span className="flabel">Your birthday</span>
-                <FuDateField value={birthday} onChange={setBirthday} />
+                <DateField value={birthday} onChange={setBirthday} />
               </div>
               {events.map((ev) => (
                 <div className="frow evrow" key={ev.id}>
@@ -399,7 +249,7 @@ export function FirstRunSetup({ onDone }: { onDone: () => void }) {
                     }
                   />
                   <span className="evacts">
-                    <FuDateField
+                    <DateField
                       value={ev.date}
                       onChange={(d) =>
                         setEvents((xs) => xs.map((x) => (x.id === ev.id ? { ...x, date: d } : x)))

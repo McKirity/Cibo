@@ -482,13 +482,64 @@ button.doorlink:hover {
    the state IS the data: a `.unf` cell exists only when an unfinalized day
    exists, so the gate would be a tautology. Same pixels, no state attribute.
    The RULING is unchanged — in-month unfinalized days outline in the attention
-   slot and their marker is a hollow ring (open, never colour alone). */
-.rail .cal .d.unf {
+   slot and their marker is a hollow ring (open, never colour alone).
+
+   ⚠ TODAY IS EXCLUDED FROM THE OUTLINE — user-ruled 2026-08-09 at tour 7
+   station 6, after the walk found today wearing the ATTENTION ring instead of
+   the accent one. That was this deviation's unforeseen cost: dropping the
+   mockup's state gate let `.unf` land on today, where it beat `.today`'s ring
+   outright (same property, same specificity, later in the sheet) — and today
+   is unfinalized nearly always, since its ledger row is minted by the feed
+   snapshot the moment the app opens. Two reasons it is wrong: the frozen face
+   draws today as `class="d today"` ALONE and never once `.unf`, and the
+   catch-up queue itself EXCLUDES today (`catchUpDays` filters strictly behind
+   it) — so the grid was marking today as a day you are behind on while the
+   queue said you are not.
+
+   `:not(.today)` rather than a later override on purpose: it makes the outline
+   structurally unable to reach today, so re-ordering this sheet cannot
+   reintroduce it. THE MARKER RULE BELOW IS DELIBERATELY NOT EXCLUDED — today
+   keeps its hollow marker, so "today, not yet finalized" still reads at a
+   glance while the cell itself still reads as today. */
+.rail .cal .d.unf:not(.today) {
   box-shadow: inset 0 0 0 var(--border-standard) var(--attention-dot);
 }
 .rail .cal .d.unf .m {
   background: transparent;
   box-shadow: inset 0 0 0 var(--border-standard) var(--attention-dot);
+}
+/* "YOU ARE HERE" — the day the Daily screen is showing, added 2026-08-09
+   (user-ruled). The grid drew `today` and nothing else, so it could not say
+   which day you were LOOKING at; true on every back-dated visit, and made
+   visible by the day cutoff, which opens the app on a day the rail is not
+   pointing at.
+
+   Filled, borrowing `.calpop .cd.sel` — the app's EXISTING selected-day look,
+   rather than a fourth cell treatment invented here. It is safe to be this loud
+   because the class is withheld on today (see NavCalendar), so it appears only
+   when the viewed day differs from today and never becomes the resting state.
+
+   The marker is re-inked for the fill: `--finalize-mark` and `--attention-dot`
+   are chosen to read against the RAIL, and neither is guaranteed to survive on
+   an accent field — a theme may put accent anywhere. `--text-on-filled` is the
+   dial that means "ink on a filled surface", which is exactly this case. */
+.rail .cal .d.viewing {
+  background: var(--accent);
+  color: var(--text-on-filled);
+}
+.rail .cal .d.viewing:hover {
+  background: var(--accent);
+}
+.rail .cal .d.viewing .m {
+  background: var(--text-on-filled);
+  box-shadow: none;
+}
+.rail .cal .d.viewing.unf {
+  box-shadow: none;
+}
+.rail .cal .d.viewing.unf .m {
+  background: transparent;
+  box-shadow: inset 0 0 0 var(--border-standard) var(--text-on-filled);
 }
 
 /* the catch-up flag — a LABELLED button, never a bare dot (ruled 2026-07-09);

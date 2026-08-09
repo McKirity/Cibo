@@ -22,6 +22,7 @@
 import { useState } from "react";
 import { Ico, ICONS } from "../shell/icons";
 import { todayLocal } from "../metrics/clock";
+import { DateField } from "../kit/DateField";
 import { sunSign } from "../daily/almanac";
 import {
   loadWhimsyConfig,
@@ -95,11 +96,9 @@ export function WhimsyPane() {
           <div className="crow two">
             <span className="clabel">Birthdate</span>
             <span className="cright">
-              <input
-                className="keyin"
-                type="date"
+              <DateField
                 value={cfg.birthdate ?? ""}
-                onChange={(e) => write({ ...cfg, birthdate: e.target.value === "" ? null : e.target.value })}
+                onChange={(d) => write({ ...cfg, birthdate: d === "" ? null : d })}
               />
             </span>
           </div>
@@ -138,7 +137,7 @@ export function WhimsyPane() {
             {cfg.events.length} date{cfg.events.length === 1 ? "" : "s"}
           </span>
         </p>
-        <div className="mlist">
+        <div className="mlist capped">
           {cfg.events.map((ev) => (
             <div className="mrow" key={ev.id}>
               <span className="mid">
@@ -155,14 +154,12 @@ export function WhimsyPane() {
                 />
               </span>
               <span className="macts">
-                <input
-                  className="keyin"
-                  type="date"
+                <DateField
                   value={ev.date}
-                  onChange={(e) =>
+                  onChange={(d) =>
                     write({
                       ...cfg,
-                      events: cfg.events.map((x) => (x.id === ev.id ? { ...x, date: e.target.value } : x)),
+                      events: cfg.events.map((x) => (x.id === ev.id ? { ...x, date: d } : x)),
                     })
                   }
                 />

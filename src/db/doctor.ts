@@ -30,6 +30,7 @@
 import { evolu } from "./evolu";
 import { duplicateReportFrom, causeNote } from "./duplicates";
 import { loadMutes, muteKey } from "./doctorMutes";
+import { entryMediumColumn } from "./entryMedium";
 import { hasIcon } from "../shell/habitIcons";
 import { stringListFromJson } from "./schema";
 import { getCloudRoot, underRoot } from "../settings/cloudRoot";
@@ -372,12 +373,15 @@ export function unknownVocab(snap: Snapshot): Finding[] {
     perHabit.set(habit.id, {
       genre: (multi != null ? snap.vocab.get(multi.id) : undefined) ?? new Set(),
       single: (single != null ? snap.vocab.get(single.id) : undefined) ?? new Set(),
-      column:
-        habit.subType === "creation"
-          ? single != null && single.key.endsWith("engine")
-            ? "engine"
-            : "fandom"
-          : "type",
+      // The derivation moved to entryMedium.ts at bug `vocab-1` — this check
+      // and the library were the two sites that had it right, and the rename
+      // was the one guessing. Mapped back to this check's own field names:
+      // `engine`, never `gamedev_engine`, because the string is part of the
+      // MUTE KEY and a finding the user ignored must not reappear renamed.
+      column: ((): "type" | "fandom" | "engine" => {
+        const col = entryMediumColumn(habit.subType, "picklist", single?.key ?? "");
+        return col === "gamedev_engine" ? "engine" : col === "fandom" ? "fandom" : "type";
+      })(),
     });
   }
 

@@ -55,8 +55,13 @@
 .setscreen .pbody { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .setscreen .hscroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding-right: var(--space-4); }
 
-/* --- the control stack (Appearance's drawn anatomy, every stack pane) --- */
-.setscreen .ctrlstack { display: flex; flex-direction: column; gap: var(--space-4); max-width: 74rem; }
+/* --- the control stack (Appearance's drawn anatomy, every stack pane) ---
+   `--ctrl-max` is a LOCAL custom property, not a roster dial: it exists so the
+   settings-wide control width has ONE author. Minted 2026-08-09 when Whimsy's
+   countdown list was capped to match its neighbours — writing `74rem` a second
+   time is precisely how two surfaces that must agree start disagreeing. */
+.setscreen { --ctrl-max: 74rem; }
+.setscreen .ctrlstack { display: flex; flex-direction: column; gap: var(--space-4); max-width: var(--ctrl-max); }
 .setscreen .crow { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--space-6);
                    padding: var(--space-5) var(--space-6); background: var(--panel-background);
                    border: var(--border-hairline) solid var(--divider); border-radius: var(--radius-medium); box-shadow: var(--shadow-low); }
@@ -396,6 +401,12 @@
                          text-transform: uppercase; color: var(--text-muted); margin: var(--space-6) 0 var(--space-4); }
 .setscreen .mgroup-lbl:first-child { margin-top: 0; }
 .setscreen .mlist { display: flex; flex-direction: column; gap: var(--space-3); }
+/* `.mlist` is the habit-MANAGEMENT family, where a full-width roster is right.
+   Whimsy borrowed the row for its countdowns and inherited the stretch with it,
+   so that one group ran wider than the capped `.ctrlstack` groups above and
+   below it — user-ruled 2026-08-09 ("Yes, cap"). `.capped` is opt-in: Manage
+   keeps its full width, and the cap reads the same author as `.ctrlstack`. */
+.setscreen .mlist.capped { max-width: var(--ctrl-max); }
 .setscreen .mitem { display: flex; flex-direction: column; }
 .setscreen .mrow { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-4) var(--space-5);
                    background: var(--panel-background); border: var(--border-hairline) solid var(--divider);

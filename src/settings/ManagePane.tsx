@@ -33,6 +33,7 @@ import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { DangerConfirm } from "../shell/DangerConfirm";
 import { showErrorToast } from "../shell/toast";
 import { deleteRefFiles } from "../db/fileDeletion";
+import { cloudSub, underRoot } from "./cloudRoot";
 import { milestoneLaddersFromJson, parseDerivedRules, type EntryAttribute } from "../db/schema";
 import type { LadderOverrides } from "../daily/milestones";
 
@@ -621,6 +622,38 @@ function Group({
 
 // ── the sub-units disclosure ─────────────────────────────────────────────────
 
+/**
+ * Open a habit's image folder in the OS file manager.
+ *
+ * Creates it first when it does not exist yet — a habit with no covers imported
+ * has no folder, and greying the door out to say so would be a worse answer
+ * than opening an empty folder. `mkdir` is recursive because the images root
+ * itself may be missing on a freshly-picked cloud root.
+ *
+ * `bk_reveal` despite the name: it is `open_path` on the Rust side and opens
+ * the folder ITSELF, which is the whole reason it exists — `reveal_item_in_dir`
+ * opens the PARENT with the folder merely selected (found live 2026-08-03).
+ */
+async function openImageFolder(habitKey: string): Promise<void> {
+  try {
+    const imagesRoot = cloudSub("images");
+    if (imagesRoot == null) {
+      showErrorToast("No cloud root set — pick one in Settings → Storage.", "Habits");
+      return;
+    }
+    const dir = underRoot(imagesRoot, habitKey);
+    const fs = await import("@tauri-apps/plugin-fs");
+    if (!(await fs.exists(dir))) await fs.mkdir(dir, { recursive: true });
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("bk_reveal", { path: dir });
+  } catch (e) {
+    // Never silent: a folder that does not open is the kind of failure that
+    // reads as a dead button (the standing lesson).
+    console.error("open image folder failed", e);
+    showErrorToast(`Could not open the image folder — ${String(e)}`, "Habits");
+  }
+}
+
 function Disclosure({
   habit,
   defs,
@@ -732,6 +765,32 @@ function Disclosure({
             ))}
           </div>
         </div>
+      )}
+
+      {/* THE IMAGE FOLDER DOOR (user-ruled 2026-08-08, placed in Settings).
+          Project habits only, and that is not a policy choice — `images/<key>/`
+          is written ONLY by cover downloads and entry image picks, both of
+          which are entry-scoped, so a simple or range habit has no folder to
+          open and never will. It takes the keepsake slot's place by the
+          complementary condition, which keeps the disclosure to one slot per
+          habit: art you AUTHOR (keepsake) or art you COLLECT (covers).
+
+          Hidden, not disabled, when no cloud root is set — the ruled shape for
+          an unset root is "paused, never a gate". */}
+      {habit.kind === "project" && cloudSub("images") != null && (
+        <button className="snipslot" onClick={() => void openImageFolder(String(habit.key))}>
+          <span className="artph">
+            <Ico d={["M4 4h5l2 3h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"]} />
+          </span>
+          <span className="cosmeta">
+            <span className="cosn">Image folder</span>
+            <span className="coss">
+              Where this habit's cover art lives on disk. Opens the folder itself, so you can add,
+              replace or tidy the files by hand.
+            </span>
+          </span>
+          <span className="cosact">Open folder</span>
+        </button>
       )}
 
       {habit.kind !== "project" && (

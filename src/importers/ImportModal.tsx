@@ -44,6 +44,19 @@ import "./importer.css";
 
 const pairKey = (source: string, externalId: string) => `${source}:${externalId}`;
 
+/**
+ * A search failure, in words the reader can act on. The transport tier already
+ * says timeouts and statuses honestly (`ao3-1`, `http-2`); what is left here is
+ * the offline case, where the error is a bare transport rejection with no
+ * status to name.
+ */
+const searchFailure = (e: unknown): string => {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /network|fetch|dns|connect|offline|error sending request/i.test(msg)
+    ? `Couldn't reach the source — you may be offline. (${msg})`
+    : `The search failed — ${msg}`;
+};
+
 /** Blob-thumb loader — null while loading/failed renders the capsule. */
 function useThumb(url: string | null): string | null {
   const [src, setSrc] = useState<string | null>(null);
@@ -314,6 +327,18 @@ export function ImportModal({ habitKey, onClose }: { habitKey: string; onClose: 
   const [term, setTerm] = useState("");
   const [results, setResults] = useState<ImportCandidate[]>([]);
   const [searching, setSearching] = useState(false);
+  /**
+   * A FAILED search is not an empty one (2026-08-08, found offline).
+   *
+   * Both search paths used to `.catch(() => setResults([]))` — discarding the
+   * error without even reading it — so a network failure rendered as
+   * "No results.", which is the answer for a search that RAN and matched
+   * nothing. Offline you got a long spin and then a confident, wrong statement
+   * about the archive's contents. Same shape as `doctor-1`: *a surface that
+   * cannot say "I could not look" is indistinguishable from one that looked and
+   * found nothing.*
+   */
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [paste, setPaste] = useState("");
   const [pasteErrors, setPasteErrors] = useState<string[]>([]);
   const [queue, setQueue] = useState<Map<string, QueueItem>>(new Map());
@@ -344,6 +369,7 @@ export function ImportModal({ habitKey, onClose }: { habitKey: string; onClose: 
     const t = term.trim();
     if (t.length < 2) {
       setResults([]);
+      setSearchError(null);
       setSearching(false);
       return;
     }
@@ -355,12 +381,14 @@ export function ImportModal({ habitKey, onClose }: { habitKey: string; onClose: 
         .then((r) => {
           if (generation.current === gen) {
             setResults(r);
+            setSearchError(null);
             setSearching(false);
           }
         })
-        .catch(() => {
+        .catch((e: unknown) => {
           if (generation.current === gen) {
             setResults([]);
+            setSearchError(searchFailure(e));
             setSearching(false);
           }
         });
@@ -379,12 +407,14 @@ export function ImportModal({ habitKey, onClose }: { habitKey: string; onClose: 
       .then((r) => {
         if (generation.current === gen) {
           setResults(r);
+          setSearchError(null);
           setSearching(false);
         }
       })
-      .catch(() => {
+      .catch((e: unknown) => {
         if (generation.current === gen) {
           setResults([]);
+          setSearchError(searchFailure(e));
           setSearching(false);
         }
       });
@@ -673,7 +703,19 @@ export function ImportModal({ habitKey, onClose }: { habitKey: string; onClose: 
                     ))}
                   </div>
                   {searching && <p className="imp-note">Searching…</p>}
-                  {!searching && term.trim().length >= 2 && results.length === 0 && (
+                  {/* The failure face comes FIRST and excludes the empty one:
+                      "No results" is a claim about the source's contents, and
+                      the app may only make it when the search actually ran. */}
+                  {!searching && searchError != null && (
+                    <div className="imp-searchfail">
+                      <p className="imp-lineerrs">{searchError}</p>
+                      {probeMsg != null && <p className="probemsg">{probeMsg}</p>}
+                      <button className="btn-plain btn-sm" onClick={runProbe} disabled={probing}>
+                        {probing ? `Testing… ${probeSecs}s` : "Test connection"}
+                      </button>
+                    </div>
+                  )}
+                  {!searching && searchError == null && term.trim().length >= 2 && results.length === 0 && (
                     <p className="imp-note">No results.</p>
                   )}
                 </>

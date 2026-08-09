@@ -122,6 +122,16 @@
 /* `.pastehelp b` deleted 2026-08-04 — pasteHelp renders as plain text, so the
    element it styled cannot exist. */
 .importmo .imp-lineerrs{font-size:var(--size-small); color:var(--danger);}
+/* The SEARCH FAILURE face (2026-08-08). A failed search is not an empty one:
+   `.imp-note` is muted grey and says "No results", which is a claim about the
+   source's contents. A search that never ran may not make that claim, so the
+   failure gets its own block — the danger-toned line it already had a rule for,
+   plus the three-way probe as a door. Reuses `.imp-lineerrs` + the kit button
+   family rather than minting `.linkbtn`, which had no base rule and would have
+   rendered as unstyled text. */
+.importmo .imp-searchfail{display:flex; flex-direction:column; align-items:flex-start;
+                          gap:var(--space-4); margin:var(--space-6) 0 0;}
+.importmo .imp-searchfail .probemsg{font-size:var(--size-small); color:var(--text-muted); margin:0;}
 .importmo .imp-lineerrs p{margin:0 0 var(--space-2);}
 
 /* foot — the shared machinery (the chassis foot goes column here) */

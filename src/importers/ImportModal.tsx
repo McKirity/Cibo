@@ -322,6 +322,8 @@ export function ImportModal({ habitKey, onClose }: { habitKey: string; onClose: 
   const [itemStates, setItemStates] = useState<ItemState[]>([]);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [probeMsg, setProbeMsg] = useState<string | null>(null);
+  const [probing, setProbing] = useState(false);
+  const [probeSecs, setProbeSecs] = useState(0);
   const generation = useRef(0);
   const cancelled = useRef(false);
 
@@ -515,11 +517,33 @@ export function ImportModal({ habitKey, onClose }: { habitKey: string; onClose: 
     setMstate("summary");
   };
 
-  /** The ruled three-way diagnosis — offline · our side · their side. */
+  /**
+   * The ruled three-way diagnosis — offline · our side · their side.
+   *
+   * `threeWayProbe` now guarantees it neither rejects nor runs long, but this
+   * still carries its own catch: the bug was a `.then` with no `.catch`
+   * leaving "probing…" on screen permanently, and a promise chain that assumes
+   * the callee behaves is how it happened the first time.
+   *
+   * The counter is the other half. A wait with no words is indistinguishable
+   * from a dead app — the standing lesson — and this wait can run to twenty
+   * seconds by design when the network swallows connections.
+   */
   const runProbe = () => {
     if (active == null) return;
-    setProbeMsg("probing…");
-    void threeWayProbe(active).then((r) => setProbeMsg(r.message));
+    if (probing) return; // one at a time; the button is disabled, but not only that
+    setProbing(true);
+    setProbeSecs(0);
+    setProbeMsg(null);
+    const started = Date.now();
+    const tick = setInterval(() => setProbeSecs(Math.round((Date.now() - started) / 1000)), 1000);
+    void threeWayProbe(active)
+      .then((r) => setProbeMsg(r.message))
+      .catch((e: unknown) => setProbeMsg(`The check itself failed — ${String(e)}`))
+      .finally(() => {
+        clearInterval(tick);
+        setProbing(false);
+      });
   };
 
   if (!data.ready || active == null) return null;
@@ -777,10 +801,16 @@ export function ImportModal({ habitKey, onClose }: { habitKey: string; onClose: 
                         <b>{f.title}</b> — {f.reason}
                       </p>
                     ))}
-                    {probeMsg != null && <p className="probemsg">{probeMsg}</p>}
+                    {probing ? (
+                      <p className="probemsg">
+                        Testing the connection… {probeSecs}s
+                      </p>
+                    ) : (
+                      probeMsg != null && <p className="probemsg">{probeMsg}</p>
+                    )}
                   </div>
-                  <button className="btn-plain" onClick={runProbe}>
-                    Test connection
+                  <button className="btn-plain" disabled={probing} onClick={runProbe}>
+                    {probing ? "Testing…" : "Test connection"}
                   </button>
                 </div>
               )}

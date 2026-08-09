@@ -108,17 +108,40 @@ export const setMacBookPreview = async (on: boolean): Promise<void> => {
         const size = (await win.innerSize()).toLogical(scale);
         lsSet(MB_PRIOR_KEY, `${Math.round(size.width)}x${Math.round(size.height)}`);
         await win.setSize(new LogicalSize(MB_W, MB_H));
-      });
+      }, "MacBook preview resize");
     } else {
       const prior = lsGet(MB_PRIOR_KEY);
       const m = prior?.match(/^(\d+)x(\d+)$/);
       const [w, h] = m ? [Number(m[1]), Number(m[2])] : [1600, 1000];
-      await withAppWindow((win) => win.setSize(new LogicalSize(w, h)));
+      await withAppWindow((win) => win.setSize(new LogicalSize(w, h)), "MacBook preview restore");
     }
   } catch (e) {
     console.error("settings: MacBook preview resize failed", e);
   }
   void applyZoom();
+};
+
+/**
+ * RE-APPLY THE PREVIEW GEOMETRY AT LAUNCH (`macbook-2`, 2026-08-08).
+ *
+ * The flag is per-device and persists; the WINDOW SIZE did not. The app has no
+ * window-state plugin and `tauri.conf.json` opens at 1600×1000, so every
+ * relaunch reopened at desktop size while Settings still read "On" — and the
+ * miss is not cosmetic: **compact-auto keys off window width below 1600**, so a
+ * relaunched "MacBook preview" was showing the DESKTOP layout, which is the
+ * exact opposite of what the instrument is for.
+ *
+ * Deliberately does NOT touch `MB_PRIOR_KEY`: the prior size was recorded when
+ * the preview was first switched on, and overwriting it here with 1512×982
+ * would make Off restore the preview size instead of the real one.
+ */
+const restoreMacBookGeometry = async (): Promise<void> => {
+  if (!inTauri() || !getMacBookPreview()) return;
+  const { LogicalSize } = await import("@tauri-apps/api/dpi");
+  await withAppWindow(
+    (win) => win.setSize(new LogicalSize(MB_W, MB_H)),
+    "MacBook preview restore at launch",
+  );
 };
 
 // ── force-opaque panels ──────────────────────────────────────────────────────
@@ -296,6 +319,9 @@ export function initLocalSettings(): void {
   noteLucideVersion(LUCIDE_VERSION);
   document.documentElement.classList.toggle("reduce-effects", getReduceEffects());
   void applyZoom();
+  // The geometry half of the MacBook preview — persisted as a flag since it was
+  // built, re-applied to the window only since 2026-08-08.
+  void restoreMacBookGeometry();
   // Force-opaque re-derives per theme apply; the first run needs the body.
   const first = () => applyForceOpaque();
   if (document.body) first();

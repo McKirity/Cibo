@@ -53,8 +53,23 @@ const SETTING_KEYS = [
   BACKUP_DAILY_DAYS_KEY,
 ] as const;
 
+/**
+ * A stored setting → a usable number. OUT OF RANGE and UNREADABLE resolve
+ * differently on purpose: an out-of-range value is something the user meant, so
+ * it clamps to the nearer bound; an unreadable one falls back to the default.
+ *
+ * **A BLANK VALUE COUNTS AS UNREADABLE, NOT AS ZERO** (user-ruled 2026-08-08).
+ * `Number("")` is 0, which is finite, so a blank row used to clamp to the LOWER
+ * BOUND — a wave gap of 2 days where 30 was meant, a list cap of 3 where 10 was.
+ * The app cannot write one (the column is branded non-empty), so this arrives
+ * only by sync or corruption; the symptom is a plausible-looking wrong number
+ * with nothing to point at. Third time this project has paid for `Number("")`
+ * being 0 (`creator-2`, `seed-1`) — see also `clampInterval` in daily/autosave.ts,
+ * which carries the same rule for the auto-save interval.
+ */
 const clampInt = (v: unknown, lo: number, hi: number, dflt: number): number => {
-  const n = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
+  const n =
+    typeof v === "string" ? (v.trim() === "" ? NaN : Number(v)) : typeof v === "number" ? v : NaN;
   return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : dflt;
 };
 

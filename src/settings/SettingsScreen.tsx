@@ -62,8 +62,9 @@ import {
   UI_SCALE_STEP,
   type SignalStyle,
 } from "./local";
-import { getPick, scanThemes, setTheme, type ThemeEntry } from "../theme/loader";
+import { getPick, openThemesFolder, scanThemes, setTheme, type ThemeEntry } from "../theme/loader";
 import { getCompactMode, setCompactMode, type CompactMode } from "../theme/compact";
+import { cloudSub } from "./cloudRoot";
 import {
   autosaveQuery,
   clampInterval,
@@ -589,11 +590,37 @@ function AppearancePane() {
   const [reduce, setReduce] = useState(getReduceEffects());
   const [opaque, setOpaque] = useState(getForceOpaque());
 
+  /**
+   * Scan on mount, and RE-SCAN whenever the window regains focus.
+   *
+   * The re-scan exists because of the Themes-folder door below it: the natural
+   * flow is now open the folder → drop a theme in → alt-tab back → pick it, and
+   * a list built once at mount cannot contain something created after it. You
+   * would drop a theme in and find the picker still doesn't know about it, with
+   * nothing on screen explaining why. Focus is the right trigger precisely
+   * because the folder is opened in ANOTHER application — coming back IS the
+   * signal that something may have changed out there.
+   *
+   * Cheap enough to run unconditionally: one directory listing per return to
+   * the window, against a folder holding a handful of entries. `cancelled`
+   * guards the pane being closed mid-scan.
+   */
   useEffect(() => {
-    scanThemes().then(
-      (s) => setThemes(s.themes),
-      (e) => console.error("Settings: theme scan failed", e),
-    );
+    let cancelled = false;
+    const scan = () =>
+      scanThemes().then(
+        (s) => {
+          if (!cancelled) setThemes(s.themes);
+        },
+        (e) => console.error("Settings: theme scan failed", e),
+      );
+    void scan();
+    const onFocus = () => void scan();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
   return (
@@ -621,7 +648,33 @@ function AppearancePane() {
             </div>
             {/* The drop-in themes root is `<cloud root>/themes` since step 14
                 — Settings → Storage owns the pick; the stand-in picker this
-                row carried (the last dev-panel survivor) is retired. */}
+                row carried (the last dev-panel survivor) is retired.
+
+                HIDDEN, NOT DISABLED, when no cloud root is set: the ruled shape
+                for an unset root is "paused, never a gate", and with no root
+                there is no themes folder to open. Same guard the per-habit
+                image-folder door uses. */}
+            {cloudSub("themes") != null && (
+              <div className="crow">
+                <span className="clabel">Themes folder</span>
+                {/* NO <DevMark/> HERE, deliberately. Every other row in this pane
+                    is a per-device lever and says so; this one is not. The theme
+                    PICK is per-device (its row is marked), but the FOLDER is on
+                    the cloud drive and is shared with the other machine — a drop
+                    made here shows up on both. Marking it "This device" would
+                    say the opposite of what is true. */}
+                <span className="cright">
+                  <button className="btn-plain btn-sm" onClick={() => void openThemesFolder()}>
+                    {/* the lucide folder glyph, inlined exactly as the per-habit
+                        image-folder door does — ICONS carries doors/actions only
+                        and has no folder key. ⚠ Second inline copy of this path;
+                        a third should promote it into ICONS instead. */}
+                    <Ico d={["M4 4h5l2 3h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"]} />
+                    Open
+                  </button>
+                </span>
+              </div>
+            )}
             <div className="crow">
               <span className="clabel">UI scale</span>
               <DevMark />
@@ -860,6 +913,32 @@ function DeveloperPane() {
       }
     })();
   };
+  // A TEST INSTRUMENT, not the un-finalize feature — see daily/devUnfinalize.ts
+  // for why it exists at all. It puts days back into the catch-up queue so the
+  // rail's lit-flag state can be reached on a fully-finalized store.
+  const [unfinStatus, setUnfinStatus] = useState("");
+  const [unfinBusy, setUnfinBusy] = useState(false);
+  const unfinalize = (count: number) => {
+    void (async () => {
+      setUnfinBusy(true);
+      setUnfinStatus("working…");
+      try {
+        const { evolu } = await import("../db/evolu");
+        const { unfinalizeRecentDays } = await import("../daily/devUnfinalize");
+        const { cleared } = await unfinalizeRecentDays(evolu, count);
+        setUnfinStatus(
+          cleared.length === 0
+            ? "nothing to un-finalize"
+            : `un-finalized ${cleared.length}: ${cleared.join(", ")}`,
+        );
+      } catch (e) {
+        setUnfinStatus(`error: ${String(e)}`);
+        console.error(e);
+      } finally {
+        setUnfinBusy(false);
+      }
+    })();
+  };
   const [feedStatus, setFeedStatus] = useState("");
   const recaptureFeeds = () => {
     void (async () => {
@@ -944,6 +1023,21 @@ function DeveloperPane() {
                 </button>
                 <button className="btn-plain btn-sm" disabled={seedBusy} onClick={() => runSeed(true)}>
                   Clear
+                </button>
+              </span>
+            </div>
+          )}
+          {import.meta.env.DEV && (
+            <div className="crow">
+              <span className="clabel">Un-finalize recent days</span>
+              <DevMark />
+              <span className="cright">
+                {unfinStatus !== "" && <span className="mgtag">{unfinStatus}</span>}
+                <button className="btn-plain btn-sm" disabled={unfinBusy} onClick={() => unfinalize(3)}>
+                  Last 3
+                </button>
+                <button className="btn-plain btn-sm" disabled={unfinBusy} onClick={() => unfinalize(7)}>
+                  Last 7
                 </button>
               </span>
             </div>

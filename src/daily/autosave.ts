@@ -111,9 +111,29 @@ export const flushWrites = (): { ok: true } | { ok: false; reason: string } => {
 export const AUTOSAVE_DEFAULT_MINUTES = 10;
 export const AUTOSAVE_KEY = "autosave_minutes";
 
-/** Clamped: a zero would mean "save never", and an hour is past any session. */
-export const clampInterval = (minutes: number): number =>
-  !Number.isFinite(minutes) ? AUTOSAVE_DEFAULT_MINUTES : Math.min(60, Math.max(1, Math.round(minutes)));
+/**
+ * Clamped: a zero would mean "save never", and an hour is past any session.
+ *
+ * Takes the RAW stored value, not a pre-parsed number — the parse is the part
+ * that goes wrong, so it belongs to the callee (the standing lesson: a
+ * guarantee every caller needs is the callee's job). **A blank value is
+ * unreadable, not zero** (user-ruled 2026-08-08): `Number("")` is 0, which is
+ * finite, so a blank row used to clamp to 1 and buffer every write for a minute
+ * instead of ten. Only reachable by sync or corruption — the column is branded
+ * non-empty — and the symptom is a plausible interval, not an error. The same
+ * rule guards the synced settings in settings/store.ts (`clampInt`).
+ */
+export const clampInterval = (minutes: unknown): number => {
+  const n =
+    typeof minutes === "string"
+      ? minutes.trim() === ""
+        ? NaN
+        : Number(minutes)
+      : typeof minutes === "number"
+        ? minutes
+        : NaN;
+  return !Number.isFinite(n) ? AUTOSAVE_DEFAULT_MINUTES : Math.min(60, Math.max(1, Math.round(n)));
+};
 
 export const autosaveQuery = evolu.createQuery((db) =>
   db

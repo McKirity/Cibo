@@ -229,9 +229,9 @@ export function Spine({
   // on close, on hide, and on leaving the screen — see autosave.ts for what that
   // trades away.
   const autosaveRows = useQuery(autosaveQuery);
-  const autosaveMinutes = clampInterval(
-    Number(autosaveRows[0]?.value ?? AUTOSAVE_DEFAULT_MINUTES),
-  );
+  // The raw stored value goes straight in — `clampInterval` owns the parse, so
+  // a blank row reads as the default rather than as zero-then-clamped-to-1.
+  const autosaveMinutes = clampInterval(autosaveRows[0]?.value ?? AUTOSAVE_DEFAULT_MINUTES);
   // THE KEYBOARD→WRITING AUTO-FOLLOW hangs off the flush, not off the write.
   // Buffering broke it: the sync used to fire inside `createBout`, where it read
   // Writing's word total before its own insert had reached the worker.

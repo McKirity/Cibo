@@ -16,10 +16,22 @@ type AppWindow = ReturnType<typeof getCurrentWindow>;
  */
 export async function withAppWindow<T>(
   fn: (w: AppWindow) => T | Promise<T>,
+  label?: string,
 ): Promise<T | undefined> {
   try {
     return await fn(getCurrentWindow());
-  } catch {
+  } catch (e) {
+    // ⚠ THE SILENCE HERE HID AN INERT FEATURE FOR THE APP'S WHOLE LIFE
+    // (`macbook-1`, 2026-08-08). Swallowing is right for the PROBES this was
+    // written for — "is the window minimized?" in plain-browser dev is a no-op,
+    // not an error — but it cannot tell that apart from a capability the app
+    // was never granted, and the MacBook preview's resize was refused on every
+    // click with nothing written anywhere.
+    //
+    // So callers for whom failure is ABNORMAL pass a `label` and get a line in
+    // the console; probes pass nothing and stay silent as designed. The choice
+    // belongs to the caller because only the caller knows which it is.
+    if (label != null) console.error(`window: ${label} failed`, e);
     return undefined; // not in a Tauri webview, or the window call failed
   }
 }

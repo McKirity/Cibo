@@ -21,7 +21,7 @@
  *  · **Markings read the ledger, not the sessions.** `finalized` is the sole
  *    finalize truth; a row exists once a day has bookkeeping of any kind.
  */
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
 import { DateOnly } from "../db/schema";
@@ -319,6 +319,9 @@ function JumpPicker({
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(ref, onClose, { parentRoot: true });
   const rect = useAnchorRect(btn, true);
+  // Above the early return, like every hook in this file — the hook-order crash
+  // of 2026-08-04 was exactly one of these sitting below one.
+  const panelHeight = usePanelHeight(ref, rect != null);
   if (rect == null) return null;
   const curMonth = Number(anchor.slice(5, 7));
   const curYear = Number(anchor.slice(0, 4));
@@ -328,7 +331,7 @@ function JumpPicker({
       className="jumppop"
       role="dialog"
       aria-label="Jump to a period"
-      style={{ left: rect.left, top: rect.bottom + 8 }}
+      style={{ left: rect.left, top: clampToViewport(rect.bottom + 8, panelHeight) }}
     >
       <div className="jump-head">
         <button
@@ -424,6 +427,7 @@ function CatchUpFlag({
   // under a mounted rail (finalizing the last day, or a day going unfinalized),
   // and a hook below the return changes the hook count between those renders.
   const rect = useAnchorRect(btnRef, open);
+  const panelHeight = usePanelHeight(popRef, open && rect != null);
 
   if (days.length === 0) return null;
 
@@ -445,7 +449,7 @@ function CatchUpFlag({
           className="catchpop"
           role="dialog"
           aria-label="Catch-up queue"
-          style={{ left: rect.right + 8, top: rect.top }}
+          style={{ left: rect.right + 8, top: clampToViewport(rect.top, panelHeight) }}
         >
           {/* DATES ONLY — user-ruled 2026-08-01: "that needs to be more
               concise. All i need are the dates, everything else is
@@ -484,6 +488,55 @@ const POP_DATE = new Intl.DateTimeFormat(undefined, {
  * phase, so the RAIL's own scroll counts and not just the window's) and on
  * resize. Null when inactive or unmounted.
  */
+/**
+ * THE VIEWPORT CLAMP (bug `calendar-2`, 2026-08-08).
+ *
+ * `position: fixed` gets these panels out of the rail's `overflow: hidden auto`
+ * clip — and then nothing else holds them anywhere. The panels are welded to
+ * their anchor ON PURPOSE (they follow the rail's scroll rather than stranding
+ * themselves where they opened), but a scrolling anchor eventually leaves the
+ * window, and it TOWS THE PANEL WITH IT: `top` goes negative and the panel is
+ * cut off by the top of the screen. Read carelessly that looks like the rail
+ * clipping it again, which is the wrong diagnosis — escaping the rail was never
+ * the problem.
+ *
+ * So the panel's OWN edges are what get clamped, never the anchor's. The
+ * anchoring ruling is untouched; it just stops at the window.
+ */
+const VIEWPORT_INSET = 8;
+
+const clampToViewport = (top: number, height: number): number => {
+  const lowest = window.innerHeight - height - VIEWPORT_INSET;
+  // The inner `max` keeps a panel TALLER than the window pinned to the top
+  // rather than pushed off it — its own `max-height` handles the overflow.
+  return Math.max(VIEWPORT_INSET, Math.min(top, Math.max(VIEWPORT_INSET, lowest)));
+};
+
+/**
+ * The panel's rendered height, watched. A ResizeObserver rather than a one-shot
+ * measure because the catch-up list SHRINKS under a mounted panel — finalizing
+ * a day from inside it removes a row — and a stale height would clamp against a
+ * size the panel no longer has.
+ */
+function usePanelHeight(ref: RefObject<HTMLElement | null>, active: boolean): number {
+  const [height, setHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (!active) {
+      setHeight(0);
+      return;
+    }
+    const el = ref.current;
+    if (el == null) return;
+    const measure = () => setHeight(el.offsetHeight);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref, active]);
+  return height;
+}
+
 function useAnchorRect(
   ref: RefObject<HTMLElement | null>,
   active: boolean,

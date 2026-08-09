@@ -541,6 +541,12 @@ button.doorlink:hover {
   position: fixed;
   z-index: 12;
   width: var(--popover-width);
+  /* The other half of the viewport clamp (`calendar-2`, 2026-08-08): the JS
+     keeps the panel's top edge on screen, and this keeps a panel taller than
+     the window from running off the bottom instead. Both are needed — clamping
+     alone cannot fit a panel that does not fit. */
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
   background: var(--raised-background);
   -webkit-backdrop-filter: var(--backdrop-blur);
   backdrop-filter: var(--backdrop-blur);
@@ -700,6 +706,10 @@ button.doorlink:hover {
      the panel off into the pane. No raw width — the derivation law holds. */
   width: max-content;
   max-width: var(--popover-width);
+  /* See .jumppop — the CSS half of the viewport clamp. A long catch-up queue is
+     the realistic way this panel outgrows the window. */
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
   padding: var(--space-4);
   background: var(--raised-background);
   -webkit-backdrop-filter: var(--backdrop-blur);

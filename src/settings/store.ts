@@ -66,6 +66,11 @@ const SETTING_KEYS = [
  * with nothing to point at. Third time this project has paid for `Number("")`
  * being 0 (`creator-2`, `seed-1`) — see also `clampInterval` in daily/autosave.ts,
  * which carries the same rule for the auto-save interval.
+ *
+ * ⚠ CALLERS PASS THE RAW STORED VALUE, NEVER `Number(value)` — the pre-coercion
+ * turns a blank into 0 before this guard can see the string, which is exactly
+ * how the fix above was defeated at every call site for a day (`settings-2`,
+ * 2026-08-09). The clamps take `unknown` so the raw pass is the natural call.
  */
 const clampInt = (v: unknown, lo: number, hi: number, dflt: number): number => {
   const n =
@@ -83,10 +88,10 @@ const clampInt = (v: unknown, lo: number, hi: number, dflt: number): number => {
  * permanent — whoever walks the day-cutoff probe again needs a MORNING, or this
  * same temporary raise.)*
  */
-export const clampDayCutoff = (h: number): number => clampInt(h, 0, 12, DAY_CUTOFF_DEFAULT);
-export const clampWaveGap = (d: number): number => clampInt(d, 2, 365, WAVE_GAP_DEFAULT);
-export const clampListCap = (n: number): number => clampInt(n, 3, 50, LIST_CAP_DEFAULT);
-export const clampBackupDailyDays = (d: number): number =>
+export const clampDayCutoff = (h: unknown): number => clampInt(h, 0, 12, DAY_CUTOFF_DEFAULT);
+export const clampWaveGap = (d: unknown): number => clampInt(d, 2, 365, WAVE_GAP_DEFAULT);
+export const clampListCap = (n: unknown): number => clampInt(n, 3, 50, LIST_CAP_DEFAULT);
+export const clampBackupDailyDays = (d: unknown): number =>
   clampInt(d, 7, 365, BACKUP_DAILY_DAYS_DEFAULT);
 
 // ── the live query (Settings panes) ──────────────────────────────────────────
@@ -155,14 +160,10 @@ export function initSyncedSettings(): void {
 // ever polled the getter, and the flag had no other reader.
 export const weekStart = (): "monday" | "sunday" =>
   cache.get(WEEK_START_KEY) === "sunday" ? "sunday" : WEEK_START_DEFAULT;
-export const dayCutoffHour = (): number =>
-  clampDayCutoff(Number(cache.get(DAY_CUTOFF_KEY) ?? DAY_CUTOFF_DEFAULT));
-export const waveGapDefault = (): number =>
-  clampWaveGap(Number(cache.get(WAVE_GAP_KEY) ?? WAVE_GAP_DEFAULT));
-export const dashboardListCap = (): number =>
-  clampListCap(Number(cache.get(LIST_CAP_KEY) ?? LIST_CAP_DEFAULT));
-export const backupDailyDays = (): number =>
-  clampBackupDailyDays(Number(cache.get(BACKUP_DAILY_DAYS_KEY) ?? BACKUP_DAILY_DAYS_DEFAULT));
+export const dayCutoffHour = (): number => clampDayCutoff(cache.get(DAY_CUTOFF_KEY));
+export const waveGapDefault = (): number => clampWaveGap(cache.get(WAVE_GAP_KEY));
+export const dashboardListCap = (): number => clampListCap(cache.get(LIST_CAP_KEY));
+export const backupDailyDays = (): number => clampBackupDailyDays(cache.get(BACKUP_DAILY_DAYS_KEY));
 
 // ── the day-cutoff consumer ──────────────────────────────────────────────────
 

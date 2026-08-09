@@ -34,6 +34,7 @@ import { DangerConfirm } from "../shell/DangerConfirm";
 import { showErrorToast } from "../shell/toast";
 import { deleteRefFiles } from "../db/fileDeletion";
 import { deviceSet } from "./deviceStore";
+import { clearCustomColour } from "./customColours";
 import { libraryViewKey } from "../library/Library";
 import { cloudSub, underRoot } from "./cloudRoot";
 import { milestoneLaddersFromJson, parseDerivedRules, type EntryAttribute } from "../db/schema";
@@ -126,11 +127,26 @@ export function ManagePane({
       return next;
     });
 
-  // One picker open at a time, anchored to its trigger's rect.
+  // One picker open at a time, anchored to its trigger's rect. The trigger
+  // element rides in a ref so useDismiss can leave its mousedown alone
+  // (`ignore`) and the toggle below can own the close — without this, the
+  // capture-phase dismiss races the trigger's click and every second press
+  // reopens instead of closing (`pickers-1`).
   const [picker, setPicker] = useState<
     | { kind: "colour" | "icon"; habitId: string; anchor: DOMRect }
     | null
   >(null);
+  const pickerTrigger = useRef<Element | null>(null);
+  const openPicker = (p: { kind: "colour" | "icon"; habitId: string; anchor: DOMRect; el: Element }) => {
+    setPicker((prev) => {
+      if (prev != null && prev.kind === p.kind && prev.habitId === p.habitId) {
+        pickerTrigger.current = null;
+        return null;
+      }
+      pickerTrigger.current = p.el;
+      return { kind: p.kind, habitId: p.habitId, anchor: p.anchor };
+    });
+  };
   const [keepsakeFor, setKeepsakeFor] = useState<HabitRow | null>(null);
   const [editing, setEditing] = useState<EditTarget | null>(null);
   const [deleting, setDeleting] = useState<{
@@ -291,6 +307,11 @@ export function ManagePane({
       // a real limit of the per-device tier, not an oversight — recorded rather
       // than papered over.
       if (habit.key != null) deviceSet(libraryViewKey(String(habit.key)), null);
+      // The SYNCED leftover, cleared the same day (`colours-1`): the cascade
+      // covered every store table the habit touches but not its
+      // `custom_colour:<key>` app_meta row, so a deleted habit that ever wore
+      // a custom hex kept publishing its root var forever.
+      if (habit.key != null) void clearCustomColour(String(habit.key));
     }
   };
 
@@ -380,7 +401,7 @@ export function ManagePane({
           vocab={vocab}
           onToggle={toggleOpen}
           onReorder={reorder}
-          onPicker={setPicker}
+          onPicker={openPicker}
           onArchive={(h) => update(h.id, { archived: 1 })}
           onDelete={(h) => void askDelete(h)}
           onKeepsake={setKeepsakeFor}
@@ -396,7 +417,7 @@ export function ManagePane({
           vocab={vocab}
           onToggle={toggleOpen}
           onReorder={reorder}
-          onPicker={setPicker}
+          onPicker={openPicker}
           onArchive={(h) => update(h.id, { archived: 1 })}
           onDelete={(h) => void askDelete(h)}
           onKeepsake={setKeepsakeFor}
@@ -446,9 +467,15 @@ export function ManagePane({
           anchor={picker.anchor}
           onPick={(slot) => {
             update(pickerHabit.id, { colour_slot: NonEmptyString100.orThrow(slot) });
+            // Moving OFF a custom colour tombstones its hex row — otherwise
+            // the synced row outlives the pick and re-publishes a dead
+            // `--custom-<key>` root var at every launch (`colours-1`).
+            if (!slot.startsWith("custom-") && pickerHabit.key != null)
+              void clearCustomColour(String(pickerHabit.key));
             setPicker(null);
           }}
           onClose={() => setPicker(null)}
+          ignore={pickerTrigger}
         />
       )}
       {picker?.kind === "icon" && pickerHabit != null && (
@@ -460,6 +487,7 @@ export function ManagePane({
             setPicker(null);
           }}
           onClose={() => setPicker(null)}
+          ignore={pickerTrigger}
         />
       )}
 
@@ -537,7 +565,7 @@ function Group({
   vocab: readonly { id: unknown; definition_fk: unknown; value: unknown; sort_order: unknown }[];
   onToggle: (id: string) => void;
   onReorder: (group: HabitRow[], fromId: string, toId: string) => void;
-  onPicker: (p: { kind: "colour" | "icon"; habitId: string; anchor: DOMRect }) => void;
+  onPicker: (p: { kind: "colour" | "icon"; habitId: string; anchor: DOMRect; el: Element }) => void;
   onArchive: (h: HabitRow) => void;
   onDelete: (h: HabitRow) => void;
   onKeepsake: (h: HabitRow) => void;
@@ -602,7 +630,7 @@ function Group({
                   className="iconbtn"
                   data-tip="Colour"
                   onClick={(e) =>
-                    onPicker({ kind: "colour", habitId: id, anchor: e.currentTarget.getBoundingClientRect() })
+                    onPicker({ kind: "colour", habitId: id, anchor: e.currentTarget.getBoundingClientRect(), el: e.currentTarget })
                   }
                 >
                   <Ico d={["M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z", "M13.5 6.5h.01", "M17.5 10.5h.01", "M8.5 7.5h.01", "M6.5 12.5h.01"]} />
@@ -611,7 +639,7 @@ function Group({
                   className="iconbtn"
                   data-tip="Icon"
                   onClick={(e) =>
-                    onPicker({ kind: "icon", habitId: id, anchor: e.currentTarget.getBoundingClientRect() })
+                    onPicker({ kind: "icon", habitId: id, anchor: e.currentTarget.getBoundingClientRect(), el: e.currentTarget })
                   }
                 >
                   <Ico d={["M12 3l2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2z"]} />

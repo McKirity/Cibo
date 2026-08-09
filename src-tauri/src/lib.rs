@@ -197,6 +197,7 @@ pub fn run() {
             backup::bk_verify_archive,
             backup::bk_db_integrity,
             backup::bk_reveal,
+            backup::bk_reveal_item,
             backup::bk_request_restore,
             backup::bk_take_restore_result
         ])

@@ -17,11 +17,12 @@
  * every other pane in this screen.
  */
 import { useEffect, useState, type ReactNode } from "react";
-import { Ico } from "../shell/icons";
+import { Ico, ICONS } from "../shell/icons";
 import {
   ArticleBody,
   MANUAL_ARTICLE_EVENT,
   MANUAL_GROUPS,
+  articleText,
   findArticle,
   peekManualArticle,
   takeManualArticle,
@@ -145,13 +146,39 @@ const ARTICLE_ICONS: Record<string, ReactNode> = {
 };
 
 function ManualTab({ articleId, onOpen }: { articleId: string; onOpen: (id: string) => void }) {
+  // The roster search (added 2026-08-09, user-asked at tour 7 station 11 —
+  // an ADDITION to the drawn face). It narrows the ROSTER only: matches run
+  // over titles AND body text (`articleText`), groups without matches
+  // collapse, and the open article stays open even when the filter hides its
+  // door — narrowing a list must never navigate. An unmatched query states
+  // the miss and offers nothing, the search grammar's own rule.
+  const [q, setQ] = useState("");
+  const needle = q.trim().toLowerCase();
+  const groups =
+    needle === ""
+      ? MANUAL_GROUPS
+      : MANUAL_GROUPS.map((g) => ({
+          name: g.name,
+          articles: g.articles.filter(
+            (a) => a.title.toLowerCase().includes(needle) || articleText(a).includes(needle),
+          ),
+        })).filter((g) => g.articles.length > 0);
   const article = findArticle(articleId) ?? MANUAL_GROUPS[0]?.articles[0];
   if (article == null) return null;
   return (
     <div className="manual">
       <aside className="mroster">
+        <div className="pk-search">
+          <Ico d={ICONS.search} />
+          <input
+            value={q}
+            placeholder="Search the manual…"
+            spellCheck={false}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
         <nav className="mtoc">
-          {MANUAL_GROUPS.map((g) => (
+          {groups.map((g) => (
             <div key={g.name}>
               <div className="mgrp">{g.name}</div>
               {g.articles.map((a) => (
@@ -166,6 +193,7 @@ function ManualTab({ articleId, onOpen }: { articleId: string; onOpen: (id: stri
               ))}
             </div>
           ))}
+          {groups.length === 0 && <p className="mtoc-miss">Nothing mentions "{q.trim()}".</p>}
         </nav>
         <p className="mtoc-note">
           Every article is a place — the palette teleports straight to any of these pages

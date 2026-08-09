@@ -78,3 +78,27 @@ export const writeCustomColour = async (habitKey: string, hex: string): Promise<
   else publish(await evolu.loadQuery(customColoursQuery));
   return res.ok;
 };
+
+/**
+ * Tombstone a habit's custom hex row — the write's other half (`colours-1`,
+ * 2026-08-09). Without it the synced row outlived its habit: nothing cleared
+ * it when the habit went back to a standard slot (the pick only rewrites
+ * `colour_slot`) or when the habit was DELETED — the cascade covered
+ * sessions/entries/defs/vocab and even the per-device library-view key, but
+ * not this row — so every custom-colour lifecycle left an orphan row that
+ * re-published a dead `--custom-<key>` root var at every launch, forever.
+ *
+ * Lives here so both callers (the slot pick · the delete cascade) share one
+ * implementation — a guarantee every caller needs belongs to the callee.
+ * Absent row = success: the goal is "no live row", not "a row was deleted".
+ */
+export const clearCustomColour = async (habitKey: string): Promise<boolean> => {
+  const rows = await evolu.loadQuery(customColoursQuery);
+  const key = `${CUSTOM_PREFIX}${habitKey}`;
+  const existing = rows.find((r) => String(r.key) === key);
+  if (existing == null) return true;
+  const res = evolu.update("app_meta", { id: existing.id as never, isDeleted: 1 });
+  if (!res.ok) console.error("customColours: clear failed", res.error);
+  else publish(await evolu.loadQuery(customColoursQuery));
+  return res.ok;
+};

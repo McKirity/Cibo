@@ -13,6 +13,7 @@
  */
 import { NonEmptyString100, NonEmptyString1000 } from "@evolu/common";
 import { evolu } from "../db/evolu";
+import { showErrorToast } from "../shell/toast";
 import {
   DEFAULT_LADDERS,
   setGlobalLadders,
@@ -76,17 +77,42 @@ export function initGlobalLadders(): void {
   evolu.subscribeQuery(globalLaddersQuery)(() => pull());
 }
 
+/**
+ * The row id of the insert THIS session issued, remembered so a second write
+ * arriving before the live query refreshes updates that row instead of
+ * inserting a twin — `whimsy_config`'s `scalarRowId` pattern (`ladder-2`).
+ * Without it, two writes in one refresh window mint two rows for one key, and
+ * `laddersFrom` reads `rows[0]` only, so which survives is ordering luck.
+ */
+let ownRowId: unknown = null;
+
 export function writeGlobalLadders(
   rows: readonly { id: unknown }[],
   next: LadderOverrides,
 ): boolean {
   const value = JSON.stringify(next);
-  const existing = rows[0];
+  // The doctor-mutes cap lesson (`ladder-2`): `value` is ONE JSON row for all
+  // five subjects and `app_meta.value` caps at 1000 chars — an oversize config
+  // used to hit `orThrow` inside the onChange handler, so edits LOOKED applied
+  // (the live query still showed the last good row) while nothing persisted.
+  // Refuse loudly instead; the editor snaps back to the stored value.
+  if (value.length > 1000) {
+    showErrorToast("That ladder set is too large to save — trim some steps or bands.", "Settings");
+    return false;
+  }
+  const existingId = ownRowId ?? rows[0]?.id ?? null;
   const res =
-    existing != null
+    existingId != null
       ? Object.keys(next).length === 0
-        ? evolu.update("app_meta", { id: existing.id as never, isDeleted: 1 })
-        : evolu.update("app_meta", { id: existing.id as never, value: NonEmptyString1000.orThrow(value) })
+        ? evolu.update("app_meta", { id: existingId as never, isDeleted: 1 })
+        : // `isDeleted: 0` rides along so a tombstone-then-retype inside one
+          // refresh window undeletes the row instead of writing a value into a
+          // row the query can no longer see.
+          evolu.update("app_meta", {
+            id: existingId as never,
+            value: NonEmptyString1000.orThrow(value),
+            isDeleted: 0,
+          })
       : Object.keys(next).length === 0
         ? { ok: true as const }
         : evolu.insert("app_meta", {
@@ -94,5 +120,7 @@ export function writeGlobalLadders(
             value: NonEmptyString1000.orThrow(value),
           });
   if (!res.ok) console.error("ladders: write failed", (res as { error?: unknown }).error);
+  else if (existingId == null && Object.keys(next).length > 0)
+    ownRowId = (res as { value?: { id?: unknown } }).value?.id ?? null;
   return res.ok;
 }

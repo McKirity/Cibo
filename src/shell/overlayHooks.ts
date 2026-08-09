@@ -23,16 +23,30 @@ import { useEffect, useRef, type RefObject } from "react";
  *   the input's own handler (PresetMenu's rename-cancel exemption).
  * - `parentRoot` — contain against the ref's PARENT element (bits' Menu: the
  *   trigger wrapper, so the trigger's own click stays a toggle rather than a
- *   close-then-reopen).
+ *   close-then-reopen). ⚠ Only meaningful when the wrapper is SMALL — a
+ *   popover mounted at a pane root makes the whole pane the containment zone
+ *   and the popover undismissable (`pickers-1`, 2026-08-09: the Manage
+ *   pickers' header claimed "wrapper-contained" while mounting at the pane).
+ * - `ignore` — a subtree whose mousedown is left alone: a DETACHED trigger
+ *   (one that cannot share a wrapper with its popover) whose own click
+ *   handler toggles. Without it the capture-phase close races that handler
+ *   and every toggle becomes close-then-reopen. Pass a STABLE ref (useRef)
+ *   holding the trigger element; prefer `parentRoot` when a wrapper exists.
  */
 export function useDismiss(
   ref: RefObject<HTMLElement | null>,
   onClose: () => void,
-  opts?: { enabled?: boolean; escInInputs?: boolean; parentRoot?: boolean },
+  opts?: {
+    enabled?: boolean;
+    escInInputs?: boolean;
+    parentRoot?: boolean;
+    ignore?: RefObject<Element | null>;
+  },
 ): void {
   const enabled = opts?.enabled ?? true;
   const escInInputs = opts?.escInInputs ?? false;
   const parentRoot = opts?.parentRoot ?? false;
+  const ignore = opts?.ignore;
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
 
@@ -44,6 +58,8 @@ export function useDismiss(
       return parentRoot ? (el.parentElement ?? el) : el;
     };
     const onDown = (e: MouseEvent) => {
+      const ig = ignore?.current;
+      if (ig != null && ig.contains(e.target as Node)) return;
       const root = rootOf();
       if (root != null && !root.contains(e.target as Node)) closeRef.current();
     };
@@ -63,7 +79,7 @@ export function useDismiss(
       window.removeEventListener("mousedown", onDown, true);
       window.removeEventListener("keydown", onKey, true);
     };
-  }, [enabled, escInInputs, parentRoot, ref]);
+  }, [enabled, escInInputs, parentRoot, ignore, ref]);
 }
 
 type EscEntry = { enabled: boolean; close: () => void };

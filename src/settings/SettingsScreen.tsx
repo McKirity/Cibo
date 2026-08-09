@@ -29,12 +29,9 @@ import {
   clampDayCutoff,
   clampListCap,
   clampWaveGap,
-  DAY_CUTOFF_DEFAULT,
   DAY_CUTOFF_KEY,
-  LIST_CAP_DEFAULT,
   LIST_CAP_KEY,
   syncedSettingsQuery,
-  WAVE_GAP_DEFAULT,
   WAVE_GAP_KEY,
   WEEK_START_KEY,
   writeSyncedSetting,
@@ -484,11 +481,15 @@ function TrackingPane() {
   const write = (key: string, value: string) => writeSyncedSetting(rows, key, value);
 
   const weekStart = get(WEEK_START_KEY) === "sunday" ? "sunday" : "monday";
-  const cutoff = clampDayCutoff(Number(get(DAY_CUTOFF_KEY) ?? DAY_CUTOFF_DEFAULT));
-  const waveGap = clampWaveGap(Number(get(WAVE_GAP_KEY) ?? WAVE_GAP_DEFAULT));
-  const listCap = clampListCap(Number(get(LIST_CAP_KEY) ?? LIST_CAP_DEFAULT));
+  // Raw values straight into the clamps — the clamps own the parse, and a
+  // `Number()` here turns a blank row into 0 before the blank-is-unreadable
+  // guard can see it (`settings-2`; Spine.tsx has carried the raw-pass form
+  // for the autosave interval since the guard landed).
+  const cutoff = clampDayCutoff(get(DAY_CUTOFF_KEY));
+  const waveGap = clampWaveGap(get(WAVE_GAP_KEY));
+  const listCap = clampListCap(get(LIST_CAP_KEY));
   const autosaveRow = autosaveRows[0] != null ? { id: String(autosaveRows[0].id) } : null;
-  const autosave = clampInterval(Number(autosaveRows[0]?.value ?? AUTOSAVE_DEFAULT_MINUTES));
+  const autosave = clampInterval(autosaveRows[0]?.value ?? AUTOSAVE_DEFAULT_MINUTES);
 
   return (
     <Pane title="Tracking">

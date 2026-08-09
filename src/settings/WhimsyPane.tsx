@@ -260,9 +260,12 @@ function NumField({
         inputMode="decimal"
         onChange={(e) => setText(e.target.value)}
         onBlur={() => {
-          const n = Number(text);
-          // An unparseable or out-of-range edit reverts rather than writing a
-          // NaN the sky maths would render as garbage.
+          // A blank must revert, never write: `Number("")` is 0 — finite and
+          // inside BOTH fields' ranges — so a cleared Lat silently became the
+          // equator (`whimsy-1`, the `creator-2` shape). An unparseable or
+          // out-of-range edit reverts for the same reason: never write a value
+          // the user did not type.
+          const n = text.trim() === "" ? NaN : Number(text);
           if (Number.isFinite(n) && n >= min && n <= max) onChange(n);
           else setText(String(value));
         }}

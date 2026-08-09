@@ -149,6 +149,11 @@
 .setscreen .mtoc-note { margin-top: var(--space-6); padding-top: var(--space-5);
                         border-top: var(--border-hairline) solid var(--divider);
                         font-size: var(--size-small); color: var(--text-muted); line-height: var(--line-normal); text-wrap: pretty; }
+/* The roster search's empty answer (2026-08-09, user-asked) — states the miss,
+   offers nothing (the search grammar's rule). The search box itself reuses
+   `.pk-search`, already a .setscreen-scoped recipe two tenants deep. */
+.setscreen .mtoc-miss { padding: var(--space-4) var(--space-5); font-size: var(--size-small);
+                        color: var(--text-muted); line-height: var(--line-normal); }
 .setscreen .mread { min-height: 0; overflow: auto; padding-right: var(--space-6); }
 /* == slice 6 (2026-08-03) — the MANUAL READER, kit-viewer-manual's drawn first
    tenant on the chassis above. The door-icon and crumb rules + the `.helpart`

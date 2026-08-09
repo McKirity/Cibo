@@ -15,10 +15,15 @@
  *
  * Both are `position: fixed` off the trigger's measured rect — the mscroll
  * pane scrolls, the NavCalendar popovers' lesson — and dismiss on click-out /
- * Esc via the shared useDismiss (wrapper-contained so the trigger stays a
- * toggle).
+ * Esc via the shared useDismiss. The TRIGGER is detached (it lives in a row,
+ * the picker at the host's root), so the toggle rides useDismiss's `ignore`:
+ * the host passes a ref to the trigger element and its own open handler
+ * toggles. ⚠ The original wiring here was `parentRoot: true` with the header
+ * claiming "wrapper-contained" — but no wrapper existed, so the containment
+ * root was the WHOLE PANE and clicking anywhere inside it never dismissed
+ * (`pickers-1`, found at tour 7 station 9's walk, 2026-08-09).
  */
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type RefObject } from "react";
 import { Ico, ICONS } from "../shell/icons";
 import { HabitIcon, iconNames } from "../shell/habitIcons";
 import { useDismiss, useOverlayEsc } from "../shell/overlayHooks";
@@ -33,6 +38,7 @@ export function ColourPicker({
   anchor,
   onPick,
   onClose,
+  ignore,
 }: {
   habitKey: string;
   current: string;
@@ -41,9 +47,11 @@ export function ColourPicker({
   anchor: DOMRect;
   onPick: (slot: string) => void;
   onClose: () => void;
+  /** The detached trigger — its clicks toggle via the host, never auto-close. */
+  ignore?: RefObject<Element | null>;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  useDismiss(ref, onClose, { parentRoot: true });
+  useDismiss(ref, onClose, { ignore });
   useOverlayEsc(onClose);
   const [hex, setHex] = useState("");
 
@@ -116,14 +124,17 @@ export function IconPicker({
   anchor,
   onPick,
   onClose,
+  ignore,
 }: {
   current: string | null;
   anchor: DOMRect;
   onPick: (name: string) => void;
   onClose: () => void;
+  /** The detached trigger — its clicks toggle via the host, never auto-close. */
+  ignore?: RefObject<Element | null>;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  useDismiss(ref, onClose, { parentRoot: true });
+  useDismiss(ref, onClose, { ignore });
   useOverlayEsc(onClose);
   const [q, setQ] = useState("");
 

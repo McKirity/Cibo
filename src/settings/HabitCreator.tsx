@@ -36,7 +36,7 @@ import { IconPicker } from "./pickers";
 import { LadderEditor } from "./LadderEditor";
 import { globalLadders, globalLaddersQuery } from "./ladderStore";
 import { milestoneLaddersToJson, type MilestoneLadders } from "../db/schema";
-import { customSlotName, isValidHex, writeCustomColour } from "./customColours";
+import { clearCustomColour, customSlotName, isValidHex, writeCustomColour } from "./customColours";
 import {
   canCommit,
   definitionKey,
@@ -202,19 +202,20 @@ export function HabitCreator({
       [],
     ),
   );
-  const existingVocab = useQuery(
-    useMemo(
-      () =>
-        evolu.createQuery((db) =>
-          db
-            .selectFrom("vocab_options")
-            .select(["id", "definition_fk", "value", "sort_order"])
-            .where("isDeleted", "is not", 1)
-            .orderBy("sort_order"),
-        ),
-      [],
-    ),
+  // Hoisted (not inlined in the useQuery call) because the pre-fill below
+  // ALSO reads it through `evolu.loadQuery` — one query object, two readers.
+  const vocabQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("vocab_options")
+          .select(["id", "definition_fk", "value", "sort_order"])
+          .where("isDeleted", "is not", 1)
+          .orderBy("sort_order"),
+      ),
+    [],
   );
+  const existingVocab = useQuery(vocabQuery);
 
   // Pre-fill the mediums AND the stored flags ONCE from the store (the editor's
   // own rows), rather than on every query tick — the user is editing them.
@@ -224,45 +225,79 @@ export function HabitCreator({
   // flag rows that the draft no longer carries. If they were not pre-filled,
   // opening Sleep in the editor and pressing Save would DELETE its "Took
   // Medication" flag and every night's answer would lose its question.
+  // ⚠ The values come from a `loadQuery` SNAPSHOT, not from the
+  // `existingVocab` hook (`creator-6`, 2026-08-09): the defs and vocab hooks
+  // are two separate queries and nothing orders their delivery, so a fill
+  // latched on the defs' arrival used to read a vocab array that could still
+  // be empty — every medium pre-filled with `values: []`, and the save sweep
+  // then tombstoned the entire picklist (for Reading's genre list, hundreds of
+  // auto-added values) on a Save that touched something else. `loadQuery` is
+  // one coherent read of the store at fill time, so the snapshot cannot be a
+  // not-yet-delivered hook.
   const filled = useRef(false);
+  // Save stays unavailable until the fill has LANDED — the sweep tombstones
+  // whatever the draft lacks, so an unfilled draft must not be committable.
+  // The window is milliseconds on any real open; it exists at all because the
+  // fill is async now.
+  const [prefillPending, setPrefillPending] = useState(edit != null);
   useEffect(() => {
     if (edit == null || filled.current || existingDefs.length === 0) return;
     const mine = existingDefs.filter((d) => String(d.habit_fk) === edit.id);
-    if (mine.length === 0) return;
+    if (mine.length === 0) {
+      // Nothing to pre-fill — the habit declares no subunits, so an empty
+      // draft IS its complete picture and Save is safe.
+      setPrefillPending(false);
+      return;
+    }
     filled.current = true;
     const mediums = mine.filter((d) => String(d.data_type) !== "flag");
     const flags = mine.filter((d) => String(d.data_type) === "flag");
-    setDraft((d) => ({
-      ...d,
-      mediums: mediums.map((def) => ({
-        id: String(def.id),
-        key: String(def.key),
-        name: String(def.label),
-        values: existingVocab
-          .filter((o) => o.definition_fk === def.id)
-          .map((o) => String(o.value)),
-      })),
-      // Computed checks first, stored flags after — the order the range
-      // dashboard draws its panels in.
-      derived: [
-        ...d.derived,
-        ...flags.map((def) => ({
-          type: "flag" as const,
-          name: String(def.label),
-          id: String(def.id),
-          key: String(def.key),
-        })),
-      ],
-    }));
-  }, [edit, existingDefs, existingVocab]);
+    evolu.loadQuery(vocabQuery).then(
+      (vocab) => {
+        setDraft((d) => ({
+          ...d,
+          mediums: mediums.map((def) => ({
+            id: String(def.id),
+            key: String(def.key),
+            name: String(def.label),
+            values: vocab
+              .filter((o) => o.definition_fk === def.id)
+              .map((o) => String(o.value)),
+          })),
+          // Computed checks first, stored flags after — the order the range
+          // dashboard draws its panels in.
+          derived: [
+            ...d.derived,
+            ...flags.map((def) => ({
+              type: "flag" as const,
+              name: String(def.label),
+              id: String(def.id),
+              key: String(def.key),
+            })),
+          ],
+        }));
+        setPrefillPending(false);
+      },
+      (e) => {
+        // Reopen the latch so the next query tick retries; Save stays held
+        // meanwhile — a failed fill must never become a destructive sweep.
+        filled.current = false;
+        console.error("creator: vocab pre-fill load failed", e);
+      },
+    );
+  }, [edit, existingDefs, vocabQuery]);
 
   const [iconAnchor, setIconAnchor] = useState<DOMRect | null>(null);
+  // The icon door is a DETACHED trigger (the picker mounts as a sibling of
+  // `.mo`), so the toggle rides useDismiss's `ignore` — same wiring as the
+  // Manage pane's pickers (`pickers-1`).
+  const iconDoor = useRef<Element | null>(null);
   const [colExpanded, setColExpanded] = useState(false);
   const [hex, setHex] = useState("");
   const [busy, setBusy] = useState(false);
 
   const problems = draftProblems(draft, takenNames);
-  const ready = canCommit(problems) && !busy;
+  const ready = canCommit(problems) && !busy && !prefillPending;
   const level = mediumLevel(draft);
   const flavor = simpleFlavor(draft);
   const isProject = draft.kind === "project";
@@ -329,6 +364,11 @@ export function HabitCreator({
           showErrorToast("The habit could not be saved.");
           return;
         }
+        // An edit that lands OFF a custom colour tombstones the hex row —
+        // same rule as the Manage pane's picker (`colours-1`); the callee
+        // treats an absent row as success, so this is free when no custom
+        // colour was ever set.
+        if (!draft.colourSlot.startsWith("custom-")) void clearCustomColour(edit.key);
       } else {
         // The key is derived and never shown; collisions get a numeric tail.
         // The same read carries kind + sort_order, so the tail value below
@@ -818,7 +858,11 @@ export function HabitCreator({
               <div className="cosrow">
                 <button
                   className="cosslot"
-                  onClick={(e) => setIconAnchor(e.currentTarget.getBoundingClientRect())}
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    iconDoor.current = e.currentTarget;
+                    setIconAnchor((a) => (a != null ? null : rect));
+                  }}
                 >
                   <span className="lettermark" style={{ background: `var(--${draft.colourSlot})` }}>
                     {draft.icon != null ? <HabitIcon icon={draft.icon} /> : letter}
@@ -1024,6 +1068,7 @@ export function HabitCreator({
               setIconAnchor(null);
             }}
             onClose={() => setIconAnchor(null)}
+            ignore={iconDoor}
           />
         </div>
       )}

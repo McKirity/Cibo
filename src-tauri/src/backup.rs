@@ -301,6 +301,16 @@ pub fn bk_reveal(path: String) -> Result<(), String> {
     tauri_plugin_opener::open_path(path, None::<&str>).map_err(|e| e.to_string())
 }
 
+/// The complement: the file manager AT a slot's FILE — parent folder open with
+/// the item selected, which for a file is exactly the wanted behaviour. Tenant:
+/// the Backups pane's per-slot "Show files" door (user-asked 2026-08-09 at
+/// Phase 2 tour 8 — the readable-not-restorable rows said "open its files"
+/// while offering no door to them).
+#[tauri::command]
+pub fn bk_reveal_item(path: String) -> Result<(), String> {
+    tauri_plugin_opener::reveal_item_in_dir(path).map_err(|e| e.to_string())
+}
+
 // ── restore — marker + relaunch, swap at next launch ─────────────────────────
 
 #[tauri::command]

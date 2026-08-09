@@ -158,26 +158,18 @@ function OneLadder({
         {ladder.bands.map((b, i) => (
           <div className="ladband" key={i}>
             <span className="rword">every</span>
-            <input
-              className="keyin num"
-              value={String(b.every)}
-              inputMode="numeric"
-              onChange={(e) => {
-                const n = Number(e.target.value.replace(/[, ]/g, ""));
-                if (Number.isFinite(n)) setBand(i, { every: n });
-              }}
+            <BandNum
+              key={`e${i}:${b.every}`}
+              value={b.every}
+              onCommit={(n) => setBand(i, { every: n })}
             />
             {b.until != null ? (
               <>
                 <span className="rword">until</span>
-                <input
-                  className="keyin num"
-                  value={String(b.until)}
-                  inputMode="numeric"
-                  onChange={(e) => {
-                    const n = Number(e.target.value.replace(/[, ]/g, ""));
-                    if (Number.isFinite(n)) setBand(i, { until: n });
-                  }}
+                <BandNum
+                  key={`u${i}:${b.until}`}
+                  value={b.until}
+                  onCommit={(n) => setBand(i, { until: n })}
                 />
                 <button
                   className="iconbtn"
@@ -228,5 +220,43 @@ function OneLadder({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * A band number: edited locally, committed on blur/Enter, and the commit
+ * REFUSES a blank, a zero or a negative — `Number("")` is 0, which is finite,
+ * so the old always-commit inputs stored a zeroed band mid-edit (`ladder-1`):
+ * the derivation skips `every <= 0`, so that range silently stopped minting
+ * milestones forever, and the dead value read back on remount. The steps field
+ * above already filters `n > 0`; this brings the bands to the same rule.
+ * Blur-commit also ends the keystroke-granularity synced writes — typing "100"
+ * used to land as three Evolu revisions on the global row.
+ *
+ * The value-carrying `key` at each use-site remounts this field when the band
+ * changes from OUTSIDE (Run forever · Add a band · a store refresh), so the
+ * local text can never go stale against the model; while typing, the model
+ * does not move (no commit until blur), so the field is never reset mid-edit.
+ */
+function BandNum({ value, onCommit }: { value: number; onCommit: (n: number) => void }) {
+  const [text, setText] = useState(String(value));
+  const commit = () => {
+    const cleaned = text.trim().replace(/[, ]/g, "");
+    const n = Number(cleaned);
+    if (cleaned !== "" && Number.isFinite(n) && n > 0) onCommit(Math.round(n));
+    else setText(String(value));
+  };
+  return (
+    <input
+      className="keyin num"
+      value={text}
+      inputMode="numeric"
+      spellCheck={false}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commit();
+      }}
+    />
   );
 }

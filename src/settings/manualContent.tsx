@@ -161,6 +161,29 @@ export const findArticle = (id: string): ManualArticle | null => {
   return null;
 };
 
+/**
+ * An article's body flattened to lowercase plain text — the manual search
+ * bar's haystack (added 2026-08-09, user-asked at tour 7 station 11; title
+ * matching rides beside it in HelpPane). Derived from the PARSED blocks, so
+ * like the palette's deep links it cannot go stale against the articles.
+ * Built lazily and cached: the roster is 22 articles and the cost is one
+ * join each, but there is no reason to pay it before the first keystroke.
+ */
+const textCache = new Map<string, string>();
+export function articleText(a: ManualArticle): string {
+  const hit = textCache.get(a.id);
+  if (hit != null) return hit;
+  const parts: string[] = [];
+  for (const b of a.blocks) {
+    if (b.t === "ul") parts.push(...b.items);
+    else if (b.t === "table") parts.push(...b.head, ...b.rows.flat());
+    else parts.push(b.text);
+  }
+  const text = parts.join(" ").toLowerCase();
+  textCache.set(a.id, text);
+  return text;
+}
+
 // ── Inline rendering: `code` · **bold** · *italic*, in that binding order ────
 
 const INLINE = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;

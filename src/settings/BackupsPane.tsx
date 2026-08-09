@@ -19,7 +19,6 @@ import { useQuery } from "@evolu/react";
 import { Ico, ICONS } from "../shell/icons";
 import { DangerConfirm } from "../shell/DangerConfirm";
 import {
-  BACKUP_DAILY_DAYS_DEFAULT,
   BACKUP_DAILY_DAYS_KEY,
   clampBackupDailyDays,
   syncedSettingsQuery,
@@ -32,6 +31,7 @@ import {
   listSlots,
   readBackupRecord,
   revealBackupsFolder,
+  revealSlot,
   runBackup,
   type Slot,
 } from "../backup/backup";
@@ -82,7 +82,9 @@ export function BackupsPane() {
   // autosave-interval shape; the prune in backup/backup.ts reads it through
   // the settings cache, so an unset row keeps the standing 90-day behavior.
   const dailyRow = settingRows.find((r) => String(r.key) === BACKUP_DAILY_DAYS_KEY);
-  const dailyDays = clampBackupDailyDays(Number(dailyRow?.value ?? BACKUP_DAILY_DAYS_DEFAULT));
+  // Raw value straight into the clamp — a `Number()` pre-coercion turns a
+  // blank row into 0, defeating the blank-is-unreadable guard (`settings-2`).
+  const dailyDays = clampBackupDailyDays(dailyRow?.value);
   const stepDaily = (dir: -1 | 1) =>
     writeSyncedSetting(settingRows, BACKUP_DAILY_DAYS_KEY, String(clampBackupDailyDays(dailyDays + dir)));
 
@@ -185,12 +187,18 @@ export function BackupsPane() {
                   {!s.hasStore && <span className="mgtag">readable, not restorable</span>}
                 </span>
                 <span className="macts">
-                  {s.hasStore ? (
+                  {!s.hasStore && (
+                    <span className="mgtag">readable in a SQLite tool or spreadsheet</span>
+                  )}
+                  {/* Every slot gets the files door (user-asked 2026-08-09) —
+                      the export rides every slot forever, so it always lands. */}
+                  <button className="btn-plain btn-sm" onClick={() => void revealSlot(s.id)}>
+                    Show files
+                  </button>
+                  {s.hasStore && (
                     <button className="btn-plain btn-sm" onClick={() => setConfirming(s)}>
                       Restore…
                     </button>
-                  ) : (
-                    <span className="mgtag">open its files in a SQLite tool or spreadsheet</span>
                   )}
                 </span>
               </div>

@@ -66,10 +66,10 @@ describe("the synced-setting clamps", () => {
     // The `seed-1` shape: a non-numeric arriving by sync must not become NaN and
     // poison every comparison downstream.
     for (const junk of ["abc", NaN, Infinity, -Infinity, null, undefined, {}] as unknown[]) {
-      expect(clampDayCutoff(junk as number)).toBe(DAY_CUTOFF_DEFAULT);
-      expect(clampWaveGap(junk as number)).toBe(WAVE_GAP_DEFAULT);
-      expect(clampListCap(junk as number)).toBe(LIST_CAP_DEFAULT);
-      expect(clampBackupDailyDays(junk as number)).toBe(BACKUP_DAILY_DAYS_DEFAULT);
+      expect(clampDayCutoff(junk)).toBe(DAY_CUTOFF_DEFAULT);
+      expect(clampWaveGap(junk)).toBe(WAVE_GAP_DEFAULT);
+      expect(clampListCap(junk)).toBe(LIST_CAP_DEFAULT);
+      expect(clampBackupDailyDays(junk)).toBe(BACKUP_DAILY_DAYS_DEFAULT);
     }
   });
 
@@ -79,8 +79,8 @@ describe("the synced-setting clamps", () => {
   });
 
   it("accepts the stored STRING form, since these arrive from a text column", () => {
-    expect(clampWaveGap("45" as unknown as number)).toBe(45);
-    expect(clampDayCutoff("6" as unknown as number)).toBe(6);
+    expect(clampWaveGap("45")).toBe(45);
+    expect(clampDayCutoff("6")).toBe(6);
   });
 
   it("treats a BLANK value as unreadable, not as zero (fixed 2026-08-08)", () => {
@@ -89,18 +89,25 @@ describe("the synced-setting clamps", () => {
     // list cap of 3 where 10 was. It read as a plausible setting with nothing to
     // point at. This test was written against the old behaviour first and seen
     // to fail on the fix, which is what proves it observes the rule at all.
+    //
+    // ⚠ `settings-2` (2026-08-09): this test passed for a day while the rule it
+    // proves was dead in the app — every call site wrapped the value in
+    // `Number(...)` before the clamp could see the string. The clamps now take
+    // `unknown` and every reader passes the RAW stored value; a `Number()`
+    // around a clamp argument is the regression to refuse in review, because
+    // no unit test can reach the module-private cache those readers consume.
     for (const blank of ["", "   ", "\t"]) {
-      expect(clampDayCutoff(blank as unknown as number)).toBe(DAY_CUTOFF_DEFAULT);
-      expect(clampWaveGap(blank as unknown as number)).toBe(WAVE_GAP_DEFAULT);
-      expect(clampListCap(blank as unknown as number)).toBe(LIST_CAP_DEFAULT);
-      expect(clampBackupDailyDays(blank as unknown as number)).toBe(BACKUP_DAILY_DAYS_DEFAULT);
+      expect(clampDayCutoff(blank)).toBe(DAY_CUTOFF_DEFAULT);
+      expect(clampWaveGap(blank)).toBe(WAVE_GAP_DEFAULT);
+      expect(clampListCap(blank)).toBe(LIST_CAP_DEFAULT);
+      expect(clampBackupDailyDays(blank)).toBe(BACKUP_DAILY_DAYS_DEFAULT);
     }
   });
 
   it("still reads a real zero as zero — the fix must not swallow a typed 0", () => {
     // The cutoff's whole legal range starts at 0, so "blank" and "0" must stay
     // distinguishable. They differ only in the string, not in the number.
-    expect(clampDayCutoff("0" as unknown as number)).toBe(0);
+    expect(clampDayCutoff("0")).toBe(0);
     expect(clampDayCutoff(0)).toBe(0);
   });
 });

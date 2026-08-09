@@ -323,3 +323,22 @@ export const revealBackupsFolder = async (): Promise<void> => {
   const root = getBackupsRoot();
   if (root != null && inTauri()) await invoke("bk_reveal", { path: root });
 };
+
+/**
+ * The file manager AT a slot's files — parent folder with the slot's EXPORT
+ * selected (user-asked 2026-08-09 at tour 8: the readable-not-restorable rows
+ * said "open its files in a SQLite tool or spreadsheet" while offering no door
+ * to them). The export is the anchor because it is the one artifact EVERY slot
+ * carries forever, so the door works on every row; if the reveal fails the
+ * plain folder opens instead. Lives here, not in the pane — the filename join
+ * must stay beside `exportName` or a rename there silently breaks this door.
+ */
+export const revealSlot = async (id: string): Promise<void> => {
+  const root = getBackupsRoot();
+  if (root == null || !inTauri()) return;
+  try {
+    await invoke("bk_reveal_item", { path: join(root, exportName(id)) });
+  } catch {
+    await invoke("bk_reveal", { path: root }).catch(() => undefined);
+  }
+};

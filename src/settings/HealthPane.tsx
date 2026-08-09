@@ -249,7 +249,10 @@ function BackupRow() {
     root == null ? "idle" : record == null ? "idle" : !record.ok ? "err" : "ok";
   const state =
     root == null
-      ? "Paused — no backups folder set. Pick one in Settings → Backups."
+      ? // The folder DERIVES from the cloud root since step 14 — the Backups
+        // pane has no picker to send anyone to (`health-1`; its own copy
+        // already says Storage).
+        "Paused — no cloud root set. Pick one in Settings → Storage."
       : busy
         ? "Backing up…"
         : record == null
@@ -491,7 +494,15 @@ function DataTab({ onOpenDay, onOpenEntry, onOpenHabits }: HealthNav) {
       }
       await run();
     } catch (e) {
+      // A silent catch here is the doctor's own failure tier misapplied: the
+      // only visible outcome was a finding that survived the re-run, which
+      // reads as "the fix did nothing" with no reason on screen (`health-2`;
+      // the bulk branch above has toasted honestly since it was built).
       console.error("doctor: fix action failed", e);
+      showErrorToast(
+        `The fix did not apply — ${e instanceof Error ? e.message : String(e)}`,
+        "Data checks",
+      );
     } finally {
       setBusy(false);
     }

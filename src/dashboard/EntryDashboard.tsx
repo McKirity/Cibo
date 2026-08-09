@@ -364,7 +364,13 @@ function RailEdit({
   // ("write replace banner back in"). One function, `kind` the only difference.
   const replaceImage = async (kind: "cover" | "banner") => {
     if (data.entryId == null) return;
-    const rel = await pickAndStoreEntryImage(data.habitKey, data.entryId, kind);
+    // The identity goes with it: an imported entry's picked image must land on
+    // the SAME stem its downloaded cover uses, or the two halves would write
+    // two files for one entry — the duplication this naming exists to end.
+    const rel = await pickAndStoreEntryImage(data.habitKey, data.entryId, kind, {
+      source: data.entry?.source ?? null,
+      externalId: data.entry?.externalId ?? null,
+    });
     if (rel == null) return; // cancel / unset root — never an error
     const old = kind === "cover" ? m.rail.cover : m.rail.bannerRef;
     const res = evolu.update("entries", { id: data.entryId, [kind]: rel } as never);

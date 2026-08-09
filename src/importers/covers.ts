@@ -12,11 +12,32 @@
  * invariant. An unset root: saves return null (the entry keeps its lettermark,
  * non-fatal by rule) and reads resolve to nothing — never a gate.
  *
- * The old TMDB cover-filename collision (movie 500 and TV 500 both wrote
- * `tmdb-500.jpg`) is dead by construction here — the filename is the ENTRY id.
+ * **NAMING, AMENDED 2026-08-08 (user-ruled).** An imported entry's images are
+ * named after the entry's OWN identity — `<source>-<external_id>` — not its
+ * database id. Hand-made entries have no external identity and keep the entry
+ * id, which is also fine because they are never re-imported.
+ *
+ * *Why the change.* The entry id is stable for as long as the row lives, and
+ * the row is what does not survive a store wipe or a restore. Re-importing the
+ * same book then minted a NEW row, a NEW id and therefore a NEW file — a second
+ * copy of the same picture, with the first stranded pointing at a row that no
+ * longer existed. One restore-and-reimport cycle doubles the folder. That is a
+ * development pattern rather than a use pattern, but it happened twice in one
+ * day and each time cost a manual cleanup of ~151 files.
+ *
+ * *Why it is safe now, and was not before.* The header used to record the old
+ * TMDB collision — movie 500 and TV 500 both writing `tmdb-500.jpg` — as the
+ * reason for entry-id naming. **That reason is spent:** the app splits the
+ * sources (`tmdb-movie` / `tmdb-tv`, `anilist-anime` / `anilist-manga`), which
+ * is what makes `(source, external_id)` unique together in the schema, and the
+ * same split makes it unique as a filename. All eight source keys were checked
+ * before this landed.
+ *
+ * Owning record: [[Images & Cover Assets]], amended with this change.
  */
 import { importBytes } from "./http";
 import { cloudSub, resolveRef, underRoot } from "../settings/cloudRoot";
+import { imageStem } from "./imageStem";
 
 const extFromUrl = (url: string): string => {
   const m = /\.(jpe?g|png|webp|gif)(?:$|\?)/i.exec(url);
@@ -25,7 +46,7 @@ const extFromUrl = (url: string): string => {
 };
 
 /**
- * Download `coverUrl` and store it as `images/<habitKey>/<entryId>.<ext>`.
+ * Download `coverUrl` and store it as `images/<habitKey>/<stem>.<ext>`.
  * Returns the root-relative ref to write on the entry, or null on any failure
  * (non-fatal by rule).
  */
@@ -33,6 +54,8 @@ export const saveCover = async (
   habitKey: string,
   entryId: string,
   coverUrl: string,
+  /** The entry's external identity, when it has one — see `imageStem`. */
+  identity?: { source: string | null; externalId: string | null },
 ): Promise<string | null> => {
   try {
     // `calibre:<book-path>` — a LOCAL cover crossing the IPC boundary as
@@ -57,7 +80,10 @@ export const saveCover = async (
     const fs = await import("@tauri-apps/plugin-fs");
     const dirAbs = underRoot(imagesRoot, habitKey);
     if (!(await fs.exists(dirAbs))) await fs.mkdir(dirAbs, { recursive: true });
-    const rel = `images/${habitKey}/${entryId}.${ext}`;
+    // Same book → same filename → an OVERWRITE, never a second copy. This is
+    // the whole point of the 2026-08-08 amendment.
+    const stem = imageStem(entryId, identity?.source, identity?.externalId);
+    const rel = `images/${habitKey}/${stem}.${ext}`;
     await fs.writeFile(resolveRef(rel) as string, bytes);
     return rel;
   } catch (e) {
@@ -83,6 +109,8 @@ export const pickAndStoreEntryImage = async (
   habitKey: string,
   entryId: string,
   kind: "cover" | "banner",
+  /** As `saveCover` — the two halves must agree on the stem for one entry. */
+  identity?: { source: string | null; externalId: string | null },
 ): Promise<string | null> => {
   try {
     const imagesRoot = cloudSub("images");
@@ -115,7 +143,8 @@ export const pickAndStoreEntryImage = async (
     const m = /\.(jpe?g|png|webp|gif)$/i.exec(sel);
     const raw = m ? m[1].toLowerCase() : "jpg";
     const ext = raw === "jpeg" ? "jpg" : raw;
-    const rel = `images/${habitKey}/${entryId}${kind === "banner" ? "-banner" : ""}.${ext}`;
+    const stem = imageStem(entryId, identity?.source, identity?.externalId);
+    const rel = `images/${habitKey}/${stem}${kind === "banner" ? "-banner" : ""}.${ext}`;
     await fs.writeFile(resolveRef(rel) as string, bytes);
     coverCache.delete(rel); // a replace must not serve the stale blob
     return rel;

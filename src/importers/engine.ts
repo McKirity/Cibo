@@ -106,11 +106,16 @@ const downloadCover = async (
   ctx: EngineCtx,
   entryId: string,
   e: FetchedEntry,
+  /** The identity actually WRITTEN on the row — the canonical one, not the
+   *  queued one, so a YouTube @handle resolved to a UC-id names the file by
+   *  what the entry ends up carrying. */
+  identity: { source: string | null; externalId: string | null },
 ): Promise<string | null> => {
   if (e.coverUrl == null) return null;
-  const first = await saveCover(ctx.habitKey, entryId, e.coverUrl);
+  const first = await saveCover(ctx.habitKey, entryId, e.coverUrl, identity);
   if (first != null) return first;
-  if (e.coverFallbackUrl != null) return saveCover(ctx.habitKey, entryId, e.coverFallbackUrl);
+  if (e.coverFallbackUrl != null)
+    return saveCover(ctx.habitKey, entryId, e.coverFallbackUrl, identity);
   return null;
 };
 
@@ -196,7 +201,10 @@ export const runImport = async (
           if (!res.ok) throw new Error("adoption write rejected");
           manualByTitle.delete(titleKey(e.title));
           if (adoptee.cover == null) {
-            const ref = await downloadCover(ctx, String(adoptee.id), e);
+            const ref = await downloadCover(ctx, String(adoptee.id), e, {
+              source: writeItem.source,
+              externalId: writeItem.externalId,
+            });
             if (ref != null) {
               const cres = evolu.update("entries", {
                 id: adoptee.id,
@@ -211,7 +219,10 @@ export const runImport = async (
           const res = evolu.insert("entries", insertPatch(e, ctx, writeItem) as never);
           if (!res.ok) throw new Error("entry insert rejected");
           const id = (res.value as { id: EntryId }).id;
-          const ref = await downloadCover(ctx, String(id), e);
+          const ref = await downloadCover(ctx, String(id), e, {
+            source: writeItem.source,
+            externalId: writeItem.externalId,
+          });
           if (ref != null) {
             const cres = evolu.update("entries", {
               id,

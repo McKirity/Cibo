@@ -45,17 +45,17 @@ import "./importer.css";
 const pairKey = (source: string, externalId: string) => `${source}:${externalId}`;
 
 /**
- * A search failure, in words the reader can act on. The transport tier already
- * says timeouts and statuses honestly (`ao3-1`, `http-2`); what is left here is
- * the offline case, where the error is a bare transport rejection with no
- * status to name.
+ * A search failure, in words the reader can act on.
+ *
+ * This used to sniff the message for network-ish words, which was the wrong
+ * shape: **the transport tier now names its own failures** — `HttpTimeout`,
+ * `HttpUnreachable` and `HttpFail` all carry a sentence — so there is nothing
+ * left to guess at. Keeping the regex would have meant two places deciding what
+ * "offline" reads like, and the import path (which never had one) proved that
+ * per-caller translation is exactly the thing that gets forgotten.
  */
-const searchFailure = (e: unknown): string => {
-  const msg = e instanceof Error ? e.message : String(e);
-  return /network|fetch|dns|connect|offline|error sending request/i.test(msg)
-    ? `Couldn't reach the source — you may be offline. (${msg})`
-    : `The search failed — ${msg}`;
-};
+const searchFailure = (e: unknown): string =>
+  `Search failed — ${e instanceof Error ? e.message : String(e)}`;
 
 /** Blob-thumb loader — null while loading/failed renders the capsule. */
 function useThumb(url: string | null): string | null {

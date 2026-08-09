@@ -114,6 +114,38 @@ export class HttpTimeout extends Error {
   }
 }
 
+/**
+ * The transport could not reach the host at all — no status, because no
+ * response. **Wrapped here, at the source, rather than translated per caller.**
+ *
+ * The raw error is reqwest's `error sending request for url (…)`, which a user
+ * saw verbatim on an import when the network was cut mid-batch: lowercase,
+ * shaped like an internal log line, and silent about the one thing worth
+ * knowing — that nothing was reached and the app already tried twice.
+ *
+ * The search path had grown its own translator an hour earlier and the import
+ * path had not, which is the same one-site-not-its-neighbour shape as
+ * `probe-1`, `creator-4`, `ao3-2` and `http-1`. So the message belongs to the
+ * throw site: every caller gets it, and none can forget it.
+ */
+export class HttpUnreachable extends Error {
+  constructor(
+    public readonly url: string,
+    public readonly cause: unknown,
+  ) {
+    let host = url;
+    try {
+      host = new URL(url).host;
+    } catch {
+      /* a malformed url is still worth reporting — keep the raw string */
+    }
+    super(
+      `couldn't reach ${host} — no connection, after one retry. ` +
+        `(${cause instanceof Error ? cause.message : String(cause)})`,
+    );
+  }
+}
+
 const rustFetch = async (
   url: string,
   init?: RequestInit,
@@ -164,7 +196,8 @@ export const importFetch = async (
       // Say TIMEOUT when it was one. Reporting the plugin's raw wording made a
       // budget we chose read as an action the user took (`ao3-1`).
       if (isTimeout(e2)) throw new HttpTimeout(timeoutMs);
-      throw e2;
+      // Otherwise the host was never reached — say THAT, not reqwest's phrasing.
+      throw new HttpUnreachable(url, e2);
     }
   }
   if (res.ok) return res;
@@ -247,7 +280,8 @@ const importRead = async <T,>(
       return await once();
     } catch (e2) {
       if (isTimeout(e2)) throw new HttpTimeout(timeoutMs);
-      throw e2;
+      if (e2 instanceof HttpFail || e2 instanceof HttpUnreachable) throw e2;
+      throw new HttpUnreachable(url, e2);
     }
   }
 };

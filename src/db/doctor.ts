@@ -47,11 +47,27 @@ export type FixTarget =
   | { kind: "habit"; key: string }
   | { kind: "vocab" };
 
-/** A repair the surface may run directly. Never a merge, never a bulk sweep. */
+/**
+ * A repair the surface may run directly. **Never a merge** — that is the ruled
+ * exclusion ([[Bulk Edit & Data Correction]]: entry merge dropped; duplicates
+ * are prevented, detected, and repaired manually).
+ *
+ * *The header used to add "never a bulk sweep", and that clause was struck
+ * 2026-08-08 as an over-reading.* It came from the merge decision, which is
+ * about reconciling two ENTRIES, and was generalised onto deleting stray FILES,
+ * where nothing of the kind was ever ruled. The owning ruling for orphaned
+ * images is the user's own words at the 2026-08-04 amendment — ***"Alert me
+ * about orphaned image files and give me the option to delete them"*** — and
+ * "them" is plural. A store wipe strands one file per imported entry, so the
+ * realistic finding count is in the hundreds and a one-at-a-time button is not
+ * a repair path. `delete-entries` had carried a list since it was written; the
+ * precedent was already in this union.
+ */
 export type FixAction =
   | { kind: "delete-session"; id: string }
   | { kind: "delete-entries"; ids: string[] }
-  | { kind: "delete-file"; path: string };
+  | { kind: "delete-file"; path: string }
+  | { kind: "delete-files"; paths: string[] };
 
 export interface Finding {
   /** The ruled mute key, `check::row-id::field`. */

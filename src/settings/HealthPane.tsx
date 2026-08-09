@@ -47,7 +47,9 @@ import {
   runBackup,
 } from "../backup/backup";
 import { deleteEntriesCascade } from "../library/entryDelete";
+import { DangerConfirm } from "../shell/DangerConfirm";
 import { resolveRef } from "./cloudRoot";
+import { showErrorToast, showInfoToast } from "../shell/toast";
 import { clearErrors, recentErrors, subscribeErrors, type LoggedError } from "./errorLog";
 import { LUCIDE_VERSION } from "../shell/habitIcons";
 import {
@@ -387,6 +389,7 @@ function DataTab({ onOpenDay, onOpenEntry, onOpenHabits }: HealthNav) {
   /** Muted this session — the store is the truth, this keeps the list honest
    *  between a mute and the next run without re-scanning the filesystem. */
   const [justMuted, setJustMuted] = useState<ReadonlySet<string>>(new Set());
+  const [confirmBulk, setConfirmBulk] = useState<{ check: string; paths: string[] } | null>(null);
 
   const muteRows = useQuery(doctorMutesQuery);
   const ignored = useMemo(() => decodeMutes(muteRows), [muteRows]);
@@ -416,6 +419,14 @@ function DataTab({ onOpenDay, onOpenEntry, onOpenHabits }: HealthNav) {
     [justMuted],
   );
 
+  /** The delete-file paths behind a check's VISIBLE findings, or [] when the
+   *  check is not a uniform file-delete set. Uniformity is the guard: a bulk
+   *  button must never act on a mixture it did not describe. */
+  const bulkFiles = (found: Finding[]): string[] =>
+    found.length > 0 && found.every((f) => f.action?.kind === "delete-file")
+      ? found.map((f) => (f.action as { kind: "delete-file"; path: string }).path)
+      : [];
+
   const mute = (f: Finding) => {
     if (!muteFinding(f.muteKey)) return;
     setJustMuted((prev) => new Set(prev).add(f.muteKey));
@@ -440,6 +451,36 @@ function DataTab({ onOpenDay, onOpenEntry, onOpenHabits }: HealthNav) {
         if (!res.ok) console.error("doctor: session delete rejected", res.error);
       } else if (action.kind === "delete-entries") {
         await deleteEntriesCascade(action.ids, "permanent");
+      } else if (action.kind === "delete-files") {
+        // BULK FILE DELETE (2026-08-08). Per-file failure is collected, never
+        // fatal and never silent: a locked or already-gone file must not abort
+        // the other 151, and "deleted 150 of 152" is the only honest report.
+        const abs = resolveRef("");
+        if (abs == null) throw new Error("no cloud root set");
+        const fs = await import("@tauri-apps/plugin-fs");
+        let done = 0;
+        const failed: string[] = [];
+        for (const path of action.paths) {
+          const target = resolveRef(path);
+          if (target == null) {
+            failed.push(path);
+            continue;
+          }
+          try {
+            await fs.remove(target);
+            done++;
+          } catch (e) {
+            console.warn("doctor: bulk delete skipped a file", path, e);
+            failed.push(path);
+          }
+        }
+        if (failed.length === 0)
+          showInfoToast(`Deleted ${done} orphaned image${done === 1 ? "" : "s"}.`);
+        else
+          showErrorToast(
+            `Deleted ${done} of ${action.paths.length} files — ${failed.length} could not be removed.`,
+            "Data checks",
+          );
       } else {
         // The finding's path is root-relative (stable mute keys); it meets
         // this device's cloud root only here, at the moment of the delete.
@@ -509,6 +550,23 @@ function DataTab({ onOpenDay, onOpenEntry, onOpenHabits }: HealthNav) {
                     ) : lit ? (
                       <>
                         <span className={`sword ${tier}`}>{found.length} found</span>
+                        {/* BULK REPAIR (2026-08-08, user-ruled: "just write a
+                            bulk delete option into the app"). Offered only when
+                            EVERY visible finding carries the same file-delete
+                            action, and built from `found` rather than from the
+                            check — so muted findings are excluded by
+                            construction and cannot be swept up by a button that
+                            never saw them. Two or more, since one is what the
+                            per-finding button is already for. */}
+                        {bulkFiles(found).length > 1 && (
+                          <button
+                            className="btn-danger btn-sm"
+                            disabled={busy}
+                            onClick={() => setConfirmBulk({ check: c.id, paths: bulkFiles(found) })}
+                          >
+                            Delete all {bulkFiles(found).length}
+                          </button>
+                        )}
                         <button
                           className={`disc${open === c.id ? " on" : ""}`}
                           title={open === c.id ? "Hide" : "Show"}
@@ -610,6 +668,32 @@ function DataTab({ onOpenDay, onOpenEntry, onOpenHabits }: HealthNav) {
             })}
           </div>
         </div>
+      )}
+
+      {/* The ruled count-carrying danger confirm ([[Delete Safety & Undo]]:
+          bulk delete gets one). NOT stacked — this pane is a settings surface,
+          not a modal, so there is no host dim to sit over. The count is in the
+          prose because that is the whole point of the confirm: the number is
+          the thing the user is agreeing to. */}
+      {confirmBulk != null && (
+        <DangerConfirm
+          title="Delete orphaned image files?"
+          body={
+            <>
+              This permanently deletes <strong>{confirmBulk.paths.length} image files</strong> that
+              no entry references. Files still in use are not touched, and any finding you have
+              ignored is excluded. This cannot be undone — importers can re-download covers, but a
+              picture you added by hand would be gone.
+            </>
+          }
+          confirmLabel={`Delete ${confirmBulk.paths.length} files`}
+          onCancel={() => setConfirmBulk(null)}
+          onConfirm={() => {
+            const paths = confirmBulk.paths;
+            setConfirmBulk(null);
+            void act({ kind: "delete-files", paths });
+          }}
+        />
       )}
     </div>
   );

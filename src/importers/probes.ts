@@ -20,14 +20,23 @@ import type { ImporterSource } from "./types";
 const BASELINE_URL = "https://www.gstatic.com/generate_204";
 
 /**
- * The whole diagnosis is bounded. Offline, each request is two attempts with a
- * backoff between them, and an attempt can burn its full timeout when the
- * network BLACKHOLES connections rather than refusing them — so service +
- * baseline could legitimately run for about a minute of silence. A probe is a
- * question the user asked and is waiting on; it owes an answer on a human
- * timescale, and "no answer in 20s" IS an answer.
+ * **Ten seconds PER PHASE, so twenty in total** (user-ruled 2026-08-08).
+ *
+ * A first pass gave the whole diagnosis one shared 20 s budget, which is worse
+ * for the reason the user named: a slow service probe eats the pot and leaves
+ * the baseline a sliver — and **the baseline is the phase that distinguishes
+ * "you are offline" from "their server is down"**. A diagnosis that cannot say
+ * which of the two it is has lost most of its value, so the phase that carries
+ * the distinction gets a guaranteed slice rather than the remainder.
+ *
+ * Why any ceiling at all: offline, each request is two attempts with a backoff
+ * between them, and an attempt burns its full timeout when the network
+ * SWALLOWS connections rather than refusing them. Unbounded, service + baseline
+ * could legitimately sit silent for about a minute. A probe is a question the
+ * user asked and is waiting on; it owes an answer on a human timescale, and
+ * "no answer in 10s" IS an answer.
  */
-const PROBE_BUDGET_MS = 20_000;
+const PHASE_BUDGET_MS = 10_000;
 
 /** Resolve to `fallback` if `p` has not settled in time. Never rejects. */
 const within = async <T,>(p: Promise<T>, ms: number, fallback: T): Promise<T> => {
@@ -78,20 +87,17 @@ export interface ProbeVerdict {
 export const threeWayProbe = async (source: ImporterSource): Promise<ProbeVerdict> => {
   const timedOut: ProbeVerdict = {
     ok: false,
-    message: `No answer within ${Math.round(PROBE_BUDGET_MS / 1000)}s — the network is not refusing the connection, it is swallowing it. That usually means no route out at all.`,
+    message: `No answer within ${Math.round(PHASE_BUDGET_MS / 1000)}s — the network is not refusing the connection, it is swallowing it. That usually means no route out at all.`,
   };
-  // THE BUDGET IS FOR THE WHOLE DIAGNOSIS, not per phase — spending it twice
-  // would make the guard slower than the problem it guards. Each phase gets
-  // whatever is left, with a floor so the second phase is never given zero.
-  const started = Date.now();
-  const remaining = (): number => Math.max(1_000, PROBE_BUDGET_MS - (Date.now() - started));
-  // Service probe first — if it passes, the baseline never needs to run.
-  const probe = await within(source.probe(), remaining(), {
+  // Service probe first — if it passes, the baseline never needs to run, so the
+  // common (online) case costs one phase, not two.
+  const probe = await within(source.probe(), PHASE_BUDGET_MS, {
     ok: false,
     detail: timedOut.message,
   });
   if (probe.ok) return { ok: true, message: `${probe.detail} ✓` };
-  const net = await within(baseline(), remaining(), false);
+  // Its own full slice, never the leftovers — see PHASE_BUDGET_MS.
+  const net = await within(baseline(), PHASE_BUDGET_MS, false);
   if (!net)
     return {
       ok: false,

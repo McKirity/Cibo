@@ -12,7 +12,7 @@
  * WHAT IT PINS before deciding to delete it. It reads the stored keys back in
  * plain words; it does not re-render the query workspace.
  *
- * PALETTE — the per-action enable/disable toggles for the pinned nine-verb
+ * PALETTE — the per-action enable/disable toggles for the pinned ten-verb
  * inventory. **Disabling HIDES, never deletes** ([[Palette]]), so a re-enabled
  * verb returns unchanged. Verbs whose step has not landed are shown but locked
  * off: curating something that cannot run yet would be a promise the app can't

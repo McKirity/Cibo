@@ -9,10 +9,35 @@
    pair is art-free by design, and the first Phase-2 asset drops onto live
    plumbing instead of reopening this layer.
 
-   Selector discipline: border-image-source is an untouched longhand app-wide
-   (safe bare); background-image/-color attachments ride a `:root ` prefix so
-   they outrank the screens' `background:` shorthands regardless of bundle
-   order. Inherit-fallback chains are nested var() fallbacks (headliner →
+   FRAME THICKNESS COMES FROM THE CLEARANCE DIAL, NOT THE MANIFEST (user-ruled
+   2026-08-08, Phase 2 step 3 finding `deco-1`, option B). Each frame role sets
+   border-image-width from its own --frame-clear-* dial — the room the layouts
+   already reserve for exactly this — so the manifest carries only `slice`
+   (which part of the image is the border), plus optional `repeat`/`outset`,
+   and art may be authored at any resolution. `scale` retired with the ruling.
+   Setting width unconditionally is safe: border-image-width is ignored while
+   border-image-source is `none`, and it never participates in layout, so law 1
+   (never load-bearing) holds by construction rather than by discipline.
+
+   ⚠ Before 2026-08-08 this sheet set border-image-SOURCE alone. That is one of
+   five longhands, and the other four's initial values (slice 100% · width 1 ×
+   the border width) crush the whole image into a 1px corner — so every frame
+   asset published and painted NOTHING, and took the element's ordinary border
+   down with it. The 9-slice form had never once run. Publish-side tests could
+   not see it: 6a proved asset/off/tint/warning, all reader-side.
+
+   Selector discipline: EVERY attachment rides a `:root ` prefix — frames
+   included since 2026-08-08 (finding `deco-2`). The background half always
+   did, so it would outrank the screens' `background:` shorthands regardless
+   of bundle order; the frames were left bare on the belief that
+   "border-image-source is an untouched longhand app-wide". That belief was
+   false, and silently so: **the `border` SHORTHAND resets border-image to its
+   initial value**, so any rule setting `border:` at higher specificity erases
+   the frame with no error. `.cadash .tile` (0,2,0) did exactly that to the
+   bare `.tile` (0,1,0) — cadence stat tiles wore no frame while dashboard
+   ones did. Sixteen more selectors were surviving only on bundle order.
+   The rule that generalises: **a longhand is not safe merely because nothing
+   else sets that longhand — check the shorthands that reset it.** Inherit-fallback chains are nested var() fallbacks (headliner →
    panel · dialog → modal · palette → dialog → modal · the cadence stamp pair
    cross-inherits). The rail-card split discriminates BY RAIL CONTEXT
    (.habitgrid vs .tools), never by the bare block — wiring the bare block
@@ -25,8 +50,8 @@
    warning, even when no decoration pack is loaded (the fallback paints
    `none`, but the CLAIM still outranks you). Concretely: `background-image`
    is decoration's on `.daily .finalize` · `.emptybox` · `.milestone .emblem`
-   · `.cadash .perhead .fin .dotm` (the stamp tier), and
-   `border-image-source` is decoration's on every frame/strip selector below.
+   · `.cadash .perhead .fin .dotm` (the stamp tier), and ALL FIVE
+   `border-image-*` longhands are decoration's on every frame selector below.
    A theme that wants light or texture on those surfaces must use a property
    this sheet does NOT claim (inset box-shadow is the proven route — Blame!'s
    finalize emission) or a pseudo-element. Raised on the theme bench
@@ -43,56 +68,120 @@
 /* ---- frames (9-slice) --------------------------------------------------- */
 /* panel frame — the five parallel panel implementations + kinship tenants
    (kit-band-current · kit-table-library's catalog box) */
-.panel, .hero,
-.cadash .cpanel,
-.daily .card,
-:is(.csdash, .advs) .bsec,
-.mapscreen .trunk,
-.libscreen .cat, .libscreen .tbar,
-.libscreen .pinband {
+:root .panel, :root .hero,
+:root .cadash .cpanel,
+:root .daily .card,
+:root :is(.csdash, .advs) .bsec,
+:root .mapscreen .trunk,
+:root .libscreen .cat, :root .libscreen .tbar,
+:root .libscreen .pinband {
   border-image-source: var(--deco-frame-panel, none);
+  border-image-slice: var(--deco-frame-panel-slice, 100%);
+  border-image-width: var(--frame-clear-grand);
+  border-image-repeat: var(--deco-frame-panel-repeat, stretch);
+  border-image-outset: var(--deco-frame-panel-outset, 0);
 }
 /* headliner frame (falls back to the panel frame) — masthead + tenants */
-.mast, .libscreen .libmast, .erail, .cadash .perhead {
+:root .mast, :root .libscreen .libmast, :root .erail, :root .cadash .perhead {
   border-image-source: var(--deco-frame-headliner, var(--deco-frame-panel, none));
+  border-image-slice: var(--deco-frame-headliner-slice, var(--deco-frame-panel-slice, 100%));
+  border-image-width: var(--frame-clear-grand);
+  border-image-repeat: var(--deco-frame-headliner-repeat, var(--deco-frame-panel-repeat, stretch));
+  border-image-outset: var(--deco-frame-headliner-outset, var(--deco-frame-panel-outset, 0));
 }
 /* stat-tile frame (no kinship tenant since the 2026-07-25 wave-card strike) */
-.tile, .htile {
+:root .tile, :root .htile {
   border-image-source: var(--deco-frame-tile, none);
+  border-image-slice: var(--deco-frame-tile-slice, 100%);
+  border-image-width: var(--frame-clear-tile);
+  border-image-repeat: var(--deco-frame-tile-repeat, stretch);
+  border-image-outset: var(--deco-frame-tile-outset, 0);
+}
+/* ⚠ THE COVER WALL IS NOT A STAT TILE — un-claimed 2026-08-08, user-ruled
+   ("did I ever request that? … walk it back"), finding `deco-3`.
+   CoverWall.tsx renders every wall tile as `tile <variant>`, so the bare
+   stat-tile role above caught the whole wall: cover art, keepsakes and all.
+   The wall tile has NO ROLE IN THE 25-SLOT CATALOG — it was never given one,
+   and a habit's wall tile IS its entry art, which is the last thing that
+   wants a frame drawn round it.
+   Un-claimed EXPLICITLY rather than by narrowing the positive selector: a
+   hand-listed set of stat-tile screens would silently drop a real tenant the
+   day a new screen adds one, and this layer's failures are already invisible.
+   `.tile` is the app's most multi-tenant class name (a standing watch item);
+   this is that watch item coming true in the decoration layer. */
+:root .wall .tile {
+  border-image-source: none;
 }
 /* the rail-card pair — TWO roles on one block, discriminated by rail context */
-.rail .habitgrid .entry {
+:root .rail .habitgrid .entry {
   border-image-source: var(--deco-frame-habit-card, none);
+  border-image-slice: var(--deco-frame-habit-card-slice, 100%);
+  border-image-width: var(--frame-clear-hcard);
+  border-image-repeat: var(--deco-frame-habit-card-repeat, stretch);
+  border-image-outset: var(--deco-frame-habit-card-outset, 0);
 }
-.rail .tools .tool {
+:root .rail .tools .tool {
   border-image-source: var(--deco-frame-tool-card, none);
+  border-image-slice: var(--deco-frame-tool-card-slice, 100%);
+  border-image-width: var(--frame-clear-tool);
+  border-image-repeat: var(--deco-frame-tool-card-repeat, stretch);
+  border-image-outset: var(--deco-frame-tool-card-outset, 0);
 }
 /* daily-log card frame (collapsed + expanded — the 9-slice re-slices live)
    + its optional 2D tile fill */
-.daily .strip {
+:root .daily .strip {
   border-image-source: var(--deco-frame-daily-log, none);
+  border-image-slice: var(--deco-frame-daily-log-slice, 100%);
+  border-image-width: var(--frame-clear-strip);
+  border-image-repeat: var(--deco-frame-daily-log-repeat, stretch);
+  border-image-outset: var(--deco-frame-daily-log-outset, 0);
 }
 :root .daily .strip {
   background-image: var(--deco-fill-daily-log, none);
 }
 /* whimsy card frame — its own role by ruling, never folded into daily-log */
-.daily .card.whimsy {
+:root .daily .card.whimsy {
   border-image-source: var(--deco-frame-whimsy, none);
+  border-image-slice: var(--deco-frame-whimsy-slice, 100%);
+  border-image-width: var(--frame-clear-whimsy);
+  border-image-repeat: var(--deco-frame-whimsy-repeat, stretch);
+  border-image-outset: var(--deco-frame-whimsy-outset, 0);
 }
 /* modal frame — every kit-shell-overlay tenant (the --mo-ring clearance is
    the reserved room; the ring itself stays unpainted until an asset paints it) */
-.dimlayer > .mo {
+:root .dimlayer > .mo {
   border-image-source: var(--deco-frame-modal, none);
+  border-image-slice: var(--deco-frame-modal-slice, 100%);
+  border-image-width: var(--frame-clear-modal);
+  border-image-repeat: var(--deco-frame-modal-repeat, stretch);
+  border-image-outset: var(--deco-frame-modal-outset, 0);
 }
-/* dialog frame (falls back to modal) — confirms + the popover/menu kinship */
-.confirm,
-.calpop, .timepop, .libmenu, .pkdrop,
-:is(.csdash, .advs) .preset-menu {
+/* dialog frame (falls back to modal) — CONFIRMS ONLY.
+   ⚠ THE POPOVER/MENU KINSHIP WAS REMOVED 2026-08-08, user-ruled ("dropdown
+   menus have huge frames … it should be removed from dropdown menus too"),
+   finding `deco-4`. `.calpop` · `.timepop` · `.libmenu` (the shared kit Menu,
+   i.e. EVERY dropdown in the app) · `.pkdrop` · `.preset-menu` were wired here
+   as kinship tenants at 6a, but a frame's thickness is its role's clearance
+   dial and NONE of them reserve it: `.confirm` pads at
+   `--frame-clear-grand + --space-4` (32px), while the menus pad at
+   --space-3/4/5 (6–12px). A 24px frame on an 8px-padded menu does not decorate
+   it, it covers it — and on a short dropdown the top and bottom frames meet.
+   The catalog has NO menu slot; a dropdown is not a small dialog. They are
+   undecorated until the catalog says otherwise. */
+:root .confirm {
   border-image-source: var(--deco-frame-dialog, var(--deco-frame-modal, none));
+  border-image-slice: var(--deco-frame-dialog-slice, var(--deco-frame-modal-slice, 100%));
+  border-image-width: var(--frame-clear-grand);
+  border-image-repeat: var(--deco-frame-dialog-repeat, var(--deco-frame-modal-repeat, stretch));
+  border-image-outset: var(--deco-frame-dialog-outset, var(--deco-frame-modal-outset, 0));
 }
 /* palette frame (falls back dialog → modal) */
-.palette {
+:root .palette {
   border-image-source: var(--deco-frame-palette, var(--deco-frame-dialog, var(--deco-frame-modal, none)));
+  border-image-slice: var(--deco-frame-palette-slice, var(--deco-frame-dialog-slice, var(--deco-frame-modal-slice, 100%)));
+  border-image-width: var(--frame-clear-palette);
+  border-image-repeat: var(--deco-frame-palette-repeat, var(--deco-frame-dialog-repeat, var(--deco-frame-modal-repeat, stretch)));
+  border-image-outset: var(--deco-frame-palette-outset, var(--deco-frame-dialog-outset, var(--deco-frame-modal-outset, 0)));
 }
 /* the rail seam band — NO kit block (the Index's seams checklist owns it);
    paints into .content's reserved 72px left gutter as a repeat-y band */

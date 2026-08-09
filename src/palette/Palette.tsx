@@ -5,7 +5,8 @@
  *
  * Two roles, one boundary ([[Palette]]): TELEPORT (places — entries · habits ·
  * screens · periods via the route grammar) and ACTIONS (the pinned, CLOSED
- * nine-verb inventory — additions only against real friction, never here).
+ * ten-verb inventory — additions only against real friction, never here; the
+ * themes-folder door on 2026-08-09 was exactly that case, taking it nine → ten).
  * Ranking is deterministic, no cleverness, ever (paletteSpec). Never a route;
  * Esc closes; one overlay at a time; also summoned by the rail's Search entry
  * (the recorded overlay exception).
@@ -51,6 +52,7 @@ import { MANUAL_GROUPS } from "../settings/manualContent";
 import { Ico } from "../shell/icons";
 import { showErrorToast, showInfoToast } from "../shell/toast";
 import { getBackupsRoot, revealBackupsFolder, runBackup } from "../backup/backup";
+import { openThemesFolder } from "../theme/loader";
 import { publishDoctor, runDoctor } from "../db/doctor";
 import { requestProbeAll } from "../shell/navRequest";
 import type { SettingsSection } from "../shell/views";
@@ -82,7 +84,7 @@ export interface PaletteNav {
   openManual(articleId: string): void;
 }
 
-// ── The pinned nine-verb inventory (CLOSED — [[Palette]]; never re-litigate) ──
+// ── The pinned TEN-verb inventory (CLOSED — [[Palette]]; never re-litigate) ──
 
 type PalAction =
   | { t: "habit"; key: string }
@@ -163,6 +165,7 @@ const VERB_ICON: Record<VerbId, ReactNode> = {
   updates: I.upd,
   theme: I.theme,
   "backups-folder": I.folder,
+  "themes-folder": I.folder,
   advanced: I.adv,
 };
 
@@ -336,6 +339,12 @@ export function PaletteOverlay({
             showErrorToast("No backups folder set — pick one in Settings → Backups.", "Backups");
           else void revealBackupsFolder();
         });
+      // Its twin, added 2026-08-09 — the other folder the user puts things
+      // INTO. No null-check or toast here on purpose: openThemesFolder owns
+      // both (and the create-if-absent), so this door and Settings → Appearance
+      // cannot drift apart. The backups verb above keeps its inline check
+      // because revealBackupsFolder is the thinner shape with one caller.
+      if (a.v === "themes-folder") return go(() => void openThemesFolder());
       // The Health pair + the theme door — live 2026-08-04 (the completeness
       // audit's re-wire batch; each verb's ruled form is quoted in verbs.ts).
       if (a.v === "data-checks")

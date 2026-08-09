@@ -131,7 +131,13 @@
    sub bottom-RIGHT. The doortile face alone is a left-stacked flex column. */
 .cadash .tile{background:var(--window-background); border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-medium); padding:calc(var(--frame-clear-tile) + var(--space-4)); display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-rows:auto auto; align-content:space-between; column-gap:var(--space-4); row-gap:var(--space-3);}
 .cadash .tile > .tl{grid-column:1; grid-row:1; align-self:baseline;}
-.cadash .tile > .ts{grid-column:2; grid-row:2; align-self:end; text-align:right; white-space:nowrap;}
+/* the sub-caption ELLIPSES rather than spilling (2026-08-09, found by the
+   Subnautica bench pass at `statgrid.c6`): the track is minmax(0,1fr) and can
+   shrink, but a grid item's own `min-width: auto` cannot — so a nowrap caption
+   in a six-across row overran its tile instead of giving way. `min-width: 0`
+   is what lets the track's floor actually apply. */
+.cadash .tile > .ts{grid-column:2; grid-row:2; align-self:end; text-align:right; white-space:nowrap;
+                    min-width:0; overflow:hidden; text-overflow:ellipsis;}
 .cadash .tile > .tv{grid-column:1; grid-row:2; align-self:end;}
 .cadash .tile .tl{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted);}
 .cadash .tile .tv{font-family:var(--font-mono); font-size:var(--size-stat-value); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong); white-space:nowrap;}

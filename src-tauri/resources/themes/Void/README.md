@@ -7,8 +7,9 @@ ultimate fallback.
 magenta accent (`#ff2d78`) and a bright, legibility-lifted meaning palette. Hue identities and the
 seasonal month anchoring are preserved: a habit keeps its recognizable colour family.
 
-**Ambience:** backdrop and timer backdrop are **silent**. The vignette **inherits the Default's
-code-drawn tick-face clock**, drawn in Void's chrome ramp — no art files.
+**Ambience:** backdrop and timer backdrop are **silent** — and those two are the *only* ambience
+surfaces. The vignette was abandoned 2026-07-26, and the Default's code-drawn tick-face clock,
+which Void once inherited, was retired 2026-08-01 along with `--clock-max`.
 
 ## Origin
 
@@ -30,4 +31,5 @@ ramp dial and the transcription problem stops existing.
 ## Adding art
 
 Same as any theme — drop `backdrop.png` (2560×1440) in and it paints the whole window. Full rules
-→ `_theme-template/README.md`. A `vignette/` folder here would override the inherited clock.
+→ `_theme-template/README.md`. A `vignette/` folder is read by nothing: that surface no longer
+exists.

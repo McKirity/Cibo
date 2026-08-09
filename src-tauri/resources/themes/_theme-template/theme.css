@@ -6,10 +6,14 @@
    Register-map line: light · neutral (humanist-soft).
    Chrome treatment: seamless titlebar + a bottom hairline seam (--border)
    + attached flush rail, single-register (rail dials = window/panel).
-   Ambience: backdrop + timer backdrop SILENT; the vignette is the
-   code-drawn tick-face clock (the data-bearing carve-out — no files).
+   Ambience: backdrop + timer backdrop SILENT — those TWO surfaces are all
+   a theme may dress. The vignette was abandoned 2026-07-26 and its
+   code-drawn tick-face clock RETIRED 2026-08-01 (§ Theme-owned ambience
+   sizing below); there is no third surface and no --clock-max.
    ---------------------------------------------------------------------
-   252 dials (248 → 252 at the 2026-08-01 scrollbar mint — --scrollbar-thumb ·
+   253 dials (252 → 253 at the 2026-08-07 --milestone-seal mint, the milestone
+   emblem's disc promoted out of a raw 64px in daily.css;
+   248 → 252 at the 2026-08-01 scrollbar mint — --scrollbar-thumb ·
    --scrollbar-thumb-hover · --scrollbar-width · --scrollbar-radius; the header total was
    stale at 247 through three same-day events, now reconciled: 247 → 249 at the 6b rail
    mint (--rail-inset · --rail-muted), 249 → 248 at the --clock-max retirement, 248 → 252 here;
@@ -114,7 +118,15 @@
                                                   reach for glass, but NOTHING may depend on it — the
                                                   reduce-effects render is the test, and if legibility (not
                                                   polish) differs between the two, the theme is cheating. */
-  --glow:           none;
+  /* --glow RETIRED 2026-08-09 (roster 253 -> 252), user-ruled: "if glow isn't doing
+     anything and isn't load bearing just remove it". TENANTLESS FROM BIRTH — verified
+     across app CSS, components, the 37 frozen FINALs, kit-staging and the stress
+     fixtures: every sheet DECLARED it and nothing ever read it. Unlike the masthead
+     icon's orphaned rule, it has no drawn tenant either, so this is a real retirement
+     and not an untranslated feature. Themes stated real intent here (Blame!'s emission,
+     Subnautica's bioluminescence, UT/DR's "nothing emits"); that reasoning lives in the
+     seat notes now. The reduce-effects contract that named it is unaffected: blur is
+     still shed, and no theme loses a rendered effect because none was ever rendered. */
   --overlay-dim:    rgba(0,0,0,.42);           /* .28 → .42 2026-07-28. THE DIM IS THE LAYER THAT SEPARATES
                                                   A MODAL FROM THE APP — the shell/content ladder cannot do
                                                   that job. At .28 an opaque light modal on a light canvas

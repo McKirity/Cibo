@@ -1,7 +1,11 @@
 /* == THE HABIT CREATOR — `kit-modal-habit-creator` (Build step 10, slice 3) ==
    Claimed from `Final/habit-creator.html` 2026-08-02 and re-scoped under `.hc`,
    which is the modal's own root — so every name below is contained by the
-   component that owns it. That matters more here than usual: `.fld` · `.lbl` ·
+   component that owns it. (⚠ TRUE OF THE DESCENDANTS, AND IT WAS FALSE OF THE
+   ROOT RULE ITSELF until 2026-08-09 — see the note above `.mo.hc`. A scope
+   root only contains what sits INSIDE it; the root selector is loose by
+   construction and has to be pinned separately.) That matters more here than
+   usual: `.fld` · `.lbl` ·
    `.tin` · `.chk` · `.opt` · `.box` are among the most generic names in the
    corpus, and the creator mounts INSIDE `.setscreen` (step 8's lesson — an
    overlay inside its host is not scope-isolated by the host's own scope).
@@ -22,11 +26,25 @@
      (step 14), and the keepsake slot's real home is the Manage disclosure,
      which slice 2 built. The icon slot is the row that has a live tenant. */
 
-.hc { display: flex; flex-direction: column; width: var(--modal-confirm-w); max-width: 100%; max-height: 100%;
+/* ⚠ THE ROOT RULE IS `.mo.hc`, NOT `.hc` — fixed 2026-08-09 (found by the
+   Subnautica bench pass). Every rule BELOW is a descendant selector and was
+   always contained; this one was not, and a bare `.hc {}` matched anything
+   in the app wearing that class. It did: `.cadash .vc .hc`, the "best · N/M"
+   caption in a cadence verdict cell (CadenceDashboard.tsx). The scoped rule
+   there sets position/colour/type but not display, width, padding,
+   background, border or shadow — so a one-line caption inside a calendar
+   cell was being dressed as a 620px modal with a high shadow. creator.css is
+   a static import through ManagePane, so it applied on every screen.
+   The creator's root is `<div className="mo hc">`, so pinning to `.mo.hc`
+   makes the rule structurally unable to reach anything that is not a modal.
+   ⚠ THE NAME IS STILL SHARED — this closes the reachable collision, not the
+   naming clash; a future `.hc` INSIDE a modal would still collide. Same
+   family as the `.picker` multi-tenancy watch item. */
+.mo.hc { display: flex; flex-direction: column; width: var(--modal-confirm-w); max-width: 100%; max-height: 100%;
       background: var(--raised-background); -webkit-backdrop-filter: var(--backdrop-blur); backdrop-filter: var(--backdrop-blur);
       border: var(--border-hairline) solid var(--border); border-radius: var(--radius-large);
       box-shadow: var(--shadow-high); padding: calc(var(--frame-clear-modal) + var(--space-5)); overflow: hidden; }
-.reduce-effects .hc { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--panel-background); box-shadow: var(--shadow-low); }
+.reduce-effects .mo.hc { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--panel-background); box-shadow: var(--shadow-low); }
 
 /* header — title only (the sweep law) */
 .hc .hc-head { flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-6);

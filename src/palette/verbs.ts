@@ -1,6 +1,7 @@
 /**
- * THE PINNED ACTION INVENTORY — the palette's NINE verbs, as DATA (ten until
- * 2026-08-04, when "Run import now" was removed — the note below).
+ * THE PINNED ACTION INVENTORY — the palette's TEN verbs, as DATA. It was ten
+ * until 2026-08-04 (when "Run import now" was removed — the note below), nine
+ * from then, and ten again since 2026-08-09 (the themes-folder door, user-ruled).
  *
  * Split out of Palette.tsx 2026-08-02 (step 10, slice 4) because Settings →
  * Palette curates this roster and must list it without importing the overlay
@@ -14,7 +15,7 @@
  */
 export type VerbId =
   | "new-habit" | "new-entry" | "backup" | "test-connection" | "data-checks"
-  | "updates" | "theme" | "backups-folder" | "advanced";
+  | "updates" | "theme" | "backups-folder" | "themes-folder" | "advanced";
 
 export interface VerbMeta {
   id: VerbId;
@@ -55,5 +56,12 @@ export const PALETTE_VERBS: VerbMeta[] = [
   { id: "theme", title: "Switch theme", aliases: ["appearance"], live: true, group: "Appearance" },
   // LIVE since step 12 — reveals the backups root in the file manager.
   { id: "backups-folder", title: "Open backups folder", aliases: ["reveal backups"], live: true, group: "Backups" },
+  // ADDED 2026-08-09, user-ruled — the inventory goes NINE → TEN. The twin of
+  // the backups door for the other folder the user actually puts things into:
+  // a theme is installed by dropping a folder in, so this is the shortcut to
+  // the one place that lifecycle happens. Settings → Appearance carries the
+  // same door; both call theme/loader.ts's openThemesFolder, which owns the
+  // create-if-absent and the messaging (the probe-1 callee rule).
+  { id: "themes-folder", title: "Open themes folder", aliases: ["reveal themes", "drop in theme"], live: true, group: "Appearance" },
   { id: "advanced", title: "Advanced Search", meta: "filters this palette", aliases: ["search sets", "query"], live: true },
 ];

@@ -7,8 +7,9 @@
    Chrome treatment: seamless titlebar + a bottom hairline seam (--border)
    + attached flush rail, single-register (rail dials = window/panel).
    Ambience: backdrop + timer backdrop SILENT (droppable — the folder is
-   built); the vignette INHERITS the Default's code-drawn tick-face clock
-   (the data-bearing carve-out — no files), drawn in Void's chrome ramp.
+   built). Those TWO surfaces are all a theme may dress: the vignette was
+   abandoned 2026-07-26 and the Default's code-drawn tick-face clock, which
+   Void once inherited, was RETIRED 2026-08-01 with --clock-max.
    ---------------------------------------------------------------------
    ORIGIN. These values were authored 2026-07-19 as the stage-5b anti-theme
    "Void" — a disposable regression fixture torturing the COLOUR-DISTANCE
@@ -18,7 +19,8 @@
    regression coverage; this file is its shipping fork. The two are free to
    diverge from here — a change to one is not a change to the other.
 
-   252 dials, declaration-parity exact with the Default (248 → 252 at the 2026-08-01 scrollbar
+   252 dials, declaration-parity exact with the Default (253 -> 252 at the 2026-08-09 --glow retirement; 252 → 253 at the 2026-08-07
+   --milestone-seal mint; 248 → 252 at the 2026-08-01 scrollbar
    mint — --scrollbar-thumb · --scrollbar-thumb-hover · --scrollbar-width · --scrollbar-radius;
    the header total was stale at 247 through three same-day events, now reconciled: 247 → 249 at
    the 6b rail mint, 249 → 248 at the --clock-max retirement, 248 → 252 here; 244 → 247 at the 2026-07-31 step-6a
@@ -52,7 +54,17 @@
   /* -- Group 1 · Chrome colours (18) — hard dark inversion ------------- */
   --window-background:   #0b0b0e;              /* near-black, faint-cool */
   --panel-background:    #17171c;              /* cards, tiles, the rail */
-  --raised-background:   rgba(28,28,34,.72);   /* modals/popovers — translucent for the blur; resolves #1c1c22 under reduce-effects */
+  --raised-background:   #0b0b0e;              /* THE RAISED SHELL. RE-VALUED 2026-08-08 (Phase 2 step 3, the
+                                                  owed surface-ladder pass; user-ruled). Was rgba(28,28,34,.72)
+                                                  — translucent, leaning on the blur, and resolving to ~#1c1c22,
+                                                  which is LIGHTER than --panel-background #17171c: the shell
+                                                  ADVANCED where the ladder says it RECEDES from its content.
+                                                  Now equal to the canvas, exactly as the Default does it, so
+                                                  Void is structurally the same ladder rather than a special
+                                                  case. Content rides --panel-background, the well
+                                                  --inset-background (lighter here — recessed reads lighter on
+                                                  a dark ground, the deliberate inversion). What separates the
+                                                  modal FROM THE APP is --overlay-dim, which is its job. */
   --inset-background:    #202027;              /* inputs, wells — recessed reads LIGHTER than panel on a dark ground */
   --text-strong:         #f2f2f5;              /* LIGHT — the inversion's fulcrum: every law-obeying hover lightens */
   --text-secondary:      #b4b4bd;
@@ -108,9 +120,33 @@
 
   /* -- Group 5 · Effects (7) — deepened for the dark ground ------------ */
   --shadow-low:   0 1px 2px rgba(0,0,0,.5), 0 1px 1px rgba(0,0,0,.35);
-  --shadow-high:  0 10px 34px rgba(0,0,0,.65), 0 2px 8px rgba(0,0,0,.45);
-  --backdrop-blur:  blur(20px) saturate(180%); /* raised surfaces ONLY */
-  --glow:           0 0 18px rgba(255,45,120,.35); /* a REAL value — the Default ships `none` */
+  --shadow-high:  inset 0 1px 0 rgba(255,255,255,.08), 0 10px 34px rgba(0,0,0,.65), 0 2px 8px rgba(0,0,0,.45);
+                                               /* RE-CUT 2026-08-08 with the ladder pass: the inset top
+                                                  highlight is the dark-ground counterpart of the one the
+                                                  Default gained 2026-07-28. On a #0b0b0e canvas a black drop
+                                                  shadow is invisible, so once the blur goes a modal has no
+                                                  perceptible edge at all — the highlight is what bounds it.
+                                                  DECORATION ONLY: a theme may flatten it and nothing may
+                                                  become unreadable when it does. */
+  --backdrop-blur:  none;                      /* OFF 2026-08-08 with the ladder pass, matching the Default's
+                                                  2026-07-28 ruling. An OPAQUE surface has nothing to blur, so
+                                                  this was inert the moment --raised-background went solid;
+                                                  leaving it set would only invite the next theme to lean on
+                                                  glass again. ⚠ THE DEFECT THIS CLOSES: kit.css stopped
+                                                  stripping blur from `.dimlayer > .mo` under reduce-effects
+                                                  ("the shell is opaque by ruling"), and Void had never adopted
+                                                  the opaque shell — so under Void, REDUCE-EFFECTS DID NOT
+                                                  REMOVE THE MODAL'S GLASS. A rule was narrowed on a guarantee
+                                                  one theme did not keep. */
+  /* --glow RETIRED 2026-08-09 (roster 253 -> 252), user-ruled: "if glow isn't doing
+     anything and isn't load bearing just remove it". TENANTLESS FROM BIRTH — verified
+     across app CSS, components, the 37 frozen FINALs, kit-staging and the stress
+     fixtures: every sheet DECLARED it and nothing ever read it. Unlike the masthead
+     icon's orphaned rule, it has no drawn tenant either, so this is a real retirement
+     and not an untranslated feature. Themes stated real intent here (Blame!'s emission,
+     Subnautica's bioluminescence, UT/DR's "nothing emits"); that reasoning lives in the
+     seat notes now. The reduce-effects contract that named it is unaffected: blur is
+     still shed, and no theme loses a rendered effect because none was ever rendered. */
   --overlay-dim:    rgba(0,0,0,.55);
   --shadow-inset:   inset 0 1px 2px rgba(0,0,0,.45);
   --scrim:          rgba(0,0,0,.5);

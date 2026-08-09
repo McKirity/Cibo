@@ -11,14 +11,14 @@ at launch. The folder rides your cloud drive, so it appears on both devices auto
 
 | File / folder                    | What it is                                          | Dimensions | Required? |
 | -------------------------------- | --------------------------------------------------- | ---------- | --------- |
-| `theme.css`                      | The `:root` values — 247 dials                      | —          | **Yes**   |
+| `theme.css`                      | The `:root` values — 252 dials                      | —          | **Yes**   |
 | `backdrop.<ext>`                 | Still — the main backdrop, painting the whole window | 2560×1440  | No        |
 | `backdrop_loop.mp4`              | Motion — the whole scene as a seamless opaque loop   | 2560×1440  | No        |
 | `backdrop_loop/`                 | Motion — patch loops (animated crops of the still)   | per patch  | No        |
 | `timer.<ext>`                    | Still — the Timers-screen backdrop                   | 2560×1440  | No        |
 | `timer_loop.mp4` · `timer_loop/` | Timer motion — the same two types                    | —          | No        |
 | `fonts/`                         | Font files this theme's type dials name              | —          | No        |
-| `decoration/`                    | Per-slot ornament art                                | per slot   | No        |
+| `decoration/`                    | Per-slot ornament art + its manifest                 | per slot   | No        |
 
 **The only required file is `theme.css`.** A theme with no art is simply a recolour — nothing
 breaks, silence is always valid. A theme with no `backdrop` has no backdrop; the window shows the
@@ -138,3 +138,39 @@ never touch another theme.
   anything carrying meaning flattens to a solid instead.
 - Rules target the app's class names, and those can change between app versions — if a mark
   quietly stops painting after an update, check the hook list in the docs and re-point it.
+
+## `decoration/` — ornament, and overriding it
+
+A theme's ornament lives in **`decoration/`**: the assets, plus a **`manifest.json`** saying which
+of the 25 catalog slots they fill. A slot entry can carry an `asset`, a `tint` (a dial the app
+pours through a tintable stamp), `off: true` to leave the slot bare, and — for the ten **frame**
+roles — a `slice` saying which part of the image is the border.
+
+**You never state a frame's thickness.** It comes from that role's own `--frame-clear-*` dial, the
+clearance the app's layouts already reserve for exactly this, so the same art lands at 8px on a
+rail card and 28px on a modal and always fills its designed room. Author at whatever resolution
+suits you. *(This is why there is no `scale` key — it was retired 2026-08-08 when thickness stopped
+deriving from the slice.)*
+
+### The override *(2026-08-08)*
+
+A theme ships a **default** ornament set. `decoration/override.json` can replace it wholesale:
+
+```json
+// decoration/manifest.json
+{ "override": true, "slots": { ...the theme's own set... } }
+
+// decoration/override.json
+{ "slots": { "frame-modal": { "asset": "frame.svg", "slice": 20 } } }
+```
+
+- **The manifest is the switch.** `override.json` sitting in the folder does nothing on its own —
+  `"override": true` turns it on. A theme can ship an override and leave it dormant.
+- **It replaces, it does not merge.** The override's slots become the *whole* set, so **any slot it
+  does not name goes bare.** That is deliberate: it is the only way to suppress a slot the theme
+  ships. The cost is that changing one slot means restating the ones you want to keep.
+- **A broken override is not a broken theme.** If `override.json` is missing or won't parse, the
+  theme's own set stands and a warning names the file. Only a *deliberately* empty
+  `{"slots": {}}` means "no decoration".
+- ⚠ **It lives in the theme folder, so a theme update overwrites it.** Keep a copy elsewhere if you
+  have tuned one you care about.

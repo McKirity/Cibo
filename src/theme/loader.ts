@@ -178,3 +178,50 @@ export async function initTheme(): Promise<void> {
     console.error("Theme loader failed; the static Default stands:", e);
   }
 }
+
+// ── the themes-folder door ───────────────────────────────────────────────────
+
+/**
+ * Open the drop-in themes folder in the OS file manager.
+ *
+ * A THEME IS INSTALLED BY DROPPING A FOLDER IN — that is its whole lifecycle
+ * (add = drop in · update = edit in place · retire = delete). Until 2026-08-09
+ * nothing in the app could get you to that folder, and its path is DERIVED
+ * (`<cloud root>/themes`), so there was nothing on screen to copy either.
+ *
+ * IT LIVES HERE, NOT AT ITS TWO DOORS. Settings → Appearance and the palette
+ * verb both want identical behaviour, and `probe-1` (2026-08-08) is the
+ * standing lesson: a guarantee every caller needs belongs to the CALLEE.
+ * Hence the messaging is inside — the alternative was the same null-check and
+ * the same toast copied at both call sites, which is how they drift.
+ * (`revealBackupsFolder` in backup.ts is the thinner shape, with its one caller
+ * doing the messaging; that is fine for one caller and stops being fine at two.)
+ *
+ * Creates the folder when absent rather than refusing: an empty themes folder
+ * is exactly what you want open when you are about to put a theme in it, and a
+ * freshly-picked cloud root has none of its subfolders yet (hence recursive).
+ *
+ * `bk_reveal` despite the name is `open_path` Rust-side and opens the folder
+ * ITSELF — `reveal_item_in_dir` opens the PARENT with the folder merely
+ * selected (found live 2026-08-03).
+ *
+ * Never throws: every failure path ends in a visible toast, because a door that
+ * does nothing and says nothing is the archetypal dead button.
+ */
+export async function openThemesFolder(): Promise<void> {
+  try {
+    const dir = getThemesRoot();
+    if (dir == null) {
+      showErrorToast("No cloud root set — pick one in Settings → Storage.", "Appearance");
+      return;
+    }
+    if (!inTauri()) return;
+    const fs = await import("@tauri-apps/plugin-fs");
+    if (!(await fs.exists(dir))) await fs.mkdir(dir, { recursive: true });
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("bk_reveal", { path: dir });
+  } catch (e) {
+    console.error("open themes folder failed", e);
+    showErrorToast(`Could not open the themes folder — ${String(e)}`, "Appearance");
+  }
+}

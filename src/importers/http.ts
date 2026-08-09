@@ -11,15 +11,55 @@
  * bars regardless of CSP.
  */
 
-const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
+/**
+ * **The ruled policy is "one polite backoff retry on 429/5xx", so this asks
+ * whether the status IS 5xx** — it used to enumerate `[429, 500, 502, 503,
+ * 504]`, four codes standing in for a whole class (`http-1`, 2026-08-08).
+ *
+ * AO3 sits behind Cloudflare, which answers origin trouble with its own
+ * **520–527** range; a live **525** (TLS handshake to the origin failed)
+ * therefore fell outside the list and was reported instantly with no retry —
+ * exactly the transient case the ruling exists for. *An implementation that
+ * enumerates members of a class the ruling names is narrower than the ruling,
+ * and the gap only shows when a real service picks a code nobody listed.*
+ *
+ * 501 and 505 are permanent and will not improve on a retry; they cost one
+ * wasted request each, which is the ruled cost and cheaper than maintaining a
+ * list that the next unlisted code breaks again.
+ */
+const shouldRetryStatus = (status: number): boolean =>
+  status === 429 || (status >= 500 && status <= 599);
+
 /** Fallback backoff when a 429 carries no Retry-After (seconds). */
 const DEFAULT_BACKOFF_S = 2;
 const MAX_BACKOFF_S = 30;
 
+/**
+ * A status, said in words. `engine.ts` surfaces `err.message` straight onto the
+ * item's row, so this text IS the failure the user reads — and a bare
+ * "HTTP 525" tells them nothing about what broke, whose side it is on, or
+ * whether waiting helps (`http-2`, 2026-08-08: the user had to ask).
+ */
+const describeStatus = (status: number): string => {
+  // Cloudflare's origin-error range: the CDN answered, the site behind it did
+  // not. Naming that is the difference between "this app is broken" and "the
+  // service is having trouble" — and it is the second reading that is true.
+  if (status >= 520 && status <= 527)
+    return `HTTP ${status} — the site's own server did not answer its front-end. That is trouble on their side, not this app's; it usually clears on its own, so try again later.`;
+  if (status === 429)
+    return `HTTP 429 — the service is rate-limiting this address. Wait a while before importing again.`;
+  if (status >= 500)
+    return `HTTP ${status} — the service is having trouble on its side. Try again later.`;
+  if (status === 404) return `HTTP 404 — not found. The item may have been deleted or made private.`;
+  if (status === 401 || status === 403)
+    return `HTTP ${status} — the service refused the request. The item may be private, or it is turning this app away.`;
+  return `HTTP ${status}`;
+};
+
 export class HttpFail extends Error {
   constructor(
     public status: number,
-    message: string,
+    message: string = describeStatus(status),
   ) {
     super(message);
   }
@@ -128,7 +168,7 @@ export const importFetch = async (
     }
   }
   if (res.ok) return res;
-  if (!RETRY_STATUSES.has(res.status)) throw new HttpFail(res.status, `HTTP ${res.status}`);
+  if (!shouldRetryStatus(res.status)) throw new HttpFail(res.status);
   const retryAfter = Number(res.headers.get("retry-after"));
   const backoffS = Number.isFinite(retryAfter)
     ? Math.min(Math.max(retryAfter, 1), MAX_BACKOFF_S)
@@ -136,7 +176,12 @@ export const importFetch = async (
   await sleep(backoffS * 1000);
   const second = await rustFetch(url, init, timeoutMs);
   if (second.ok) return second;
-  throw new HttpFail(second.status, `HTTP ${second.status} after one backoff retry`);
+  // "after one backoff retry" matters to the reader: it says the app already
+  // waited and tried again, so this is not a first blip to shrug off.
+  throw new HttpFail(
+    second.status,
+    `${describeStatus(second.status)} (already retried once)`,
+  );
 };
 
 /**

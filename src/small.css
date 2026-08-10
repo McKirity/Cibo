@@ -1,0 +1,40 @@
+/* == SMALL — the small-canvas LAYOUT LAYER (Phase 2 step 4, 2026-08-10) =====
+   THE BASE-SHEET MODEL (user-ruled at the step-4 preview pass): the app's
+   existing sheets are the BASE — the common denominator every form factor
+   draws from — and this file is the small canvas's book of RULINGS: the
+   per-screen re-compositions applied on top. A screen absent from this file
+   falls through to the base whole. Never restate what the base already says;
+   state only what the small canvas rules differently.
+
+   It SUPERSEDES compact.css (deleted at this file's birth): the density
+   first cut (a type step + outer-spacing squeeze) tested WORSE than the
+   plain base at the Mac's 90% zoom (user: "everything looks best with
+   compact off"), so `.compact` now means THIS LAYER — layout, not density.
+   The switch machinery is unchanged (theme/compact.ts: the tri-state in
+   Settings → Appearance; auto keys off TRUE window width < 1600 — the
+   zoom-corrected width, per the 2026-08-09 fix).
+
+   THE TARGET: 1512×982 logical at 90% zoom = a ~1680×1091 CSS canvas,
+   ~1300px of content beside the rail. Compose for that; the desktop never
+   sees these rules.
+
+   TWO LAWS FOR EVERY RULE IN THIS FILE:
+   · Prefix `:root.compact` on every selector — screen sheets enter the
+     bundle AFTER this file (they import with their components; the
+     decoration.css lesson), so a bare selector loses equal-specificity ties
+     on order alone. The prefix outranks the base by construction.
+   · Values ride dials wherever a dial exists. Raw geometry is legal here
+     only where the base itself is raw — this file inherits compact.css's
+     value-sheet sanction, re-scoped from density to layout.
+   ========================================================================= */
+
+/* ---- DAILY (working day) — HOLDING VALUES ONLY. The real re-composition is
+   a Claude Design session, first in the recompose queue; these carry the
+   preview pass's provisional shrink so compact-on is never worse than what
+   was already seen. Base 550s crush the spine to zero at this width; the
+   height floor (1115) exceeds the whole Mac window (982). */
+:root.compact {
+  --triptych-sky-col: 380px;
+  --triptych-almanac-col: 330px;
+  --triptych-min: 860px;
+}

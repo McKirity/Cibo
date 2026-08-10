@@ -88,7 +88,7 @@
 :root .panel, :root .hero,
 :root .cadash .cpanel,
 :root .daily .card,
-:root :is(.csdash, .advs) .bsec,
+:root .csdash .bsec,
 :root .mapscreen .trunk,
 :root .libscreen .cat, :root .libscreen .tbar,
 :root .libscreen .pinband {
@@ -98,6 +98,30 @@
   border-image-repeat: var(--deco-frame-panel-repeat, stretch);
   border-image-outset: var(--deco-frame-panel-outset, 0);
 }
+/* ⚠ THE CREATION HERO IS UN-CLAIMED — 2026-08-09 (session 28, RECORD § 8c),
+   found on bench 2. `.hero` is a panel-role tenant AND every one of them renders
+   INSIDE a `.panel` (the Creation dashboard's "Stories" section): two concentric
+   boxes at the SAME weight, ~30px apart, which is a printing error rather than a
+   hierarchy. This is § 7b's `.cadash .perhead` repeating on a different tenant,
+   and the INTERIOR frame is again the one that goes — a section panel holding
+   story blocks should read as one box with items in it.
+   ⚠ SAFE TO UN-CLAIM WHOLE, which is why this is an un-claim and not a plea for
+   a new slot: surveyed across all five benches, `.hero` occurs ONLY on bench 2,
+   six times, every one nested. There is no standalone tenant to protect. (The
+   headliner role below kept its claim under the same test for the opposite
+   reason — `.mast`, `.libmast` and `.erail` are real standalone plates, so
+   turning it off to fix one tenant would have cost three.)
+   AND IT GOES BARE RATHER THAN LIGHTER because a `.hero` CONTAINS framed things
+   — eight `.htile` and four `.hspark`, all at the quiet weight. Dropping it to
+   that weight would flatten it against its own contents and the next weight up
+   collides with the panel around it: nowhere left to go. That is the second
+   clause of the weigh-don't-omit rule stated at `.advs .bsec` above.
+   Written EXPLICITLY (the `.wall .tile` precedent) rather than by deleting
+   `.hero` from the panel list, so the un-claim carries its reason at the site.
+   Equal specificity to the panel claim (0,2,0) — IT MUST STAY BELOW IT. */
+:root .hero {
+  border-image-source: none;
+}
 /* headliner frame (falls back to the panel frame) — masthead + tenants */
 :root .mast, :root .libscreen .libmast, :root .erail, :root .cadash .perhead {
   border-image-source: var(--deco-frame-headliner, var(--deco-frame-panel, none));
@@ -106,8 +130,22 @@
   border-image-repeat: var(--deco-frame-headliner-repeat, var(--deco-frame-panel-repeat, stretch));
   border-image-outset: var(--deco-frame-headliner-outset, var(--deco-frame-panel-outset, 0));
 }
-/* stat-tile frame (no kinship tenant since the 2026-07-25 wave-card strike) */
-:root .tile, :root .htile {
+/* stat-tile frame (no kinship tenant since the 2026-07-25 wave-card strike).
+   `.hspark` ADDED 2026-08-09 (session 28, RECORD § 8d), user-ruled on a hero
+   sparkline: "dont forget these." The role was wired `.tile, .htile`, so a
+   hero's eight `.htile` cells framed and the four `.hspark` blocks beside them
+   did not — same hero, same job, same 1px hairline underneath, one in the role
+   and one out (measured: `.htile` 114×148 framed, `.hspark` 178×93 bare). An
+   ADDITION TO THE POSITIVE LIST rather than an exception, because this is the
+   role's own membership being corrected, not a tenant being excused from it.
+   ⚠ AND THE FRAME IS WHAT MADE IT VISIBLE — `.hspark` had been outside the role
+   since the role existed. A DECORATION LAYER AUDITS THE ROLE MAP: until an asset
+   lands, nothing on screen distinguishes membership from non-membership, so
+   expect omissions like this to surface per seat and read them as omissions
+   rather than mistakes. Checked with it and deliberately NOT included: `.hpill`
+   (a status chip — a label, not a readout) and `.harc` (a border-top divider,
+   not a box); both carry a hairline, neither is a tile. */
+:root .tile, :root .htile, :root .hspark {
   border-image-source: var(--deco-frame-tile, none);
   border-image-slice: var(--deco-frame-tile-slice, 100%);
   border-image-width: var(--frame-clear-tile);
@@ -128,6 +166,62 @@
    this is that watch item coming true in the decoration layer. */
 :root .wall .tile {
   border-image-source: none;
+}
+/* ⚠ …AND THE EXCEPTION TO IT — added 2026-08-09 (session 28, RECORD § 8b),
+   user-ruled on bench 1: "add frames to all non project habit keepsake tiles",
+   corrected a message later — "I wanted frames on all the tiles that are non
+   project habits, but you've only done a few."
+   THIS REFINES THE UN-CLAIM ABOVE RATHER THAN REVERSING IT. `deco-3`'s stated
+   reason is that "a habit's wall tile IS its entry art" — and ONLY TWO VARIANTS
+   CARRY ANY. `.tile.banner` and `.tile.cover` (+ `.big`/`.yt`) are a project
+   habit's book jacket, game cover or video thumbnail: found artwork with its own
+   edge, framed by its own designer. Those stay bare, exactly as ruled.
+   EVERYTHING ELSE ON THE WALL IS DRAWN BY THIS APP — keepsakes (`.keep`), the
+   not-logged squares (`.unlogged`), milestone blocks (`.ms-tile`) and the whimsy
+   tiles (`.whim*`). None is found art; all are panels, and panels take the box.
+   WRITTEN AS AN EXCEPTION, NOT A LIST, for the same reason the un-claim above is
+   explicit: a hand-listed positive set silently drops a real tenant the day
+   CoverWall.tsx adds a variant, and this layer's failures are invisible. A new
+   whimsy tile arrives framed; only a new COVER variant needs adding here.
+   IT TAKES THE WHIMSY SLOT, NOT THE TILE SLOT, and that is arithmetic: the tile
+   role is 16px, box-small.svg is a 12-unit asset, so a tile-role band would
+   scale it 1.333× and land the 4px run on 5.33px — the fractional stroke this
+   set exists to avoid. THE OUTSET COMES WITH IT AND IS LOAD-BEARING HERE:
+   `.ksh`/`.ksfall` and most whimsy interiors are `position:absolute; inset:0`,
+   so these tiles have the same paint-order collision the sun card had.
+   Specificity (0,5,0) — `:not()` contributes its argument's — clears the
+   (0,3,0) un-claim above with room. */
+:root .wall .tile:not(.banner):not(.cover) {
+  border-image-source: var(--deco-frame-whimsy, none);
+  border-image-slice: var(--deco-frame-whimsy-slice, 100%);
+  border-image-width: var(--frame-clear-whimsy);
+  border-image-repeat: var(--deco-frame-whimsy-repeat, stretch);
+  border-image-outset: var(--deco-frame-whimsy-outset, 0);
+}
+/* ADVANCED SEARCH'S SECTIONS DROP TO THE TILE WEIGHT — split off the panel role
+   2026-08-09 (session 28, RECORD § 8e). `.bsec` was wired
+   `:is(.csdash, .advs) .bsec`, and the `.advs` half is ALWAYS nested: Advanced
+   Search IS the palette morphed (`class="palette advs"`), so its sections sat
+   inside a surface already carrying the palette frame — boxes inside a box, ~30px
+   apart. THE `.csdash` HALF IS CORRECT AND STAYS ON PANEL: on Compare those same
+   sections are top-level with nothing framed around them. One role, two contexts;
+   only one is nested — which is why this is a split and not a re-point.
+   ⚠ AND THE FIX IS NOT § 8c's. The stat-tile ruling says NESTING IS A REASON TO
+   WEIGH A FRAME, NOT TO OMIT ONE — a quieter box inside a louder box keeps the
+   level and still gives the inner thing its edge. So this drops to tile weight
+   rather than going bare, while `.hero` below goes bare, and the difference is
+   the rule's second clause: UNLESS THE LEVEL BELOW IS ALREADY AT THE QUIET
+   WEIGHT, in which case there is no room left to weigh. A `.bsec` contains chips
+   and buttons, none framed — the quiet weight is free, so it takes it.
+   THE TEST, for the next reader: LOOK DOWN BEFORE CHOOSING, NOT JUST UP. What is
+   already framed INSIDE an element decides whether a lighter frame is available
+   to it. */
+:root .advs .bsec {
+  border-image-source: var(--deco-frame-tile, none);
+  border-image-slice: var(--deco-frame-tile-slice, 100%);
+  border-image-width: var(--frame-clear-tile);
+  border-image-repeat: var(--deco-frame-tile-repeat, stretch);
+  border-image-outset: var(--deco-frame-tile-outset, 0);
 }
 /* the rail-card pair — TWO roles on one block, discriminated by rail context */
 :root .rail .habitgrid .entry {
@@ -155,6 +249,25 @@
 }
 :root .daily .strip {
   background-image: var(--deco-fill-daily-log, none);
+}
+/* THE CATCH-UP CARD TAKES THE WHIMSY WEIGHT — added 2026-08-09 (session 28,
+   RECORD § 8a), user-ruled on bench 1: "the border on this is too thick for a
+   card of this size. Make it match the whimsy cards instead of the habit cards."
+   `.daily .card.catch` matches `:root .daily .card` and so wore the PANEL role —
+   a 24px band at a dashboard panel's weight, on a one-line row of day pills.
+   `app/daily.css` calls it "the almanac column's one NON-whimsy tenant…
+   Functional, not whimsy", which is true of its CONTENT and irrelevant to its
+   SIZE; the frame follows the box, and this box is a whimsy card's size.
+   It needs its own claim (rather than a thinner panel asset) because the channel
+   publishes ONE ASSET PER ROLE and the panel role's other tenants are all correct
+   at their weight — exactly the shape `.daily .card.whimsy` below already has.
+   (0,4,0), so it out-ranks the (0,3,0) panel claim. */
+:root .daily .card.catch {
+  border-image-source: var(--deco-frame-whimsy, none);
+  border-image-slice: var(--deco-frame-whimsy-slice, 100%);
+  border-image-width: var(--frame-clear-whimsy);
+  border-image-repeat: var(--deco-frame-whimsy-repeat, stretch);
+  border-image-outset: var(--deco-frame-whimsy-outset, 0);
 }
 /* whimsy card frame — its own role by ruling, never folded into daily-log */
 :root .daily .card.whimsy {
@@ -245,10 +358,22 @@
    the `.wall .tile` precedent, and for its stated reason: a hand-listed
    positive set silently drops a real tenant the day a screen adds one.
    ========================================================================= */
-/* the library toolbar pads --space-4/--space-5 (8/13px) against a 24px frame:
-   the corner gusset lands on the search field and the channel runs behind the
-   filter chips. Measured 1395×91 on bench 5. */
-:root .libscreen .tbar { border-image-source: none; }
+/* ⚠ `.libscreen .tbar`'s UN-CLAIM WAS DELETED 2026-08-09 (session 28, RECORD § 8f)
+   — it lived here for one day. Its reason named SUBNAUTICA'S ARTWORK, not the
+   element: "the corner gusset lands on the search field and the channel runs
+   behind the filter chips". UT/DR has no gusset and no channel — one clean
+   rectilinear run with nothing drawn inward of it — and re-probing the toolbar
+   live at both candidate weights found no collision. The tenant is still in the
+   panel-role selector list above, so deleting the un-claim was the whole change.
+   THE RULE THIS PRODUCED, and it is the transferable half: AN UN-CLAIM WHOSE
+   REASON DESCRIBES ARTWORK IS SET-SCOPED AND MUST BE RE-TESTED EVERY SEAT; one
+   whose reason describes STRUCTURE ("pads nothing", "always nested") is
+   theme-independent and travels. Both look identical in the sheet — only the
+   prose separates them, so READ THE REASON, NOT THE VERDICT.
+   ⚠ Its 8px vertical padding equals UT/DR's 8px run exactly, so the run lands
+   FLUSH against the search field rather than clear of it. Acceptable for an
+   asset whose ink stops at the run; a defect for any asset drawing inward of it.
+   `.pinband` KEEPS its un-claim below — that one is the structural kind. */
 /* the current-pin band pads --space-3 vertically (6px), has NO background, NO
    border and radius 0 — so the frame was a rounded bolted box drawn around a
    transparent band, its gusset on the "NOW PLAYING" label and its left run

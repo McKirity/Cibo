@@ -1,18 +1,22 @@
 /**
- * COMPACT — the cross-device density lever (Build step 6a; ruled 2026-07-20
- * that compact is IMPLEMENTED during Build, Phase 2 keeps only real-hardware
- * tuning). The tri-state `auto | on | off`; **auto keys off WINDOW width,
- * never the device** (~1600px, live on resize — [[Sync & Per-Device
- * Settings]]'s row). Per-device, on the settings file (deviceStore, 2026-08-04);
- * the control lives in Settings → Appearance.
+ * COMPACT — the small-canvas LAYOUT LAYER's switch (re-pointed Phase 2
+ * step 4, 2026-08-10; born Build step 6a as the density lever). The
+ * tri-state `auto | on | off`; **auto keys off WINDOW width, never the
+ * device** (~1600px TRUE width — zoom-corrected, the 2026-08-09 fix).
+ * Per-device, on the settings file (deviceStore); the control lives in
+ * Settings → Appearance.
  *
  * Mechanism: one class on the root element — `.compact` — mirroring
- * `.reduce-effects` (the corpus-wide root-class doctrine). The value block
- * lives in kit.css (§ COMPACT) and re-values dials; screens never test the
- * class directly.
+ * `.reduce-effects` (the corpus-wide root-class doctrine). What the class
+ * MEANS changed at the re-point: the density value sheet (theme/compact.css)
+ * tested worse than the plain base at the Mac's 90% zoom and is DELETED;
+ * `src/small.css` — the per-screen small-window re-compositions over the
+ * base sheets — is now the class's only consumer. Screens still never test
+ * the class directly.
  */
 
 import { deviceGet, deviceSet } from "../settings/deviceStore";
+import { currentZoomFactor } from "../settings/local";
 
 export type CompactMode = "auto" | "on" | "off";
 export const COMPACT_KEY = "cibo.compactMode";
@@ -31,7 +35,16 @@ export const getCompactMode = (): CompactMode => lsGet();
 // reads `getCompactMode()` instead.
 
 function resolve(mode: CompactMode): void {
-  const on = mode === "on" || (mode === "auto" && window.innerWidth < COMPACT_AUTO_BELOW);
+  // The knee tests the WINDOW's width, not the CSS viewport: `innerWidth` is
+  // CSS px, which webview zoom INFLATES below 100% — at the Mac's ruled 0.9
+  // scale a 1512 window reads as 1680 and compact-auto silently switched OFF
+  // on the exact device the lever exists for (the two levers of the 3-lever
+  // model cancelling; found at the step-4 preview pass, 2026-08-09).
+  // Multiplying the zoom back out recovers the width the ruling names. Zoom
+  // changes re-resolve for free: setZoom moves `innerWidth`, which fires the
+  // resize listener below.
+  const width = window.innerWidth * currentZoomFactor();
+  const on = mode === "on" || (mode === "auto" && width < COMPACT_AUTO_BELOW);
   document.documentElement.classList.toggle("compact", on);
 }
 

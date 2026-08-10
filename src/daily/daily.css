@@ -56,6 +56,19 @@
  * sessions read the fused text as law. It is what minted the "Rulings vs.
  * mechanics" convention. No height-neutralization, no valve, no cap here.
  */
+
+/* The triptych's outer-column widths — hoisted to :root (the --mo-ring
+ * precedent: sheet-local first, roster only by ruling) so the small-canvas
+ * layer (src/small.css) can re-value them: this sheet's rules nest under
+ * .daily, where a raw value is out of that layer's reach. On a 1512 window
+ * the two 550s alone ate the pane and the SPINE — the logging strips, the
+ * screen's point — got zero width (Phase 2 step 4, 2026-08-09). PRIVATE
+ * dials, mint candidates. */
+:root {
+  --triptych-sky-col: 550px;
+  --triptych-almanac-col: 550px;
+}
+
 .daily {
   min-width: 0;
   display: flex;
@@ -80,14 +93,16 @@
                      padding:var(--space-3) var(--space-5); background:var(--panel-background); }
   .dayhdr .badge .ring { width:var(--marker-size); height:var(--marker-size); border-radius:var(--radius-full);
                            box-shadow:inset 0 0 0 var(--border-standard) var(--finalize-outline); }
-  /* triptych — sky | spine | almanac. minmax tracks keep it fluid 2230→2560 */
+  /* triptych — sky | spine | almanac. minmax tracks keep it fluid 2230→2560;
+     BELOW that range the outer columns are the small-canvas layer's to
+     narrow (the :root dials above — re-valued in small.css, never here) */
     /* pass 7 — the triptych is content-sized to the ALMANAC and floored by
        --triptych-min; grow:0 hands all slack to the shelf below (which grows),
        so the split floats with the almanac's population. Sky + spine are
        height-neutralized (absolute inners) so they follow the row, never drive it. */
     .triptych { flex:0 0 auto; /* content-sized, never squeezed (re-ruled 2026-07-19) */ min-height:var(--triptych-min); display:grid;
                 /* iteration 2 · slot 6 knock-on — the spine widens to seat the daily-log strip clearance; the sky column pays and the almanac (whimsy) also narrows, so the whimsy cards squish twice. Drawn honestly — the triptych is NOT rebalanced to hide it. */
-                grid-template-columns:550px minmax(0,1fr) 550px;
+                grid-template-columns:var(--triptych-sky-col) minmax(0,1fr) var(--triptych-almanac-col);
                 gap:var(--space-6); }
   .col { display:flex; flex-direction:column; gap:var(--space-5); min-height:0; }
   /* the almanac is the in-flow driver: its cards GROW to fill surplus (bottom-
@@ -226,6 +241,28 @@
   .yr-band { display:flex; height:var(--space-6); border-radius:var(--radius-small); overflow:hidden; }
   .yr-band > i { display:block; height:100%; }
   .yr-today { position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--text-strong); border-radius:1px; }
+  /* ---- NARROW-WIDTH REFLOW (Phase 2 step 4, 2026-08-10) — the sky column is
+     its own size container: at compact's narrowed track the desktop row
+     layouts wrapped mid-number ("13h" / "52m" on two lines), crushed the wx
+     curve to a sliver with its hour labels overlapping, and broke
+     "day 50 of 93" mid-phrase. @container keeps the compact law intact —
+     screens never test `.compact`; each card answers only to the width it
+     was actually given. First @container in the app. */
+    .col.sky { container-type: inline-size; }
+    @container (max-width: 470px) {
+      /* sun — the headline stays whole; the delta chip drops below it */
+      .sun-len { flex-wrap: wrap; row-gap: var(--space-2); }
+      .sun-len .whead, .sun-len .delta { white-space: nowrap; }
+      /* weather — the curve takes a full-width row under the glyph + now
+         block instead of a sliver beside them; the seam rotates with it */
+      .wx { flex-wrap: wrap; }
+      .wx-curve { flex: 1 1 100%; align-self: auto; padding-left: 0; margin-left: 0; border-left: none;
+                  padding-top: var(--space-4); margin-top: var(--space-2);
+                  border-top: var(--border-hairline) solid var(--divider); }
+      /* season — whole phrases wrap as units, never mid-phrase */
+      .season-head { flex-wrap: wrap; row-gap: var(--space-2); }
+      .season-head b, .season-head .kv { white-space: nowrap; }
+    }
   .yr-today::after { content:""; position:absolute; top:-4px; left:50%; transform:translateX(-50%);
                        width:7px; height:7px; border-radius:var(--radius-full); background:var(--text-strong);
                        border:var(--border-hairline) solid var(--panel-background); }

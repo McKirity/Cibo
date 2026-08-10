@@ -51,7 +51,10 @@ export const UI_SCALE_KEY = "cibo.uiScale";
 export const UI_SCALE_DEFAULT = 100; // percent; macOS first-run 90 = step 15's write
 export const UI_SCALE_STEP = 5;
 export const clampUiScale = (pct: number): number =>
-  !Number.isFinite(pct) ? UI_SCALE_DEFAULT : Math.min(150, Math.max(70, Math.round(pct / UI_SCALE_STEP) * UI_SCALE_STEP));
+  // Floor 70 → 60 (Phase 2 step 4, 2026-08-09): 59% is the scale at which a
+  // 1512 MacBook window mathematically matches the 2560 desktop canvas, so 60
+  // is the "whole desktop layout, crunched" experiment the floor was blocking.
+  !Number.isFinite(pct) ? UI_SCALE_DEFAULT : Math.min(150, Math.max(60, Math.round(pct / UI_SCALE_STEP) * UI_SCALE_STEP));
 
 export const getUiScale = (): number => clampUiScale(Number(lsGet(UI_SCALE_KEY) ?? UI_SCALE_DEFAULT));
 
@@ -63,11 +66,20 @@ export const getParityZoom = (): number => clampParity(Number(lsGet(PARITY_ZOOM_
 export const MB_PREVIEW_KEY = "cibo.dev.macbookPreview";
 export const getMacBookPreview = (): boolean => lsGet(MB_PREVIEW_KEY) === "1";
 
+/**
+ * The composed zoom the app itself applies — UI scale × parity while the
+ * preview is on. ONE owner (the `probe-1` callee rule): compact-auto divides
+ * this back out of `innerWidth` to recover the window's true width, and a
+ * reader computing its own copy would drift from what `applyZoom` sets.
+ * Browser dev never applies a zoom, so it reports 1.
+ */
+export const currentZoomFactor = (): number =>
+  !inTauri() ? 1 : (getUiScale() / 100) * (getMacBookPreview() ? getParityZoom() / 100 : 1);
+
 /** Applies the composed zoom: UI scale, × parity while the preview is on. */
 export const applyZoom = async (): Promise<void> => {
   if (!inTauri()) return;
-  const factor =
-    (getUiScale() / 100) * (getMacBookPreview() ? getParityZoom() / 100 : 1);
+  const factor = currentZoomFactor();
   try {
     const { getCurrentWebview } = await import("@tauri-apps/api/webview");
     await getCurrentWebview().setZoom(factor);

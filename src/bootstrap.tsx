@@ -17,9 +17,6 @@ import { EvoluProvider } from "@evolu/react";
 // or broken theme always degrades to these values (the Default never retires).
 import "../src-tauri/resources/themes/Default (neutral light)/theme.css";
 import "./kit.css";
-// The one sanctioned value file outside the theme sheets (user-ruled
-// 2026-07-31): compact's density re-values — see its header.
-import "./theme/compact.css";
 import { initTheme } from "./theme/loader";
 import { applyDerivedDials } from "./theme/derived";
 import { initCompact } from "./theme/compact";
@@ -35,6 +32,11 @@ import App from "./App";
 // must follow every screen sheet in the bundle so its attachments win the
 // cascade (inert until a manifest publishes --deco-* properties).
 import "./theme/decoration.css";
+// AFTER decoration.css: the small-canvas LAYOUT LAYER (Phase 2 step 4 —
+// superseding theme/compact.css, deleted). Per-screen small-window rulings;
+// every rule is `:root.compact`-prefixed so bundle order can never decide a
+// tie against a base sheet. See its header for the base-sheet model.
+import "./small.css";
 import { evolu } from "./db/evolu";
 import { clearRestorePending, isRestorePending } from "./db/sync";
 import { ensureHabitIcons, ensureSleepMedLabel, runSeed, SEED_VERSION } from "./db/seed";

@@ -19,7 +19,7 @@
    regression coverage; this file is its shipping fork. The two are free to
    diverge from here — a change to one is not a change to the other.
 
-   252 dials, declaration-parity exact with the Default (253 -> 252 at the 2026-08-09 --glow retirement; 252 → 253 at the 2026-08-07
+   255 dials, declaration-parity exact with the Default (252 -> 255 at the 2026-08-09 derived-aliases mint; 253 -> 252 the same day at the --glow retirement; 252 → 253 at the 2026-08-07
    --milestone-seal mint; 248 → 252 at the 2026-08-01 scrollbar
    mint — --scrollbar-thumb · --scrollbar-thumb-hover · --scrollbar-width · --scrollbar-radius;
    the header total was stale at 247 through three same-day events, now reconciled: 247 → 249 at
@@ -262,6 +262,13 @@
   --bar-value-w:     56px;
   --chart-height:    220px;
   --chart-axis-gutter: 56px;
+  /* Derived aliases (3) -- MINTED 2026-08-09 (session-27 handoff S4, user-ruled,
+     reversing the 2026-08-07 decline): calc()s of roster dials, promoted so the
+     design-system check registers them. A theme moves them by moving their inputs,
+     or re-values the alias itself. */
+  --mo-ring: calc(var(--frame-clear-modal) + var(--space-5)); /* kit modal padding ring (slot 8 clearance + rider) */
+  --gbh: calc(var(--chart-height) + var(--space-8) * 2);      /* CS grouped-bar chart height */
+  --loh: calc(var(--chart-height) + var(--space-8));          /* CS line chart height */
   --cover-w:         60px;
   --cover-h:         84px;
   --bar-row-h:       20px;
@@ -273,9 +280,9 @@
      living outside a theme sheet, and flagged there as a dial candidate the
      day a second surface appeared. The glyph inside the disc derives at .6,
      so the disc is the only number a theme ever sets.
-     (Three sibling promotions were proposed the same day and DECLINED —
-     --mo-ring · --gbchart-h · --lochart-h are calc()s of dials that already
-     exist, so they are legal use-site derivations, not raw values.) */
+     (Three sibling promotions were proposed the same day and DECLINED --
+     --mo-ring · --gbh · --loh -- then MINTED 2026-08-09 by user ruling at the
+     session-27 pull; see the Derived aliases group above.) */
   --milestone-seal: 64px;
 
   /* -- Cover-wall masonry dims (2) ------------------------------------- */

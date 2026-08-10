@@ -466,7 +466,9 @@
    a `.mrow` the `.mid` track collapsed to 54px while the field held 183px and
    lay across `.keyin` by ~116px — ten rows deep in Dates & countdowns. The
    width is a preference; this is what makes it one. */
-.setscreen .subadd-in { border: var(--border-hairline) solid var(--border); background: var(--panel-background);
+/* --inset-background, not panel (2026-08-09): the well face, matching .keyin
+   two rules up — this pane had two field colours for one job. */
+.setscreen .subadd-in { border: var(--border-hairline) solid var(--border); background: var(--inset-background);
                         color: var(--text-strong); outline: none; font-family: var(--font-ui); width: 12ch;
                         min-width: 0; }
 .setscreen .subnone { font-size: var(--size-small); color: var(--text-muted); }

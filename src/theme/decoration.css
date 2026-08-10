@@ -57,6 +57,23 @@
    finalize emission) or a pseudo-element. Raised on the theme bench
    2026-08-06 after a vanished rule cost a seating real time.
 
+   ⚠ EXCEPT AT EQUAL SPECIFICITY — THE CASCADE ORDER IS A GUARANTEE, stated
+   2026-08-09 (RECORD item 8, ask b's app half). The loader appends the active
+   theme's <style> to <head> AFTER every bundled stylesheet (loader.ts,
+   applyTheme), so a theme rule that matches a claim's specificity — i.e. one
+   that also writes the `:root ` prefix — WINS the tie by order, deliberately.
+   The full precedence, guaranteed: app screens < this sheet's claims < the
+   theme's own `:root `-prefixed rules. So a theme that deliberately paints a
+   claimed property (Subnautica's hull sheen on .tb, its finalize sheen, its
+   daily sheen) keeps its paint, and a theme that doesn't still gets the
+   ornament — which is RECORD ask (a)'s semantics already, with no @layer.
+   A @layer here would be WRONG: layered rules lose to ALL unlayered app CSS,
+   which would put these claims back under the screens' `border:`/`background:`
+   shorthands and regress the `deco-2` fix wholesale.
+   Consequence for manifests: a slot whose surface the ACTIVE theme paints at
+   tie specificity will not show — Subnautica leaves button-finalize,
+   strip-titlebar and fill-daily-log unauthored for exactly that reason.
+
    Deliberately shallow until Phase-2 asset work (the geometry lives in the
    manifest's reserved slice/scale keys): 9-slice insets, the timer ring's
    SVG texture, bar-tip glyph placement, and the divider ornament's band
@@ -198,7 +215,9 @@
   background-repeat: repeat-x;
 }
 /* section-header flourish (replaces the header's underline when it paints;
-   sub-section scale ruled YES 2026-07-19) — no inherit from the divider */
+   sub-section scale ruled YES 2026-07-19 — REVERSED for `.chead` and
+   `.libscreen .cathead` 2026-08-09, user-ruled: see the UN-CLAIMS block
+   below) — no inherit from the divider */
 :root .phead, :root .cadash .phead, :root .mapscreen .trunk-head,
 :root :is(.csdash, .advs) .bhead, :root .libscreen .cathead,
 :root .chead {
@@ -208,6 +227,54 @@
 }
 /* divider ornament: ONE app-wide role; the app's dividers are borders, not
    elements — the band attachment anatomy is Phase-2 asset work. Publishes now. */
+
+/* ============================================================================
+   ⚠ UN-CLAIMS — five tenants whose ROLE does not fit them. Written 2026-08-09
+   on the Subnautica decoration bench (session 27), the first session with a
+   real asset on benches 2–5; three are user-ruled at the screen, two are the
+   same fault found in the same pass. CARRIED UPSTREAM the same day from the
+   bench's user-authorised app-copy edit (a re-push destroys the bench copy —
+   THIS block is the permanent home). Full argument + measurements live in the
+   design project's `bench/RECORD - theme reversals and asks.md` § 7.
+
+   THE SHAPE THEY SHARE: a role's clearance dial is a promise its tenant list
+   does not keep. `--frame-clear-grand` is 24px and border-image-width spends
+   all 24 whether or not the element padded for it. This is finding `deco-4`
+   (the dropdown un-wiring, 2026-08-08) on tenants that ruling did not name.
+   Un-claimed EXPLICITLY rather than by narrowing the positive selectors above —
+   the `.wall .tile` precedent, and for its stated reason: a hand-listed
+   positive set silently drops a real tenant the day a screen adds one.
+   ========================================================================= */
+/* the library toolbar pads --space-4/--space-5 (8/13px) against a 24px frame:
+   the corner gusset lands on the search field and the channel runs behind the
+   filter chips. Measured 1395×91 on bench 5. */
+:root .libscreen .tbar { border-image-source: none; }
+/* the current-pin band pads --space-3 vertically (6px), has NO background, NO
+   border and radius 0 — so the frame was a rounded bolted box drawn around a
+   transparent band, its gusset on the "NOW PLAYING" label and its left run
+   across the first cover. Measured 1395×779 on bench 5. */
+:root .libscreen .pinband { border-image-source: none; }
+/* USER-RULED on bench 3 ("there's a frame inside the frame, remove the interior
+   one"). The period header pads NOTHING (a bare flex row) and ALL THREE period
+   headers render inside a `.cpanel.tighthead` whose padding is 28px — so the
+   inherited headliner frame drew a second bolted plate ~4px inside the panel's.
+   The rest of the headliner role stays: `.mast` (rendered `panel mast`),
+   `.libmast` and `.erail` are real plates that reserve the clearance. */
+:root .cadash .perhead { border-image-source: none; }
+/* USER-RULED on bench 2 ("the seams being too repetitive … keep the current
+   style for the header, but for the sub headers I want a different style"),
+   REVERSING the 2026-07-19 "sub-section scale ruled YES". Bench 2 renders 23
+   `.phead` against 17 `.chead`: a measure at every level carries no level. The
+   sub-head keeps its own border-bottom, so it stays a divided head. */
+:root .chead { background-image: none; }
+/* `.libscreen .cathead` is the ONE flourish tenant with no `border-bottom` and
+   no `padding-bottom` (24px tall, margin-bottom only) — every other one draws
+   the kit's rule for the ticks to stand on, so here they painted across the
+   header's own text. The alternative (give it `.phead`'s padding + hairline so
+   it keeps the ticks) was offered and REJECTED — user-ruled 2026-08-09 at the
+   session-27 pull ("the extra one is excessive"): the un-claim is final, do
+   not re-propose the flourish here. */
+:root .libscreen .cathead { background-image: none; }
 
 /* ---- data slots ----------------------------------------------------------- */
 /* bar-fill texture — distributions · leaderboards (+ kit-row-progress, step 8) */

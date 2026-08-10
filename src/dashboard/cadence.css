@@ -13,7 +13,13 @@
 /* panel clearance = --frame-clear-grand (panel · headliner · dialog — there is
    NO --frame-clear-panel dial; an undefined var() in calc() voids the whole
    padding, which is exactly how the first GUI pass rendered zero padding). */
-.cadash .cpanel{background:var(--panel-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-large); box-shadow:var(--shadow-low); padding:calc(var(--frame-clear-grand) + var(--space-5));}
+/* radius --radius-large → --radius-medium, USER-RULED on the session-27
+   decoration bench (2026-08-09): at Subnautica's values the 22px large
+   radius clipped inside the panel frame art's own ~15px corner arc and
+   removed the drawn corner entirely. The pointer change is app-wide by
+   design — carried upstream from the bench's app-copy edit (handoff § 1
+   item 3). */
+.cadash .cpanel{background:var(--panel-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-medium); box-shadow:var(--shadow-low); padding:calc(var(--frame-clear-grand) + var(--space-5));}
 .cadash .cpanel.tighthead{padding-top:calc(var(--frame-clear-grand) + var(--space-2)); padding-bottom:calc(var(--frame-clear-grand) + var(--space-2));}
 .cadash .phead{display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-5); margin-bottom:var(--space-5); padding-bottom:var(--space-3); border-bottom:var(--border-hairline) solid var(--divider);}
 .cadash .ptitle{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold);}
@@ -227,7 +233,15 @@
 /* day/week/month mini-cells — a fluid sub-grid in the cells column (col 5) */
 .cadash .cells{display:grid; gap:var(--space-2); align-items:end;}
 .cadash .cells.hnums{align-items:center;}
-.cadash .hnum{text-align:center; font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted); font-weight:var(--weight-bold);}
+/* min-width:0 is insurance, not the fix above: only 7 of a month's ~31 header
+   tracks carry a numeral, and a grid item with visible overflow floors its own
+   track — so at a narrow enough cells column (the MacBook, compact, or an
+   expanded rail) the 7 numbered tracks would stop shrinking while the 24 empty
+   ones kept going, and the numbers would drift off the cells they name. Zeroing
+   the minimum lets a two-digit numeral overhang its blank neighbours, which is
+   what a tick label should do. `.monthlabels span` already had this guard by way
+   of `overflow:hidden`; this row never got it. */
+.cadash .hnum{text-align:center; font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted); font-weight:var(--weight-bold); min-width:0;}
 .cadash .cell{height:var(--cad-cell-size); border-radius:var(--radius-cell); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); background:var(--panel-background); width:var(--cad-cell-size); justify-self:center;}
 .cadash[data-scale="quarter"] .cell, .cadash[data-scale="year"] .cell, .cadash[data-scale="week"] .cell{width:calc(var(--cad-cell-size) * 2);}
 .cadash .cell.d{background:var(--cell-ink, var(--verdict-done)); box-shadow:none;}
@@ -246,6 +260,28 @@
 /* the expansion */
 .cadash .exp{border:var(--border-hairline) solid var(--divider); border-top:none; background:var(--window-background); border-radius:0 0 var(--radius-small) var(--radius-small); padding:var(--space-5) var(--space-5) var(--space-6); margin-top:-1px;}
 .cadash .hgroup.open .hrow.body{border-radius:var(--radius-small) var(--radius-small) 0 0; background:var(--hover-wash);}
+/* THE CELLS COLUMN IS SHARED GEOMETRY ACROSS ROWS (2026-08-09, user-reported:
+   "the day cells are not properly aligned with the main cells"). Every row that
+   draws day cells resolves col 5 as `1fr`, so two rows only line up when their
+   grids have the SAME content box. `.estrip`/`.mstrip` sit inside `.exp`, which
+   pads --space-5 on each side, so the 1fr column absorbed the whole difference:
+   the sub-rows shifted right AND took a smaller per-day pitch, drifting further
+   from the parent's cells (and from the day-number header) with every column.
+   Structural, so it was true at every cadence scale.
+   The rows are pulled back out to the expansion's padding box; each keeps its
+   OWN --space-5 padding, so its content box lands within `.exp`'s 1px side
+   border of `.hrow`'s — a 0.03px-per-track difference over 31 days, which is
+   below perception and is NOT the several-px-per-track drift being fixed. The
+   visible change is that a sub-row's hover background runs the full width, as
+   the parent rows' already do. */
+.cadash .exp > .estrip,
+.cadash .exp > .mstrip,
+.cadash .exp > .scard{margin-inline:calc(var(--space-5) * -1);}
+/* the story card is its own container: its rows run to the card's inner edge,
+   leaving the drawn 1px border and the `.shead` indent untouched (1px off the
+   parent's columns — a 0.03px-per-track difference, below perception). */
+.cadash .scard > .estrip,
+.cadash .scard > div > .estrip{margin-inline:calc(var(--space-4) * -1);}
 .cadash .estrip{display:grid; grid-template-columns:var(--row-cols); gap:var(--space-5); align-items:center; padding:var(--space-4) var(--space-5); border-radius:var(--radius-small);}
 .cadash .estrip .et{grid-column:2; display:flex; align-items:center; gap:var(--space-4); min-width:0; font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-strong); padding-left:var(--space-6);}
 .cadash .estrip .et .tick{width:var(--space-4); height:var(--space-4); border-radius:var(--radius-cell); background:var(--cell-ink, var(--text-muted)); flex:0 0 auto;}

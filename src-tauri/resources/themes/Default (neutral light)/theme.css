@@ -11,7 +11,7 @@
    code-drawn tick-face clock RETIRED 2026-08-01 (§ Theme-owned ambience
    sizing below); there is no third surface and no --clock-max.
    ---------------------------------------------------------------------
-   252 dials (253 -> 252 at the 2026-08-09 --glow retirement, tenantless from birth; 252 → 253 at the 2026-08-07 --milestone-seal mint, the milestone
+   255 dials (252 -> 255 at the 2026-08-09 derived-aliases mint (--mo-ring / --gbh / --loh, user-ruled at the session-27 pull); 253 -> 252 the same day at the --glow retirement, tenantless from birth; 252 → 253 at the 2026-08-07 --milestone-seal mint, the milestone
    emblem's disc promoted out of a raw 64px in daily.css;
    248 → 252 at the 2026-08-01 scrollbar mint — --scrollbar-thumb ·
    --scrollbar-thumb-hover · --scrollbar-width · --scrollbar-radius; the header total was
@@ -80,11 +80,11 @@
   --size-heading:        24px;
   --size-display:        34px;
   --size-stat-value:     48px;   /* dedicated stat-tile headline value */
-  --weight-regular:      400;
-  --weight-medium:       500;
-  --weight-bold:         600;
-  --line-tight:          1.2;
-  --line-normal:         1.5;
+  --weight-regular:      400; /* @kind font */
+  --weight-medium:       500; /* @kind font */
+  --weight-bold:         600; /* @kind font */
+  --line-tight:          1.2; /* @kind font */
+  --line-normal:         1.5; /* @kind font */
 
   /* -- Group 3 · Spacing (8) — one scale ------------------------------- */
   --space-1:             2px;
@@ -102,9 +102,9 @@
   --radius-medium:       10px;   /* tiles, cards */
   --radius-large:        14px;   /* modals */
   --radius-full:         999px;  /* pills, dots */
-  --border-hairline:     1px;
-  --border-standard:     1.5px;
-  --border-heavy:        2px;
+  --border-hairline:     1px; /* @kind spacing */
+  --border-standard:     1.5px; /* @kind spacing */
+  --border-heavy:        2px; /* @kind spacing */
 
   /* -- Group 5 · Effects (7) — reduce-effects zeroes blur+glow, --------
         flattens shadows; --overlay-dim SURVIVES (functional) ----------- */
@@ -114,7 +114,7 @@
                                                   top highlight, so a corner reads against a light ground.
                                                   DECORATION ONLY — a theme may flatten it and nothing may
                                                   become unreadable when it does. */
-  --backdrop-blur:  none;                      /* raised surfaces ONLY. OFF 2026-07-28: a theme may still
+  --backdrop-blur:  none; /* @kind other */                      /* raised surfaces ONLY. OFF 2026-07-28: a theme may still
                                                   reach for glass, but NOTHING may depend on it — the
                                                   reduce-effects render is the test, and if legibility (not
                                                   polish) differs between the two, the theme is cheating. */
@@ -183,15 +183,15 @@
      written as background 78/52/26/0). */
   --cat-1: #4E79A7;  --cat-2: #59A14F;  --cat-3: #E1A03C;  --cat-4: #B07AA1;
   --cat-5: #76B7B2;  --cat-6: #EE6E5A;  --cat-7: #9C755F;  --cat-8: #8C8C92;
-  --cat-ramp: 22% 48% 74% 100%;
+  --cat-ramp: 22% 48% 74% 100%; /* @kind other */
 
   /* Derived-rule tunables (rules, not slots) — every mix AMOUNT is a
      dial, and every mix goes toward another dial. ---------------------- */
   --week-shade-mix:    24%;   /* a week wears its OWNING month's slot, lightened toward the canvas */
-  --quarter-treatment: wash;  /* wash | push | cast */
+  --quarter-treatment: wash; /* @kind other */  /* wash | push | cast */
   --quarter-wash-mix:  45%;   /* per month of the quarter's trio */
   --tint-mix:          85%;   /* faint chip/badge background off a meaning colour (background share) */
-  --heatmap-ramp:      10% 38% 66% 100%;  /* subject over the canvas, 4 stops */
+  --heatmap-ramp:      10% 38% 66% 100%; /* @kind other */  /* subject over the canvas, 4 stops */
   --tint-hover:        72%;   /* a TINTED surface intensifying on hover */
   --tint-border:       55%;   /* the border off the same meaning colour as a tint fill */
   --fade:              50%;   /* second-order muting of an already-muted colour */
@@ -207,12 +207,12 @@
   --pill-ink-shift:    30%;   /* a coloured pill's ink toward --text-strong (sibling of --hover-shift; converged three tenants 2026-07-31) */
 
   /* -- Group 7 · Motion (3 durations + 3 easings) — tuned snappy ------ */
-  --motion-fast:        120ms;   /* hover, focus, presses */
-  --motion-standard:    200ms;   /* overlays, row expansion, palette morph */
-  --motion-deliberate:  320ms;   /* the few ceremonies */
-  --ease-standard:      cubic-bezier(.4, 0, .2, 1);
-  --ease-entering:      cubic-bezier(0, 0, .2, 1);
-  --ease-exiting:       cubic-bezier(.4, 0, 1, 1);
+  --motion-fast:        120ms; /* @kind other */   /* hover, focus, presses */
+  --motion-standard:    200ms; /* @kind other */   /* overlays, row expansion, palette morph */
+  --motion-deliberate:  320ms; /* @kind other */   /* the few ceremonies */
+  --ease-standard:      cubic-bezier(.4, 0, .2, 1); /* @kind other */
+  --ease-entering:      cubic-bezier(0, 0, .2, 1); /* @kind other */
+  --ease-exiting:       cubic-bezier(.4, 0, 1, 1); /* @kind other */
 
   /* -- Group 8 · Icons (4) — lucide, doors/actions only, never data --- */
   --icon-color:         currentColor;
@@ -255,6 +255,13 @@
   --bar-value-w:     56px;
   --chart-height:    220px;
   --chart-axis-gutter: 56px;  /* kit-panel-trend y-axis label gutter */
+  /* Derived aliases (3) -- MINTED 2026-08-09 (session-27 handoff S4, user-ruled,
+     reversing the 2026-08-07 decline): calc()s of roster dials, promoted so the
+     design-system check registers them. A theme moves them by moving their inputs,
+     or re-values the alias itself. */
+  --mo-ring: calc(var(--frame-clear-modal) + var(--space-5)); /* @kind spacing */ /* kit modal padding ring (slot 8 clearance + rider) */
+  --gbh: calc(var(--chart-height) + var(--space-8) * 2); /* @kind spacing */      /* CS grouped-bar chart height */
+  --loh: calc(var(--chart-height) + var(--space-8)); /* @kind spacing */          /* CS line chart height */
   --cover-w:         60px;
   --cover-h:         84px;
   --bar-row-h:       20px;
@@ -266,9 +273,9 @@
      living outside a theme sheet, and flagged there as a dial candidate the
      day a second surface appeared. The glyph inside the disc derives at .6,
      so the disc is the only number a theme ever sets.
-     (Three sibling promotions were proposed the same day and DECLINED —
-     --mo-ring · --gbchart-h · --lochart-h are calc()s of dials that already
-     exist, so they are legal use-site derivations, not raw values.) */
+     (Three sibling promotions were proposed the same day and DECLINED --
+     --mo-ring · --gbh · --loh -- then MINTED 2026-08-09 by user ruling at the
+     session-27 pull; see the Derived aliases group above.) */
   --milestone-seal: 64px;
 
   /* -- Cover-wall masonry dims (2) — theme-invariant ------------------ */
@@ -292,9 +299,9 @@
   --heat-block-min-h:  300px; /* the yearly 53-week heatmap block's minimum height */
 
   /* -- Library catalog structural sizes (5) — theme-invariant --------- */
-  --lib-grid-cols:    9;      /* fluid: cards widen 2180→2560, the count is fixed */
-  --lib-grid-rows:    2;
-  --lib-cover-ratio:  2 / 3;  /* portrait box-art */
+  --lib-grid-cols:    9; /* @kind other */      /* fluid: cards widen 2180→2560, the count is fixed */
+  --lib-grid-rows:    2; /* @kind other */
+  --lib-cover-ratio:  2 / 3; /* @kind other */  /* portrait box-art */
   --lib-pin-card-w:   188px;
   --pager-btn-size:   34px;
 
@@ -302,8 +309,8 @@
   --modal-import-w:    1320px;
   --modal-bulk-w:      1680px;
   --modal-bulk-h:      1040px;
-  --import-grid-cols:  6;
-  --bulk-grid-cols:    7;
+  --import-grid-cols:  6; /* @kind other */
+  --bulk-grid-cols:    7; /* @kind other */
   --bulk-rail-w:       380px;
   --import-progress-h: 6px;
   --modal-confirm-w:   620px;

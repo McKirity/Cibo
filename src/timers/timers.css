@@ -279,7 +279,10 @@
        roster is impossible: a search field (.epsearch) over a short result list (.epresults).
    Same block, same label, same New-entry door — only the selector changes. Not free text: a
    query, not a stored field (charter law 12 is about data fields). */
-.timer-mo .epsearch { align-self: stretch; display: flex; align-items: center; gap: var(--space-4); background: var(--panel-background); border: var(--border-hairline) solid var(--border); border-radius: var(--radius-small); padding: var(--space-3) var(--space-5); transition: border-color var(--motion-fast) var(--ease-standard); }
+/* --inset-background, not panel (2026-08-09): typing fields wear the well face
+   app-wide — panel-on-panel read as colourless the moment a theme separated the
+   two surfaces. */
+.timer-mo .epsearch { align-self: stretch; display: flex; align-items: center; gap: var(--space-4); background: var(--inset-background); border: var(--border-hairline) solid var(--border); border-radius: var(--radius-small); padding: var(--space-3) var(--space-5); transition: border-color var(--motion-fast) var(--ease-standard); }
 .timer-mo .epsearch:focus-within { border-color: var(--accent); box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring); }
 .timer-mo .epsearch svg { width: var(--icon-size-small); height: var(--icon-size-small); color: var(--text-muted); flex: 0 0 auto; display: block; }
 .timer-mo .epsearch input { flex: 1 1 auto; min-width: 0; background: transparent; border: none; outline: none; font-family: var(--font-ui); font-size: var(--size-small); color: var(--text-strong); }

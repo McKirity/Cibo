@@ -26,6 +26,7 @@ const {
   futureDated,
   missingCover,
   unknownIcon,
+  isOsJunk,
   CHECK_SPECS,
 } = await import("./doctor");
 type Snapshot = import("./doctor").Snapshot;
@@ -290,5 +291,28 @@ describe("the warning tier", () => {
     const found = unknownIcon(snap({ habits: [habit({ icon: "not-a-real-icon" })] }));
     expect(found).toHaveLength(1);
     expect(found[0].line).toContain("not-a-real-icon");
+  });
+});
+
+/**
+ * The orphan sweep's OS-junk filter (`doctor-1`'s step-4 rider, 2026-08-09).
+ * Without it, the day a Mac first opens the images tree every habit folder
+ * grows a permanent orphan finding for its `.DS_Store`.
+ */
+describe("isOsJunk", () => {
+  it("skips OS bookkeeping files by name, case-insensitively", () => {
+    expect(isOsJunk(".DS_Store")).toBe(true);
+    expect(isOsJunk(".ds_store")).toBe(true);
+    expect(isOsJunk("Thumbs.db")).toBe(true);
+    expect(isOsJunk("desktop.ini")).toBe(true);
+    // AppleDouble sidecars pair with ANY filename, so they match by prefix.
+    expect(isOsJunk("._cover.jpg")).toBe(true);
+  });
+
+  it("never skips a real image — the app's own naming cannot collide", () => {
+    expect(isOsJunk("steam-440.jpg")).toBe(false);
+    expect(isOsJunk("tmdb-movie-500.png")).toBe(false);
+    // A name merely CONTAINING a junk name is not junk.
+    expect(isOsJunk("ds_store.png")).toBe(false);
   });
 });

@@ -87,7 +87,10 @@
 .finput .fbox { background: var(--inset-background); border: var(--border-hairline) solid var(--border); border-radius: var(--radius-small);
                 padding: var(--space-3) var(--space-4); font-size: var(--size-small); color: var(--text-strong);
                 font-family: var(--font-ui); width: 100%; min-height: 38px; }
-.finput .fbox:focus { outline: none; box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring); border-color: var(--accent); background: var(--panel-background); }
+/* no background flip on focus (2026-08-09): the inset→panel lift read as the
+   field changing colour mid-typing once a theme separated the two surfaces;
+   the ring + accent border carry focus. */
+.finput .fbox:focus { outline: none; box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring); border-color: var(--accent); }
 .finput .fbox.area { min-height: 78px; line-height: var(--line-normal); resize: vertical; }
 .finput .fbox.checkrow { display: flex; align-items: center; gap: var(--space-3); }
 .chipedit { display: flex; flex-wrap: wrap; gap: var(--space-3); }

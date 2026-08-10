@@ -538,8 +538,9 @@
      day a second surface appeared; PROMOTED TO THE ROSTER 2026-08-07 as
      --milestone-seal (252 → 253). It was the one real derivation-law breach in
      this family — a raw px in a component sheet — where the exhibit's other
-     three promotion candidates (--mo-ring · --gbchart-h · --lochart-h) are
-     calc()s of dials that already exist and stay legal where they live. */
+     three promotion candidates (--mo-ring · --gbh · --loh) were DECLINED then
+     and MINTED 2026-08-09 by user ruling at the session-27 pull — the theme
+     sheets declare all three now (roster 252 → 255). */
     .milestone .emblem { width:var(--milestone-seal); height:var(--milestone-seal); flex:0 0 auto;
                          border-radius:var(--radius-full);
                          background:var(--whimsy-ink); border:var(--border-hairline) solid var(--whimsy-star);
@@ -1446,7 +1447,15 @@
              letter-spacing:.1em; line-height:var(--line-tight);
              color: color-mix(in oklab, var(--whimsy-ink), var(--whimsy-parchment) var(--whimsy-fade)); }
   .ms-split-rule { align-self:stretch; background:currentColor; opacity:.24; }
-  .ms-list.split .ms-it { gap:var(--space-4); }
+  /* Split rows FLEX-WRAP rather than grid (2026-08-09, found under Subnautica's
+     wider IBM Plex Mono): the grid form's nowrap figure in an `auto` track set a
+     hard floor on the half-width column, and a wide mono pushed the two floors
+     past the tile — "25,000 word" clipped at the edge. When figure + caption
+     fit side by side nothing changes; when they don't, the caption drops under
+     the figure instead of being cut. Scoped to .split — the full-width list and
+     the plate keep the drawn grid anatomy. */
+  .ms-list.split .ms-it { display:flex; flex-wrap:wrap; align-items:baseline;
+                          column-gap:var(--space-4); row-gap:var(--space-2); }
   .ms-it { display:grid; grid-template-columns:auto minmax(0,1fr); gap:var(--space-4); align-items:baseline; }
   /* a value-less item — every Rank change entry — spans the whole row rather
      than sizing the auto value track to its own max-content */

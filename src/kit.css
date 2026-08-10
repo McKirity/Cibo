@@ -372,10 +372,12 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
    FINAL's `.mo` minus its tenant width — each tenant sets its own width dial
    (.ecmodal → --modal-manage-w · .mo2 → --modal-bulk-w/-h · the importer's
    --modal-import-w when step 8 lands). Slot 8 — the 28px modal clearance. */
-/* APPEARANCE PASS 2026-07-28 — --mo-ring is an ALIAS of the existing derivation
-   (--frame-clear-modal + --space-5), not a new dial. Nothing may cancel it: it is the
-   decoration overlay's room on all four borders (slot 8) and stays unpainted. */
-.dimlayer > .mo{--mo-ring:calc(var(--frame-clear-modal) + var(--space-5)); display:flex; flex-direction:column; max-width:100%; max-height:100%; background:var(--raised-background); -webkit-backdrop-filter:var(--backdrop-blur); backdrop-filter:var(--backdrop-blur); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-large); box-shadow:var(--shadow-high); padding:var(--mo-ring); overflow:hidden;}
+/* APPEARANCE PASS 2026-07-28 — --mo-ring began as a component-local ALIAS of the
+   derivation (--frame-clear-modal + --space-5). Nothing may cancel it: it is the
+   decoration overlay's room on all four borders (slot 8) and stays unpainted.
+   MINTED TO THE ROSTER 2026-08-09 (user-ruled at the session-27 pull, reversing
+   the 2026-08-07 decline) — the theme sheets declare it; this sheet only reads it. */
+.dimlayer > .mo{display:flex; flex-direction:column; max-width:100%; max-height:100%; background:var(--raised-background); -webkit-backdrop-filter:var(--backdrop-blur); backdrop-filter:var(--backdrop-blur); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-large); box-shadow:var(--shadow-high); padding:var(--mo-ring); overflow:hidden;}
 /* reduce-effects has nothing to undo on the surface any more (the shell is opaque by ruling and
    the blur dial is off); it only flattens the decorative shadow. */
 .reduce-effects .dimlayer > .mo{box-shadow:var(--shadow-low);}

@@ -598,6 +598,21 @@ interface CoverScan {
   orphanScanError?: string;
 }
 
+/**
+ * OS bookkeeping files are never data. macOS drops `.DS_Store` (Finder
+ * metadata) and `._*` AppleDouble sidecars into any folder it touches, and the
+ * cloud drive carries them to the other machine; Windows contributes
+ * `Thumbs.db` and `desktop.ini`. Without this list, the day a Mac first opens
+ * the images tree every habit folder grows a permanent "orphan" finding — the
+ * doctor blaming the OS's litter on the user's data, forever (`doctor-1`'s
+ * recorded step-4 rider, built 2026-08-09). The app's own image names
+ * (`<source>-<external_id>.<ext>` / `<entry-id>.<ext>`) can never collide with
+ * any of these shapes.
+ */
+const OS_JUNK = new Set([".ds_store", "thumbs.db", "desktop.ini"]);
+export const isOsJunk = (name: string): boolean =>
+  OS_JUNK.has(name.toLowerCase()) || name.startsWith("._");
+
 async function scanCovers(snap: Snapshot): Promise<CoverScan> {
   const broken: Finding[] = [];
   const orphans: Finding[] = [];
@@ -655,6 +670,9 @@ async function scanCovers(snap: Snapshot): Promise<CoverScan> {
           // A directory is the one thing here that is certainly not a stray
           // image, so it is the one thing worth skipping.
           if (file.isDirectory) continue;
+          // And OS junk by name — see `isOsJunk` above. Junk is skipped, not
+          // reported: it is not the user's to answer for.
+          if (isOsJunk(file.name)) continue;
           // The path stays root-RELATIVE — mute keys and the delete action
           // must survive the root moving to another folder or device.
           const path = `${rel}/${file.name}`;

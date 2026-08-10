@@ -182,13 +182,16 @@
    own model). Since 2026-08-04 the SVGs are box-sized (viewBox = measured px,
    charts.tsx via useBox) — the stretch model and its preserveAspectRatio=none
    are gone; these height dials are what the measure reads. */
-.csdash .gbchart{--gbh:calc(var(--chart-height) + var(--space-8) * 2); display:grid; grid-template-columns:40px 1fr; column-gap:var(--space-4);}
+/* --gbh/--loh MINTED TO THE ROSTER 2026-08-09 (user-ruled at the session-27 pull,
+   reversing the 2026-08-07 decline) — the theme sheets declare both; this sheet
+   only reads them. */
+.csdash .gbchart{display:grid; grid-template-columns:40px 1fr; column-gap:var(--space-4);}
 .csdash .gb-yaxis{position:relative; height:var(--gbh);}
 .csdash .gb-yaxis span{position:absolute; right:0; transform:translateY(-50%); font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted);}
 .csdash .gb-plot .chartsvg{height:var(--gbh);}
 .csdash .gb-xaxis{display:flex; margin-top:var(--space-3);}
 .csdash .gb-xaxis span{flex:1 1 0; text-align:center; font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted);}
-.csdash .lochart{--loh:calc(var(--chart-height) + var(--space-8)); display:grid; grid-template-columns:40px 1fr; column-gap:var(--space-4);}
+.csdash .lochart{display:grid; grid-template-columns:40px 1fr; column-gap:var(--space-4);}
 .csdash .lo-yaxis{position:relative; height:var(--loh);}
 .csdash .lo-yaxis span{position:absolute; right:0; transform:translateY(-50%); font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted);}
 .csdash .lo-plot .chartsvg{height:var(--loh);}

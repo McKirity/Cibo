@@ -1,11 +1,16 @@
 /* Build step 6 — the app shell: custom titlebar + nav rail + content pane.
    Rules HARVESTED from the frozen `Final/frame.html` (Layer 2 — the kit
-   stylesheet claim; dials only, per the derivation law). Two deliberate
-   adaptations from the mockup, both structural:
+   stylesheet claim; dials only, per the derivation law). Three deliberate
+   adaptations from the mockup, all structural:
      · the mockup's `.frame` is a fixed 2560×1440 box inside a `.page` desk;
        here the frame IS the window, so it fills the viewport (100vh/vw).
      · the content pane SCROLLS (real dashboards are tall) — the mockup pinned
        an overflow:hidden placeholder.
+     · the RAIL scrolls too (`overflow: hidden auto`) where the frozen frame
+       clips — RULED 2026-08-09 at Phase 2 step 4: on the 14" the rail's fixed
+       content (~1066px) exceeds the window (942px), and the answer is scroll
+       under the sticky Settings row, NOT compacting to fit. This closes the
+       standing "not in the adaptations list" smell.
    The nav-calendar body (step 9), the Tools destinations and Settings
    (step 10) have ALL landed since this header was written; the vignette was
    retired outright 2026-08-01. Nothing here is placeheld any more. */
@@ -170,7 +175,7 @@
   flex-direction: column;
   background: var(--rail-background);
   border-right: var(--border-hairline) solid var(--rail-border);
-  overflow: hidden auto;
+  overflow: hidden auto; /* scroll-not-clip is RULED — the header's third adaptation */
   min-height: 0;
   /* The rail TRAVELS as the column shrinks (2026-08-01, user: "I really want
      to see it slide closed"). Without this the column narrows while the rail's

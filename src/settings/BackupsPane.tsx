@@ -36,6 +36,7 @@ import {
   type Slot,
 } from "../backup/backup";
 import { CLOUD_ROOT_EVENT } from "./cloudRoot";
+import { syncActiveThisSession } from "../db/sync";
 import { requestRestore } from "../backup/restore";
 import { showErrorToast } from "../shell/toast";
 import { relLabel } from "../metrics/format";
@@ -232,6 +233,14 @@ export function BackupsPane() {
               This replaces <strong>all current data</strong> with the backup from{" "}
               <strong>{confirming.id}</strong>. A safety copy of the current data is made first,
               and the app restarts to complete the swap.
+              {syncActiveThisSession && (
+                <>
+                  {" "}
+                  <strong>Sync is on</strong> — the sync relay still remembers everything newer
+                  than this backup and will bring it back unless its storage is cleared first
+                  (the rewind recipe is in the relay folder&apos;s README).
+                </>
+              )}
             </>
           }
           confirmLabel={`Restore ${confirming.id}`}

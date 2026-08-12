@@ -199,7 +199,7 @@ function AttendancePanel({
       {/* Split in half — 3×2, not 6 across (user-ruled 2026-07-23, live
           iteration): six tracks crushed the subtitles; a struggling stat row
           overflows to the next row rather than squeezing. */}
-      <div className="trow tall" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)" }}>
+      <div className="trow tall">
         {a.tiles.map((t, i) => (
           <StatTile key={i} t={t} />
         ))}
@@ -314,7 +314,7 @@ function SimpleHeatmap({ heatmap }: { heatmap: NonNullable<SimpleModel["heatmap"
       </div>
       <div
         className="trow"
-        style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", marginTop: "var(--space-6)" }}
+        style={{ marginTop: "var(--space-6)" }}
       >
         {heatmap.trio.map((t, i) => (
           <StatTile key={i} t={t} />

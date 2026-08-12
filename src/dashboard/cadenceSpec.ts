@@ -164,6 +164,9 @@ export interface CadenceModel {
     weekly: { totals: number[]; segs: { colour: string; minutes: number }[][] };
     legend: { name: string; colour: string; minutes: number }[];
     monthLabels: string[];
+    /** ISO week number per weekly bar — the x axis the weekly view had none of
+     *  (2026-08-10). Every bar carries its number; the renderer thins them. */
+    weekLabels: number[];
   };
   milestoneCards: MilestoneVM[] | null; // weekly only
   review: ReviewColVM[] | null; // month/quarter/year
@@ -425,6 +428,7 @@ export function buildCadenceModel(
     stacked = {
       monthly: stackedComposition(monthBuckets, (d) => monthKey(d), perHabit),
       weekly: stackedComposition(weekBuckets, (d) => weekStart(d), perHabit),
+      weekLabels: weekBuckets.map(isoWeekNum),
       legend: perHabit
         .map((h) => ({
           name: h.name,
@@ -563,7 +567,20 @@ function buildHabitRow(
     total = fmtH(minutes);
   }
 
-  // Best day (native amount) / best week / best month
+  // Best day (native amount) / best week / best month.
+  //
+  // THE PREFIX IS GONE (user-ruled 2026-08-10, at the 14" walk): the cells read
+  // "Jul 23 · 2,006 w", not "best Jul 23 · 2,006 w". The COLUMN HEADER already
+  // says BEST DAY, so every row was repeating its own column name — and on the
+  // small canvas that column is the one paying for the day cells, so the word
+  // was costing width it could not afford.
+  //
+  // ⚠ The range family's "most" went with it. It read "most Jul 28 · 11 h 22 m"
+  // where the others said "best", which is a real distinction — you do not have
+  // a *best* night's sleep, you have the one with the most. It is dropped only
+  // because the header names the column for both, so neither word was carrying
+  // the meaning any more; surfaced here rather than deleted quietly, since the
+  // wording was deliberate.
   const amtByDay = new Map<string, number>();
   for (const s of sessions) {
     const amt = isRange ? rangeMinutes(s) : countPrimary ? (s.kind === "count" ? s.value ?? 0 : 0) : s.kind === "time" ? s.value ?? 0 : 0;
@@ -578,7 +595,7 @@ function buildHabitRow(
       const byWeek = new Map<string, number>();
       for (const [d, v] of amtByDay) byWeek.set(weekStart(d), (byWeek.get(weekStart(d)) ?? 0) + v);
       const bw = [...byWeek.entries()].sort((a, b) => b[1] - a[1])[0];
-      best = `best wk ${isoWeekNum(bw[0])} · ${fmtAmt(bw[1])}`;
+      best = `wk ${isoWeekNum(bw[0])} · ${fmtAmt(bw[1])}`;
     } else if (scale === "year") {
       const byMonth = new Map<string, number>();
       const byWeek = new Map<string, number>();
@@ -588,10 +605,10 @@ function buildHabitRow(
       }
       const bm = [...byMonth.entries()].sort((a, b) => b[1] - a[1])[0];
       const bw = [...byWeek.entries()].sort((a, b) => b[1] - a[1])[0];
-      best = `best ${MONTH_ABBR[Number(bm[0].slice(5)) - 1]} · wk ${isoWeekNum(bw[0])}`;
+      best = `${MONTH_ABBR[Number(bm[0].slice(5)) - 1]} · wk ${isoWeekNum(bw[0])}`;
     } else {
       const bd = [...amtByDay.entries()].sort((a, b) => b[1] - a[1])[0];
-      best = isRange ? `most ${dayLabel(bd[0])} · ${fmtAmt(bd[1])}` : `best ${dayLabel(bd[0])} · ${fmtAmt(bd[1])}`;
+      best = `${dayLabel(bd[0])} · ${fmtAmt(bd[1])}`;
     }
   }
 
@@ -743,7 +760,7 @@ function buildExpansion(
     let bestTxt = "—";
     if (perDay.size > 0 && scale !== "quarter" && scale !== "year") {
       const bd = [...perDay.entries()].sort((a, b) => b[1] - a[1])[0];
-      if (bd[1] > 0) bestTxt = `best ${dayLabel(bd[0])} · ${fmtAmt(bd[1])}`;
+      if (bd[1] > 0) bestTxt = `${dayLabel(bd[0])} · ${fmtAmt(bd[1])}`;
     }
     return { title, door, entryId, total: totalTxt, best: bestTxt, cells: occupancy(subset, days, bounds, scale, ownedWeeks), inner };
   };

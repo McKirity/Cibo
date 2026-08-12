@@ -262,6 +262,23 @@ function CadenceView({
           {stackMode === "monthly" && (
             <div className="stacklabels">{m.stacked.monthLabels.map((l) => <span key={l}>{l}</span>)}</div>
           )}
+          {/* The weekly view had NO x axis at all (fixed 2026-08-10). Fifty-three
+              labels will not fit, so the row is thinned to the first bar and
+              every fifth — the SAME rule the habit table's day-number header
+              uses, reused verbatim rather than invented, so the app states
+              "label an interval" one way. The blanks are rendered, not skipped:
+              the labels share the bars' column grid, so every bar needs its
+              cell or the numbers slide off the bars they name. */}
+          {stackMode === "weekly" && (
+            <div
+              className="stacklabels weekly"
+              style={{ gridTemplateColumns: `repeat(${m.stacked.weekLabels.length},1fr)` }}
+            >
+              {m.stacked.weekLabels.map((w, i) => (
+                <span key={i}>{i === 0 || (i + 1) % 5 === 0 ? w : ""}</span>
+              ))}
+            </div>
+          )}
           <div className="complegend">
             {m.stacked.legend.map((l) => (
               <span key={l.name} className="lg"><span className="sw" style={{ background: `var(--${l.colour})` }} />{l.name} <b>{Math.round(l.minutes / 60)} h</b></span>

@@ -29,9 +29,23 @@
  * (birthday → `birthdate` + a recurring Birthday countdown — the fixture's
  * lived-in shape; added dates → `events`; coordinates → `lat`/`lon` — all
  * MERGED over any existing config, appended never wiped, so the dev store's
- * one showing is safe) · the chosen seeds `archived → 0` (activation only —
- * unchecking never archives) · the macOS 90% scale default · the
- * `first_run_complete` flag.
+ * one showing is safe) · the habit selection, written BOTH WAYS · the macOS
+ * 90% scale default · the `first_run_complete` flag.
+ *
+ * THE SELECTION IS THE LIFECYCLE, user-ruled 2026-08-10 (Phase 2 step 4),
+ * SUPERSEDING step 15's "activation only — unchecking never archives": ticked
+ * habits activate, unticked ACTIVE habits archive. A fresh store is unaffected
+ * either way — every seed arrives archived, so there is nothing an untick could
+ * reach. The ruling is about the LIVED-IN store, which this screen reaches by
+ * Settings → Developer's re-arm door: there the picker pre-fills from what is
+ * ACTIVE (see the load effect), so an untick that wrote nothing was a control
+ * that presented itself as editable and could only ever add. Found by the user
+ * unticking two test habits and finding them still in the rail.
+ *
+ * Archiving is soft and reversible, so this is NOT the heavy-delete tier — but
+ * it ENDS A RUNNING STREAK and a setup screen is a careless place to do that in
+ * bulk, so Finish routes through a count-carrying confirm when, and only when,
+ * something would actually be archived (user-ruled with the reversal).
  */
 import { useEffect, useMemo, useState } from "react";
 import { booleanToSqliteBoolean } from "@evolu/common";
@@ -41,6 +55,7 @@ import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { Ico, ICONS } from "../shell/icons";
 import { todayLocal } from "../metrics/clock";
 import { DateField } from "../kit/DateField";
+import { DangerConfirm } from "../shell/DangerConfirm";
 import {
   DEFAULT_CONFIG,
   flushWhimsyConfig,
@@ -93,6 +108,7 @@ export function FirstRunSetup({ onDone }: { onDone: () => void }) {
   const [events, setEvents] = useState<DatedEvent[]>([]);
   const [lat, setLat] = useState("");
   const [lon, setLon] = useState("");
+  const [confirmArchive, setConfirmArchive] = useState(false);
 
   // Prefill the birthday from a stored config (the dev store's one showing); a
   // truly fresh store has no rows and every field starts empty. Coordinates
@@ -140,8 +156,17 @@ export function FirstRunSetup({ onDone }: { onDone: () => void }) {
       return next;
     });
 
-  const finish = () => {
-    if (!coordsOk) return;
+  /**
+   * The unticked-but-still-active habits — everything Finish would archive.
+   * Empty on a fresh store by construction (nothing is active), which is why
+   * the confirm below never appears on the path a real user takes.
+   */
+  const toArchive = useMemo(
+    () => (habits ?? []).filter((h) => !h.archived && !selected.has(String(h.id))),
+    [habits, selected],
+  );
+
+  const commit = () => {
     // The whimsy config — merge, never wipe (an existing store keeps its list).
     const base: WhimsyConfig = hasStoredWhimsyConfig()
       ? loadWhimsyConfig()
@@ -165,17 +190,38 @@ export function FirstRunSetup({ onDone }: { onDone: () => void }) {
     saveWhimsyConfig(merged);
     flushWhimsyConfig();
 
-    // Activation — the chosen seeds flip archived → 0. Activation ONLY: an
-    // unchecked active habit is left untouched (the ruled scope).
+    // The selection IS the lifecycle, both ways (ruled 2026-08-10 — see the
+    // header). Anything already in the wanted state is skipped, so a store
+    // that needs no change takes no writes.
     for (const h of habits ?? []) {
-      if (!selected.has(String(h.id)) || !h.archived) continue;
-      const res = evolu.update("habits", { id: h.id as never, archived: booleanToSqliteBoolean(false) });
-      if (!res.ok) console.error(`firstRun: activating "${h.key}" failed`, res.error);
+      const want = selected.has(String(h.id));
+      if (want === !h.archived) continue;
+      const res = evolu.update("habits", {
+        id: h.id as never,
+        archived: booleanToSqliteBoolean(!want),
+      });
+      if (!res.ok) {
+        console.error(`firstRun: ${want ? "activating" : "archiving"} "${h.key}" failed`, res.error);
+      }
     }
 
     maybeApplyMacScaleDefault();
     markFirstRunComplete();
     onDone();
+  };
+
+  /**
+   * Finish's gate: archiving in bulk asks first, activating never does. The
+   * confirm is skipped entirely when nothing would be archived, so the fresh
+   * store's Finish is unchanged — one click, as drawn.
+   */
+  const finish = () => {
+    if (!coordsOk) return;
+    if (toArchive.length > 0) {
+      setConfirmArchive(true);
+      return;
+    }
+    commit();
   };
 
   return (
@@ -341,7 +387,14 @@ export function FirstRunSetup({ onDone }: { onDone: () => void }) {
                 {core.map((h) => <HabitPick key={String(h.id)} h={h} on={selected.has(String(h.id))} toggle={toggle} />)}
               </div>
               <div className="pickmeta latertier">
-                <span className="arch-head">Also seeded · archived tier</span>
+                {/* "archived tier" is only true of a FRESH store. Once the
+                    selection writes both ways (2026-08-10) this group is a
+                    live two-way toggle, and on a lived-in store it can hold
+                    ACTIVE habits — so the tier half is dropped when it would
+                    be a lie. */}
+                <span className="arch-head">
+                  {later.some((h) => !h.archived) ? "Also seeded" : "Also seeded · archived tier"}
+                </span>
               </div>
               <div className="hpickgrid">
                 {later.map((h) => <HabitPick key={String(h.id)} h={h} on={selected.has(String(h.id))} toggle={toggle} />)}
@@ -364,6 +417,36 @@ export function FirstRunSetup({ onDone }: { onDone: () => void }) {
           </div>
         </div>
       </div>
+
+      {confirmArchive && (
+        <DangerConfirm
+          title="Archive the habits you unticked?"
+          body={
+            <>
+              <strong>{toArchive.length}</strong>
+              {toArchive.length === 1 ? " active habit" : " active habits"} will be archived:{" "}
+              {toArchive.map((h) => h.name ?? h.key).join(", ")}. Archiving keeps every session
+              and entry and can be undone in Settings &rarr; Habits, but it{" "}
+              <strong>ends any running streak</strong>.
+            </>
+          }
+          confirmLabel={toArchive.length === 1 ? "Archive 1 habit" : `Archive ${toArchive.length} habits`}
+          /* Not the trash — archiving is reversible and the drawn glyph would
+             overstate it (see DangerConfirm's `icon` prop). */
+          icon={
+            <svg className="ico" viewBox="0 0 24 24">
+              <rect width="20" height="5" x="2" y="3" rx="1" />
+              <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+              <path d="M10 12h4" />
+            </svg>
+          }
+          onConfirm={() => {
+            setConfirmArchive(false);
+            commit();
+          }}
+          onCancel={() => setConfirmArchive(false)}
+        />
+      )}
     </div>
   );
 }

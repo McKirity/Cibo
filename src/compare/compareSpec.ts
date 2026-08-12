@@ -43,6 +43,9 @@ export interface CmpHabit {
   key: string;
   name: string;
   kind: "project" | "simple" | "range";
+  /** Stored + immutable. consumption = importer-fed, high-volume; creation =
+      hand-authored, few. Read by the entry split to decide browse vs search. */
+  subType: "consumption" | "creation" | null;
   colour: string; // "habit-N" slot name
   /** Stored lucide name (seed batch 7 / the user's pick); null = lettermark/dot fallback. */
   icon?: string | null;

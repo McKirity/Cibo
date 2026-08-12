@@ -111,6 +111,8 @@
 
 /* ===== wave timeline — the signature zone ===== */
 .waveheadrow { display: flex; align-items: baseline; gap: var(--space-5); margin-bottom: var(--space-6); }
+/* (A `.wavezoom` pill lived here for about an hour on 2026-08-10 — struck with
+   the zoom control it dressed; the 2× lives in `src/small.css` as a dial.) */
 .wavecount { font-family: var(--font-heading); font-size: var(--size-subheading); font-weight: var(--weight-bold); color: var(--text-strong); }
 .wavecount .wsub { font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-regular); color: var(--text-muted); margin-left: var(--space-3); }
 .waveband { position: relative; height: var(--wave-band-h); }
@@ -148,17 +150,26 @@
 .waveband.lane::-webkit-scrollbar-track { background: var(--inset-background); border-radius: var(--radius-full); }
 .waveband.lane::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: var(--radius-full); border: 2px solid var(--inset-background); }
 .waveband.lane::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
-/* the wave lane — a capsule per wave; 10px numeral face + the 18px fits-inside
+/* The wave lane's numeral face, hoisted to :root 2026-08-10 so the small canvas
+   can enlarge it (user: *"I can barely read that"* at the 14" preview). It was a
+   bare 10px at two use-sites, and TWO MORE READERS LIVE IN TYPESCRIPT — the
+   fits-inside threshold that decides whether a number sits in its capsule or in
+   the row beneath, and the per-character width the collision nudge measures with.
+   Both were literals sized for 10px, so changing the CSS alone would have made
+   numbers overflow their capsules and collide. They now derive from this dial:
+   *a dial is not wired until every reader reads it.* PRIVATE, mint candidate. */
+:root { --wave-num-size: 10px; }
+/* the wave lane — a capsule per wave; the numeral face + the fits-inside
    threshold are lane mechanics, sized to --wave-lane-h (step-6a lint note) */
 .waveoverlay .wlanetrack { position: absolute; height: var(--wave-lane-h); border-radius: var(--radius-full);
                 background: color-mix(in oklch, var(--text-muted), transparent var(--wave-shade-mix)); }
 .waveoverlay .wcap { position: absolute; height: var(--wave-lane-h); border-radius: var(--radius-full); background: var(--heat-hue);
                 pointer-events: auto; cursor: pointer; display: flex; align-items: center; justify-content: center;
-                font-family: var(--font-mono); font-size: 10px; line-height: 1; font-weight: var(--weight-bold);
+                font-family: var(--font-mono); font-size: var(--wave-num-size); line-height: 1; font-weight: var(--weight-bold);
                 color: var(--text-on-filled); overflow: hidden; transition: background var(--motion-fast) var(--ease-standard); }
 .waveoverlay .wcap:hover { background: color-mix(in oklch, var(--heat-hue), var(--text-strong) var(--hover-shift)); }
 .waveoverlay .wcap.sel { outline: var(--border-standard) solid var(--text-strong); outline-offset: 2px; }
-.waveoverlay .wcapnum { position: absolute; transform: translateX(-50%); font-family: var(--font-mono); font-size: 10px; line-height: 1;
+.waveoverlay .wcapnum { position: absolute; transform: translateX(-50%); font-family: var(--font-mono); font-size: var(--wave-num-size); line-height: 1;
                 color: var(--text-muted); transition: color var(--motion-fast) var(--ease-standard); }
 .waveoverlay .wcapnum.on { color: var(--heat-hue); font-weight: var(--weight-bold); }
 .waveoverlay .wcapnum.sel { color: var(--text-strong); font-weight: var(--weight-bold); }

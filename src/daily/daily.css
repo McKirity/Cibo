@@ -1,3 +1,16 @@
+/* THE WALL'S COLUMN COUNT — ONE SOURCE for the CSS grid AND wallPack's placement
+   bound (2026-08-11). It was `repeat(15, 1fr)` here and `WALL_COLS = 15` there:
+   two copies of one number, which is exactly what wallSpec's own BANNER_COLS
+   comment warns about ("two copies of the number would drift the first time this
+   one moved"). CoverWall now reads this property and hands it to the packer.
+   AT :root AND AT COLUMN 0, deliberately — the rest of this sheet nests under
+   `.daily`, so a nested `:root` could never match, and the property has to be
+   readable from documentElement for the caller to see it.
+   NOT a roster dial: the layout law bars a theme from resizing the app's boxes,
+   and the column count IS the wall's geometry. `src/small.css` re-values it for
+   the small canvas; nothing else may. */
+:root { --wall-cols: 15; }
+
 /* Daily — state 1 (the working day).
  *
  * ⚠ THEME AUTHORS: THIS SHEET IS NESTED UNDER `.daily` — every selector in it
@@ -1012,7 +1025,7 @@
   /* THE WALL — centre-anchored masonry on the hidden u-grid. Scrolls on
      overflow; NEVER compresses tiles. */
   .wall-wrap { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
-  .wall { min-height:100%; display:grid; grid-template-columns:repeat(15, 1fr);
+  .wall { min-height:100%; display:grid; grid-template-columns:repeat(var(--wall-cols), 1fr);
           grid-auto-rows:calc((var(--wall-unit) - var(--wall-gap)) / 2); gap:var(--wall-gap);
           padding:var(--space-6) var(--space-7); align-content:center; justify-content:stretch; }
 
@@ -1444,7 +1457,11 @@
                 font-size:var(--size-caption); font-weight:var(--weight-medium); padding:var(--space-3); }
 
   /* the empty-canvas whisper (the ragged fringe reads as air) */
-  .island-note { grid-column:2 / 15; align-self:center; text-align:center; margin-top:var(--space-6);
+  /* `2 / -2` — an inset of one track at EACH end, counted from the grid's own
+     edges. It read `2 / 15` until 2026-08-11: a fourth copy of the column count,
+     which on the nine-column wall named a line that does not exist and grew
+     implicit tracks past the wall's right edge. */
+  .island-note { grid-column:2 / -2; align-self:center; text-align:center; margin-top:var(--space-6);
                  font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted); letter-spacing:.03em; }
 
   /* ═════════════════════════════════════════════════════════════════════════

@@ -37,6 +37,7 @@ import {
   buildWall,
   toPackInputs,
   COVER_CAP_SHARE,
+  coverColsFor,
   type ClusterTile,
   type BannerTile,
   type CoverTile,
@@ -51,7 +52,42 @@ import {
   type WhimsyWhich,
 } from "./wallSpec";
 import { BANNER_COLS } from "./wallSpec";
-import { packWall, DEFAULT_BUDGET_HALF_ROWS, type Span } from "./wallPack";
+import { packWall, DEFAULT_BUDGET_HALF_ROWS, WALL_COLS, type Span } from "./wallPack";
+/**
+ * THE LIVE COLUMN COUNT, read off `--wall-cols` (daily.css, re-valued by
+ * small.css). Read rather than duplicated so the CSS grid and the packer cannot
+ * disagree about how wide the wall is — the same reason Library's `perPage()`
+ * reads its count dials instead of restating 18.
+ */
+const WALL_COLS_PROP = "--wall-cols";
+const wallCols = (): number =>
+  parseInt(getComputedStyle(document.documentElement).getPropertyValue(WALL_COLS_PROP)) || WALL_COLS;
+
+/**
+ * Compact as a REACT signal. The wall's layout is computed in JS, so unlike the
+ * Library grid — which is pure CSS and reflows on its own — the pack has to
+ * re-run when the class flips or the wall keeps a fifteen-column arrangement on
+ * a nine-column grid.
+ *
+ * ⚠ A compact toggle RELOADS NOTHING: `theme/compact.ts` toggles one class on
+ * <html>, from Settings → Appearance and from the resize listener that resolves
+ * compact-auto. That is the fact whose absence cost Library a stale page size
+ * last session; here it would cost the wall its arrangement, so the observer is
+ * the dependency rather than a cache key.
+ */
+function useCompactFlag(): boolean {
+  const read = () => document.documentElement.classList.contains("compact");
+  const [on, setOn] = useState(read);
+  useEffect(() => {
+    const el = document.documentElement;
+    const ob = new MutationObserver(() => setOn(el.classList.contains("compact")));
+    ob.observe(el, { attributes: true, attributeFilter: ["class"] });
+    setOn(el.classList.contains("compact")); // a flip between render and effect
+    return () => ob.disconnect();
+  }, []);
+  return on;
+}
+
 import { KeepsakeTile } from "./KeepsakeTile";
 import { TarotArt } from "./tarotArt";
 import { useCoverUrl } from "../kit/CoverArt";
@@ -222,12 +258,18 @@ export function CoverWall({
   // budget rides along.
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [budget, setBudget] = useState<number | null>(null);
+  // Read ONCE, above every memo that depends on the wall's width — the cover
+  // pass and the pack both do.
+  const compact = useCompactFlag();
+
   // The grid's live metrics, measured beside the budget because the cover pass
   // below needs the REAL column width: a wall column is 1fr of the stretched
-  // 15-track grid (~131px), not one --wall-unit (128), and a 2% error in the
-  // width compounds straight into a wrongly-quantised height.
+  // grid, not one --wall-unit (128), and a 2% error in the width compounds
+  // straight into a wrongly-quantised height.
   const [grid, setGrid] = useState<{
     colW: number;
+    /** The live track count — `--wall-cols`, carried so every reader agrees. */
+    cols: number;
     gap: number;
     step: number;
     /** The masonry unit — the banner's two ceilings derive from it (4u × 3u). */
@@ -254,18 +296,37 @@ export function CoverWall({
         const next = Math.max(4, n);
         return prev === next ? prev : next;
       });
-      const colW = (el.clientWidth - padX - 14 * gap) / 15;
+      // ⚠ THIS LINE HELD THE THIRD COPY OF 15 (fixed 2026-08-11) — and it was
+      // the one that mattered, because it computes the width every cover
+      // reservation is quantised from. It survived the sweep that replaced the
+      // CSS `repeat(15, 1fr)` and `WALL_COLS` because it does not SPELL the
+      // number: it was `- 14 * gap) / 15`, arithmetic, invisible to a grep for
+      // the name. On the nine-column wall it reported ~78px against a real
+      // ~139px, so every cover reserved roughly half the rows it went on to
+      // draw and tiles overlapped the ones beneath them.
+      // *Sweep for the CONSTANT, not the dial* — the week-start dial's lesson
+      // and the wave numerals' lesson, both already written down, both about
+      // readers that spell a value as a consequence rather than as a name.
+      const cols = wallCols();
+      const colW = (el.clientWidth - padX - (cols - 1) * gap) / cols;
       setGrid((prev) =>
-        prev != null && prev.gap === gap && prev.step === step && Math.abs(prev.colW - colW) < 0.5
+        prev != null &&
+        prev.gap === gap &&
+        prev.step === step &&
+        prev.cols === cols &&
+        Math.abs(prev.colW - colW) < 0.5
           ? prev
-          : { colW, gap, step, unit, bannerFloor },
+          : { colW, cols, gap, step, unit, bannerFloor },
       );
     };
     compute();
     const ro = new ResizeObserver(compute);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+    // `compact` is a dependency because it re-values `--wall-cols` WITHOUT
+    // resizing the scroll container — the observer would never fire, and the
+    // measurement would keep the other canvas's column width.
+  }, [compact]);
 
   // ── the cover pass: the tile takes the ART's shape ────────────────────────
   //
@@ -372,7 +433,7 @@ export function CoverWall({
       // THE ART'S CEILING IS THE ART'S ALONE — the band is not subtracted from
       // it. The card keeps the size it had before the band existed (user:
       // "let's not change the cards"); the band adds its height to the tile.
-      let cols = t.body.big && !t.body.square ? 3 : 2;
+      let cols = coverColsFor(t.body.big && !t.body.square, grid.cols);
       while (cols > 2 && widthOf(cols) * ratio > capPx) cols--;
       const natural = widthOf(cols) * ratio;
       // Still over at the narrowest whole width — so the width leaves the grid
@@ -390,7 +451,7 @@ export function CoverWall({
       boxes.set(t.id, { span: { cols, halfRows }, ratio, capPx: capped ? capPx : null });
     }
     return boxes;
-  }, [tiles, aspects, grid, budget, bands]);
+  }, [tiles, aspects, grid, budget, bands, compact]);
 
   // The text probe and the cover pass measure disjoint tiles; the pack reads
   // one map.
@@ -402,7 +463,7 @@ export function CoverWall({
   }, [measured, coverBoxes]);
 
   const layout = useMemo(() => {
-    const opts = budget != null ? { budgetHalfRows: budget } : undefined;
+    const opts = { cols: wallCols(), ...(budget != null ? { budgetHalfRows: budget } : {}) };
     const packed = packWall(toPackInputs(tiles, seedKey, spans), opts);
     if (packed.overflowUnlogged.length === 0) return packed;
     // The unlogged remainder — whatever did not land in a hole inside the
@@ -415,7 +476,7 @@ export function CoverWall({
     const cluster: WallTile = { id: "cluster", body: { kind: "cluster", names } };
     const keep = tiles.filter((t) => !overflow.has(t));
     return packWall(toPackInputs([...keep, cluster], seedKey, spans), opts);
-  }, [tiles, seedKey, spans, budget]);
+  }, [tiles, seedKey, spans, budget, compact]);
 
   const finalized = data.dayRow?.finalized ?? false;
   const d = new Date(`${dayKey}T12:00:00`);

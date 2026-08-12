@@ -21,7 +21,7 @@ const habitsQuery = evolu.createQuery((db) =>
   db
     .selectFrom("habits")
     .select([
-      "id", "key", "name", "kind", "colour_slot", "icon", "archived",
+      "id", "key", "name", "kind", "sub_type", "colour_slot", "icon", "archived",
       "measures_time", "measures_count", "count_unit", "sort_order",
     ])
     .where("isDeleted", "is not", 1)
@@ -92,6 +92,7 @@ export function useCompareData(): CmpData {
           key: h.key as string,
           name: (h.name as string) ?? (h.key as string),
           kind: h.kind as CmpHabit["kind"],
+          subType: (h.sub_type as CmpHabit["subType"]) ?? null,
           colour: (h.colour_slot as string) ?? "habit-1",
           icon: (h.icon as string | null) ?? null,
           archived: h.archived === 1,
@@ -229,6 +230,19 @@ export function useCompareData(): CmpData {
       arr.push(e);
       byHabit.set(e.habitId, arr);
     }
+    /* SEARCH-FIRST IS A CONSUMPTION RULE, NOT AN ENTRY RULE (user-ruled
+       2026-08-11): *"for creation habits, they can have the pill selection
+       since there's so few entries to begin with"*. The sub-type IS the
+       discriminator the schema already keeps for exactly this — consumption is
+       "importer-fed, high-volume", creation is "hand-authored, few" — so this
+       stays definition-driven with zero habit special-casing: Writing and
+       Gamedev browse their handful of projects, Gaming and Reading are typed
+       into. A habit that changes character cannot drift out of step, because
+       the sub-type is stored and immutable.
+       ⚠ `sub_type` was not in this hook's habit select at ALL — the masthead-icon
+       shape, where a field the app relies on is simply absent from one screen's
+       query. Threaded through CmpHabit rather than re-queried. */
+    const subTypeOf = new Map(habits.map((h) => [h.id, h.subType]));
     for (const [habitId, list] of byHabit) {
       if (list.length === 0) continue;
       const sorted = [...list].sort((a, b) => a.title.localeCompare(b.title));
@@ -240,12 +254,15 @@ export function useCompareData(): CmpData {
         isMedium: false,
         values: sorted.map((e) => e.id),
         valueLabel: Object.fromEntries(sorted.map((e) => [e.id, e.title])),
-        searchable: true,
+        searchable: subTypeOf.get(habitId) === "consumption",
       });
       fields.set(habitId, arr);
     }
     return { splitFields: fields, flagDefs: flags };
-  }, [defRows, vocabRows, valueRows, entries]);
+    // `habits` joined the deps when the entry split started reading sub_type —
+    // it is itself memoized on habitRows, so this costs nothing and closes the
+    // stale-closure gap (habits can change without entries changing).
+  }, [defRows, vocabRows, valueRows, entries, habits]);
 
   return useMemo<CmpData>(
     () => ({

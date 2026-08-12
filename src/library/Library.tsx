@@ -55,16 +55,28 @@ const PER_PAGE_ROWS = "--lib-grid-rows";
 /** 9×2 off the dials (the counts are dials; reading them keeps the page bound
  * to the drawn geometry if a theme ever legally re-pins them). */
 let perPageCache: number | null = null;
+let perPageKey = "";
 const perPage = (): number => {
   // CACHED (2026-08-04): this ran inside a memo keyed on the filtered list, so
-  // every search keystroke forced a full style resolution. Both dials are
-  // theme-level and only move on theme apply / compact toggle, which reload
-  // the sheet — a page-lifetime read is the right granularity.
-  if (perPageCache != null) return perPageCache;
+  // every search keystroke forced a full style resolution. A page-lifetime read
+  // is the right granularity and still is.
+  //
+  // ⚠ KEYED ON `.compact` SINCE 2026-08-10. The original note said these dials
+  // "only move on theme apply / compact toggle, which reload the sheet" — but a
+  // compact toggle does NOT reload anything; it toggles one class on <html>
+  // (theme/compact.ts). That was harmless for as long as compact never touched
+  // these dials, and `src/small.css` has just made it touch them: without this
+  // key, toggling compact re-flowed the GRID to five columns while the page
+  // still served 18 items, so a page drew four rows against a two-row dial.
+  // *A cache whose invalidation reasoning names a mechanism that does not exist
+  // is correct only until someone uses the mechanism.*
+  const key = document.documentElement.classList.contains("compact") ? "compact" : "base";
+  if (perPageCache != null && perPageKey === key) return perPageCache;
   const cs = getComputedStyle(document.documentElement);
   const cols = parseInt(cs.getPropertyValue(PER_PAGE_COLS)) || 9;
   const rows = parseInt(cs.getPropertyValue(PER_PAGE_ROWS)) || 2;
   perPageCache = cols * rows;
+  perPageKey = key;
   return perPageCache;
 };
 

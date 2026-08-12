@@ -790,6 +790,8 @@ function WaveBand({
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const scrolledRef = useRef(false);
+  /** The content width the last build produced — the anchor a zoom re-maps through. */
+  const prevWRef = useRef<number | null>(null);
   const [tick, setTick] = useState(0);
 
   // The band is built imperatively in an effect that deliberately does NOT
@@ -831,9 +833,21 @@ function WaveBand({
     const laneGap = dial("--wave-lane-gap", 8);
     const numH = dial("--wave-num-h", 14);
     const eraH = dial("--wave-era-h", 34);
+    // The per-week floor. THE SMALL CANVAS DOUBLES IT IN `src/small.css`
+    // (2026-08-10) — that is the whole of the "2× zoom": the grain stays weekly,
+    // the same weeks are simply given more room, and `W` below grows past the
+    // panel so the band scrolls. A stepped zoom CONTROL was built here and
+    // struck the same day (*"remove the zoom toggle and just make 2x the default
+    // view"*), which is what turned the feature back into one dial.
     const minBW = dial("--wave-bucket-min", 26);
     const breakW = dial("--wave-break-w", 70);
     const scrollbarH = dial("--wave-scrollbar-h", 10);
+    // The lane's numeral face, and the two geometry facts derived FROM it (they
+    // were literals sized for 10px until 2026-08-10): a capsule holds its number
+    // at roughly 1.8× the type size, and a mono digit is about 0.6× wide.
+    const numSize = dial("--wave-num-size", 10);
+    const fitsInside = numSize * 1.8;
+    const digitW = numSize * 0.6;
 
     const avail = host.clientWidth;
     const H = host.clientHeight; // live height — the scrollbar eats into the slot
@@ -1012,7 +1026,7 @@ function WaveBand({
         cap.style.width = `${wd}px`;
         cap.style.top = `${laneY}px`;
         cap.dataset.wave = String(lw.n);
-        if (wd >= 18) cap.textContent = String(lw.n); // fits-inside threshold (mechanics)
+        if (wd >= fitsInside) cap.textContent = String(lw.n); // fits-inside threshold (derived from --wave-num-size)
         cap.title = `${lw.tip} — click to open its row`;
         cap.addEventListener("click", (ev) => {
           ev.stopPropagation();
@@ -1030,10 +1044,10 @@ function WaveBand({
         ov.appendChild(cap);
         // every wave carries its number: inside when it fits, in the numeral
         // row below when it doesn't (nudged apart when neighbours crowd)
-        if (wd < 18) {
+        if (wd < fitsInside) {
           const own = a + wd / 2;
           let cx = own;
-          const half = (String(lw.n).length * 6) / 2 + 2;
+          const half = (String(lw.n).length * digitW) / 2 + 2;
           // nudge apart on collision, but never drift more than ~a capsule's
           // reach from the wave it labels (the 2026-07-24 coherence pass —
           // unbounded nudging strung numbers away from their capsules)
@@ -1148,8 +1162,25 @@ function WaveBand({
     scroll.addEventListener("click", () => onPickRef.current(selRef.current)); // blank click clears
     host.appendChild(scroll);
 
-    // opens pinned to today (right edge); a user scroll survives repaint
-    host.scrollLeft = prevScroll == null ? W - host.clientWidth : prevScroll;
+    // Opens pinned to today (right edge); a user scroll survives repaint.
+    //
+    // THE BAND KEEPS ITS PLACE IN TIME, NOT ITS PLACE IN PIXELS (2026-08-10).
+    // A plain `scrollLeft` restore is right for a repaint at the same width and
+    // WRONG the moment the content width changes — the same pixel offset is then
+    // a different month. Written for the struck zoom control, KEPT because two
+    // live cases change the width under a scrolled band: a window resize, and
+    // toggling compact (which re-values `--wave-bucket-min`, doubling the band).
+    // Re-anchoring on the viewport's CENTRE as a fraction of content width holds
+    // your place through both. Falls back to the plain restore on first build.
+    const prevW = prevWRef.current;
+    if (prevScroll != null && prevW != null && prevW > 0 && prevW !== W) {
+      const centre = (prevScroll + host.clientWidth / 2) / prevW;
+      const want = centre * W - host.clientWidth / 2;
+      host.scrollLeft = Math.max(0, Math.min(W - host.clientWidth, want));
+    } else {
+      host.scrollLeft = prevScroll == null ? W - host.clientWidth : prevScroll;
+    }
+    prevWRef.current = W;
 
     // chapter captions CENTER on their own rule (2026-07-24 coherence pass —
     // left-edge placement scattered them off their rules); eras are chronological,

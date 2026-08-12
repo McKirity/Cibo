@@ -48,7 +48,7 @@ export const setReduceEffects = (on: boolean): void => {
 // ── UI scale (webview zoom) ──────────────────────────────────────────────────
 
 export const UI_SCALE_KEY = "cibo.uiScale";
-export const UI_SCALE_DEFAULT = 100; // percent; macOS first-run 90 = step 15's write
+export const UI_SCALE_DEFAULT = 100; // percent; macOS first-run 85 = firstRun.ts's write (90 until 2026-08-10)
 export const UI_SCALE_STEP = 5;
 export const clampUiScale = (pct: number): number =>
   // Floor 70 → 60 (Phase 2 step 4, 2026-08-09): 59% is the scale at which a

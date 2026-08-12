@@ -74,8 +74,22 @@ export const rearmFirstRun = async (): Promise<boolean> => {
   return ok;
 };
 
-/** The platform-keyed first-run scale: macOS 90, only if never set. */
+/**
+ * The platform-keyed first-run scale: **macOS 85**, only if never set.
+ *
+ * 90 from the 2026-07-19 ruling until 2026-08-10, when the step-4 preview pass
+ * re-ruled it by eye (*"85% is better. It gives more space without losing
+ * fidelity"*). The number is not cosmetic: the preview snaps the window to the
+ * Mac's real 1512×982 and applies UI scale as the webview zoom, so THIS VALUE
+ * DECIDES THE CANVAS `src/small.css` IS COMPOSED AGAINST — 1779×1155 CSS at 85,
+ * against 1680×1091 at 90. Tuning at one and shipping the other would hand every
+ * screen ~100px less than it was built for.
+ *
+ * The original 90 had already outlived its own reasoning: it was set to keep the
+ * rail's vignette band alive on the 14", and the vignette was abandoned
+ * 2026-07-26 (it survived on a plain fit argument).
+ */
 export const maybeApplyMacScaleDefault = (): void => {
   const isMac = /Mac/i.test(navigator.userAgent);
-  if (isMac && deviceGet(UI_SCALE_KEY) == null) setUiScale(90);
+  if (isMac && deviceGet(UI_SCALE_KEY) == null) setUiScale(85);
 };

@@ -38,3 +38,372 @@
   --triptych-almanac-col: 330px;
   --triptych-min: 860px;
 }
+
+/* ---- COVER WALL — nine columns instead of fifteen (user-ruled 2026-08-11:
+   *"let's try 9, if it doesn't work we can always go for 10"*).
+
+   NOT a density tweak — a restoration. `wallPack.ts` places every tile using
+   `COL_PITCH = 140`, the DRAWN column width, while the grid is `1fr`; the two
+   agree only near the 2180 canvas. At this canvas's ~1350px of wall, fifteen
+   columns render ~78px, so each tile got about HALF the width it was composed
+   for and its text CLIPPED rather than reflowed (the moon tile cut mid-word,
+   the sun tile's two labels colliding into "14h 08msolar noon").
+
+   NINE COLUMNS GIVE ~139px — against the drawn 140, and inside the desktop's
+   own range of 131px (rail out, 2180) to 156px (rail collapsed, 2560). So tiles
+   render at the size they were drawn at; the wall simply holds fewer per row,
+   grows taller, and scrolls — which is the overflow `.wall-wrap` already
+   specifies and the behaviour daily.css claims ("NEVER compresses tiles", a
+   promise `1fr` could not keep).
+
+   A 6-column banner is now two thirds of the wall rather than two fifths. That
+   is the trade the count carries, and it is why 10 is the recorded fallback. */
+:root.compact { --wall-cols: 9; }
+
+/* ---- COMPARING STATISTICS · the builder column narrows and the graph takes
+   the difference (user-ruled 2026-08-11: *"decrease the column of the pickers,
+   give some back to the graph"*).
+
+   RE-VALUED ON THE SCREEN, NOT ON :root. `--builder-w` is a shared roster dial
+   with three other readers — Advanced Search's modal WIDTH (`builder-w * 2 +
+   gutters`) and its own builder grid, plus Settings' snippet slot — and AS was
+   walked and signed off at 540 earlier today. Scoping the override to `.csdash`
+   moves the one track that was asked about and cannot reach the other three.
+
+   ⚠ 540 IS A RULING, not a leftover: 2026-07-27 composed the two-level measure
+   pick to WRAP inside it. 460 is a first value to look at, not a computed one —
+   watch the measure picker's level-2 foot chips for a bad wrap before keeping it.
+
+   This lands with the base-sheet fix that came first: `.chartwrap` was inheriting
+   dashboard.css's 56px axis gutter with no .yaxis to put in it, so the graph had
+   already lost 56px before this column ever narrowed. */
+:root.compact .csdash { --builder-w: 460px; }
+
+/* ---- LIBRARY — user-ruled at the walk, 2026-08-10: "bigger and fewer cards
+   on each page for legibility", and the pin row's ragged right edge struck.
+
+   ① THE CATALOG GRID NEVER REFLOWED. `--lib-grid-cols: 9` is a FIXED count —
+   the base dial's own comment says "fluid: cards widen 2180→2560, the count is
+   fixed", so below that range the cards do not re-flow, they just squeeze. On
+   this canvas (~1234px of catalog panel) nine columns give ~120px cards against
+   the 219–262px the card was composed for: roughly HALF, with box art at
+   thumbnail size and titles wrapping to two lines.
+
+   SIX IS THE USER'S RULING, taken by eye against a built five (*"try 6 really
+   fast" → "Yeah, I like that"*). Recorded honestly, because the arithmetic
+   alone would have said five: six gives ~192px, which is still a little UNDER
+   the desktop's own narrow end (219px), where five gave ~234px and landed
+   inside the drawn band. The eye preferred the denser shelf, and the eye is
+   what this walk is for — the drawn band was measured on a 2180–2560 canvas
+   and was never a claim about this one.
+
+   PAGE SIZE FOLLOWS FOR FREE: Library's `perPage()` reads BOTH count dials off
+   computed style rather than hardcoding 18, so 6 × 2 = 12 per page. The "fewer
+   per page" half of the ruling costs nothing because the original author bound
+   the page to the geometry instead of restating it. ⚠ That read is CACHED, and
+   this file is what makes the cache reachable — see the note in Library.tsx.
+
+   ② THE PIN ROW'S DEAD GAP (user: *"it looks like you can almost fit another at
+   the end"* — and the arithmetic says almost exactly that). `.pinrow` is a
+   wrapping flex of FIXED 188px cards, so the row keeps whatever it cannot use:
+   six cards need 1208px into 1170px available, so the sixth wraps and leaves
+   ~166px of nothing — very nearly the 188px of one more card. Handing the row the
+   catalog's own column rhythm makes the cards DIVIDE the width instead of
+   claiming a fixed slice of it: the right edge is flush at any count, and the
+   band lines up with the grid beneath it. The desktop keeps its fixed-width
+   band — this is a small-canvas re-composition, not a correction. */
+:root.compact {
+  --lib-grid-cols: 6;
+}
+:root.compact .libscreen .pinrow {
+  display: grid;
+  grid-template-columns: repeat(var(--lib-grid-cols), minmax(0, 1fr));
+}
+:root.compact .libscreen .pincard {
+  /* the fixed width is what left the gap; the track owns it now */
+  width: auto;
+}
+
+/* ---- ACTIVITY HEATMAP (kit-grid-heatmap — the entry dashboard's, and every
+   other tenant of `.heat`) — user-ruled at the walk, 2026-08-10: *"the heatmap
+   shrank and doesn't align with the axis labels… we can use a scroll bar
+   (anchor the weekdays to the panel so it doesn't scroll too)"*.
+
+   The 53 week columns were `1fr`, so a year always fitted the panel by getting
+   thinner — ~11px cells in a ~700px panel here. The ALIGNMENT half is fixed in
+   the base sheet (the nowrap labels were inflating their own tracks — see
+   dashboard.css); this file supplies the ruled answer to the SIZE half: give a
+   week a real width and let the year scroll.
+
+   THE WEEKDAYS ANCHOR THEMSELVES. `.weekdays` is `.heat`'s FIRST grid column
+   and the scroller is the second (`.cols`, holding months + cells), so putting
+   the overflow on `.cols` leaves the labels outside it by construction — no
+   sticky positioning, nothing to keep in sync.
+
+   ⚠ THE GUTTER HAS TO BE PAID BACK. The app's scrollbar reserves
+   `--scrollbar-width` (10px), so a scrolling `.cols` grows 10px taller —
+   and `.weekdays` stretches to match, spreading those 10px across its seven
+   `1fr` rows and walking the labels off the cell rows by row 7. That is the
+   very fault being fixed, reappearing on the other axis. The matching
+   padding-bottom keeps both columns' seven rows identical. */
+:root.compact {
+  --heat-week-col: 16px;
+}
+:root.compact .heat .cols {
+  overflow-x: auto;
+}
+:root.compact .heat .weekdays {
+  padding-bottom: var(--scrollbar-width);
+}
+
+/* ---- WAVE TIMELINE — user-ruled 2026-08-10: the lane's numbers were *"barely
+   readable"* here. The face is 10px on the desktop canvas, which the 0.85 UI
+   scale renders at an effective ~8.5px — small type is the first thing a zoom
+   below 100% takes away, and mono digits have no shape to fall back on.
+
+   `--wave-num-size` carries BOTH capsule faces and, since the same day, the two
+   TypeScript readers that used to hardcode 10px's consequences (the fits-inside
+   threshold and the collision half-width). The lane and numeral ROWS grow with
+   it — both are roster dials, so those two cost nothing — because a 13px numeral
+   in a 14px capsule has no room to sit in.
+
+   THE 2× BAND IS THE FIRST LINE BELOW — `--wave-bucket-min` doubled, 26 → 52.
+   The 2026-07-24 band ruling parked *"a zoom control… stays open"*, and one was
+   built here as a 1/2/4/8 pill; the user struck it the same hour (*"remove the
+   zoom toggle and just make 2x the default view"*) and the feature collapsed
+   into this single re-value — no state, no control, no prop, no rebuild
+   dependency. **The grain is untouched**: weeks are still weeks, they simply get
+   twice the room, and the band scrolls for the rest exactly as the scrolling-axis
+   ruling intended. *Worth remembering when the next "zoom" is asked for: the
+   mechanism already existed as a dial, and the control was the part that was
+   optional.* */
+:root.compact {
+  --wave-bucket-min: 52px;
+  --wave-num-size: 13px;
+  --wave-lane-h: 18px;
+  --wave-num-h: 17px;
+}
+
+/* ---- CADENCE · the six-across stat row. `statgrid.c6` is a HARDCODED six
+   columns and does not pass through StatGroup, so the balanced-rows ruling
+   (max three per row) never reached it. At ~208px a tile the mono value takes
+   the width and the sub-caption is left with nothing: "1 in a row" renders as
+   "1…", "most Jul 28" as "mo…", "Jul 26" as "J…" — the caption is not just
+   short, it is GONE while still costing its space.
+
+   Not a defect in the ellipsis — that rule is deliberate (2026-08-09, the
+   Subnautica bench pass: a nowrap caption used to overrun its tile, and
+   `min-width:0` + ellipsis is what made the track's floor apply). The ellipsis
+   is doing its job; six columns is the thing that is wrong here. Three is what
+   `balancedCols` would give a six-tile group anyway, so this re-value puts the
+   row back under the same ruling as every other tile row instead of inventing
+   a second answer. The desktop keeps six — at 2180px they are ~360px each. */
+/* ---- CADENCE · the stat tiles' sub-captions WRAP here (user-ruled 2026-08-10:
+   *"some of the text is getting cutoff"*). The cadence face sets its own
+   `.ts` to `nowrap` + `text-overflow: ellipsis` — added deliberately on
+   2026-08-09, when a nowrap caption used to OVERRUN its tile and `min-width:0`
+   + ellipsis is what made the track's floor apply. That rule is right and it
+   stays; the trouble is that ellipsis in a tile this narrow eats the whole
+   caption rather than its tail — "100% complete" becomes "100% co…", "most:
+   Media · 39 h" becomes "most: Medi…". A caption that has been reduced to its
+   first two words is not shortened, it is GONE, while still costing its space.
+   Wrapping is the same answer the base `.tile > .ts` took earlier today: the
+   tile grows a line, nothing is lost, and the overrun the ellipsis was guarding
+   against cannot happen to a caption that is allowed to break. */
+:root.compact .cadash .tile > .ts {
+  white-space: normal;
+}
+
+/* ---- CADENCE · the header's stat tiles move BELOW the calendar, three across
+   (user-ruled 2026-08-10: *"instead of fiddling with the width, it might be
+   better to just move the below the calendar instead in rows of 3"*).
+
+   `.headliner` is `1.4fr 1fr` — calendar beside a stat column — and on this
+   canvas that second track is ~430px holding two tiles, so every tile was
+   ~200px and every caption was being ellipsed to its first word. Widening the
+   track only takes it from the calendar, which is the panel's whole point.
+   Stacking sidesteps the trade: the calendar gets the full width, and the tiles
+   get a full-width row of THREE, which is also the cap the balanced-rows ruling
+   set for every other tile row in the app.
+
+   The `.c6` row (the weekly/quarterly stat strip) lands on the same three, so
+   both are stated together — one answer for tile rows on this canvas, not two. */
+:root.compact .cadash .headliner {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* ⚠ THE CALENDAR RUNS END TO END AND GROWS TALLER TO MATCH (user-ruled
+   2026-08-10: *"I still want it end to end horizontally, but it needs to [be]
+   more proportional vertically"*). Stacking hands the grid the whole panel, so
+   a day cell went from about 2:1 to nearer 5:1 — `--verdict-cell-min-h` floors
+   the HEIGHT while nothing caps the width, so the cells stretched sideways and
+   the month read as flat bands.
+
+   ⚠ A WIDTH CAP WAS TRIED FIRST AND STRUCK: holding the calendar to its old
+   58% share fixed the ratio but left a hole beside it, and it gave back exactly
+   the full width the stack was for. Raising the floor is the other half of the
+   same ratio — the cells were never too wide, they were too SHORT for the width
+   they had been given. Roster dial, so this costs no mint. */
+:root.compact .cadash {
+  --verdict-cell-min-h: 76px;
+}
+/* ---- CADENCE · YEAR — the 53-week heatmap could not fit and stopped trying.
+
+   `.hcol` is `flex:1 1 0; min-width:0`, so the columns are built to share the
+   width — but `.hcol .ncell` carries `min-width: var(--heat-cell-size)` (30px),
+   and a flex item's floor becomes its COLUMN's floor. Fifty-three columns then
+   demand 53 × 30 + gaps ≈ **1694px** against the ~1400 this panel has, so the
+   block overflowed its container and the cells lost their shape.
+
+   ⚠ **FIFTH INSTANCE IN ONE SESSION** of "an item's intrinsic minimum outranks
+   the track you gave it" — the heatmap's month labels, Settings' field, the
+   cadence sub-caption, the month day-cell, and now this. Every one of them is a
+   fixed size on a grid or flex CHILD, and every one of them was invisible until
+   a container got narrow enough to ask. *This is not five bugs; it is one habit.*
+
+   Dropping the floor lets the 53 columns divide what exists (~24px each) and
+   `aspect-ratio: 1/1` keeps them square, so the block fills the width instead of
+   bursting it. `--heat-block-min-h` comes down with them: it was 300px for
+   30px cells, and left ~115px of dead space under 24px ones. */
+:root.compact .cadash .hcol .ncell {
+  min-width: 0;
+}
+:root.compact .cadash {
+  --heat-block-min-h: 190px;
+}
+
+/* ---- CADENCE · QUARTER gets the month's treatment (user-ruled 2026-08-10:
+   *"the quarterly dashboards will need a similar fix with the dashboards moved
+   to the bottom and the calendar/heatmap resized to fit in the new space"*).
+
+   `.ribbonsplit` is `auto 1fr` — the ribbon takes its natural width (13 weeks ×
+   a fixed 60px cell) and the stat block takes the rest, which on this canvas
+   left the tiles ~540px for three columns and wrapped every label onto three
+   lines. Stacking gives both the full width.
+
+   ⚠ YEAR NEEDED NOTHING: `.heatsplit` is already `display:block`, so its stats
+   already sit below. Only the quarter splits, and only it is re-stacked here.
+
+   THE RIBBON THEN HAS TO GROW INTO THE WIDTH, or stacking just buys whitespace.
+   Its cells are `flex:0 0 auto` at a fixed 60×30 — a drawn 2:1 — so the columns
+   flex and the cell keeps that ratio via `aspect-ratio` rather than a new
+   height value. Same mistake avoided as the month calendar an hour ago: widen a
+   cell without letting it grow taller and it flattens into a band. */
+:root.compact .cadash .ribbonsplit {
+  grid-template-columns: minmax(0, 1fr);
+}
+:root.compact .cadash .ribbonaside {
+  margin-top: var(--space-6);
+}
+:root.compact .cadash .ribbon .rcol {
+  flex: 1 1 0;
+  min-width: 0;
+}
+:root.compact .cadash .rcol .ncell {
+  width: auto;
+  height: auto;
+  aspect-ratio: 2 / 1;
+}
+
+:root.compact .cadash .statgrid,
+:root.compact .cadash .statgrid.c6 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* ---- CADENCE · the habit table's columns — user-ruled 2026-08-10: *"we're
+   going to have to shrink the widths of other columns and adjust the spacing"*.
+
+   `--row-cols` is six FIXED tracks around a single `1fr` that holds the day
+   cells. Those six plus their gaps come to ~946px of the ~1146 available here,
+   so the day strip gets **~200px** — 25px a cell for a week, and about **2.6px
+   a cell for a 31-day month**. The ruling's own reasoning is the important part
+   and it is right: *shrinking the CELLS cannot work, because the month view has
+   30 of them to place.* The fixed columns are what has to give — they are the
+   same width whether they are holding a week or a year.
+
+   ⚠ **THE FIRST CUT WAS TOO DEEP** (user: *"thats waaaay too much space"*).
+   Every pixel taken off the six goes straight to the cells, because that column
+   is the `1fr` that absorbs the row — cutting ~400px put a WEEK's seven cells
+   at ~90px each, which is waste, not legibility. These values are the tuned
+   middle: ~57px a cell weekly (from ~45 before any of this) and ~12px monthly
+   (from ~6). One set for all four scales, since `--row-cols` is one template
+   and a per-scale split buys less than it complicates.
+
+   ⚠ `--cad-best-w` takes the deepest cut and its text is the longest ("best Jul
+   28 · 2 h 05 m"), so that column truncates hardest. Shrinking beat hiding
+   because hiding is a decision about DATA, and the ruling was about widths. */
+:root.compact {
+  --cad-chevron-w: 24px;
+  --cad-habit-w: 240px;
+  --cad-total-w: 160px;
+  --cad-best-w: 160px;
+  --cad-done-w: 90px;
+  --cad-door-w: 34px;
+}
+/* The gutter tightens with them, on the ROWS rather than by moving `--space-5`
+   — that dial is app-wide spacing, and a table's column gutter is not a reason
+   to re-pitch it. All three row kinds share the change so the header, the body
+   rows and the expansion sub-rows keep identical tracks; letting them drift is
+   exactly the misalignment the 2026-08-09 `.estrip` fix was written for. */
+:root.compact .cadash .hrow,
+:root.compact .cadash .estrip,
+:root.compact .cadash .mstrip {
+  gap: var(--space-4);
+}
+
+/* ---- CADENCE · MONTH draws DOTS, not cells (user-ruled 2026-08-10: *"what if
+   we changed it entirely and used dots instead"*).
+
+   Thirty-one marks in ~490px is ~16px of pitch. A 22px square cannot have that
+   and stays square only by overflowing (the base sheet now lets it shrink), but
+   a shrunk square at 12×22 is a BAR — it reads as a quantity, which is exactly
+   what a verdict mark must not do. A dot has no length to misread.
+
+   MONTH ONLY, and only on this canvas. Week has 7 marks, quarter ~13, year 12 —
+   all of them keep the drawn square, and the desktop's month has ~37px of pitch
+   so it keeps it too. This is the one place the square runs out of room.
+
+   **THE POINT IS THE SIZE, NOT THE SHAPE.** A dot the width of its track is
+   just a round cell and buys nothing; an 8px dot needs ~10px of pitch where a
+   square needed 22, so the strip drops from ~490px to ~340 — and **the width it
+   gives up goes back to the columns that were starved to feed it**. That is why
+   month carries LARGER fixed columns than the other scales below, which reads
+   backwards until you see that it is the scale needing the least cell room.
+
+   ⚠ ONE STATE HAD TO BE RE-DRAWN, not just re-shaped. `unknown` is a HAIRLINE
+   DOTTED border, and a dotted outline on an 8px circle resolves to two or three
+   specks — it would have read as "empty", which is a different fact (unknown is
+   streak pass-through; empty is a day the habit did not exist). It takes a
+   solid hairline ring here instead, so the outlined-not-filled distinction
+   survives at a size the dots cannot. Flagged rather than quietly swapped. */
+:root.compact .cadash[data-scale="month"] {
+  /* 8px marks, so the strip needs ~340px instead of ~490 … */
+  --cad-cell-size: 8px;
+  /* … and the ~150px it releases goes back here, where the month view was
+     paying for its own cells: the widest columns recover most of the general
+     compact cut, and BEST DAY needs less than it did now that its rows no
+     longer start with the word "best". */
+  --cad-chevron-w: 26px;
+  --cad-habit-w: 290px;
+  --cad-total-w: 190px;
+  --cad-best-w: 170px;
+  --cad-done-w: 90px;
+  --cad-door-w: 36px;
+}
+:root.compact .cadash[data-scale="month"] .cell {
+  height: auto;
+  /* `width:auto` + stretch is the base form now, so the dot's size comes from
+     the dial as a CEILING and the aspect keeps it round rather than oval. */
+  aspect-ratio: 1 / 1;
+  justify-self: center;
+  width: var(--cad-cell-size);
+  border-radius: var(--radius-full);
+}
+:root.compact .cadash[data-scale="month"] .cell.u {
+  border: var(--border-hairline) solid var(--verdict-unknown);
+}
+/* The mark is 8px and the TRACK is ~11px, so each dot sits in its own air
+   rather than butting its neighbours — the gutter here is the track, not the
+   `gap`, because `1fr` tracks absorb whatever the gap gives up. */
+:root.compact .cadash[data-scale="month"] .cells {
+  gap: var(--space-1);
+}

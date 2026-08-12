@@ -168,9 +168,29 @@
 .advs-cond-body{display:flex; flex-direction:column; gap:var(--space-3); margin-top:var(--space-3);}
 .advs-inline{display:flex; align-items:center; gap:var(--space-4); flex-wrap:wrap;}
 .advs-unit{font-size:var(--size-caption); color:var(--text-muted);}
-.advs-num{width:7ch; font-family:var(--font-mono); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-strong);
+/* THE FIELD WAS AUTHORED FOR SEVEN DIGITS AND BORDER-BOX ATE TWO OF THEM
+   (Phase 2 step 4, tier 3, user-ruled 2026-08-11: *"wide enough to accommodate
+   at least 6 digits"*). kit.css sets `* { box-sizing: border-box }` app-wide, so
+   a bare `width:7ch` is the OUTER width — the horizontal padding and the two
+   hairlines are subtracted from the seven characters rather than added to them,
+   leaving ~7ch - 14px of text room, about 5.4 digits at --size-small mono. The
+   width now adds its own chrome back.
+   AND THERE WAS A SECOND EATER — Chromium lays out ::-webkit-inner-spin-button
+   INSIDE the field at all times; the UA sheet hides it with opacity:0 but it
+   still claims ~13px of the text box, which is most of two more digits. The
+   width alone therefore fixed nothing visible. The steppers are suppressed:
+   they are invisible at rest, this is a typed field with its own comparison
+   chips beside it, and a stepper that walks a word count by 1 is no
+   affordance at 100000. Sized at EIGHT characters — the ask was six, the
+   author wrote seven, and the row has ~150px of unused width inside the
+   540px builder, so headroom is free here.
+   NOT a small-canvas rule: it has been wrong at every canvas size since the
+   screen shipped, so it lands in the BASE sheet (the `cal-hit-1` rule). */
+.advs-num{width:calc(8ch + var(--space-3) * 2 + var(--border-hairline) * 2); font-family:var(--font-mono); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-strong);
           background:var(--inset-background); border:var(--border-hairline) solid transparent; border-radius:var(--radius-small);
           padding:var(--space-2) var(--space-3); outline:none;}
+.advs-num::placeholder{color:var(--text-muted);}
+.advs-num::-webkit-inner-spin-button, .advs-num::-webkit-outer-spin-button{-webkit-appearance:none; appearance:none; margin:0;}
 .advs-num:focus{border-color:var(--accent);}
 .advs-add{margin-top:var(--space-2);}
 .advs-match{display:flex; align-items:center; gap:var(--space-4); margin-top:var(--space-5); padding-top:var(--space-4); border-top:var(--border-hairline) solid var(--divider);}

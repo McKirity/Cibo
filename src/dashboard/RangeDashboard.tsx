@@ -215,7 +215,7 @@ export function RangeDashboard({ habitKey }: { habitKey: string }) {
               </div>
               <div
                 className="trow"
-                style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", marginTop: "var(--space-6)" }}
+                style={{ marginTop: "var(--space-6)" }}
               >
                 {m.heatmap.trio.map((t, i) => (
                   <StatTile key={i} t={t} />

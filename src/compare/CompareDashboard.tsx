@@ -15,7 +15,7 @@
  * conversion note), retiring this header's old preserveAspectRatio="none"
  * claim with the stretch it named.
  */
-import { useMemo, useState, type ReactElement } from "react";
+import { useMemo, useState, type CSSProperties, type ReactElement } from "react";
 import {
   AVG_SCOPES,
   AVG_SCOPE_MIN_DAYS,
@@ -37,6 +37,7 @@ import {
   type SplitField,
 } from "./compareSpec";
 import { CAT_SLOTS } from "../dashboard/specShared";
+import { tileRowPlan } from "../dashboard/tileRows";
 import { useCompareData } from "./useCompareData";
 // The chart renderers + Legend + the window dash roster (split out 2026-07-30,
 // dedup pass wave 4) — pure functions of CmpChart/CmpSeries.
@@ -205,12 +206,29 @@ function SplitPanel({
   const [q, setQ] = useState("");
   const nameOf = (v: string) => field.valueLabel?.[v] ?? v;
   const needle = q.trim().toLowerCase();
-  const shown =
-    needle === ""
-      ? field.values
-      : field.values.filter((v) => selected.includes(v) || nameOf(v).toLowerCase().includes(needle));
-  const capped = needle === "" && field.searchable ? shown.slice(0, 60) : shown;
+  /* THE ENTRY LIST NEVER BROWSES (user-ruled 2026-08-11, Phase 2 step 4 tier 3:
+     *"remove the pill selector and just default to the search bar … it gets
+     unmanageable very quickly since we're dealing with +100 entries"*).
+     `searchable` is set on exactly ONE field — the Entry split (useCompareData)
+     — so the flag already means "this list is the entry catalogue" and the rule
+     scopes itself. At rest it now shows only what is SELECTED, so the panel
+     states your picks instead of dealing 60 chips you did not ask for; the
+     catalogue is reached by typing. Every other split field (Type, Genre,
+     Fandom, Engine, the flags) is a managed picklist of a handful of values and
+     keeps browsing whole — a wall is only a wall when it is one. */
+  const matches = field.values.filter(
+    (v) => selected.includes(v) || nameOf(v).toLowerCase().includes(needle),
+  );
+  const shown = !field.searchable
+    ? field.values
+    : needle === ""
+      ? field.values.filter((v) => selected.includes(v))
+      : matches;
+  /* The cap moved to the SEARCHING side: at rest there is nothing to cap, and a
+     one-letter query can still match the whole catalogue. */
+  const capped = field.searchable && needle !== "" ? shown.slice(0, 60) : shown;
   const hidden = shown.length - capped.length;
+  const atRest = field.searchable && needle === "";
 
   return (
     <div className="split">
@@ -219,7 +237,7 @@ function SplitPanel({
           Fandom/Engine/Entry say what they are instead. */}
       <p className="sl">
         {field.label} —{" "}
-        {field.isMedium ? "a Medium field" : field.field === "__entry" ? "one series each" : "an entry field"}
+        {field.isMedium ? "a Medium field" : field.field === ENTRY_FIELD ? "one series each" : "an entry field"}
       </p>
       {field.searchable && (
         <input
@@ -253,7 +271,12 @@ function SplitPanel({
           );
         })}
       </div>
-      {hidden > 0 && <p className="splitmore">{hidden} more — search to narrow</p>}
+      {hidden > 0 && <p className="splitmore">{hidden} more — keep typing to narrow</p>}
+      {atRest && (
+        <p className="splitmore">
+          {selected.length > 0 ? "Search to add another entry" : "Search to pick entries"}
+        </p>
+      )}
     </div>
   );
 }
@@ -527,10 +550,33 @@ export function CompareDashboard() {
                           className={`opt${split?.field === f.field ? " on" : ""}`}
                           onClick={() =>
                             patchScope(i, {
+                              /* THE ENTRY SPLIT OPENS EMPTY (user-ruled 2026-08-11):
+                                 seeding two values is right for a managed picklist —
+                                 Type, Genre, a flag — where it draws a chart the
+                                 instant you ask and the two are a real sample of a
+                                 handful. On the entry catalogue the same line picks
+                                 two arbitrary titles off the top of an alphabetical
+                                 list of 100+, which is a claim, not a default. Same
+                                 `searchable` discriminator as the search-first panel,
+                                 so ONE flag governs the entry list's whole behaviour.
+                                 An empty split is already safe: compareSpec treats
+                                 zero live values as no split at all (line ~616, the
+                                 stale-preset rule), so the scope reads as the plain
+                                 habit until you pick.
+                                 KEYED ON THE FIELD, NOT ON `searchable` — the two
+                                 2026-08-11 rulings govern different things: "nothing
+                                 pre-selected" is about the ENTRY split (both
+                                 sub-types), while "creation keeps the pills" is about
+                                 how the list is PRESENTED. So a creation habit browses
+                                 its handful of projects and still opens with none
+                                 chosen. */
                               split:
                                 split?.field === f.field
                                   ? null
-                                  : { field: f.field, values: f.values.slice(0, 2) },
+                                  : {
+                                      field: f.field,
+                                      values: f.field === ENTRY_FIELD ? [] : f.values.slice(0, 2),
+                                    },
                             })
                           }
                         >
@@ -772,11 +818,25 @@ export function CompareDashboard() {
             </div>
           ) : (
             <>
-              {result.tiles.length > 0 && (
+              {result.tiles.length > 0 && (() => {
+              // ⚠ The DIFFERENCE tile is appended after the mapped ones, so the
+              // row is one longer than `result.tiles` whenever a delta exists —
+              // planning off `result.tiles.length` alone would mis-span the last
+              // row exactly when the group is at its most crowded.
+              const tilePlan = tileRowPlan(result.tiles.length + (result.delta != null ? 1 : 0));
+              const spanOf = (i: number): CSSProperties | undefined =>
+                tilePlan.spans[i] > 1 ? { gridColumn: `span ${tilePlan.spans[i]}` } : undefined;
+              return (
               <div className="panel">
-                <div className="trow">
+                {/* Balanced rows, flush to both edges (ruled 2026-08-10). This
+                    row builds its own tiles rather than going through StatGroup,
+                    so it carries the plan itself — same helper, same result. */}
+                <div
+                  className="trow"
+                  style={{ "--trow-cols": tilePlan.tracks } as CSSProperties}
+                >
                   {result.tiles.map((t, i) => (
-                    <div className="tile" key={i}>
+                    <div className="tile" key={i} style={spanOf(i)}>
                       {/* Tiles keep their DOTS: [[Iconography]] § the boundary rules
                           stat tiles icon-free ("number + label"), and the drawn CS
                           face agrees. The icon swap covers identity CHROME only —
@@ -793,7 +853,7 @@ export function CompareDashboard() {
                     </div>
                   ))}
                   {result.delta != null && (
-                    <div className="tile">
+                    <div className="tile" style={spanOf(result.tiles.length)}>
                       <span className="tl">Difference</span>
                       <div className="tvrow">
                         <span className="tv">
@@ -808,7 +868,8 @@ export function CompareDashboard() {
                   )}
                 </div>
               </div>
-              )}
+              );
+              })()}
               {result.chart != null && (
                 <div className="panel">
                   <div className="phead">

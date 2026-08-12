@@ -558,7 +558,7 @@ function EntryField({
   return (
     <div className="fieldwrap" ref={boxRef}>
       <button className={`field${picked == null ? " placeholder" : ""}`} onClick={() => setOpen((o) => !o)}>
-        <span className="fname">{picked?.title ?? "pick an entry"}</span>
+        <span className="fname">{picked?.title ?? "Pick an entry"}</span>
         <span className="caret"><Ico d={ICONS.chevron} /></span>
       </button>
       {open && (
@@ -617,13 +617,30 @@ function OpChips<T extends string>({
   );
 }
 
+/* THE FIELD MUST BE CLEARABLE. `Number("")` is 0, not NaN — the project's own
+   `creator-2` lesson — so emptying the box wrote a real zero and the render
+   put it straight back, making the field impossible to clear: you had to type
+   a digit, walk back over the 0, delete it, and return to the end before you
+   could carry on. The READ side was always built for this (the render tests
+   `Number.isFinite`, and so do dayCondComplete / entryCondComplete, which is
+   what makes an unanswered row contribute nothing) — only the WRITE side
+   coerced. An empty box is now NaN: the row reads as unanswered rather than
+   as "= 0", which is a different query and one `doneCount` can legitimately
+   ask for. (A preset round-trips NaN through JSON as null; `Number.isFinite`
+   rejects that too, so it re-reads as unanswered and renders empty.) */
 const NumInput = ({ value, onChange }: { value: number; onChange: (n: number) => void }) => (
   <input
     className="advs-num"
     type="number"
     min={0}
+    /* A CLEARED FIELD SHOWS A GHOST 0 (user-ruled 2026-08-11) — the box reads as
+       a number field rather than as blank, without the 0 being a VALUE: it is
+       placeholder ink, so typing continues straight over it and the row still
+       counts as unanswered. Saying it with a real 0 is what made the field
+       unclearable in the first place. */
+    placeholder="0"
     value={Number.isFinite(value) ? value : ""}
-    onChange={(e) => onChange(Number(e.target.value))}
+    onChange={(e) => onChange(e.target.value === "" ? NaN : Number(e.target.value))}
   />
 );
 
@@ -701,7 +718,7 @@ function DayCondRows({
               habitKey={c.habitKey}
               habitByKey={habitByKey}
               habits={data.habits}
-              placeholder="pick a habit"
+              placeholder="Pick a habit"
               onPick={(key) => patch(i, { ...c, habitKey: key })}
             />
           )}
@@ -726,7 +743,7 @@ function DayCondRows({
                 habitKey={c.habitKey}
                 habitByKey={habitByKey}
                 habits={data.habits.filter((h) => h.measuresTime || h.measuresCount || h.kind === "range")}
-                placeholder="pick a habit"
+                placeholder="Pick a habit"
                 onPick={(key) => {
                   const h = habitByKey.get(key);
                   const timeful = h != null && (h.measuresTime || h.kind === "range");
@@ -745,7 +762,16 @@ function DayCondRows({
                           className={`opt${c.basis === "time" ? " on" : ""}`}
                           onClick={() => patch(i, { ...c, basis: "time" })}
                         >
-                          Hours
+                          {/* lowercase DELIBERATELY: its sibling chip is the habit's own
+                              countUnit — user-authored vocab ("words"), which the app
+                              stores and shows verbatim (casing checks die, per the vocab
+                              ruling). So the pair is half copy and half DATA, and the
+                              only half we may set is this one. It matches the trailing
+                              unit below, which was already lowercase. ⚠ A habit whose
+                              unit is authored capitalised ("Pages") re-opens the mismatch
+                              from the other side; that is data, not copy, and is left
+                              alone by the same ruling. */}
+                          hours
                         </span>
                       )}
                       {offerCount && (
@@ -800,18 +826,18 @@ function EntryCondRows({
               habitKey={c.habitKey}
               habitByKey={habitByKey}
               habits={projects}
-              placeholder="pick a habit"
+              placeholder="Pick a habit"
               onPick={(key) => patch(i, { ...c, habitKey: key })}
             />
           )}
           {c.kind === "status" && (
-            <ValueField value={c.value} options={data.statusVocab} placeholder="pick a status" onPick={(v) => patch(i, { ...c, value: v })} />
+            <ValueField value={c.value} options={data.statusVocab} placeholder="Pick a status" onPick={(v) => patch(i, { ...c, value: v })} />
           )}
           {c.kind === "type" && (
-            <ValueField value={c.value} options={data.typeVocab} placeholder="pick a type" onPick={(v) => patch(i, { ...c, value: v })} />
+            <ValueField value={c.value} options={data.typeVocab} placeholder="Pick a type" onPick={(v) => patch(i, { ...c, value: v })} />
           )}
           {c.kind === "genre" && (
-            <ValueField value={c.value} options={data.genreVocab} placeholder="pick a genre" onPick={(v) => patch(i, { ...c, value: v })} />
+            <ValueField value={c.value} options={data.genreVocab} placeholder="Pick a genre" onPick={(v) => patch(i, { ...c, value: v })} />
           )}
           {c.kind === "priority" && (
             <div className="advs-inline">
@@ -850,7 +876,7 @@ function EntryCondRows({
           {(c.kind === "creator" || c.kind === "series") && (
             <input
               className="splitsearch"
-              placeholder={c.kind === "creator" ? "name contains…" : "series contains…"}
+              placeholder={c.kind === "creator" ? "Name contains…" : "Series contains…"}
               value={c.text}
               onChange={(e) => patch(i, { ...c, text: e.target.value })}
             />

@@ -309,6 +309,24 @@ button.doorlink:hover {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
+  /* THE ROW'S EMPTY SPACE IS NOT A TARGET (`cal-hit-1`, Phase 2 step 4,
+     2026-08-10). The negative margin above lifts this full-width row 12px into
+     the row that holds the `2026`/`Q3` doorlinks and the Jump button, and this
+     row is LATER IN THE MARKUP — so its transparent box painted over the bottom
+     12px of all three and swallowed every click landing there. Jump is ~30px
+     tall, so ~40% of it was dead; the top half worked, the bottom half did
+     nothing (user-confirmed). Present since the calendar shipped 2026-08-01 at
+     EVERY canvas size — the 14" preview only made the surviving half small
+     enough to notice. Restoring hit-testing to the CONTROLS (not the box) fixes
+     the chain links in the same stroke, which a z-index lift on Jump alone
+     would not; and it costs no layout, so the drawn geometry is untouched.
+     ⚠ Standing: a negatively-margined full-width row is a CLICK LID over
+     whatever it is pulled across — the overlap is invisible until something
+     under it stops responding. */
+  pointer-events: none;
+}
+.calhead .monthrow > * {
+  pointer-events: auto;
 }
 .calhead .month {
   text-align: center;

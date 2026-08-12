@@ -18,6 +18,7 @@
 import { useRef, useState } from "react";
 import { pad2 } from "../metrics/clock";
 import { monthGridCells, weekDayLetters } from "../metrics/dates";
+import { parseDay } from "./DateField";
 import { MONTHS_LONG, MONTHS_SHORT } from "../metrics/format";
 import { Ico, ICONS } from "../shell/icons";
 import { useDismiss } from "../shell/overlayHooks";
@@ -39,8 +40,24 @@ const ICal = () => (
 );
 
 /**
- * A date field opening the shared `.calpop` calendar (past days only).
- * Exported for Advanced Search's date conditions (the second consumer).
+ * A date field: TYPED primary, with the shared `.calpop` calendar as the
+ * fallback (past days only). Exported for Advanced Search's date conditions
+ * (the second consumer).
+ *
+ * TYPING ADDED 2026-08-11 (user-ruled at the step-4 tier-3 walk: *"in the period
+ * picker, I also want the option to type in a custom date"*). It is the app's
+ * OWN established idiom, not a new one — `kit/DateField` has been typed-primary
+ * since it was hoisted, and this field was the last date control in the app that
+ * could only be clicked. `parseDay` is IMPORTED from there rather than
+ * re-written: one canonical `YYYY-MM-DD` parser, so the two fields cannot
+ * disagree about what a date is.
+ *
+ * WHAT DIFFERS FROM DateField, deliberately: this one keeps its `.cpfield`
+ * label + popover anatomy (the frozen CS/AS face), and it stays PAST-ONLY —
+ * the calendar already greys future days, so a typed future date reverts rather
+ * than committing a value the calendar would refuse. DateField allows the
+ * future because countdowns are its whole point; a period window has no such
+ * tenant.
  */
 export function DayField({
   label,
@@ -54,8 +71,21 @@ export function DayField({
   onPick: (day: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState<string | null>(null);
   const [cursor, setCursor] = useState<{ y: number; m: number } | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+
+  /* Enter commits, Escape reverts, blur commits — DateField's discipline. An
+     unparseable or FUTURE date reverts to the committed value rather than
+     half-applying: the calendar below cannot express either, and a field that
+     silently accepts what its own popover greys out is two controls
+     disagreeing. */
+  const commit = () => {
+    if (typed == null) return;
+    const d = parseDay(typed);
+    if (d != null && d <= today) onPick(d);
+    setTyped(null);
+  };
 
   // Capture phase + Escape — the shared dismiss discipline.
   useDismiss(boxRef, () => setOpen(false), { enabled: open });
@@ -72,8 +102,37 @@ export function DayField({
   return (
     <div className="cpfield" ref={boxRef}>
       <span className="cplbl">{label}</span>
-      <span className="cpval" onClick={() => setOpen((o) => !o)}>
-        {value ?? "pick a date"}
+      <span
+        className="cpval"
+        onMouseDown={(e) => {
+          // The chip is wider than the input inside it — clicking the padding or
+          // the glyph must still land on the field (DateField's own fix).
+          if (e.target instanceof HTMLInputElement) return;
+          e.preventDefault();
+          boxRef.current?.querySelector<HTMLInputElement>(".cpval-in")?.focus();
+          setOpen((o) => !o);
+        }}
+      >
+        <input
+          className="cpval-in"
+          placeholder="YYYY-MM-DD"
+          maxLength={10}
+          spellCheck={false}
+          value={typed ?? value ?? ""}
+          onFocus={() => setOpen(true)}
+          onChange={(e) => setTyped(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              commit();
+              setOpen(false);
+            }
+            if (e.key === "Escape") {
+              setTyped(null);
+              setOpen(false);
+            }
+          }}
+        />
         <ICal />
       </span>
       {open && (
@@ -115,6 +174,7 @@ export function DayField({
                   onMouseDown={(e) => {
                     e.preventDefault();
                     if (dead || c.out) return;
+                    setTyped(null); // a calendar pick discards a half-typed string
                     onPick(c.day);
                     setOpen(false);
                   }}

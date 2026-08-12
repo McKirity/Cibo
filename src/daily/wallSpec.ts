@@ -35,7 +35,7 @@ import { hoursMinutes, groupInt } from "../metrics/format";
 import { sessionMinutes } from "../metrics/shapes";
 import type { KeepsakeValues } from "./keepsake";
 import { keepsakeValues } from "./keepsake";
-import { DEFAULT_BUDGET_HALF_ROWS, RANK, type PackInput, type Span } from "./wallPack";
+import { DEFAULT_BUDGET_HALF_ROWS, RANK, WALL_COLS, type PackInput, type Span } from "./wallPack";
 
 // ── The tiles ────────────────────────────────────────────────────────────────
 
@@ -209,6 +209,42 @@ const SPANS = {
  * viewport, and that is the tallest a cover was ever drawn.
  */
 export const COVER_CAP_SHARE = SPANS.coverBig.halfRows / DEFAULT_BUDGET_HALF_ROWS;
+
+/**
+ * THE COVER WIDTH ALLOWANCE, as a SHARE of the wall (2026-08-11) — the other
+ * half of the argument the ceiling above already makes.
+ *
+ * The cover pass has two levers: a height ceiling expressed as a share of the
+ * viewport, and a width allowance expressed in WHOLE COLUMNS (3 for the day's
+ * biggest sitting, 2 otherwise). The share adapts to any window; the column
+ * count only ever meant anything against the drawn fifteen. When the small
+ * canvas dropped the wall to nine columns to restore the drawn column PITCH,
+ * every tile kept its size — but a three-column cover went from a fifth of the
+ * wall to a third, and covers stopped playing nice with everything beside them.
+ *
+ * The banner never had this problem because ITS ceiling is absolute (`4u`), so
+ * it re-solves to fewer columns on a narrower wall all by itself. This is the
+ * cover's equivalent: hold the DRAWN SHARE (3/15 and 2/15), floored at two
+ * columns so a cover can never become a sliver. On the drawn fifteen it returns
+ * exactly 3 and 2 — the small canvas is the only place the arithmetic bites,
+ * where nine columns give both covers two: a big cover keeps 2/9 ≈ 22% against
+ * the drawn 3/15 = 20%, so its weight on the wall is preserved rather than
+ * inflated.
+ */
+/**
+ * ⚠ THE BIG ALLOWANCE IS **NOT** `SPANS.coverBig.cols`. `coverBig` is drawn 2×4
+ * — two columns, EIGHT half-rows — and the third column is a separate grant the
+ * cover pass makes to the day's biggest sitting ("ALLOWED three columns, but
+ * only art wide enough to stay short keeps them"). Wiring this to the span
+ * returned 2 on the drawn wall and silently re-composed the desktop; the test
+ * caught it on its first run, which is the whole reason it was written to fail
+ * first. The plain cover's allowance IS its drawn span, so that one reads from
+ * SPANS and cannot drift.
+ */
+const COVER_COLS_BIG = 3;
+
+export const coverColsFor = (big: boolean, wallCols: number): number =>
+  Math.max(2, Math.round(((big ? COVER_COLS_BIG : SPANS.cover.cols) * wallCols) / WALL_COLS));
 
 const WHIMSY_SPANS: Record<WhimsyWhich, Span> = {
   sun: SPANS.sliver,

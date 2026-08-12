@@ -7,9 +7,10 @@
  * These are the consumption template's blocks; every later dashboard reuses
  * them. Nothing Gaming-specific lives here — the model carries the data.
  */
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useBox } from "./useBox";
 import { heatRowLabels } from "../metrics/dates";
+import { tileRowPlan } from "./tileRows";
 import { CoverInner } from "../kit/CoverArt";
 import type {
   DistColumnSpec,
@@ -41,10 +42,14 @@ export function Panel({
 
 // ── kit-tile-stat ─────────────────────────────────────────────────────────────
 
-export function StatTile({ t }: { t: TileSpec }) {
+export function StatTile({ t, span }: { t: TileSpec; span?: number }) {
+  // How many grid tracks this tile occupies. Unset (the fixed-trio callers)
+  // means one track, which is what a bare grid item does anyway.
+  const spanStyle: CSSProperties | undefined =
+    span != null && span > 1 ? { gridColumn: `span ${span}` } : undefined;
   if (t.list) {
     return (
-      <div className="tile tlist">
+      <div className="tile tlist" style={spanStyle}>
         <span className="tl">{t.label}</span>
         <span className="tv" style={t.big ? { fontSize: "var(--size-heading)" } : undefined}>
           <span className="tdt">{t.list.dateLine}</span>
@@ -73,7 +78,7 @@ export function StatTile({ t }: { t: TileSpec }) {
   // list tiles style the same size inline above (2026-07-30).
   const tvClass = `tv${t.big ? " sm" : ""}`;
   return (
-    <div className="tile">
+    <div className="tile" style={spanStyle}>
       <span className="tl">{t.label}</span>
       {t.delta ? (
         <div className="tvrow">
@@ -89,12 +94,21 @@ export function StatTile({ t }: { t: TileSpec }) {
 }
 
 export function StatGroup({ label, tiles, tall }: { label: string; tiles: TileSpec[]; tall?: boolean }) {
+  // Balanced rows, flush to both edges (ruled 2026-08-10): the plan comes from
+  // the group's own size — every tile is one column-worth, list tiles included,
+  // and a short last row widens its tiles rather than leaving a gap. This is the
+  // one renderer every variable-length tile group goes through, which is why the
+  // ruling costs a couple of lines here rather than a sweep.
+  const plan = tileRowPlan(tiles.length);
   return (
     <div className="tgroup">
       <div className="tlabel">{label}</div>
-      <div className={`trow${tall ? " tall" : ""}`}>
+      <div
+        className={`trow${tall ? " tall" : ""}`}
+        style={{ "--trow-cols": plan.tracks } as CSSProperties}
+      >
         {tiles.map((t, i) => (
-          <StatTile key={i} t={t} />
+          <StatTile key={i} t={t} span={plan.spans[i]} />
         ))}
       </div>
     </div>
@@ -418,6 +432,18 @@ export function Heatmap({
 }) {
   const [mode, setMode] = useState<"intensity" | "bytype">("intensity");
   const byType = hasTypes && mode === "bytype";
+
+  // OPEN ON THE RECENT END (user-ruled 2026-08-10). The year runs oldest → newest
+  // left to right, so once the block scrolls (small canvas — src/small.css gives
+  // a week a real width) opening at 0 lands on the least useful edge: a year of
+  // empty cells from before the habit existed. `scrollLeft` clamps itself, so
+  // this is a no-op wherever the block still fits — the desktop is unaffected
+  // without needing to ask whether it is scrollable.
+  const colsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = colsRef.current;
+    if (el != null) el.scrollLeft = el.scrollWidth;
+  }, [cells.length]);
   // Tooltip legend lookup by slot — a Map, not a per-cell Array.find.
   const legendByVar = new Map(legend.map((l) => [l.colorVar, l.label]));
 
@@ -460,15 +486,25 @@ export function Heatmap({
       {/* --pool-x/--pool-y: the activity centroid, for themes that paint the
           block as one emitting surface (see heatPoolStyle). Inert otherwise. */}
       <div className="heat" style={heatPoolStyle(cells, (c) => c.level)}>
+        {/* The label column MIRRORS `.cols`' structure — a head box the exact
+            height of the months line, then a seven-row grid on the cells' own
+            gap. It used to be one grid whose first row was an EMPTY span: that
+            row measured 0 while the months line measured ~17px, and since
+            `.heat` stretches both columns to the same height, the seven `1fr`
+            rows swallowed those 17px and every label rode ~3px high, worst at
+            the bottom. Wrong at every canvas size; only visible once the cells
+            grew (Phase 2 step 4, 2026-08-10). */}
         <div className="weekdays">
-          <span className="wd" />
-          {heatRowLabels().map((d, i) => (
-            <span className="wd" key={i}>
-              {d}
-            </span>
-          ))}
+          <span className="wdhead" aria-hidden="true" />
+          <div className="wdrows">
+            {heatRowLabels().map((d, i) => (
+              <span className="wd" key={i}>
+                {d}
+              </span>
+            ))}
+          </div>
         </div>
-        <div className="cols">
+        <div className="cols" ref={colsRef}>
           <div className="months">
             {months.map((m) => (
               <span key={m.col} style={{ gridColumnStart: m.col + 1 }}>
@@ -503,7 +539,7 @@ export function Heatmap({
       </div>
       <div
         className="trow"
-        style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", marginTop: "var(--space-6)" }}
+        style={{ marginTop: "var(--space-6)" }}
       >
         {trio.map((t, i) => (
           <StatTile key={i} t={t} />

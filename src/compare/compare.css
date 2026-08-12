@@ -169,7 +169,21 @@
 .csdash .deltachip{display:inline-flex; align-items:center; gap:var(--space-2); font-family:var(--font-mono); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--text-secondary); background:var(--inset-background); border-radius:var(--radius-small); padding:var(--space-2) var(--space-4);}
 
 /* chart panel body */
-.csdash .chartwrap{display:flex; flex-direction:column; gap:var(--space-5);}
+/* ⚠ THE INDENT: `.chartwrap` IS MULTI-TENANT AND THIS OVERRIDE DID NOT NAME
+   `padding-left` (Phase 2 step 4, tier 3, 2026-08-11). dashboard.css owns the
+   class UNSCOPED with `padding-left: var(--chart-axis-gutter)` (56px) — correct
+   for the TREND family, where `.yaxis` is `position:absolute; left:0` and lives
+   INSIDE that reserved gutter. All four dashboard tenants render a .yaxis;
+   **CS is the only tenant that does not** — its axis is a real grid COLUMN
+   (`.gb-yaxis`/`.lo-yaxis`, 40px inside .gbchart/.lochart), so CS was paying
+   for the gutter twice, and the donut and hbars — which have no axis at all —
+   were indented 56px for nothing. Declaring display/direction/gap made this
+   read like a full override; it never was.
+   THIRD INSTANCE of the family (.gcap at step 8, .bars at tier 2):
+   THE SPECIFIC RULE ONLY WINS THE PROPERTIES IT THINKS TO MENTION.
+   Base-sheet fix, not small.css — wrong at every canvas size since CS shipped;
+   the 14" is only where 56px of a narrower results column got noticed. */
+.csdash .chartwrap{display:flex; flex-direction:column; gap:var(--space-5); padding-left:0;}
 .csdash .legend{display:flex; align-items:center; gap:var(--space-6); flex-wrap:wrap; font-size:var(--size-small); color:var(--text-secondary);}
 .csdash .legend .li{display:inline-flex; align-items:center; gap:var(--space-3);}
 .csdash .legend .sw{width:18px; height:12px; border-radius:var(--radius-cell); flex:0 0 auto;}

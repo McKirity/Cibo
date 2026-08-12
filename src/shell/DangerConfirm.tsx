@@ -28,6 +28,7 @@ export function DangerConfirm({
   onConfirm,
   onCancel,
   stacked = false,
+  icon,
 }: {
   title: string;
   /** Already-composed prose; `strong` marks the counts. */
@@ -41,6 +42,15 @@ export function DangerConfirm({
    * present behind the confirm. Esc still pops the top only.
    */
   stacked?: boolean;
+  /**
+   * The confirm button's glyph. Defaults to the drawn TRASH, because this
+   * block's whole anatomy is a DELETE confirm. Passed only by the one
+   * REVERSIBLE tenant (first-run's bulk archive, ruled 2026-08-10): a trash
+   * can over a soft, undoable state change overstates what the button does.
+   * Every delete tenant leaves it unset and renders byte-identically to the
+   * drawn face — the default is the drawing.
+   */
+  icon?: React.ReactNode;
 }) {
   // The shared overlay stack: mounted last (it stacks over its opener), so it
   // sits on top and one Esc pops this confirm alone.
@@ -70,11 +80,13 @@ export function DangerConfirm({
                 discarded every accumulator. Build-side markup, not drawn —
                 the convention for irreversible actions is safe-by-default. */}
             <button className="btn-danger filled" onClick={onConfirm}>
-              <svg className="ico" viewBox="0 0 24 24">
-                <path d="M3 6h18" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
+              {icon ?? (
+                <svg className="ico" viewBox="0 0 24 24">
+                  <path d="M3 6h18" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              )}
               {confirmLabel}
             </button>
             <button className="btn-plain" onClick={onCancel} autoFocus>

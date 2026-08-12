@@ -593,7 +593,7 @@ function CreationHeatmap({ heatmap }: { heatmap: CreationModel["heatmap"] }) {
       </div>
       <div
         className="trow"
-        style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", marginTop: "var(--space-6)" }}
+        style={{ marginTop: "var(--space-6)" }}
       >
         {heatmap.trio.map((t, i) => (
           <div className="tile" key={i}>

@@ -36,7 +36,7 @@
    `height` — a drift invisible while no tile's content exceeded 128px. With
    `height:auto` the flex row's default `stretch` does the rest, so a row of
    tiles is as tall as its tallest member and no taller. */
-.trow{display:flex; flex-wrap:wrap; gap:var(--space-6); align-items:stretch;}
+.trow{display:grid; grid-template-columns:repeat(var(--trow-cols, 3), minmax(0,1fr)); gap:var(--space-6); align-items:stretch;}
 .chartwrap{position:relative; padding-left:var(--chart-axis-gutter);}
 .cover{width:var(--cover-w); height:var(--cover-h); border-radius:var(--radius-small); position:relative; cursor:pointer; overflow:hidden; background:repeating-linear-gradient(135deg, var(--inset-background), var(--inset-background) 7px, var(--divider) 7px, var(--divider) 14px); transition:box-shadow var(--motion-fast) var(--ease-standard);}
 .deltachip{display:inline-flex; align-items:center; gap:var(--space-2); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--verdict-done); background:color-mix(in oklch, var(--verdict-done), var(--window-background) var(--tint-mix)); border-radius:var(--radius-small); padding:var(--space-2) var(--space-4);}
@@ -44,7 +44,14 @@
 .panel{background:var(--panel-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-medium); box-shadow:var(--shadow-low); padding:calc(var(--frame-clear-grand) + var(--space-4));}
 .tile .tl{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted);}
 .tile .tvrow{display:flex; align-items:center; gap:var(--space-4); flex-wrap:wrap;}
-.tile > .ts{grid-column:2; grid-row:2; align-self:end; text-align:right; white-space:nowrap;}
+/* THE SUBTITLE WRAPS (2026-08-10). It was `white-space:nowrap`, which was free
+   while `.trow` was a flex row sized to CONTENT — a long subtitle just made its
+   tile wider. Balanced rows made the column a fixed fraction, and nowrap text in
+   a fixed box is text that gets CUT ("best: 4h 31m · 23 Dec 20"). This is the
+   ruling's own exception answered INSIDE the tile: the subtitle takes a second
+   line and the tile grows, so no tile has to move rows and the group keeps the
+   shape it was given. */
+.tile > .ts{grid-column:2; grid-row:2; align-self:end; text-align:right;}
 .brow .blabel .cdot{width:12px; height:12px; border-radius:var(--radius-cell); flex:0 0 auto;}
 .brow .bval{font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-strong); text-align:right;}
 /* (The `.cover` ANATOMY family — .chip/.dur/.glyph/.kind/.meta/.stars/.ttl/
@@ -93,12 +100,39 @@
 .hcell.l2{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-2)); box-shadow:none;}
 .hcell.l3{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-3)); box-shadow:none;}
 .hcell.l4{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-4)); box-shadow:none;}
+/* The week column's width, hoisted to :root so the small-canvas layer can give
+   it a real size and scroll (src/small.css). `1fr` here IS the previous literal
+   — the desktop is byte-unchanged. PRIVATE dial, mint candidate (the
+   --triptych-* precedent). Phase 2 step 4, 2026-08-10. */
+:root{ --heat-week-col: 1fr; }
 .heat{display:grid; grid-template-columns:auto 1fr; gap:var(--space-4);}
-.heat .cells{display:grid; grid-template-columns:repeat(53,1fr); grid-template-rows:repeat(7,1fr); gap:var(--space-1);}
+.heat .cells{display:grid; grid-template-columns:repeat(53,var(--heat-week-col)); grid-template-rows:repeat(7,1fr); gap:var(--space-1);}
 .heat .cols{display:flex; flex-direction:column; gap:var(--space-2); min-width:0;}
-.heat .months{display:grid; grid-template-columns:repeat(53,1fr); gap:var(--space-1); font-size:var(--size-caption); color:var(--text-muted);}
-.heat .months span{grid-row:1; white-space:nowrap;}
-.heat .weekdays{display:grid; grid-template-rows:auto repeat(7,1fr); gap:var(--space-1); align-items:center;}
+/* `line-height` is PINNED so the months line has a known height — the weekday
+   column's head box below is sized off the same two dials, and the two must
+   agree exactly or every label row drifts. */
+.heat .months{display:grid; grid-template-columns:repeat(53,var(--heat-week-col)); gap:var(--space-1); font-size:var(--size-caption); line-height:var(--line-tight); color:var(--text-muted);}
+/* `min-width:0` IS THE ALIGNMENT FIX (2026-08-10). A `1fr` track is
+   `minmax(auto,1fr)`, so a NOWRAP label whose text is wider than its track
+   INFLATES that track — the months grid then carries twelve fat tracks and
+   forty-one thin ones while the cells grid keeps fifty-three equal ones, and
+   the two rows drift apart. Invisible on the desktop, where a track (~24px) is
+   already about as wide as "Sep"; obvious at ~11px, where the label is more
+   than twice its track. The labels now overflow their column instead of
+   widening it, which is what a heatmap month marker should do anyway.
+   ⚠ The third time this project has paid for the same rule: AN ITEM'S
+   INTRINSIC MINIMUM OUTRANKS THE TRACK YOU GAVE IT. */
+.heat .months span{grid-row:1; white-space:nowrap; min-width:0;}
+/* MIRRORS `.cols` (2026-08-10): head box + seven rows, on the SAME two gaps —
+   the outer `--space-2` between head and rows, the inner `--space-1` between
+   rows. Was `grid-template-rows:auto repeat(7,1fr)` over an empty first span:
+   that row measured 0 against the months line's ~17px, and because `.heat`
+   stretches both columns to one height, the seven `1fr` rows absorbed the
+   difference and each label rode high. The head box is sized off the same
+   font-size × line-height as `.months`, so the two columns cannot disagree. */
+.heat .weekdays{display:flex; flex-direction:column; gap:var(--space-2);}
+.heat .weekdays .wdhead{flex:0 0 auto; height:calc(var(--size-caption) * var(--line-tight));}
+.heat .weekdays .wdrows{flex:1 1 auto; display:grid; grid-template-rows:repeat(7,1fr); gap:var(--space-1);}
 .heat .weekdays .wd{font-size:var(--size-caption); color:var(--text-muted); height:100%; display:flex; align-items:center;}
 .heatchip{display:inline-flex; align-items:center; font-size:var(--size-small); font-weight:var(--weight-bold); letter-spacing:.05em; color:var(--text-on-filled); background:var(--heat-warm); border-radius:var(--radius-full); padding:var(--space-2) var(--space-5);}
 .heatchip.cold{background:var(--heat-cold); display:none;}
@@ -202,8 +236,17 @@
 .trio.grouped > .dcol:first-child{padding-left:0; border-left:none;}
 .trio.grouped > .dcol:last-child{padding-right:0;}
 .trow + .trow{border-top:var(--border-hairline) solid var(--divider);}
-.trow > .tile{flex:1 1 auto;}
-.trow > .tile.tlist{flex:1.6 1 auto;}
+/* BALANCED ROWS (user-ruled 2026-08-10, BOTH canvases): four tiles draw 2×2,
+   never 3+1. `--trow-cols` is computed per group by `dashboard/tileRows.ts` and
+   set inline by StatGroup; the fallback keeps a bare `.trow` sane.
+   `minmax(0,1fr)`, never `1fr`: a tile's content must not inflate its track.
+
+   ⚠ `.tlist` HAS NO SPECIAL WIDTH ANY MORE. It carried `flex:1.6 1 auto`, and
+   the first pass preserved that as `grid-column:span 2`. Built and struck the
+   same day (user: *"That looks really bad"*) — a 2-wide tile in a 3-wide row
+   leaves a dead column on every row it touches, and the streaks group has two
+   of them. Even columns and one-tile-wider cannot both hold; evenness is what
+   was ruled, so the list tile is a tile like the others. */
 .trow.tall .tile{height:auto; min-height:var(--tile-height);}
 .xaxis{position:relative; height:1.2em; margin-top:var(--space-3); margin-left:var(--chart-axis-gutter);}
 .xtick{position:absolute; transform:translateX(-50%); white-space:nowrap; line-height:1; font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted);}

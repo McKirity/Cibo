@@ -434,6 +434,73 @@ it is open. Because of the safety copy, even a restore you regret is undoable.
 Every backup is checked after it is written, and a failure lights the health dot in the rail
 rather than failing silently.
 
+### Sync
+
+Cibo can keep two devices carrying the same data. **Sync moves your data, not the app** — you
+install Cibo on each machine separately, and each one keeps its own look and its own local
+settings.
+
+Sync is **on by default**, and the switch is in **Settings › Storage**. Turning it on or off takes
+effect the next time Cibo opens.
+
+#### Your recovery phrase
+
+Your data is identified by a **twelve-word recovery phrase**, also in Settings › Storage, where you
+can reveal and copy it. That phrase *is* your data's name — it is what a second device uses to find
+the data and recognise it as yours.
+
+> **Keep the phrase somewhere outside Cibo** — a password manager, or paper. It is not stored in
+> your backups, and if every device is lost there is no way to look it up.
+
+#### Adding a second device
+
+Install Cibo, open it, and complete the setup screen as normal. Then go to **Settings › Storage ›
+Restore from a phrase**, enter the phrase from your first device, and confirm.
+
+Cibo waits for your data to arrive rather than starting you off empty, and it arrives **once** — you
+will not end up with two of everything. After that the setup screen never appears again on that
+device, because "setup is done" is one of the things that syncs.
+
+#### What syncs, and what does not
+
+- **Syncs:** your habits, everything you have logged, your entries, and the preferences that are
+  meant to be the same everywhere.
+- **Stays on each device:** the theme you picked, UI scale, compact, and where your cloud folder
+  lives. These are deliberately per-device, because the two screens are not the same size.
+- **Cover art does not travel by sync.** Images live in your cloud folder and reach the other device
+  through the cloud drive.
+
+#### Speed, and working offline
+
+When both devices are running, a change appears on the other one within seconds.
+
+The two devices do not talk directly — they pass changes through a small relay program on the
+desktop PC. While that machine is off, the laptop simply keeps your changes and sends them the next
+time both are up.
+
+When a device has been away for a while, **catching up takes minutes rather than seconds.** The
+connection waits longer and longer between attempts while there is nothing on the other end, so it
+takes a little time to notice you are back. This is normal, and nothing is lost while you wait.
+
+Working offline is ordinary. Everything keeps working with no connection at all.
+
+> **You will never be asked to resolve a conflict.** If both devices change the same thing, Cibo
+> merges them quietly. There is no conflict screen anywhere in the app, deliberately.
+
+If sync hits a real error it says so once, in a small message, and carries on. **A sync problem
+never blocks you and never costs you a log.**
+
+#### Restoring while sync is on
+
+This one is worth reading twice.
+
+> **Restoring a backup while sync is on rewinds everything, not only this device.** The restored
+> data becomes the truth, and the other device follows it back.
+
+So while sync is running, the **recovery phrase** is the everyday way to get your data onto a
+device, including a replacement one. The **backup** is the deep net — for when the data itself is
+wrong and you want to go back to how it was.
+
 ### Data Doctor
 
 Data Doctor checks your data for things that are probably mistakes — a session pointing at an

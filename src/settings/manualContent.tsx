@@ -6,8 +6,13 @@
  * over it and the reader follows.
  *
  * Structure contract (the ruled roster, [[Settings & Configuration]] § Help):
- * `##` = the three groups · `###` = the 22 articles. HEADING TEXT IS THE DRAWN
- * DOOR — renaming one is a conform re-freeze; editing a body is free.
+ * `##` = the three groups · `###` = the 23 articles (22 until **Sync** was
+ * added to Tools 2026-08-10, user-asked at the step-4 walk; 21 before Bulk
+ * Editor). HEADING TEXT IS THE DRAWN DOOR — renaming one is a conform
+ * re-freeze; editing a body is free. ADDING one is cheap by construction: the
+ * roster renders from the parsed headings and the palette's deep links are
+ * generated, so a new article needs no registration anywhere. The FINAL still
+ * draws 22 doors and is knowingly stale by one.
  *
  * The renderer is a deliberately tiny markdown subset — exactly what the 22
  * articles use (paragraphs · bold/italic/code · bullet lists · pipe tables ·
@@ -166,7 +171,7 @@ export const findArticle = (id: string): ManualArticle | null => {
  * bar's haystack (added 2026-08-09, user-asked at tour 7 station 11; title
  * matching rides beside it in HelpPane). Derived from the PARSED blocks, so
  * like the palette's deep links it cannot go stale against the articles.
- * Built lazily and cached: the roster is 22 articles and the cost is one
+ * Built lazily and cached: the roster is 23 articles and the cost is one
  * join each, but there is no reason to pay it before the first keystroke.
  */
 const textCache = new Map<string, string>();

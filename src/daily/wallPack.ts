@@ -42,7 +42,27 @@
  * harness pins.
  */
 
-/** Columns across the wall. The FINAL's `repeat(15, 1fr)`. */
+/**
+ * Columns across the wall — the FINAL's `repeat(15, 1fr)`, and the DEFAULT only.
+ *
+ * ⚠ THE COUNT IS NOW A PARAMETER (Phase 2 step 4, tier 3, 2026-08-11). The wall
+ * places tiles believing a column is `COL_PITCH` (140px) wide while the layout
+ * is `1fr`, so the two agreed only near the 2180 canvas: at the 14"'s ~1350px
+ * of wall, fifteen `1fr` columns render ~78px and every tile was handed roughly
+ * HALF the width it was composed for — text clipped mid-word rather than
+ * reflowing. The sheet's own comment ("Scrolls on overflow; NEVER compresses
+ * tiles") described an intent `1fr` cannot keep.
+ *
+ * The small canvas therefore takes FEWER columns at the drawn pitch rather than
+ * the same count squeezed: nine columns give ~139px, against a desktop that
+ * itself ranges 131px (rail out, 2180) to 156px (rail collapsed, 2560). The
+ * wall grows taller and scrolls, which is the overflow the sheet specifies.
+ *
+ * ONE SOURCE: the live count is the `--wall-cols` custom property (daily.css,
+ * re-valued by small.css) and the caller reads it — never a second copy of the
+ * literal here. Deliberately NOT a roster dial: the layout law bars a theme
+ * from resizing the app's boxes, and the column count IS the wall's geometry.
+ */
 export const WALL_COLS = 15;
 
 /**
@@ -128,10 +148,10 @@ const occupy = (grid: Grid, c: number, r: number, span: Span): void => {
  * contours are viewport-shaped and the pack fills horizontally first (the
  * 2026-07-27 re-rule; a plain pixel metric grew a round, scrolling island).
  */
-const score = (c: number, r: number, span: Span, ryHalfRows: number): number => {
-  const rx = (WALL_COLS * COL_PITCH) / 2;
+const score = (c: number, r: number, span: Span, ryHalfRows: number, cols: number): number => {
+  const rx = (cols * COL_PITCH) / 2;
   const ry = Math.max(1, (ryHalfRows * HALF_ROW_PITCH) / 2);
-  const dx = ((c + span.cols / 2 - WALL_COLS / 2) * COL_PITCH) / rx;
+  const dx = ((c + span.cols / 2 - cols / 2) * COL_PITCH) / rx;
   const dy = ((r + span.halfRows / 2) * HALF_ROW_PITCH) / ry;
   return dx * dx + dy * dy;
 };
@@ -158,16 +178,17 @@ const bestSlot = (
   band: { lo: number; hi: number } | null,
   ry: number,
   restrict: ((c: number, r: number) => boolean) | null,
+  cols: number,
 ): { col: number; row: number } | null => {
   let best: { col: number; row: number; s: number; out: boolean } | null = null;
   const from = Math.min(bounds.minR - span.halfRows, band ? band.lo : 0);
   const to = Math.max(bounds.maxR + 1, band ? band.hi - span.halfRows : 0);
   for (let r = from; r <= to; r++) {
-    for (let c = 0; c + span.cols <= WALL_COLS; c++) {
+    for (let c = 0; c + span.cols <= cols; c++) {
       if (restrict != null && !restrict(c, r)) continue;
       if (!free(grid, c, r, span)) continue;
       const out = band != null && !(r >= band.lo && r + span.halfRows <= band.hi);
-      const s = score(c, r, span, ry);
+      const s = score(c, r, span, ry, cols);
       // Deterministic tie-break: in-band beats out-of-band, then the lower
       // score, then the lower row, then the lower column.
       if (
@@ -200,6 +221,12 @@ export interface PackOptions {
    * no hard band; the elliptical metric still shapes the island.
    */
   budgetHalfRows?: number;
+  /**
+   * Columns across the wall. Absent = `WALL_COLS` (the drawn 15). The caller
+   * reads the live count off `--wall-cols` so the grid and the packer cannot
+   * disagree about how wide the wall is.
+   */
+  cols?: number;
 }
 
 export function packWall<T>(
@@ -208,6 +235,7 @@ export function packWall<T>(
 ): PackResult<T> & { overflowUnlogged: T[] } {
   const grid: Grid = new Set();
   const bounds: Bounds = { minR: 0, maxR: 0 };
+  const cols = opts?.cols ?? WALL_COLS;
   const budget = opts?.budgetHalfRows;
   // Centred on the virtual origin, where the seed lands.
   const band = budget != null ? { lo: -Math.floor(budget / 2), hi: -Math.floor(budget / 2) + budget } : null;
@@ -246,7 +274,7 @@ export function packWall<T>(
       continue;
     }
 
-    const slot = bestSlot(grid, p.span, bounds, band, ry, restrict);
+    const slot = bestSlot(grid, p.span, bounds, band, ry, restrict, cols);
     if (slot == null) {
       if (isFiller) overflowUnlogged.push(p.item);
       continue;

@@ -53,10 +53,12 @@ import {
   quoteFor,
   rediscover,
   sunSign,
-  timeProgress,
   wordFor,
 } from "./almanac";
 import { MONTHS_LONG, MONTHS_SHORT } from "../metrics/format";
+import { weekStartDow } from "../metrics/dates";
+import { todayLocal } from "../metrics/clock";
+import { periodProgress, pct } from "./periodProgress";
 import type { WhimsyConfig } from "./whimsyConfig";
 
 // Not metrics/format.hoursMinutes: the sun face always carries the hour
@@ -696,64 +698,73 @@ export function HolidayCard({ dayKey }: { dayKey: string }) {
   );
 }
 
-/** One progress ring. r=28.5 so the circumference is 179.07 — the FINAL's number. */
-const RING_C = 179.07;
-function Ring({ pct, stroke, label }: { pct: number; stroke: string; label: string }) {
-  const on = Math.max(0, Math.min(1, pct)) * RING_C;
-  return (
-    <div className="tp">
-      <svg className="tp-ring" viewBox="0 0 64 64" aria-hidden="true">
-        <circle cx="32" cy="32" r="28.5" fill="none" stroke="var(--inset-background)" strokeWidth="7" />
-        <circle
-          cx="32"
-          cy="32"
-          r="28.5"
-          fill="none"
-          stroke={stroke}
-          strokeWidth="7"
-          strokeLinecap="round"
-          strokeDasharray={on.toFixed(2) + " " + RING_C}
-          transform="rotate(-90 32 32)"
-          // color mirrors stroke because drop-shadow() reads `color`, never
-          // stroke — without it a theme cannot light this arc in its own hue
-          // (the ring's hue is per-instance, e.g. a --month-* slot, so no
-          // theme can name it). Render-neutral for every theme that doesn't.
-          style={{ color: stroke }}
-        />
-        <text
-          x="32"
-          y="32"
-          textAnchor="middle"
-          dominantBaseline="central"
-          fontFamily="var(--font-mono)"
-          fontSize="15"
-          fontWeight="700"
-          fill="var(--text-strong)"
-        >
-          {Math.round(pct * 100) + "%"}
-        </text>
-      </svg>
-      <span className="tp-lbl">{label}</span>
-    </div>
-  );
-}
 
 const WEEKDAY_FMT = new Intl.DateTimeFormat(undefined, { weekday: "long" });
 const MON_VAR = ["--month-jan", "--month-feb", "--month-mar", "--month-apr", "--month-may", "--month-jun", "--month-jul", "--month-aug", "--month-sep", "--month-oct", "--month-nov", "--month-dec"];
 
+/**
+ * PERIOD PROGRESS — five nested arcs on ONE dial, re-minted 2026-08-12.
+ *
+ * WHAT THE COMPONENT WRITES, and why it is written rather than drawn: five
+ * normalised fractions plus the month's ink, as inline custom properties. Every
+ * arc is `pathLength="100"`, so the sheet does its dash arithmetic as
+ * `calc(var(--tp-…) * 100)` and never needs a circumference — which is what lets
+ * the dial be re-sized by one dial (`--tp-dial`) instead of by editing geometry.
+ * The precedent is `--wall-cols`: a value the layout owns, published for the
+ * other half to read.
+ *
+ * ⚠ THE PERCENTAGES ARE HTML ON THE CARD'S GROUND, not `<text>` in the svg. The
+ * old ring baked `font-size: 15` into a 64 viewBox, so the number scaled with the
+ * drawing and a smaller ring set its own label at ~8px — the reason every attempt
+ * to shrink the rings was struck. As HTML they take the type ramp and the theme's
+ * ink like any other reading.
+ *
+ * ⚠ AND THE ARITHMETIC MOVED OUT ENTIRELY, to `periodProgress.ts`. The five
+ * readings used to run on four different rules; the day's fell back to a whole
+ * constant day for anything that was not today, so **every back-dated day drew a
+ * finished ring** — a progress ring claiming a finished day is this card's worst
+ * possible failure, and it was its ordinary behaviour on the catch-up queue.
+ * One rule now: elapsed real time over the period's real length, at one instant,
+ * floored for display, with every denominator a real local interval.
+ *
+ * The note is IDENTITY, not magnitude — "Saturday 1 August · week 31 · Q3". It
+ * must never restate a fraction the dial already draws; that was the old note's
+ * whole content ("Day 213 of 365" IS the year arc).
+ */
 export function TimeProgressCard({ dayKey, now }: { dayKey: string; now: Date }) {
-  // The week/quarter/year figures all live in `timeProgress` (2026-07-30
-  // dedup) — this card only picks colours and renders.
-  const t = timeProgress(dayKey, now);
+  const t = periodProgress(dayKey, now, weekStartDow());
   const mi = Number(dayKey.slice(5, 7)) - 1;
-  const monthVar = "var(" + MON_VAR[mi] + ")";
-  // Quarter takes the quarter's MIDDLE month, week a shaded month — the derived
-  // period colours the registry calls for; the year is the theme accent.
-  const qMid = "var(" + MON_VAR[Math.floor(mi / 3) * 3 + 1] + ")";
-  const weekVar = "color-mix(in oklch, " + monthVar + ", var(--window-background) var(--week-shade-mix))";
   const d = new Date(dayKey + "T12:00:00");
+  const isToday = todayLocal() === dayKey;
+  const hhmm =
+    String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+  const ident = WEEKDAY_FMT.format(d) + " " + d.getDate() + " " + MONTHS_LONG[mi];
+
+  const arcs = [
+    { cls: "a-d", r: 46, k: "Day", v: t.day, live: true },
+    { cls: "a-w", r: 37, k: "Week", v: t.week, live: false },
+    { cls: "a-m", r: 28, k: "Month", v: t.month, live: false },
+    { cls: "a-q", r: 19, k: "Quarter", v: t.quarter, live: false },
+    { cls: "a-y", r: 10, k: "Year", v: t.year, live: false },
+  ];
+
   return (
-    <div className="card whimsy timeprog" style={ALMANAC_FLEX}>
+    <div
+      className="card whimsy timeprog"
+      style={
+        {
+          ...ALMANAC_FLEX,
+          "--tp-day": t.day.toFixed(4),
+          "--tp-week": t.week.toFixed(4),
+          "--tp-month": t.month.toFixed(4),
+          "--tp-quarter": t.quarter.toFixed(4),
+          "--tp-year": t.year.toFixed(4),
+          // the month's own registry slot — the dial inks from the period it is
+          // inside, so August's arcs are August's colour on every theme.
+          "--tp-ink": `var(${MON_VAR[mi]})`,
+        } as CSSProperties
+      }
+    >
       <div className="ovl">
         <span className="ovl-t">
           <svg className="ico" viewBox="0 0 24 24">
@@ -763,19 +774,55 @@ export function TimeProgressCard({ dayKey, now }: { dayKey: string; now: Date })
           </svg>
           Period progress
         </span>
-        <span className="meta">elapsed time &middot; not a goal</span>
+        {/* the "elapsed time · not a goal" meta was STRUCK at the re-mint: it
+            measured ~315px against a 330 column, and a disclaimer that has to
+            wrap twice is louder than the thing it disclaims. */}
       </div>
       <div className="art" style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        <div className="tp-grid">
-          <Ring pct={t.dayPct} stroke={monthVar} label="Day" />
-          <Ring pct={t.weekPct} stroke={weekVar} label="Week" />
-          <Ring pct={t.monthPct} stroke={monthVar} label="Month" />
-          <Ring pct={t.quarterPct} stroke={qMid} label="Quarter" />
-          <Ring pct={t.yearPct} stroke="var(--accent)" label="Year" />
+        <div className="tp-body">
+          <svg className="tp-dial" viewBox="0 0 100 100" aria-hidden="true">
+            {arcs.map((a) => (
+              <circle key={"t" + a.cls} className="tp-trk" cx="50" cy="50" r={a.r} />
+            ))}
+            {arcs.map((a) => (
+              <circle
+                key={a.cls}
+                className={"tp-arc " + a.cls}
+                cx="50"
+                cy="50"
+                r={a.r}
+                pathLength="100"
+                transform="rotate(-90 50 50)"
+              />
+            ))}
+            {/* the origin mark — where every arc starts, so a nearly-full ring
+                reads as nearly-full rather than as a closed circle. */}
+            <line className="tp-orig" x1="50" y1="1" x2="50" y2="38" />
+          </svg>
+          <div className="tp-keys">
+            {arcs.map((a) => (
+              <div key={a.cls} className={a.live ? "tp-key is-live" : "tp-key"}>
+                <span className="tp-k">{a.k}</span>
+                <span className="tp-v">{pct(a.v)}%</span>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="tp-note">
-          {"Day " + t.doy + " of " + t.daysInYear + " \u00b7 week " + t.week + " \u00b7 Q" + t.quarter + " \u00b7 " + WEEKDAY_FMT.format(d) + " " + String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0")}
+          {ident + " \u00b7 week " + t.weekNumber + " \u00b7 Q" + t.quarter1}
         </div>
+        {/* the hidden state sentence — generated from the same five numbers as
+            the art, so a screen reader gets the picture and not just the labels. */}
+        <p className="kit-sr">
+          {ident +
+            (isToday ? ", " + hhmm : "") +
+            ". " +
+            pct(t.day) + "% through the day, " +
+            pct(t.week) + "% through week " + t.weekNumber + ", " +
+            pct(t.month) + "% through " + MONTHS_LONG[mi] + ", " +
+            pct(t.quarter) + "% through Q" + t.quarter1 + ", " +
+            pct(t.year) + "% through the year."}
+        </p>
       </div>
     </div>
   );

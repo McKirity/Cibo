@@ -21,7 +21,7 @@
  * Keyboard's word count is Writing's — is imported from `db/derivedKeyboard.ts`,
  * which has been its code-side home since it was ruled.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
 import { syncDerivedKeyboardForDay, WRITING_KEY } from "../db/derivedKeyboard";
@@ -218,10 +218,21 @@ const createWordTotalStore = (): WordTotalStore => {
 export function Spine({
   dayKey,
   onFinalized,
+  banner,
 }: {
   dayKey: string;
   /** Daily swaps to the cover wall; the write itself happens here. */
   onFinalized?: () => void;
+  /**
+   * A full-width band between the day header and the logging form — the
+   * catch-up card's home since 2026-08-11 (user-ruled: *"have the unfinalized
+   * days sit on top of the habit cards like a banner"*). Taken as a NODE rather
+   * than rendered here: the spine owns the logging column's anatomy, Daily owns
+   * which cards exist, and this keeps that split intact. The 2026-07-18 ruling
+   * is untouched — day identity and finalize state still LEAD the column; the
+   * banner sits under them and on top of the habits.
+   */
+  banner?: ReactNode;
 }) {
   const data = useDayData(dayKey);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -282,6 +293,8 @@ export function Spine({
           {data.dayRow?.finalized ? "Finalized" : "Unfinalized"}
         </span>
       </div>
+
+      {banner}
 
       {/* The one column the 2026-07-19 flex re-rule DOES height-neutralize: the
           form is lifted out of intrinsic sizing (absolute inside .form-wrap) so

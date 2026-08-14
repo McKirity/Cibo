@@ -1,3 +1,52 @@
+/* SPINE-ONLY — every whimsy card off, so the habits are the whole screen
+   (2026-08-11, user-ruled: "just let the habits spread all the way out").
+
+   ⚠ WHY THIS NEEDS A RULE ON `.daily` AND NOT JUST ON THE TRIPTYCH. The spine is
+   HEIGHT-NEUTRALIZED by design — `.form` is `position:absolute; inset:0` inside
+   `.form-wrap`, so the logging column contributes only its head to the row's
+   intrinsic height (the 2026-07-19 flex re-rule). The triptych's height has
+   therefore always come from somewhere else: the almanac's content, floored by
+   `--triptych-min`. Take both away and the row measures its header and nothing
+   more — which is exactly what happened when the floor was first dropped here:
+   the habits vanished rather than spreading.
+
+   `flex:1 1 auto` alone could not save it either, because `.daily` is
+   content-sized ON PURPOSE — its own comment says `flex:1 1 auto` and
+   `min-height:0` are "deliberately absent … the triptych is content-sized, never
+   squeezed" — so there is no free space for the triptych to grow INTO.
+
+   So: only in this mode does `.daily` claim the pane's height (`.content` is an
+   `overflow:auto` grid cell with a definite one, so 100% resolves), and only then
+   does the triptych grow into it. The deliberate absence stands everywhere else —
+   this does not squeeze a row that has whimsy columns to squeeze. */
+.daily.spine-only {
+  min-height: 100%;
+  /* THE SIMPLEST VIEW'S SIDE INSET (2026-08-11). Measured, not chosen by eye: the
+     widest row in an expanded habit is KIND — label 78 + the Stage|Wiki control +
+     the arrow + `.inp.sel`'s declared min-width 190 — which floors at ~448px and
+     renders at ~438. Between the column edge and that row sit 108px of chrome
+     (form 8 + strip border 2 + strip body 72 + session border 2 + session padding
+     24), so on this canvas's 1351px spine the row has 1243px and the absolute
+     edge is ~395 per side.
+     330 KEEPS ~130px OF HEADROOM, deliberately: three terms in that row are
+     content-sized rather than declared — the segmented control, the arrow, and
+     the words "min"/"words" — so a longer stage name, a wider value in that
+     dropdown, or a theme with a bigger type ramp all eat the margin silently, and
+     `.row` wraps rather than overflowing, which is a quiet failure. */
+  --spine-inset: 330px;
+}
+/* the inset is on the COLUMN, not the cards: the day header and the catch-up
+   banner stay aligned with the habit cards rather than sitting flush left while
+   the cards move inward. */
+.daily.spine-only .col.spine { padding-inline: var(--spine-inset); }
+/* ⚠ THE SELECTOR CARRIES BOTH MODIFIERS ON PURPOSE. `.daily.spine-only .triptych`
+   is (0,3,0) — and so is the nested `.triptych.no-sky` rule below, which resolves
+   to `.daily .triptych.no-sky`. Equal specificity, and the nested block comes
+   LATER in the file, so the two-track template won the tie and the habits kept a
+   330px almanac track beside them that nothing was rendering into. Naming both
+   modifiers takes it to (0,5,0) and states the case it is for. */
+.daily.spine-only .triptych.no-sky.no-almanac { grid-template-columns: minmax(0, 1fr); min-height: 0; flex: 1 1 auto; }
+
 /* THE WALL'S COLUMN COUNT — ONE SOURCE for the CSS grid AND wallPack's placement
    bound (2026-08-11). It was `repeat(15, 1fr)` here and `WALL_COLS = 15` there:
    two copies of one number, which is exactly what wallSpec's own BANNER_COLS
@@ -117,6 +166,19 @@
                 /* iteration 2 · slot 6 knock-on — the spine widens to seat the daily-log strip clearance; the sky column pays and the almanac (whimsy) also narrows, so the whimsy cards squish twice. Drawn honestly — the triptych is NOT rebalanced to hide it. */
                 grid-template-columns:var(--triptych-sky-col) minmax(0,1fr) var(--triptych-almanac-col);
                 gap:var(--space-6); }
+  /* ONLY THE TRACKS THAT EXIST (2026-08-11, user-ruled: "have the habits take up
+       the rest of the space"). The three-track template above is unconditional,
+       but the two outer columns are not RENDERED when their cards are all off —
+       so the spine auto-placed into whichever track came first and the rest of
+       the row stayed reserved and empty. With both gone the triptych is a single
+       column, the --triptych-min floor no longer means anything (it exists to
+       hold the whimsy columns up), and the row GROWS instead: the habits take the
+       height the shelf and the outer columns are no longer using. */
+    .triptych.no-sky { grid-template-columns:minmax(0,1fr) var(--triptych-almanac-col); }
+    .triptych.no-almanac { grid-template-columns:var(--triptych-sky-col) minmax(0,1fr); }
+    /* the BOTH-missing case is handled by the `.daily.spine-only` pair at the
+       top of this file — it needs a rule on `.daily` itself, which is this
+       block's own root and so cannot be written from inside it. */
   .col { display:flex; flex-direction:column; gap:var(--space-5); min-height:0; }
   /* the almanac is the in-flow driver: its cards GROW to fill surplus (bottom-
        anchored, no gapping — rule 5) but never SHRINK, so past the capped row the
@@ -154,7 +216,13 @@
     /* baseline, not center: box-centering leaves the label and chip TEXT a hair
        apart (padding + line-box rounding); baseline locks the text itself. The
        dot has no baseline, so it alone re-centers. */
-    .catch { display:flex; flex-direction:row; align-items:baseline; flex-wrap:wrap; gap:var(--space-4);
+    /* AS A BANNER (2026-08-11): the card was composed for the almanac's ~330px
+       column, where its day chips wrapped to four or five short rows. Over the
+       full width of the spine the same flex row simply runs — no new anatomy,
+       and `flex-wrap` still catches a long backlog. `flex:0 0 auto` because the
+       spine is a flex COLUMN whose form takes all the slack: without it the band
+       is a flex child with `1 1 auto` behaviour and gets stretched. */
+    .catch { flex:0 0 auto; display:flex; flex-direction:row; align-items:baseline; flex-wrap:wrap; gap:var(--space-4);
              background: color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-mix));
              border:var(--border-hairline) solid color-mix(in oklch, var(--attention-dot), var(--panel-background) var(--tint-border)); }
     .catch .dot { width:var(--dot-size); height:var(--dot-size); border-radius:var(--radius-full); background:var(--attention-dot); flex:0 0 auto; align-self:center; }
@@ -266,12 +334,20 @@
       /* sun — the headline stays whole; the delta chip drops below it */
       .sun-len { flex-wrap: wrap; row-gap: var(--space-2); }
       .sun-len .whead, .sun-len .delta { white-space: nowrap; }
-      /* weather — the curve takes a full-width row under the glyph + now
-         block instead of a sliver beside them; the seam rotates with it */
-      .wx { flex-wrap: wrap; }
-      .wx-curve { flex: 1 1 100%; align-self: auto; padding-left: 0; margin-left: 0; border-left: none;
-                  padding-top: var(--space-4); margin-top: var(--space-2);
-                  border-top: var(--border-hairline) solid var(--divider); }
+      /* ⚠ THE WEATHER HALF WAS DELETED 2026-08-12 with the whimsy re-mints.
+         What it did — give the curve its own full-width row and rotate the seam —
+         the re-minted card now does unconditionally.
+         ⚠ AND THE REASON RECORDED IN THE HANDOFF WAS WRONG: it said this block
+         "has never fired" because the component renders `.col.sky-col`. It does
+         not — Daily.tsx renders `col sky`, this block's own `container-type` is
+         declared on `.col.sky`, and at the 14" canvas the column is 380px against
+         a 470px breakpoint, so it FIRES. `sky-col` was an authoring slip in the
+         exhibits, not in the app. The weather half had to go precisely BECAUSE it
+         fires: `.wx` survives the re-mint, and `flex-wrap:wrap` on the new card
+         would have re-flowed it against the drawn design.
+         The sun half below is now inert (`.sun-len` is retired for `.sun-read`)
+         and is kept only until the sun component lands, so the two can be removed
+         in one step and this comment does not outlive its subject. */
       /* season — whole phrases wrap as units, never mid-phrase */
       .season-head { flex-wrap: wrap; row-gap: var(--space-2); }
       .season-head b, .season-head .kv { white-space: nowrap; }
@@ -370,10 +446,10 @@
   .hol-name { font-family:var(--font-heading); font-size:var(--whimsy-size-subheading); font-weight:var(--weight-bold); color:var(--text-strong); }
   .hol-country { font-size:var(--whimsy-size-small); color:var(--text-muted); margin-top:var(--space-2); }
   /* ---- TIME PROGRESS — day → year, as donut rings ---- */
-    .tp-grid { display:flex; justify-content:space-between; align-items:flex-start; gap:var(--space-3); }
-  .tp { display:flex; flex-direction:column; align-items:center; gap:var(--space-3); flex:1 1 0; min-width:0; }
-  .tp-ring { width:var(--donut-size); height:auto; aspect-ratio:1; max-width:100%; display:block; }
-  .tp-lbl { font-size:var(--whimsy-size-caption); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); }
+    
+  
+  
+  
   .tp-note { font-size:var(--whimsy-size-caption); color:var(--text-muted); text-align:center; margin-top:var(--space-5); }
   /* =================================================================
        THE FORM SPINE — the logging path. Scrolls independently.
@@ -511,9 +587,20 @@
     /* pass 7 — the shelf GROWS to absorb whatever the triptych (almanac) doesn't
        take; --shelf-height is now its FLOOR, not a fixed height. Almanac sparse →
        tall shelf; almanac dense → shelf settles to its floor. */
-    .shelf { flex:1 0 auto; /* grows into slack, never below content (re-ruled 2026-07-19) */ min-height:var(--shelf-height); display:grid;
-             grid-template-columns:minmax(0,2.3fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);
+    /* THE SHELF SIZES TO THE CARDS IT ACTUALLY HAS (2026-08-11). It was five FIXED
+       grid tracks in DOM order, so switching a card off did not free its track —
+       the survivors auto-placed into the first tracks and the remainder stayed as
+       dead columns, at the wrong widths. Flex with the same weights keeps the
+       drawn proportions (2.3 · 1 · 1.15 · 1 · 1) while letting an absent card cost
+       nothing; `min-width:0` because a flex child's auto minimum would otherwise
+       floor each card at its content — the step's own recurring lesson.
+       The element is not rendered at all when every card is off, so the
+       --shelf-height floor can no longer reserve an empty band. */
+    .shelf { flex:1 0 auto; /* grows into slack, never below content (re-ruled 2026-07-19) */ min-height:var(--shelf-height); display:flex;
              gap:var(--space-6); }
+    .shelf > .card { min-width:0; flex:1 1 0; }
+    .shelf > .horo { flex-grow:2.3; }
+    .shelf > .redisc { flex-grow:1.15; }
   .horo .body { display:flex; gap:var(--space-7); min-height:0; align-items:center; }
   /* The reading SCROLLS instead of growing the shelf row — user-ruled 2026-08-01
      at the UT/DR live walk: "cap the height of the horoscope row by forcing a
@@ -535,7 +622,7 @@
                   aspect-ratio:var(--tarot-card-w) / var(--tarot-card-h); max-height:100%; display:block; }
   .tarot .nm { font-family:var(--font-heading); font-size:var(--whimsy-size-heading); font-weight:var(--weight-bold); }
   .tarot .kw { font-size:var(--whimsy-size-small); color:var(--text-muted); margin-top:var(--space-2); }
-  .tarot .up { font-size:var(--whimsy-size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-secondary); margin-top:var(--space-4); }
+  
   /* rediscover — the door variant: a portal onto a past day */
     .redisc .go { cursor:pointer; }
   .redisc .portal { flex:1 1 auto; min-height:0; position:relative; overflow:hidden;

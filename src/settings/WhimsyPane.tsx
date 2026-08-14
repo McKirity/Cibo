@@ -45,6 +45,14 @@ const CARDS: { key: string; label: string }[] = [
   { key: "otd", label: "On this day" },
   { key: "quote", label: "Quote" },
   { key: "word", label: "Word of the day" },
+  // ADDED 2026-08-11, user-ruled ("I want to include the rediscover, countdowns,
+  // and lifetime cards in that roster as well"). All three shipped rendering
+  // UNCONDITIONALLY on the shelf — the roster had eight entries and the shelf
+  // had five cards, three of which no switch could reach. Turning "all the daily
+  // cards" off therefore still left three on screen.
+  { key: "rediscover", label: "Rediscover" },
+  { key: "countdowns", label: "Countdowns" },
+  { key: "lifetime", label: "Lifetime" },
 ];
 
 export function WhimsyPane() {

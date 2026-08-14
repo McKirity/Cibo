@@ -437,8 +437,15 @@
   --sun-arc-h:      168px;
   --tarot-card-w:   104px;
   --tarot-card-h:   182px;
-  --donut-size:      64px;
-  --donut-stroke:     7px;
+  /* --donut-size / --donut-stroke RETIRED 2026-08-12 (roster 255 -> 253) with
+     the period-progress re-mint: the five-donut ring grid is gone, and `.tp-ring`
+     was --donut-size's only reader in the app.
+     ⚠ --donut-stroke WAS ALREADY TENANTLESS — nothing has ever read it, in the
+     app or the corpus. The `--glow` shape a second time in five days: declared in
+     every sheet, read by none. The dashboard donut rides --dist-donut-*, minted as
+     siblings precisely so the two tiers could never borrow from each other. */
+  --horo-read-h:    112px;  /* the horoscope reading's scroll ceiling. It USED to derive from --shelf-height (minus two --space-7), right while the sign sat BESIDE the text; once the sign became a header row that derivation was wrong by the header's height, and a cap that quietly mis-derives is worse than one that is stated. */
+  --horo-disc:       48px;  /* the horoscope sign disc — was a raw 88px in a raw 104px column */
   --shelf-height:   168px;
   --triptych-min:   1115px;
 

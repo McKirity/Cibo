@@ -407,3 +407,1831 @@
 :root.compact .cadash[data-scale="month"] .cells {
   gap: var(--space-1);
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE WHIMSY RE-MINTS — sun · weather · period progress · the shelf band
+   Landed 2026-08-12 from the Claude Design session's `<style id="proposed">`
+   delta (`Exhibit - Daily space -working day-`), transcribed rule-for-rule with
+   its comments. Companion record: `HANDOFF - Implement whimsy re-mints.md`.
+
+   ⚠ FOUR THINGS DISAGREED WITH THE HANDOFF AND ARE RECORDED WHERE THEY BITE:
+   · the `@container (max-width: 470px)` block was said never to have fired —
+     it does. `.col.sky` matches (Daily.tsx renders `col sky`); the `sky-col` in
+     the exhibits was an authoring slip in the exhibit, not the app. The block's
+     WEATHER half is deleted anyway, because `.wx` survives the re-mint and
+     `flex-wrap:wrap` would fire on the new card at 380px.
+   · the `.timeprog` overline-nowrap deletions are a NO-OP — no such rule has
+     ever existed in daily.css, and neither has the `.otd` pair it said to keep.
+   · `--donut-stroke` was ALREADY tenantless (only `--donut-size` had a reader),
+     so it retires as a `--glow`-shape orphan, not as a casualty of the ring grid.
+   · nine of the eleven "mints" are declared HERE, under `:root.compact`, not at
+     `:root` — so they are local layout constants (the `--wall-cols` shape), not
+     roster dials, and no theme can re-value them. Landed as the delta declares
+     them; the roster is unmoved by those nine.
+
+   THE TWO LAWS OF THIS FILE STILL HOLD: every selector keeps its
+   `:root.compact` prefix, and values ride dials wherever a dial exists.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root.compact { --pstrip-days: 14; }
+
+/* ---- 1 · THE WHIMSY TYPE RAMP -------------------------------------------
+   SUPERSEDED BY THE MINIMALIST RAMP ported with the sun card below (§2 of that
+   block), and the disagreement is worth keeping. This pass held
+   --whimsy-size-stat as HIGH as it could be held — 38px, the widest value at
+   which the six worst cases still cleared their boxes — on the reasoning that
+   the loud figure was the whimsy cards' one permitted piece of shouting. The sun
+   mint ruled the other way: 24px, because a fact that changes by two minutes a
+   day should be something you read, not something that announces itself. The
+   ramp is theme-owned and moves every whimsy card together, so the later ruling
+   governs here too, and at 24 every one of those six fitting cases clears easily.
+   --whimsy-size-glyph-grand is NOT on the ported ramp, so it is kept: a 66px
+   quotation mark hanging off a 290px measure is a third of the column, and the
+   mark is a flourish, not a figure. */
+:root.compact { --whimsy-size-glyph-grand: 46px; }
+
+/* ═══ SKY COLUMN · 380 outer / 340 inner ═══════════════════════════════════ */
+
+/* ---- SUN · RE-MINTED ----------------------------------------------------
+   THE WHOLE SUN DELTA IS PORTED VERBATIM FROM `Mint - Sun card.html`, which is
+   where it was designed against nine states side by side and where its own
+   annotations live; the section numbers below are local to that block. Two rules
+   of this page's earlier sun pass are GONE rather than carried: the headline
+   nowrap fix and the rise/set legibility plate, both of which repaired a
+   composition that no longer exists — all text has left the field, so nothing
+   collides with the travelling disc and there is nothing to plate. ═════════ */
+
+/* ---- 0 · WHAT THE COMPONENT NOW WRITES ----------------------------------
+   ⚠ THIS IS A WIRING CHANGE, AND IT IS THE ONE THE REDESIGN REQUIRES.
+
+   Today the component writes `style="left:92.5%; top:80.9524%"` on `.sun-disc`.
+   The `top` is NOT solar altitude — the card draws a dashed parabola
+   (`M30 136 Q200 -44 370 136`) and the component samples THAT CURVE for the
+   number. Delete the arc and the number is orphaned: it describes the shape of
+   a drawing that no longer exists.
+
+   So the component stops sampling a curve and starts declaring the fact it
+   already computes:
+
+     --sun-alt   normalised solar altitude. 1 at solar noon, 0 at the horizon
+                 (rise and set), negative below it. Everything else on this card
+                 — height, sky colour, whether it is night — derives from it, so
+                 there is exactly one number to be right about.
+     --sun-warm  which twilight the horizon is tending toward: `var(--whimsy-dawn)`
+                 before solar noon, `var(--whimsy-dusk)` after. CSS cannot infer
+                 this — altitude .58 is identical in the morning and the
+                 afternoon — and it is the ONLY thing distinguishing the two.
+                 A pointer at an existing dial, never a colour of its own.
+
+   `left` is retired. The disc no longer travels horizontally: the ruling is that
+   at 380px there is no width to spend on an axis, and altitude alone answers
+   the question the card is asked ("where is the sun now").
+   Precedent for component-written custom properties: --wall-cols, which
+   daily.css declares at :root precisely so wallPack.ts can read it off computed
+   style instead of keeping a second copy of the number.
+
+   ⚠ The card's inline `flex: 2.2 0 285px` basis comes down with the field
+   ceiling below — 285 → 215, applied to the markup on this page. It is
+   load-bearing, not cosmetic: daily.css's own note (~line 888) records that
+   `.sun-field` has ZERO intrinsic height by construction, because every child is
+   absolutely positioned. The field exists only to receive LEFTOVER space inside
+   a card whose height is already decided, so a card with no basis collapses to
+   fit-content, the field resolves to 0px, and every percentage in this block —
+   --sun-horizon-y, the disc's calc — resolves against nothing. The basis is what
+   makes the whole figure exist.
+   ⚠ AND THE BASIS IS A BUDGET, NOT A HEIGHT. Whatever the text rows and gaps
+   take, the field gets the remainder — so adding a row of type silently shortens
+   the figure rather than growing the card. That fragility is closed in section 4
+   by giving the field a declared basis instead; the card's own basis then only
+   has to be at least the sum of its parts (16 overline + 120 field + 23 reading
+   row + 24 gaps + 32 padding = 215).
+   The exact number is the span calculator's to own, not CSS's — same open item
+   as --whimsy-span-unit in the sibling exhibit. */
+
+/* ---- 1 · DIALS ----------------------------------------------------------
+   The old --sun-arc-h is re-valued AND misnamed after this change: it is named
+   for an arc that no longer exists and now sizes a plain sky field. Propose the
+   rename --sun-field-h at the roster pass; re-valued here under the live name so
+   this page runs against the unmodified sheets.
+   120 rather than 168: the arc needed headroom for a curve's apex, a disc
+   travelling straight up needs only its own diameter of clearance, and the sky
+   column is the canvas's scarcest axis. */
+:root.compact {
+  --sun-arc-h: 120px;         /* the sky field's HEIGHT (rename: --sun-field-h). No longer a ceiling —
+                                 see section 4 for why the field is declared rather than left over. */
+  --sun-horizon-y: 68%;       /* where the horizon sits in the field. Sky above, ground below. */
+  --sun-peak-clear: 4px;      /* clear air between the disc's CROWN and the top of the field at solar noon */
+  --sun-disc: 26px;           /* the solar disc. Was a raw 32px at the use-site — dialled here. */
+  --sun-star: 8px;            /* a sparkle's ARM SPAN, not a radius — see the scatter rule. Raised
+                                 from 5: at a 296px sky band the marks have room, and a star that
+                                 has to be hunted for is not doing its job. */
+  --sun-star-w: 1.4px;        /* the arm's THICKNESS. Was riding --border-hairline, which is a dial
+                                 about UI rules, not about light — and at a longer span a 1px arm
+                                 only gets wispier. Prominence is span AND weight together; moving
+                                 the span alone made longer faint scratches. */
+  --sun-star-mag: 1.5;        /* the magnitude spread: first magnitude is this much larger than base,
+                                 third is base divided by it. One ratio, both directions. */
+  --sun-star-mix-1: 6%;      /* first magnitude — nearly full --whimsy-star */
+  --sun-star-mix-2: 26%;      /* second */
+  --sun-star-mix-3: 50%;      /* third — at the edge of legibility, which is the point */
+  --sun-beacon: 21px;         /* the evening star's flare span — the sky's one prominent object */
+  --sun-beacon-core: 5px;   /* its solid core */
+  --sun-glow-h: 46%;          /* the airglow's reach up the sky band from the horizon */
+  --sun-glow-mix: 88%;        /* how far the airglow recedes — barely there, by design */
+  --sun-grain-step: 7px;      /* the print grain's pitch */
+  --sun-grain-mix: 98.5%;       /* how far a grain line recedes — a material, not a pattern */      /* third — at the edge of legibility, which is the point */
+  --sun-ring-gap: 6px;        /* clear air between disc and ring — the original card's inset:-6px */
+  --sun-ring-w: 3px;          /* the ring's stroke. The original card's 2px, thickened one step —
+                                 see the ring rule for why thickness alone did not solve it. */
+}
+
+/* ---- 2 · THE MINIMALIST RAMP -------------------------------------------
+   User-ruled: "more minimalist compared to the original 2k design, with smaller
+   header text and less spacing." That is a RAMP change, not a per-card one —
+   the whimsy type ramp is theme-owned and seeded at the Default DESKTOP ramp,
+   so every whimsy card is currently set for a 550px column. Compacting it here
+   moves all of them together and keeps the family reading as one family.
+   --whimsy-size-stat is the big move: 48px was a figure sized to shout across a
+   wide column. At 24 the day length is something you read, not something that
+   announces itself, which is the right weight for a fact that changes by two
+   minutes a day. */
+:root.compact {
+  --whimsy-size-caption:    12px;
+  --whimsy-size-small:      13px;
+  --whimsy-size-body:       14px;
+  --whimsy-size-subheading: 15px;
+  --whimsy-size-heading:    20px;
+  --whimsy-size-stat:       24px;
+  --frame-clear-whimsy:      8px;   /* was 12 — "less spacing", at the frame dial rather than per card */
+}
+
+/* ---- 3 · DERIVED READINGS ----------------------------------------------
+   Two ramps read off the single altitude number, so no rule below has to know
+   what time it is.
+     --sun-lit   0% at the horizon → 100% at solar noon. Drives DAYLIGHT.
+     --sun-dark  0% at the horizon → 100% once fully down. Drives NIGHTFALL.
+   -294% is 1/-.34: the altitude at which the sky is fully night. It is a
+   conversion factor between two declared quantities, not a styling constant. */
+:root.compact .daily .sun-card {
+  --sun-lit:  clamp(0%, calc(var(--sun-alt) * 100%), 100%);
+  --sun-dark: clamp(0%, calc(var(--sun-alt) * -294%), 100%);
+  /* the theme's four moment-pairs, expressed as two continuous mixes.
+     Reading the zenith line: night → (dawn/dusk) → day, exactly the table in
+     theme.css. oklab, not oklch, because day→dusk is a saturated hue-distant
+     pair and the oklch hue arc invents hues between them — the sheet's own
+     2026-07-26 derivation-law clause, restated here for the same reason. */
+  --sun-sky-hi: color-mix(in oklab, color-mix(in oklab, var(--whimsy-night), var(--whimsy-ink) var(--sun-dark)), var(--whimsy-zenith) var(--sun-lit));
+  --sun-sky-lo: color-mix(in oklab, color-mix(in oklab, var(--sun-warm), var(--whimsy-night) var(--sun-dark)), var(--whimsy-day) var(--sun-lit));
+  /* the land is always darker than the sky meeting it — true at every hour, and
+     what makes the horizon legible without a border. */
+  --sun-land:   color-mix(in oklab, var(--whimsy-ink), var(--whimsy-night) var(--sun-lit));
+  /* the night scatter's three magnitudes, each with a fully-transparent twin for
+     the gradient tapers. Declared HERE with the other derived colours rather
+     than on the pseudo-element that draws them: a custom property both declared
+     and consumed inside the same ::before rule failed to resolve, taking the
+     whole 24-layer background-image with it (one unresolved var invalidates the
+     entire declaration, so the sky rendered bare). The card is where every other
+     derived colour on this component already lives — --sun-sky-hi, --sun-sky-lo
+     and --sun-land are all declared here and work — so this follows the pattern
+     that is known good rather than inventing a second home for the same idea. */
+  --sun-star-1: color-mix(in oklch, var(--whimsy-star), transparent var(--sun-star-mix-1));
+  --sun-star-2: color-mix(in oklch, var(--whimsy-star), transparent var(--sun-star-mix-2));
+  --sun-star-3: color-mix(in oklch, var(--whimsy-star), transparent var(--sun-star-mix-3));
+  /* ONE fully-transparent token for every taper on this card, rather than a
+     transparent twin per tier. Every tier's transparent end is the same colour
+     — fully-faded --whimsy-star — so three separate twins, each a color-mix
+     wrapping another custom property, were three names for one value. That is
+     the whole case for flattening them: redundancy, not correctness. */
+  --sun-clear: color-mix(in oklch, var(--whimsy-star), transparent 100%);
+}
+
+/* ---- 4 · THE FIELD ------------------------------------------------------
+   THE SKY BAND IS ITS OWN BOX, AND THAT IS THE WHOLE TRICK. `.sun-sky` runs
+   from the top of the field to the horizon and clips. So:
+     · altitude 0 puts the disc's centre on the band's bottom edge, and the
+       translate(-50%,-50%) the disc already carries makes that EXACTLY half
+       visible — the spec falls out of the existing transform, uncomputed.
+     · negative altitude pushes it past the edge and it is simply gone. No
+       night-mode rule, no opacity fade, no second drawing.
+   The old `.sun-field::before` gradient and the `.arc` svg are both retired:
+   the sky is now painted by the band that clips it, so one box does both jobs.
+
+   ⚠ THE FIELD IS DECLARED, NOT LEFTOVER — A DEVIATION FROM THE FROZEN SHEET,
+   ARGUED. daily.css gives every whimsy field `flex:1 1 auto` so it absorbs
+   whatever the text rows leave, and for the old card that was right: the arc was
+   scenery and scenery can take what it is given. Here the field is a MEASURING
+   INSTRUMENT — the disc's height in the band IS the reading — so a field that
+   changes size between cards changes what the same altitude looks like. Measured
+   on this page before the change: five cards at 111px and the night card at 91,
+   because its reading row wrapped to two lines and the figure paid for it. A
+   scale that quietly re-scales is not a scale.
+   So the field takes a fixed basis and the text rows flex instead. --sun-arc-h
+   stops being a CEILING and becomes the height (the rename to --sun-field-h in
+   section 1 gets truer with this change, not less). */
+:root.compact .daily .sun-card .sun-field { flex: 0 0 var(--sun-arc-h); max-height: none; }
+
+:root.compact .daily .sun-card .sun-field::before { background: none; }
+
+:root.compact .daily .sun-card .arc { display: none; }
+
+:root.compact .daily .sun-card .sun-sky {
+  position: absolute; left: 0; right: 0; top: 0; height: var(--sun-horizon-y);
+  overflow: hidden; background: linear-gradient(to bottom, var(--sun-sky-hi), var(--sun-sky-lo));
+}
+
+/* the disc: left is fixed at centre now that travel is vertical only.
+   top = the band's floor, lifted by altitude toward the noon ceiling.
+
+   ⚠ THE NOON END IS A LENGTH, NOT A PERCENTAGE, AND THAT IS THE CORRECTION.
+   It was first written as a percentage of the band (24%), which ignores the fact
+   that `top` places the disc's CENTRE — the crown sits half a diameter above it.
+   On a short band 24% fell inside the radius, so the state captioned "the
+   ceiling" rendered with its crown sliced off by the very clip that makes the
+   horizon work. Expressed as radius + ring gap + clearance the crown is pinned
+   to the top of the field by construction, at any band height, disc size or ring
+   offset: the dials that could break it are the dials it is built from.
+   ⚠ --sun-ring-w IS NOT IN THIS SUM, and the omission is deliberate. A border
+   paints INSIDE its box, so the ring's outermost pixel sits at --sun-ring-gap
+   from the disc's edge and the stroke grows inward from there. Adding the stroke
+   width would count 3px the silhouette does not occupy — it clips nothing, but
+   it would push the sun 3px below its declared ceiling at noon and set it 3px
+   early, and --sun-peak-clear would quietly mean 7px of clear air while saying
+   4. A sum that is conservative is still wrong if a dial's declared value is not
+   what it delivers.
+   ⚠ THE RING GAP IS IN THAT SUM, and it is what the rule was missing when the
+   sun briefly wore rays instead: the peak term read radius + clearance while the
+   silhouette extended 8px further, and noon — the one state captioned as the
+   ceiling — rendered with a flat top. A guarantee is only over the terms it
+   actually contains: anything that extends the sun's silhouette has to enter
+   this sum, or it will be cut by the clip that conceals the sun at night. The
+   converse matters just as much — see the --sun-ring-w note above, where a term
+   that does NOT extend the silhouette had to come back out again.
+
+   THE TRAVEL IS LINEAR IN ALTITUDE and simply keeps going below zero, which is
+   what conceals the sun at night with no night rule. Full concealment needs the
+   whole silhouette below the line, so it happens at
+     alt = -(radius + ring gap) / (band - radius - ring gap - clearance)
+   — about -0.32 with these dials, where a bare disc would need only -0.20. The
+   ring moves that threshold, which is worth stating plainly: ANY dial that grows
+   the sun's silhouette makes it set later as well as clip sooner.
+   ⚠ THE TWO ENDPOINTS HAVE CONVERGED, AND THAT IS THE THING TO WATCH. The
+   geometry conceals the sun at -0.32; the COLOUR ramp saturates to full night at
+   -0.34. Those are independent derivations — one from the disc, ring gap and
+   band, the other from --sun-dark's divisor — and they currently sit 0.02
+   apart, which at this band height is a margin of nine tenths of one pixel.
+   Reading them as "the same number" is the trap: they agree today by arithmetic
+   coincidence, not by construction. Grow --sun-disc or --sun-ring-gap by a step,
+   or shorten --sun-arc-h, and the geometry threshold crosses the colour one —
+   at which point the sky is fully night while a sliver of lit sun is still above
+   the horizon, a state no rule forbids and no reader would predict from the
+   dials. An earlier pass already made this mistake in the other direction, using
+   the colour endpoint as if it were an altitude; the night card carries -0.6
+   rather than either threshold precisely so the exhibit does not depend on which
+   of them is currently lower. If the two must agree, one has to be DERIVED from
+   the other — they must never be separately declared and assumed equal. */
+:root.compact .daily .sun-card .sun-disc {
+  left: 50%; width: var(--sun-disc); height: var(--sun-disc);
+  top: calc(100% - var(--sun-alt) * (100% - (var(--sun-disc) / 2 + var(--sun-ring-gap) + var(--sun-peak-clear))));
+}
+
+/* THE DISC KEEPS THE ORIGINAL CARD'S ANATOMY — a flat disc with a DETACHED
+   RING, user-ruled — but not the original's values. daily.css draws that ring as
+   `inset:-6px` and a 2px stroke in --whimsy-sun mixed 66% toward transparent;
+   the gap carries over exactly, the stroke is half again heavier, and the
+   transparency is dropped outright. Both deviations are legibility fixes, argued
+   at the ⚠ below. What survives from the frozen
+   sheet is the IDEA — a solid disc with a separate ring floating off it — which
+   is what "match the original" was about; the numbers were what made it fail on
+   this canvas.
+
+   A rayed sun was tried here and is struck. Recorded because the reasoning was
+   sound and still lost: the family's other marks — the tarot face, the horoscope
+   glyph, the moon's phase strip — are all engraved, so an engraved sun reads as
+   of a piece with them. But this card is the one place the whimsy palette is
+   used ATMOSPHERICALLY rather than graphically; the whole field is a sky, and a
+   struck-line sun sits on top of that sky rather than in it. The detached ring
+   answers the same instinct better: it is light around the disc, drawn.
+
+   oklch, not oklab, deliberately — matching daily.css's own declaration for this
+   ring. The oklab elsewhere in this block is for the sky's hue-distant pairs,
+   where an oklch hue arc would invent colours between them; a single hue
+   receding toward transparent has no such problem.
+
+   ⚠ THE RING IS FULL-STRENGTH --whimsy-sun, AND A TRANSPARENCY DIAL WAS
+   RETIRED TO GET THERE. Thickening 2 → 3px was treating the wrong variable.
+   The ring was failing on
+   OPACITY, and opacity was the wrong instrument: at 66% toward transparent the
+   ring is a wash of its own hue over whatever is behind it, so its contrast is
+   set by the sky rather than by the dial — and it is weakest at dawn and dusk,
+   when --whimsy-sun and the horizon stop sit closest together in both hue and
+   lightness. Every step of transparency made it more dependent on the ground it
+   happened to be over.
+   At full strength that dependence is gone. --whimsy-sun is the one dial in the
+   whimsy palette chosen to stand apart from all four sky colours — theme.css
+   calls it "warm gold, not --attention-dot" — so a solid ring reads on every sky
+   the card can draw, in this theme and in any other. The 6px gap is what keeps
+   it a detached echo of the disc rather than a fattened edge; that separation
+   was always the gap's job, never the opacity's.
+   The colour is no longer mixed at all, so the oklch note above is now history
+   rather than instruction — kept because the reasoning still governs the sky. */
+:root.compact .daily .sun-card .sun-disc::after {
+  content: ""; position: absolute; border-radius: var(--radius-full);
+  inset: calc(-1 * var(--sun-ring-gap));
+  border: var(--sun-ring-w) solid var(--whimsy-sun);
+  background: none; -webkit-mask: none; mask: none;
+}
+
+/* ---- 5 · THE HORIZON ---------------------------------------------------
+   User-ruled after seeing both: GROUND MASS. The hairline variant is struck —
+   the band below the line is land, in --sun-land, which is always the darker
+   partner of the sky above it. The line itself is then just where two fills
+   meet, and needs no rule of its own.
+   The `.sun-horizon` element the hairline needed is struck from the markup with
+   it. A hidden node kept "in case" is how a struck variant comes back as dead
+   weight in a component nobody wants to touch. */
+:root.compact .daily .sun-card .sun-ground {
+  position: absolute; left: 0; right: 0; top: var(--sun-horizon-y); bottom: 0;
+  background: var(--sun-land);
+}
+
+/* ---- 6 · THE READING ROW -----------------------------------------------
+   ALL TEXT LEAVES THE FIELD. The old card pinned `rise 05:01` and `set 19:10`
+   into the field's bottom corners, where the travelling disc landed on them at
+   both ends of every day — a daily collision, and the reason the previous pass
+   proposed a legibility plate under them. That proposal is STRUCK: with the
+   text on the card's own ground the collision cannot occur, and a plate that
+   solves a problem the composition no longer has is just another element.
+
+   It also settles the contrast question the horizon toggle would otherwise
+   raise: text on the field would need one colour over land and another over
+   sky, at every hour. Text on the panel needs one colour, forever.
+
+   ⚠ ONE ROW, NOT TWO — THE FIELD'S HEIGHT IS BOUGHT HERE. Written first as a
+   headline row plus a rise/set line beneath, the text cost the card two rows and
+   a gap, and since the basis had been cut 285 → 215 in the same pass the field
+   was squeezed from both ends and resolved to 55px against a 120px ceiling it
+   never reached. A 26px disc in a 38px sky band left altitude nowhere to read:
+   the whole middle of the day rendered nearly identical, which is the one thing
+   this card exists to distinguish. Folding rise/set onto the headline's
+   baseline and taking the card's interior gap down a step returns the field its
+   full ceiling at the SAME 215 basis — the height comes out of the typography,
+   which is what "more minimalist, less spacing" should mean.
+   The times sit right-aligned via margin-left:auto, so the row reads
+   duration-first and the pair stays a pair. */
+:root.compact .daily .sun-card { gap: var(--space-4); }
+
+:root.compact .daily .sun-card .sun-read {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-2);
+}
+
+:root.compact .daily .sun-card .sun-read .whead { flex: 0 0 auto; white-space: nowrap; }
+
+/* THE .delta SLOT IS THE HEADLINE'S LABEL, NOT A DELTA. It lost its inset chip
+   when it held the day-over-day change — a background around a two-minute fact
+   was the card's loudest chrome for its quietest reading — and section 9 then
+   dropped that reading entirely. What sits here now is the countdown's
+   denominator and nothing else: "of 14h 08m" by day, "until sunrise" at night,
+   "of light — no sunset today" above the arctic circle. It reads as one sentence
+   with the figure beside it, so it stays quiet by design rather than by economy.
+   ⚠ THE CLASS NAME IS NOW A MISNOMER and should be retired with the reading it
+   was named for. That is the component's call, not this sheet's — the markup is
+   component-side — so it is flagged rather than renamed here. */
+:root.compact .daily .sun-card .sun-read .delta {
+  flex: 0 0 auto; white-space: nowrap; background: none; padding: 0;
+  font-size: var(--whimsy-size-caption); color: var(--text-muted);
+}
+
+:root.compact .daily .sun-card .sun-span {
+  margin-left: auto; font-family: var(--font-mono);
+  font-size: var(--whimsy-size-caption); color: var(--text-secondary); white-space: nowrap;
+}
+
+:root.compact .daily .sun-card .sun-span i {
+  font-style: normal; text-transform: uppercase; letter-spacing: .08em;
+  font-family: var(--font-ui); color: var(--text-muted);
+}
+
+/* the old in-field labels are retired with the text move. */
+:root.compact .daily .sun-card .sun-end { display: none; }
+
+/* ---- 7 · NIGHT ---------------------------------------------------------
+   The sky, the land and the vanished disc all fall out of --sun-alt going
+   negative, which is the test of whether the altitude model was the right one.
+
+   THE STARS COME IN ON THE SAME RAMP — user-ruled, reversing an earlier refusal
+   here. They are not switched on by `.is-night`: their opacity IS --sun-dark,
+   the 0→100% nightfall reading section 3 already derives, so they surface as the
+   sky darkens and are absent at dusk with nothing detecting either moment. Same
+   discipline as the rest of the card — one number, read again.
+
+   ⚠ A SCATTER, NOT A FIELD, and the distinction is load-bearing. The refusal it
+   replaces was argued on real grounds: the sky column already holds two black
+   cards — the moon field and Tonight's sky, which daily.css calls "the screen's
+   one window onto black" — and a third starred field would blur what each card is
+   for. That risk does not go away because stars were ruled in; it just has to be
+   designed around. So these are ten small flares and one bright beacon, with no constellation,
+   no asterism and no caption: they say "it is dark
+   out", where Tonight's sky says "here is what is up there". If they ever read as
+   a star CHART, they have taken the neighbouring card's job.
+   They sit in the clipping band, so the land masks them at the horizon. */
+:root.compact .daily .sun-card .sun-sky::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: var(--sun-dark);
+  /* SPARKLES, NOT DOTS — and the reason is resolution, not taste. The scatter was
+     first drawn as filled circles of 0.9–2.5px, painted through the canvas's 85%
+     UI scale. A disc that small does not survive antialiasing: it smears into a
+     soft grey blob, the gold desaturates, and nineteen of them read as dust on
+     the screen rather than as sky. No amount of re-spacing or re-weighting fixes
+     that, because the primitive is wrong at the size.
+     A star is recognised by SHAPE long before it is bright enough to be judged
+     by size, so each one is a four-pointed flare: two hairline bars crossed,
+     each tapering to nothing at both ends. Axis-aligned hairlines land on the
+     pixel grid and stay crisp exactly where circles mush, and the glyph reads as
+     a star at spans where a dot reads as nothing. It also puts the mark in the
+     same engraved register as the tarot face and the horoscope glyph.
+     THE ARM SPAN IS THE DIAL, struck through --sun-star-mag in both directions
+     for three magnitudes. Ten stars now rather than nineteen: legible marks need
+     fewer of them, and the sky is calmer for it.
+     THE BEACON is the evening star, and it is the composition's subject — a
+     flare crossed over a solid core, placed high and off-centre so it is clearly
+     one object rather than the biggest of a set. One bright thing above
+     "sunrise in 5h 31m" is a better sentence than a field of specks.
+     Tapers end on --sun-clear rather than the `transparent` keyword, which
+     premultiplies through grey and would dirty every mark on the card. */
+  /* ---- 8 · THE NIGHT SKY --------------------------------------------------
+     BOTH ARMS OF A STAR SHARE ONE SQUARE TILE, and that is what makes the
+     cross cross. A percentage background-position does NOT place an image at
+     that percentage of the box: it aligns the image's own X% point with the
+     container's X% point, so the resulting centre is 0.28·C + 0.22·W — it moves
+     with the layer's WIDTH. A bar 15px wide and a bar 1px wide, given the same
+     percentage, therefore land about 1.4px apart, and at these sizes that read
+     as loose L-shapes and stray ticks rather than as stars. Offsetting by half
+     the layer's size does not fix it either: percentages in background-position
+     always resolve against (container − image), so a calc offset stacks on top
+     of the drift instead of cancelling it.
+     Giving both arms the same S×S tile removes the variable entirely — equal
+     sizes, equal anchors, one true centre — and each arm is drawn as a thin
+     ELLIPSE inside that tile, which tapers to nothing at its tips for free.
+     THE BEACON HAS NO HALO. It was drawn with one and struck: gold at 86% over
+     --whimsy-night mixed to a grey-olive disc that read as a smudge rather than
+     as light — the same failure the sun's own halo had earlier in this file.
+     Gold over a blue-black ground goes dirty long before it goes dim. The flare
+     carries the object's size and the solid core carries its brightness. */
+  background-image:
+    radial-gradient(ellipse calc(var(--sun-beacon) / 2) var(--sun-star-w) at 50% 50%, var(--sun-star-1), var(--sun-clear)),
+    radial-gradient(ellipse var(--sun-star-w) calc(var(--sun-beacon) / 2) at 50% 50%, var(--sun-star-1), var(--sun-clear)),
+    radial-gradient(circle calc(var(--sun-beacon-core) / 2) at 50% 50%, var(--whimsy-star) 0 60%, var(--sun-clear) 100%),
+    radial-gradient(ellipse calc(calc(var(--sun-star) * var(--sun-star-mag)) / 2) var(--sun-star-w) at 50% 50%, var(--sun-star-1), var(--sun-clear)),
+    radial-gradient(ellipse var(--sun-star-w) calc(calc(var(--sun-star) * var(--sun-star-mag)) / 2) at 50% 50%, var(--sun-star-1), var(--sun-clear)),
+    radial-gradient(ellipse calc(calc(var(--sun-star) * var(--sun-star-mag)) / 2) var(--sun-star-w) at 50% 50%, var(--sun-star-1), var(--sun-clear)),
+    radial-gradient(ellipse var(--sun-star-w) calc(calc(var(--sun-star) * var(--sun-star-mag)) / 2) at 50% 50%, var(--sun-star-1), var(--sun-clear)),
+    radial-gradient(ellipse calc(var(--sun-star) / 2) var(--sun-star-w) at 50% 50%, var(--sun-star-2), var(--sun-clear)),
+    radial-gradient(ellipse var(--sun-star-w) calc(var(--sun-star) / 2) at 50% 50%, var(--sun-star-2), var(--sun-clear)),
+    radial-gradient(ellipse calc(var(--sun-star) / 2) var(--sun-star-w) at 50% 50%, var(--sun-star-2), var(--sun-clear)),
+    radial-gradient(ellipse var(--sun-star-w) calc(var(--sun-star) / 2) at 50% 50%, var(--sun-star-2), var(--sun-clear)),
+    radial-gradient(ellipse calc(var(--sun-star) / 2) var(--sun-star-w) at 50% 50%, var(--sun-star-2), var(--sun-clear)),
+    radial-gradient(ellipse var(--sun-star-w) calc(var(--sun-star) / 2) at 50% 50%, var(--sun-star-2), var(--sun-clear)),
+    radial-gradient(ellipse calc(calc(var(--sun-star) / var(--sun-star-mag)) / 2) var(--sun-star-w) at 50% 50%, var(--sun-star-3), var(--sun-clear)),
+    radial-gradient(ellipse var(--sun-star-w) calc(calc(var(--sun-star) / var(--sun-star-mag)) / 2) at 50% 50%, var(--sun-star-3), var(--sun-clear)),
+    radial-gradient(ellipse calc(calc(var(--sun-star) / var(--sun-star-mag)) / 2) var(--sun-star-w) at 50% 50%, var(--sun-star-3), var(--sun-clear)),
+    radial-gradient(ellipse var(--sun-star-w) calc(calc(var(--sun-star) / var(--sun-star-mag)) / 2) at 50% 50%, var(--sun-star-3), var(--sun-clear)),
+    radial-gradient(ellipse calc(calc(var(--sun-star) / var(--sun-star-mag)) / 2) var(--sun-star-w) at 50% 50%, var(--sun-star-3), var(--sun-clear)),
+    radial-gradient(ellipse var(--sun-star-w) calc(calc(var(--sun-star) / var(--sun-star-mag)) / 2) at 50% 50%, var(--sun-star-3), var(--sun-clear)),
+    radial-gradient(ellipse calc(calc(var(--sun-star) / var(--sun-star-mag)) / 2) var(--sun-star-w) at 50% 50%, var(--sun-star-3), var(--sun-clear)),
+    radial-gradient(ellipse var(--sun-star-w) calc(calc(var(--sun-star) / var(--sun-star-mag)) / 2) at 50% 50%, var(--sun-star-3), var(--sun-clear)),
+    radial-gradient(ellipse calc(calc(var(--sun-star) / var(--sun-star-mag)) / 2) var(--sun-star-w) at 50% 50%, var(--sun-star-3), var(--sun-clear)),
+    radial-gradient(ellipse var(--sun-star-w) calc(calc(var(--sun-star) / var(--sun-star-mag)) / 2) at 50% 50%, var(--sun-star-3), var(--sun-clear));
+  background-size:
+    var(--sun-beacon) var(--sun-beacon),
+    var(--sun-beacon) var(--sun-beacon),
+    var(--sun-beacon) var(--sun-beacon),
+    calc(var(--sun-star) * var(--sun-star-mag)) calc(var(--sun-star) * var(--sun-star-mag)),
+    calc(var(--sun-star) * var(--sun-star-mag)) calc(var(--sun-star) * var(--sun-star-mag)),
+    calc(var(--sun-star) * var(--sun-star-mag)) calc(var(--sun-star) * var(--sun-star-mag)),
+    calc(var(--sun-star) * var(--sun-star-mag)) calc(var(--sun-star) * var(--sun-star-mag)),
+    var(--sun-star) var(--sun-star),
+    var(--sun-star) var(--sun-star),
+    var(--sun-star) var(--sun-star),
+    var(--sun-star) var(--sun-star),
+    var(--sun-star) var(--sun-star),
+    var(--sun-star) var(--sun-star),
+    calc(var(--sun-star) / var(--sun-star-mag)) calc(var(--sun-star) / var(--sun-star-mag)),
+    calc(var(--sun-star) / var(--sun-star-mag)) calc(var(--sun-star) / var(--sun-star-mag)),
+    calc(var(--sun-star) / var(--sun-star-mag)) calc(var(--sun-star) / var(--sun-star-mag)),
+    calc(var(--sun-star) / var(--sun-star-mag)) calc(var(--sun-star) / var(--sun-star-mag)),
+    calc(var(--sun-star) / var(--sun-star-mag)) calc(var(--sun-star) / var(--sun-star-mag)),
+    calc(var(--sun-star) / var(--sun-star-mag)) calc(var(--sun-star) / var(--sun-star-mag)),
+    calc(var(--sun-star) / var(--sun-star-mag)) calc(var(--sun-star) / var(--sun-star-mag)),
+    calc(var(--sun-star) / var(--sun-star-mag)) calc(var(--sun-star) / var(--sun-star-mag)),
+    calc(var(--sun-star) / var(--sun-star-mag)) calc(var(--sun-star) / var(--sun-star-mag)),
+    calc(var(--sun-star) / var(--sun-star-mag)) calc(var(--sun-star) / var(--sun-star-mag));
+  background-position:
+    28% 21%,
+    28% 21%,
+    28% 21%,
+    63% 17%,
+    63% 17%,
+    44% 52%,
+    44% 52%,
+    14% 31%,
+    14% 31%,
+    78% 38%,
+    78% 38%,
+    88% 13%,
+    88% 13%,
+    24% 11%,
+    24% 11%,
+    52% 29%,
+    52% 29%,
+    70% 58%,
+    70% 58%,
+    92% 47%,
+    92% 47%,
+    35% 40%,
+    35% 40%;
+  /* LAST: 23 marks a few pixels across, left to tile, would fill the sky gold. */
+  background-repeat: no-repeat;
+}
+
+/* AIRGLOW AND GRAIN — the two layers that are not objects, painted over the
+   scatter so they sit in front of it as air does.
+   AIRGLOW: a real night sky is not uniformly dark; it holds light low down, long
+   after the sun has gone. A --whimsy-moon bloom off the horizon, mixed almost
+   entirely to transparent, gives the band a floor to sit on and stops the land
+   meeting a flat void. It rides --sun-dark with everything else, so it arrives
+   as the sky finishes darkening rather than competing with the dusk bloom.
+   ⚠ `ellipse farthest-side` IS LOAD-BEARING, NOT DECORATION. Written without an
+   ending shape, a radial-gradient defaults to FARTHEST-CORNER — and this layer
+   is a wide, short box with its centre pinned to the bottom edge, so that corner
+   is roughly four times further away than the top edge is. The gradient was
+   still at about three-quarters of its starting alpha when the box simply ended,
+   which drew a hard horizontal seam across the full width of the sky: it read as
+   a pale rectangle laid over the night rather than as light rising off the land.
+   FARTHEST-side, not closest: the centre sits ON the bottom edge, so the CLOSEST
+   vertical side is zero away and that keyword collapses the bloom to a flat line
+   — tried, and it left the same seam with nothing underneath it. Farthest-side
+   gives horizontal radius half the width and vertical radius the full height, so
+   the bloom reaches full transparency exactly where its box stops, at any card
+   width and any --sun-glow-h.
+   GRAIN: a fine diagonal dither at --sun-grain-step, mixed back to near nothing.
+   It gives the dark a MATERIAL — the tooth of a riso print — without adding a
+   single object to look at, which is what the night card needed and what the
+   dots were failing to provide.
+   ⚠ IT IS A TEXTURE THE MOMENT IT BECOMES A PATTERN, and the first values crossed
+   that line: a hairline every 3px at 94% receded covers a third of the sky and
+   rendered as visible crosshatch — the card looked shaded, not printed. Grain
+   works by being felt rather than seen, so the pitch is opened and the line
+   pushed to the edge of nothing. If it ever reads as stripes again, --sun-grain-step
+   is the dial to move: widening the gap kills a pattern, where darkening the line
+   only makes a visible one heavier. */
+:root.compact .daily .sun-card .sun-sky::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: var(--sun-dark);
+  background-image:
+    radial-gradient(ellipse farthest-side at 50% 100%,
+      color-mix(in oklch, var(--whimsy-moon), transparent var(--sun-glow-mix)),
+      color-mix(in oklch, var(--whimsy-moon), transparent 100%)),
+    repeating-linear-gradient(45deg,
+      color-mix(in oklch, var(--whimsy-moon), transparent var(--sun-grain-mix)) 0 var(--border-hairline),
+      color-mix(in oklch, var(--whimsy-moon), transparent 100%) var(--border-hairline) var(--sun-grain-step));
+  background-repeat: no-repeat, repeat;
+  background-size: 100% var(--sun-glow-h), auto;
+  background-position: 50% 100%, 0 0;
+}
+
+/* ⚠ NO STAR FIELD ON THE OTHER SKIES — the rule above is scoped to this card's
+   band on purpose. Tonight's sky owns the constellation drawing; the moon card
+   owns the lunar ground. This is a card about the SUN, at the hour the sun is
+   absent, and the stars are here to say so. */
+:root.compact .daily .sun-card.is-night .sun-read .delta { color: var(--text-secondary); }
+
+/* THE RISE/SET PAIR GOES AT NIGHT, and not only to keep the row on one line.
+   At 23:30 "19:10 set" is a stale reading of something already over, and the
+   headline beside it is ALREADY the sunrise reading in the more useful form —
+   the wait rather than the clock time. Dropping it removes a duplicate and a
+   dead fact in one move, which is what buys the single row the fixed field
+   height depends on. */
+:root.compact .daily .sun-card.is-night .sun-span { display: none; }
+
+/* ---- 9 · THE HEADLINE IS NOW LIVE --------------------------------------
+   THE CARD'S WORDS USED TO BE STATIC WHILE ITS PICTURE MOVED. Day length, the
+   two-minute delta and the rise/set pair are all facts about THE DAY, not about
+   NOW — none of them changes between midnight and midnight. So the figure swept
+   the sky while the text under it sat still, and every daylight card on this page
+   printed the same three readings. The late-morning and early-afternoon pair make
+   it plainest: at altitudes .78 and .90 the two pictures are all but the same
+   image, and nothing in the copy told them apart.
+
+   Meanwhile the night state already said "5h 31m until sunrise" — a live
+   countdown off the same rise/set data. The card had invented the right pattern
+   and was applying it only in the dark. So the daytime headline becomes the same
+   thing: LIGHT LEFT, set-time minus now. It is the most actionable fact a sun
+   card holds, it changes every minute the picture changes, and it needs no data
+   the component was not already computing.
+
+   Day length is not lost, it is DEMOTED — from the headline to the denominator
+   that gives the countdown its scale ("3h 30m of 14h 08m"), which is what it was
+   always doing semantically.
+   ⚠ THE DELTA IS DROPPED, and it is the only reading this redesign loses. Two
+   reasons, and the second is the real one. First, measurement: at the widest
+   figure the row ran 300px into 296px of card and wrapped, which cost the two
+   morning cards 19px of height and broke the family's uniformity — the row has
+   to fit its LONGEST state, not its average. Second, and this is why the delta
+   was the thing to cut rather than the rise/set pair: a two-minute day-over-day
+   change is the least live fact on a card that has just been made live, and it
+   is a fact about the YEAR turning, not about today. It belongs in the season
+   and almanac register, where the same reading already has a home.
+   \u2192 0m AT SUNSET IS THE RANGE ENDPOINT, NOT AN ERROR. The countdown is defined
+   across the whole day and reaches zero exactly as the disc's centre meets the
+   line; no special case, same discipline as the geometry. */
+
+/* ---- 10 · THE POLAR CASE ----------------------------------------------
+   \u26a0 A COMPONENT QUESTION, RAISED HERE BECAUSE THE CSS CANNOT ANSWER IT.
+   The altitude model handles high latitudes with no special case at all, which
+   is the strongest evidence it was the right model: a sun that never sets simply
+   keeps --sun-alt positive, and one that never rises keeps it negative. The sky,
+   the land and the disc all follow. The seventh card on this page is a real
+   midnight sun and needed nothing but a different number.
+   THE READING ROW IS WHAT BREAKS. It assumes both events exist: "05:01–19:10"
+   has no values to print, day length is 24h so "left of" is meaningless, and
+   "until sunrise" could be six weeks rather than five hours. That is a content
+   decision the component owns — what to say when a day has no edges — and it is
+   far cheaper to answer now than to discover at 68°N.
+   All this rule does is stop the card printing a lie: with no rise and no set,
+   the mono line is suppressed and the label carries the sentence instead.
+   ⚠ AND THE PICTURE HAS A FLOOR THE COPY DEPENDS ON. The clip cuts at the disc's
+   CENTRE, so an altitude just above zero is honestly "never sets" by the model
+   and still renders with the sun's lower limb buried in the land — which reads
+   exactly like the sunrise card, directly under a headline saying the sun does
+   not set. The whole disc clears only when the centre sits a full radius above
+   the line: alt ≥ (radius + ring gap) / (band − radius − ring gap − clearance),
+   about 0.22 with these dials. Below that the component should say the sun
+   GRAZES the horizon rather than claiming it never reaches it — the two are
+   different facts, and at high latitude near the solstice edges both occur. */
+:root.compact .daily .sun-card.is-polar .sun-span { display: none; }
+
+/* ═══ END OF THE PORTED SUN BLOCK ══════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE PORTED WEATHER BLOCK — re-minted 2026-08-12, flattened and ported 2026-08-13.
+   Minted on its own exhibit at `Mint - Weather card.html`, where thirteen states
+   are drawn side by side: one day hour by hour, the four extremes, and the two
+   candidate windows. The ramp block and `.kit-sr` are NOT repeated here — the sun
+   port above already carries both.
+
+   FLATTENED: this block states the card as it now stands. The iteration history
+   is gone; what remains of it are the struck alternatives a later reader would
+   otherwise re-attempt, each marked STRUCK with the reason.
+
+   Scoped `:root.compact .daily` throughout: small.css's ordering law, and
+   daily.css nesting its whole body under `.daily` (so an unscoped `.wx-line` is
+   out-specified by the sheet it means to override).
+
+   SCOPED TO THE CARD, NEVER THE COLUMN. daily.css opens a @container on
+   `.col.sky` while the component renders `.col.sky-col`; computed
+   `container-type` reads `normal`, so that whole narrow-reflow block — including
+   its weather rule, the one that was supposed to give the curve a full-width row
+   — HAS NEVER FIRED. Nothing here depends on it. Section 7 has the deletion to
+   make in daily.css itself at port time.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ---- 0 · WHAT THE COMPONENT WRITES --------------------------------------
+   THE WIRING CHANGE THIS REDESIGN REQUIRES, AND IT IS SMALLER THAN THE SUN
+   CARD'S. The card already computes every number below; today it bakes them into
+   svg coordinates — `<line x1="101.67" …>` for the now-rule, `cx/cy` for the dot,
+   `left:42.4%; top:56.8%` inline on `.wx-mark`. Baked coordinates are what made
+   the old plot un-recomposable: each is valid against exactly one viewBox, so the
+   box could not be resized, bled or split without the marks drifting off the
+   curve. The three marks stop being drawing and become declared facts:
+
+     --wx-now   where NOW is along the plotted window. 0 at the window's start,
+                1 at its end. Drives the veil's width and the seam. Everything
+                about "when" derives from it, so there is one number to be right
+                about.
+     --wx-obs   where the OBSERVATION is on the same axis — the last reading
+                actually received. Defaults to `var(--wx-now)`, which is the whole
+                live case in one line.
+     --wx-lvl   the observation's height IN THE PLOT BOX. 0 at the floor, 1 at the
+                ceiling, measured on the box — NOT on the data — so CSS and the
+                path agree with no shared arithmetic.
+
+   ⚠ --wx-obs EARNS ITS PLACE BY MAKING STALENESS A DISTANCE. The two x-numbers
+   coincide whenever the forecast is fresh, so the gap between seam and marker IS
+   the staleness, drawn, and it grows on its own while nothing re-renders. The
+   alternative was a badge — a second thing to read, saying what the picture could
+   show. Section 9.
+
+   ⚠ --wx-lvl IS MEASURED ON THE BOX, AND THAT IS THE TRAP IT AVOIDS. Stated as a
+   temperature, or as a fraction of the day's range, CSS would have to reproduce
+   the plot's top and bottom padding to place the marker — a second copy of the
+   path generator's arithmetic, in a language that cannot be tested against it.
+   The copies drift the first time the padding moves and the marker slides off its
+   own curve with nothing to catch it. As a fraction of the BOX there is nothing
+   to keep in sync: `top: calc(100% - var(--wx-lvl) * 100%)` is the definition.
+   ⚠ ONE RESIDUAL, HONESTLY: the path is a Catmull-Rom spline through the hourly
+   samples while --wx-lvl interpolates linearly between them, so between two
+   samples the marker can sit a fraction of a pixel off the drawn curve. It
+   vanishes at the nodes and is under a pixel at hourly density — but if the
+   sampling ever coarsens, the level has to come off the same spline the path does.
+
+   COMPONENT-SIDE MARKUP RETIRED WITH THE RECOMPOSITION, listed so the delta reads
+   whole: `.wx-nowblock`, `.wx-curve` (the right-hand column and its vertical
+   seam), `.wx-plot`, `.wx-mark` (the floating value label), and the `<line>` +
+   `<circle>` the plot's svg carried. `.wx-glyph` survives as a bare inline mark
+   inside the reading row (section 9); `.wx-hours`, `.whead` and `.cond` survive
+   whole. `.hl`'s content moves into the overline (section 5b) and the element
+   goes.
+
+   AND ONE ADDITION: `.wx-card` on the card element. Every sibling has a name
+   (`.sun-card`, `.moon-card`, `.season-card`, `.quote-card`) and this one did not,
+   so the audit had nothing to scope to but `.wx` — the ART DIV, not the card,
+   which is why the old rules could never reach the card's gap, padding or basis.
+   The art div itself is retired with the row layout it existed to make. */
+
+/* ---- 2 · DIALS ---------------------------------------------------------- */
+:root.compact {
+  --wx-field-h:   96px;   /* the plot box's HEIGHT, not a floor — section 3 for why a floor was wrong.
+                             Four pixels over the `min-height:92px` .wx-plot has carried since the
+                             2026-07-18 fit pass: section 7 deletes the hour row's redundant margin,
+                             and the field is where the space it gives back goes. */
+  --wx-glyph:     22px;   /* the condition mark's BOX HEIGHT, a pixel under the figure it stands
+                             beside so the mark never out-measures the number; the width follows each
+                             mark's own drawing. The DRAWN shape is smaller again — every viewBox
+                             carries two to three units of air, section 9. */
+  --wx-line-w:     2px;   /* the curve's stroke. The sheet's own 2px, dialled. NOT ridden off
+                             --border-heavy: that dial is about UI rules, and a temperature curve is
+                             linework — the separation the sun card's --sun-star-w argued. */
+  --wx-dot:        7px;   /* the observation marker. Above the 3px floor where a small filled circle
+                             smears to grey under antialiasing at the 85% UI scale. */
+  --wx-dot-ring:   2px;   /* the marker's punched-out ring, in the card's own ground, so it separates
+                             from the curve it sits ON rather than relying on colour against it. */
+  --wx-past-veil: 44%;    /* how far the elapsed part of the window recedes toward the card's ground.
+                             Nearest existing sibling is --fade (50%), which is about INK receding —
+                             this is a surface, so it is proposed as a card dial rather than borrowed.
+                             ⚠ 44 and not a half-strength value: over an area fill already at
+                             --chart-area-mix (88% toward transparent) a 52% veil left the two halves
+                             of the field nearly the same colour and the seam did all the work. */
+}
+
+/* ---- 3 · THE CARD ------------------------------------------------------
+   ⚠ THE BASIS IS A BUDGET, NOT A HEIGHT, AND THE OLD ONE WAS A FICTION. The card
+   carried `flex: 1.2 0 156px` while its own parts summed to 166 —
+   `.card.whimsy`'s `min-height:fit-content` quietly grew it past its declared
+   basis, so the number the shelf arithmetic in daily.css (~line 860) is written
+   against had not described this card for some time. The recomposition makes it
+   honest, enumerated top to bottom in source order so the sum doubles as a
+   description of the anatomy:
+
+     32 padding + 20 overline + 8 gap + 34 reading block + 8 gap + 8 plot margin
+        + 96 plot + 8 gap + 14 hour axis  =  228, + 2 border = 230
+
+   Measured on this page it lands at 230.0 — the axis resolving to 14.4 and the
+   reading block to 33.9 off the compacted ramp's line boxes. The overline is 20
+   rather than the 16 its icon would give it because the range sets at
+   --whimsy-size-heading and its line box is the taller of the two.
+   ⚠ 15px OVER THE SUN CARD'S 215, AND BOTH HALVES WERE RULED DELIBERATELY:
+   eleven for the stacked pair of small readings (23 on one line, 34 stacked) and
+   four for the header. The two cards therefore no longer start level in the
+   column, which the shelf calculator has to know — it owns the exact number, not
+   CSS. The interior gap is --space-4, matching the sun card. */
+:root.compact .daily .wx-card { gap: var(--space-4); --wx-obs: var(--wx-now); }
+
+/* the two header lines sit tighter than the picture below them — section 9 */
+:root.compact .daily .wx-card .ovl { margin-bottom: 0; }
+
+/* ---- 4 · THE FIELD IS DECLARED, NOT LEFTOVER ---------------------------
+   daily.css gives every whimsy field `flex:1 1 auto` and gave this plot a
+   `min-height` floor on top, so the field was whatever the text left, floored.
+   Wrong here for the sun card's reason and worse: the marker's height in the
+   field IS the temperature reading, so a field that changes size between cards
+   changes what the same temperature looks like. A scale that quietly re-scales is
+   not a scale. So: a fixed basis, and the text rows flex.
+
+   THE GROUND IS THE GLYPH'S OLD TILE AT THE SIZE OF THE WHOLE FIELD. `.wx-glyph`
+   was a rounded well of --whimsy-day washed over the card's ground; deleting the
+   78px cloud does not mean deleting the well it sat in. It now holds the plot,
+   which is what gives the field a declared extent instead of a curve floating on
+   the panel.
+   ⚠ THE WASH AMOUNT IS THE MINTED DIAL, NOT THE OLD USE-SITE'S. `.wx-glyph`
+   invented 42% and `.whim-weather` invented 40%, both predating --whimsy-wash-mix
+   (74%), minted 2026-07-26 for exactly this — "a fill derived from a whimsy colour
+   over the card's ground". The well is much fainter as a result, which is right
+   when it is 345px wide instead of 78.
+
+   NO BLEED, DELIBERATELY. The sibling sky fields bleed under the frame band via
+   `.field::before`. This one does not, and the hour axis is why: the axis is text,
+   so by precedent it sits on the card's ground inside the frame, and axis and
+   curve must share one x-space to the pixel. Bleeding the plot 16px wider than
+   its own axis would put every label a whole 5% of the day off its tick. */
+:root.compact .daily .wx-card .wx-field {
+  flex: 0 0 var(--wx-field-h); margin: var(--space-4) 0 0; overflow: hidden;
+  border-radius: var(--radius-small);
+  background: color-mix(in oklch, var(--whimsy-day), var(--panel-background) var(--whimsy-wash-mix));
+}
+
+/* ---- 5 · THE CURVE -----------------------------------------------------
+   ⚠ `vector-effect: non-scaling-stroke` IS A FIX, NOT A FLOURISH. The svg is
+   `preserveAspectRatio="none"` — 240 user units of day across 345px of card — so
+   the horizontal scale is 1.44 and the vertical 1.0. A plain `stroke-width` is
+   scaled by both: the line renders visibly heavier where the curve runs flat than
+   where it runs steep, which on a temperature curve reads as emphasis on the
+   hours where nothing is happening. Non-scaling-stroke pins the stroke to CSS
+   pixels. The old rule had no such declaration and a hard-coded
+   `stroke-width="2"` attribute besides.
+
+   BOTH PAINTS COME OFF CSS, NOT SVG ATTRIBUTES, so they ride dials: presentation
+   attributes cannot hold `var()`, which is why the captured markup has
+   `stroke="var(--whimsy-sun)"` in the attribute and works only by the SVG spec's
+   CSS-property fallback for `stroke`.
+
+   THE INK IS --whimsy-sun, KEPT FROM THE CAPTURE. STRUCK: a warm-to-cool hue ramp
+   up the field so height reads twice. It lies — the plot is normalised to the
+   DAY's range, so a cold day's peak would render as warm as a hot day's, and a
+   hue that means something different on Tuesday than on Wednesday is worse than
+   no hue. --whimsy-sun is the palette's one dial chosen to stand apart from every
+   ground (theme.css: "warm gold, not --attention-dot"), the same property the sun
+   card's ring depends on, and it reads on the whimsy-day wash in any theme.
+   The area beneath rides --chart-area-mix (88%, "the faint fill under a trend
+   line"), the amount the captured card already used. The register law is about
+   COLOURS: whimsy interiors read the whimsy palette. An amount named for exactly
+   this job is not a palette leak, and its whimsy sibling --whimsy-wash-mix (74%)
+   would draw this fill four times denser than a trend fill should be. */
+:root.compact .daily .wx-card .wx-graph { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+:root.compact .daily .wx-card .wx-area { fill: color-mix(in oklch, var(--whimsy-sun), transparent var(--chart-area-mix)); stroke: none; }
+
+:root.compact .daily .wx-card .wx-line {
+  fill: none; stroke: var(--whimsy-sun); stroke-width: var(--wx-line-w);
+  stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke;
+}
+
+/* ---- 6 · NOW ------------------------------------------------------------
+   ONE ELEMENT DOES BOTH JOBS. The veil is the elapsed part of the window, receded
+   toward the card's own ground; its right EDGE is the now-rule. There is no
+   separate line element, so the seam cannot drift from the shading it bounds.
+
+   THE PAST RECEDES, NOT THE FUTURE. The future is the forecast — the uncertain
+   half — so fading it is the more literal reading, and it is struck on what the
+   card is FOR: nobody opens a weather card to be told about this morning. Dimming
+   what you can no longer act on leaves the live drawing at full strength and
+   makes the seam's travel mean something. Uncertainty, if it is ever worth
+   drawing, belongs in the curve's own weight, not in a wash over half the field.
+
+   THE VEIL MIXES TOWARD `transparent` FROM --panel-background, the card's literal
+   ground, so it recedes correctly under any theme — it is not a wash "toward
+   light", the mistake that retired --band-wash on 2026-07-28.
+   THE RULE IS --text-strong, NOT --whimsy-ink: the sheet's own 2026-07-31 finding
+   restated. Whimsy-ink is art register and vanished on Void's near-black panel.
+   The now-rule is a data mark on what is effectively the chrome ground (the
+   field's wash is 74% panel), so it takes the chrome ink — the reasoning that
+   already governed `.wx-mark`.
+   ⚠ AT --wx-now: 1 THE MARKER IS BISECTED BY THE FIELD'S EDGE, and at 23:40 it
+   has already begun to lose its outer ring: the dot's box sits 1.1px inside the
+   field, so about 0.9px of the 2px ring is clipped. The field clips, which is what
+   keeps the veil inside the rounded corners, so the last percent of any
+   midnight-to-midnight window eats the marker from the right. No rule can fix it
+   from inside the box; the rolling window in section 10 removes the state. */
+:root.compact .daily .wx-card .wx-past {
+  position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--wx-now) * 100%);
+  background: color-mix(in oklch, var(--panel-background), transparent var(--wx-past-veil));
+  border-right: var(--border-hairline) solid var(--text-strong);
+}
+
+/* the observation. Its ground is the CURVE, not the panel, so the Void trap above
+   does not reach it — but it takes the chrome ink anyway, so seam and marker read
+   as one instrument in two parts. The ring is punched in --panel-background: a
+   hole, not an outline, which is what lets a 7px mark sit on a 2px line without
+   either thickening the other. */
+:root.compact .daily .wx-card .wx-dot {
+  position: absolute; width: var(--wx-dot); height: var(--wx-dot); border-radius: var(--radius-full);
+  background: var(--text-strong); box-shadow: 0 0 0 var(--wx-dot-ring) var(--panel-background);
+  left: calc(var(--wx-obs) * 100%); top: calc(100% - var(--wx-lvl) * 100%);
+  transform: translate(-50%, -50%);
+}
+
+/* ---- 7 · THE HOUR AXIS -------------------------------------------------
+   THE COLLISION IS FIXED BY THE RECOMPOSITION, NOT BY A RULE — with one
+   correction to the audit that reported it. Measured: inside `.wx-curve` the plot
+   is 147px and the five labels total 84px, tightest gap 7.9px. They do NOT
+   collide at the compacted ramp. At the DESKTOP ramp (caption 14px) the same five
+   grow to 98px in a 127px plot and the outer two overlap by a pixel — that is the
+   collision, and the compacted ramp had already half-relieved it. On the full
+   interior the labels have 345px for their 84 and the constraint is gone at either
+   ramp. The sheet's absolute percentage placement and its first-child/last-child
+   transforms survive untouched — they are exact, and `space-between` would only be
+   exact for labels of equal width.
+
+   ⚠ ONE REAL DEFECT REMAINS, AND IT IS 3px. `.wx-hours` is `height:
+   var(--whimsy-size-caption); line-height: 1` — a box exactly as tall as the type
+   is nominally big. At the desktop's 14px that clipped nothing visible; at the
+   compacted 12px the descenders of "12p" and "6p" are cut. The row cannot simply
+   take `height:auto` — its spans are absolutely positioned, so it would collapse
+   to zero — so the height is built from the same two dials the line box is: size
+   times --line-tight. The margin goes: the card's own gap already owns the space
+   between field and axis, and the two were adding.
+
+   ⚠ AND ONE DELETION TO MAKE AT PORT TIME, IN daily.css ITSELF: the
+   `@container (max-width: 470px)` block's weather half. It targets `.col.sky`
+   while the component renders `.col.sky-col`, so it has never fired; and what it
+   does — rotate the seam, give the curve its own full-width row — is exactly what
+   this recomposition now does unconditionally at every width. A reflow rule for a
+   layout that no longer exists is worse than a dead one: it would fire the day
+   somebody corrects the selector. No rule here does it, deliberately — the delta
+   cannot delete from a sheet it does not touch. */
+:root.compact .daily .wx-card .wx-hours {
+  height: calc(var(--whimsy-size-caption) * var(--line-tight));
+  line-height: var(--line-tight); margin: 0;
+}
+
+/* ---- 8 · THE MASTHEAD --------------------------------------------------
+   THE CARD READS TOP TO BOTTOM AS A HEADER BLOCK OVER ITS EVIDENCE:
+
+     ☁ WEATHER                                          31° / 21°
+     ☀ 21°  Clear
+            ↗ 10 by 15:00
+     [ the plot                                                  ]
+     12a       6a        12p        6p        12a
+
+   THE DAY'S RANGE IS A HEADER, NOT A NOTE IN A CORNER — user-ruled after three
+   passes of being made incrementally louder where it stood. The escalation was
+   the tell: a number that has to be bolded, enlarged and re-inked to be noticed
+   is being asked to carry a header's job in metadata's slot. `.ovl .meta` is
+   where `On this day` prints its date, and daily.css duly strips the overline's
+   weight and tracking off it. So the slot keeps its POSITION and loses its
+   REGISTER: mono because it is a number, --whimsy-size-heading because it is the
+   second thing on the card you are meant to read, --text-strong because muted ink
+   at caption size is what made it invisible. Title at one end, range at the
+   other: a masthead, not a label with a footnote.
+
+   A SLASH, NOT `H 31 L 21` AND NOT AN EN DASH. At header size the two letters
+   were the widest and least informative thing in the line; high before low is the
+   universal convention and needs no labelling. STRUCK: an en dash, on the
+   sub-zero state — `−9–−2` puts a dash between two minus signs, and no
+   typographic fix for that survives a font change. A slash survives every value
+   the card can hold.
+
+   STRUCK: A Y-SCALE IN A GUTTER BESIDE THE PLOT. It was the more literal answer —
+   the curve is normalised into the box, so the two numbers ARE its ceiling and
+   floor — and it had one virtue the header does not: under the minimum plotted
+   span of section 9 it could report the PADDED bounds (23/17 on a 20-to-19 fog
+   day) rather than the day's extremes, which is the one case where the two
+   diverge. It cost 44px of the plot's 345 and put the card's most-asked-for
+   reading inside the chart furniture, which is the opposite of prominent. The
+   span question it raised is real and lives on in section 9. */
+:root.compact .daily .wx-card .ovl .meta {
+  font-family: var(--font-mono); font-size: var(--whimsy-size-heading);
+  font-weight: var(--weight-bold); letter-spacing: 0; line-height: 1;
+  color: var(--text-strong); white-space: nowrap;
+}
+
+/* ---- 9 · THE READING BLOCK --------------------------------------------
+   MARK · FIGURE · A STACKED PAIR OF SMALL READINGS. The anatomy every weather
+   instrument has had: a mark, a number, and a column of detail.
+
+   IT SITS ABOVE THE FIELD, AND THE ORDER IS THE COMPOSITION. Below the field it
+   was the LAST element on the card — three full-width elements followed by a
+   third-width cluster hugging the left edge, and the card fell off its own bottom
+   edge. Above it, every element that touches the bottom edge (field, axis) runs
+   the full interior and a left-aligned cluster mid-card is ordinary composition.
+   ⚠ THIS DEPARTS FROM THE SUN CARD, WHICH PUTS ITS READING UNDER ITS FIELD, and
+   the difference is what the figure is FOR: the sun card's headline is a countdown
+   derived from the picture, so it belongs beneath it as a conclusion, while the
+   temperature is a masthead value the picture then explains. Same anatomy,
+   opposite direction of argument; the family holds on the row's makeup, not on
+   its position.
+
+   ⚠ AND THE SPACING HAS TO SAY SO, WHICH COST A DEVIATION FROM THE SHEET.
+   daily.css gives `.ovl` a --space-4 bottom margin ON TOP of the card's gap, so
+   the overline sat 16px from the block while the block sat 8px from the field:
+   the figure was grouped with the picture and read as a caption on the chart —
+   the opposite of the composition above. Proximity is the only thing that makes
+   two lines a block. So the overline's margin is dropped on this card and the
+   same 8px is spent on the FIELD's top margin instead: 8 between the header
+   lines, 16 before the picture, 8 between picture and axis. The card's height does
+   not move — the space is relocated, not added — and the sheet's rule stands
+   everywhere else.
+
+   THE PAIR STACKS RATHER THAN TRAILING THE FIGURE. Two struck arrangements, both
+   for reasons worth keeping: as a SUBTITLE under the whole block it cost 22px and
+   read as a caption on the card rather than as part of the reading; folded ONTO
+   the reading line beside the lede, divided by a middle dot, it cost nothing but
+   made a sentence the eye has to parse left to right. Stacked, they are two
+   labelled facts taken in at once, and the figure sits against BOTH rather than
+   against the first.
+
+   THE CONDITION IS SAID TWICE, IN TWO REGISTERS, DELIBERATELY — mark and word,
+   side by side. An earlier pass deleted the word to stop the repetition; struck,
+   because the fault was never the twice, it was the CORNERS: the word had been
+   top-right with its own drawing bottom-left. A shape is read at a glance and a
+   word is read on purpose, and this card is glanced at far more often than read.
+   ⚠ THE MARK STILL CARRIES ITS OWN INVENTORY. It is what is read first, so fog
+   and freezing fog cannot share one drawing: freezing fog keeps the mist rules
+   plus an ice crystal. The rule generalises — anything the component treats as
+   ACTIONABLE needs a mark of its own — and that inventory is the component's to
+   settle, not this sheet's.
+
+   THE LEDE IS THE LIVE FACT, this card's answer to the sun card's
+   light-remaining. The temperature was ALREADY live, so the sun card's exact move
+   does not transfer; what this card never said is what is COMING. It reads as a
+   continuation of the figure rather than a second assertion.
+   ⚠ THE CLAUSE NAMES THE CHANGE, NOT THE DESTINATION, AND THAT DISTINCTION IS THE
+   WHOLE READING. Written once as "up to 31 by 15:00" — better English — the lede
+   printed the same eleven characters at 04:40, 08:10 and 13:20, because the day's
+   high and its hour are facts about the CALENDAR DAY and do not change until the
+   high passes. That silently undid the one property this card was rebuilt for, and
+   it printed the masthead's own 31 a second time. The delta is what recomputes
+   hourly: 10, then 6, then 1. Any wording that reaches for the absolute is a fact
+   the picture and the masthead already carry. */
+:root.compact .daily .wx-card .wx-read {
+  display: grid; grid-template-columns: auto auto 1fr;
+  column-gap: var(--space-3); row-gap: var(--space-1);
+  align-items: center; margin: 0;
+}
+
+/* the mark is PART OF THE FIGURE, not a neighbour of it: no tile, no ground, no
+   border, spanning both rows so the figure and the pair sit against it.
+   `align-self:center` because an svg has no baseline to align.
+   ⚠ THE TILE HAS TO BE UNDECLARED, NOT JUST UNUSED. daily.css's own `.wx-glyph`
+   still paints a wash and a --radius-medium corner on this class, and it went on
+   painting them under the new markup: every mark sat on a pale blue chip tight to
+   its outline — a small copy of the very object the 40px tile experiment was
+   struck for (it cost 14px and read as a chip beside the type). Reusing a class
+   name inherits its RULES, not just its meaning. That wash is also the pre-dial
+   42% invention section 4 replaces with --whimsy-wash-mix. */
+:root.compact .daily .wx-card .wx-glyph {
+  grid-column: 1; grid-row: 1 / span 2; align-self: center;
+  height: var(--wx-glyph); width: auto;
+  background: none; border-radius: 0; padding: 0;
+}
+
+:root.compact .daily .wx-card .wx-glyph svg { height: var(--wx-glyph); width: auto; display: block; }
+
+/* THE MIX STARTS AT INK AND IS TINTED TOWARD THE FIELD'S BLUE, and the ORDER of
+   those two colours is the whole of the mark's weight. --whimsy-line-mix is the
+   dial for how far a whimsy LINE recedes toward its ground; written --whimsy-day
+   first it makes the blue the base and the mark comes out pale. Starting at
+   --text-strong, the dial is the share of blue tinting it — same dial, same two
+   colours, a mark that reads at 22px. --text-strong rather than --whimsy-ink
+   because the mark sits on the chrome panel ground, where whimsy-ink vanished on
+   Void. The disc takes --whimsy-sun undiluted — the curve's ink, so a clear sky
+   and its temperature trace are drawn in one colour.
+   ⚠ EVERY viewBox CARRIES TWO TO THREE UNITS OF AIR, tuned in both directions. Cut
+   to the path's own bounds, each mark filled its box corner to corner and read as
+   bursting out of it — a glyph needs sidebearings for the same reason a letter
+   does, and the fog mark's box started a unit INSIDE the cloud's left limb and
+   clipped it. Opened to five, the padding did the shrinking instead: at a fixed
+   22px box, air inside the viewBox comes straight off the drawing, and the disc
+   fell to ~16px. Two to three keeps the sidebearing and returns the drawing to
+   ~19px without the BOX moving — prominence at no cost in card height.
+   FILLED, NOT OUTLINED, and that is a size decision: at 22px beside a 23px bold
+   figure a 1.5px outline is a wisp, and it desaturates under the 85% UI scale for
+   the reason the sun card's small circles did. Shape carries the reading — disc
+   for clear, body for cloud, rules for fog, rules plus a crystal for freezing fog
+   — so nothing depends on colour telling them apart.
+   ⚠ AND FOG IS NOT A CLOUD. Drawn as a cloud over two rules, the mark needed half
+   again the height of the others, so at a shared box height its cloud rendered
+   visibly smaller than the overcast cloud beside it — the same shape at two sizes,
+   which reads as an error rather than a distinction. Three rules alone say fog,
+   sit in the same short wide box, and are unmistakably NOT the cloud. Their
+   stroke is non-scaling for the curve's reason: the box scale differs per mark,
+   and a rule that thinned with it would weigh differently on every condition. */
+:root.compact .daily .wx-card .g-sun { fill: var(--whimsy-sun); stroke: none; }
+
+:root.compact .daily .wx-card .g-cloud {
+  fill: color-mix(in oklch, var(--text-strong), var(--whimsy-day) var(--whimsy-line-mix)); stroke: none;
+}
+
+:root.compact .daily .wx-card .g-mist {
+  fill: none; stroke: color-mix(in oklch, var(--text-strong), var(--whimsy-day) var(--whimsy-line-mix));
+  stroke-width: var(--border-heavy); stroke-linecap: round; vector-effect: non-scaling-stroke;
+}
+
+:root.compact .daily .wx-card .wx-read .whead { grid-column: 2; grid-row: 1 / span 2; align-self: center; white-space: nowrap; }
+
+/* `.cond` is the sheet's own class name — the component already emits it, and
+   daily.css styles it only under `.wx`, the art div this recomposition retires.
+   It truncates rather than wraps: the pair's two rows are the block's height, and
+   a third line of condition would change the card's height on a long word. */
+:root.compact .daily .wx-card .cond {
+  grid-column: 3; grid-row: 1; align-self: end; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--whimsy-size-caption); color: var(--text-secondary);
+}
+
+:root.compact .daily .wx-card .wx-lede {
+  grid-column: 3; grid-row: 2; align-self: start; justify-self: start; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  font-size: var(--whimsy-size-caption); color: var(--text-muted);
+}
+
+/* THE DIRECTION IS AN ARROW. STRUCK: a word ("rising"), which spends four times
+   the width on the least surprising part of the clause; a plus/minus, which set
+   beside a big number reads as arithmetic ON that number; and a chevron, which is
+   a POINTER rather than a motion — it says up, it does not say climbing. A
+   diagonal shaft with a head is the trend idiom precisely because the stroke has
+   a length and a slope: it travels. It sizes off the type (em, not px) so it
+   tracks the ramp with no dial of its own, and takes currentColor so it can never
+   disagree with the clause it heads. */
+:root.compact .daily .wx-card .wx-lede svg {
+  width: .9em; height: .9em; flex: 0 0 auto; fill: none; stroke: currentColor;
+  stroke-width: var(--border-heavy); stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* ---- 10 · THE EXTREMES -------------------------------------------------
+   NO DATA. The instrument stays, the reading goes: the field keeps its ground and
+   gains a dashed baseline, so the card holds its height in the column instead of
+   collapsing. Whimsy fails silent, not short — a card that shrinks when the
+   network drops re-lays the whole sky column out from under the reader. The
+   headline drops to --text-muted because a muted em-dash is a missing value and a
+   strong one is a value of zero. No mark: a reserved empty slot holding the
+   figure's indent reads as a failure to draw something rather than as an absence.
+   Each slot says its own thing once — `—` on the masthead, `No forecast` as the
+   condition, `offline since 09:12` as the lede.
+
+   STALE. Nothing is added: --wx-obs stops tracking --wx-now, the marker stays
+   where the last reading was, and the growing gap between it and the seam is the
+   state. The marker goes hollow — an inset ring instead of a fill — because a
+   solid mark asserts a measurement and this one is a memory of one. The outer
+   ring stays so the hole is still punched through the curve.
+
+   THE FLAT DAY IS THIS CARD'S MIDNIGHT SUN. The model needs no special case; the
+   INSTRUMENT does. A 1.4° fog day normalised to its own range draws the identical
+   dramatic swing as a 10° one — the picture says "big day" while the masthead
+   above it says 20 / 19, and the field's height means something different on
+   every card. The fix is a MINIMUM PLOTTED SPAN: the component pads the range to
+   at least a few degrees and centres the data in it, so a flat day draws flat.
+   ⚠ DELIBERATELY NOT A DIAL. It is arithmetic inside the span calculator, in
+   degrees of temperature, and CSS never reads it — the same open item as
+   --whimsy-span-unit on the sibling exhibit. A custom property nothing consumes
+   would put the app's only copy of the number somewhere the app cannot see it.
+   ⚠ AND THE PADDED SPAN IS NOT PRINTED ANYWHERE, WHICH IS THE ONE THING THE
+   STRUCK Y-SCALE DID BETTER (section 8). The masthead reports the DAY's high and
+   low, which is what a person means by them; on a floored day the box actually
+   runs about 23 to 17. Nothing on the card is wrong, but nothing states the box's
+   own bounds either. If that ever needs saying, it is a scale's job, not a
+   header's. */
+:root.compact .daily .wx-card.is-nodata .wx-field::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%;
+  border-top: var(--border-hairline) dashed var(--border);
+}
+
+:root.compact .daily .wx-card.is-nodata .whead { color: var(--text-muted); }
+
+:root.compact .daily .wx-card.is-stale .wx-dot {
+  background: none;
+  box-shadow: inset 0 0 0 var(--wx-dot-ring) var(--text-strong),
+              0 0 0 var(--wx-dot-ring) var(--panel-background);
+}
+
+/* ---- 11 · WHICH 24 HOURS? — THE ONE OPEN RULING -----------------------
+   ⚠ A COMPONENT QUESTION, RAISED HERE BECAUSE THE CSS CANNOT ANSWER IT — and the
+   only thing on this page not settled. Nothing above cares which window is
+   plotted: --wx-now is a fraction of whatever the component chose.
+
+   MIDNIGHT TO MIDNIGHT is what the card plots today, and it decays through the
+   day. At 22:30 the field is 94% veiled; at 23:40 it is 99% and the marker is
+   eaten by the clip. Worse, from the moment the high passes the lede names an
+   hour the plot cannot show — 04:00 is tomorrow, and tomorrow is off the right
+   edge. The card spends its evening as a record rather than a forecast.
+
+   NOW −6h → NOW +18h keeps a quarter of the window behind and three quarters
+   ahead at every hour. The marker never leaves the band where it can be read, the
+   overnight low is always on the plot, and the lede can never name an hour the
+   picture does not contain. What it costs: the hour labels become clock times at
+   moving positions rather than a fixed 12a-6a-12p-6p-12a, and "the day's high and
+   low" becomes the WINDOW's — a different fact, and one that no longer matches
+   what a person means by "today's high". Both are drawn on this page at 23:40.
+
+   ⚠ IF THE ROLLING WINDOW IS RULED IN, THE MASTHEAD NEEDS RE-NAMING WITH IT.
+   `31° / 21°` over a window that straddles midnight is two days' extremes printed
+   as one day's — the kind of quietly-wrong reading that survives review because
+   the format is familiar. */
+
+/* ═══ END OF THE PORTED WEATHER BLOCK ══════════════════════════════════════ */
+
+/* ---- SEASON -------------------------------------------------------------
+   ① "Summer · day 42 of 93" is one phrase and it currently breaks after "of",
+   stranding "93" on line two — the exact fault the dead @container block named.
+   Restated here: the head wraps as WHOLE PHRASES, never inside one.
+
+   ② THE LAST TICK OVERRUNS THE CARD. `.yr-tick` is centred on its date
+   (translateX(-50%)) and the last sits at 97% of the band. On 290px that is
+   x=281 with ~22px of half-label, so "Dec 21" runs ~13px past the card's inner
+   edge and is cut by the whimsy card's own overflow:hidden. The first tick
+   (21.4%) has room and keeps its centring; only the last is re-anchored, so the
+   strip still reads as centred marks rather than as a right-aligned list.
+   This is a real fault at ANY width under ~420px of band — a base-sheet
+   candidate rather than a compact-only one. */
+:root.compact .daily .season-card .season-head { flex-wrap: wrap; row-gap: var(--space-3); }
+
+:root.compact .daily .season-card .season-head b,
+:root.compact .daily .season-card .season-head .kv { white-space: nowrap; }
+
+:root.compact .daily .season-card .yr-tick:last-child { transform: translateX(-100%); }
+
+/* ---- MOON ---------------------------------------------------------------
+   THE DISC YIELDS TO THE FACTS. --moon-disc is a CEILING (the sheet says so),
+   and at 290px of field a 132px disc leaves ~142px for the illumination figure
+   and the phase name, so "Waning gibbous" breaks to two lines and the block
+   sits below the disc's centre. 108 costs the disc nothing legible — it is a
+   two-tone circle — and buys the phase name a single line. Ceiling dial, so a
+   re-value rather than a new number.
+
+   THE STRIP IS NOT FIXABLE FROM CSS and these rules do not pretend otherwise;
+   they only stop it wasting what it has. 28 discs at 8.1px each is the
+   measurement and --pstrip-days above is the answer. Tightening the gap to
+   --space-1 and the side padding to --space-5 puts every pixel the strip owns
+   into the discs rather than into gutters — at 14 days, the difference between
+   ~19px and ~17px discs. */
+:root.compact { --moon-disc: 108px; }
+
+/* the facts block takes the width the disc gives up — it is a flex item with
+   `0 1 auto` and an auto minimum, so it sat at its shrink-to-fit width and kept
+   breaking "Waning gibbous" in half however much room was beside it. */
+:root.compact .daily .moon-card .moon-facts { flex: 1 1 auto; min-width: 0; }
+
+:root.compact .daily .moon-card .moon-facts .nx { white-space: nowrap; }
+
+:root.compact .daily .moon-card .pstrip { gap: var(--space-1); padding: var(--space-4) var(--space-5); }
+
+/* ---- TONIGHT'S SKY ------------------------------------------------------
+   The caption is a constellation LIST ("Scorpius · Sagittarius · Cygnus ·
+   Lyra") — four proper nouns that must not break, set at --whimsy-size-small
+   over ~266px, which takes three lines and eats the star field the card exists
+   for. At caption size it takes two and the field keeps its black. The side
+   inset comes in one step with it, so the list wins back the width the type gave
+   up. Otherwise the one sky card whose art degrades gracefully: the star field
+   is `slice`-scaled, so narrowing crops it instead of distorting it. */
+:root.compact .daily .tonight-card .sky-cap { font-size: var(--whimsy-size-caption); left: var(--space-5); right: var(--space-5); }
+
+/* ═══ ALMANAC COLUMN · 330 outer / 271 inner in this box ═══════════════════
+   ⚠ MEASURED AFTER THE PROGRESS PORT: the column is 678.7 — quote 149.4 · word 182
+   · on this day 90.4 · period progress 220.8, plus three --space-5 gaps. Progress
+   is still the tallest card in the column at 33% of it, down from 40%.
+   ⚠ AND IT DOES NOT RECONCILE WITH THE 651 / 262 THE HANDOFF CARRIED for this same
+   column: every one of the four cards reads 20-25px taller here than that record,
+   which makes it a measurement of a differently-padded box rather than a delta this
+   port caused. 678.7 is the number to carry forward. The card's own saving is the
+   part that is certain, because it is arithmetic rather than a comparison across
+   pages: the five-donut grid's two rows of rings at their 64px ceiling are 187 of
+   art, the dial is 132.
+   This column is TEXT, and its inner measure is ~271 in this box (304.9 card less
+   its border and padding) or 296 at a true 330 with .daily's padding outside the
+   track, as the app gives it — the 290 this block asserted before was between the
+   two and belonged to neither. Either way it is ~40 characters at
+   --whimsy-size-body, inside the readable band. So two of its four cards need nothing structural
+   and are left alone ON PURPOSE — the quote and the word both compose correctly
+   at this measure, and the only change they take is the smaller quotation mark
+   from the ramp. What follows is the two that do not. */
+
+/* ---- THE OVERLINE, IN THE NARROW CARDS ----------------------------------
+   `.ovl` is a space-between row of a tracked caps title and an optional `.meta`,
+   and it is shared chrome rather than any one card's. At this measure the pair
+   broke for the two almanac cards that carried a meta, and it broke MID-PHRASE —
+   "ON THIS DAY" over two lines beside "1 / AUGUST", and the same again for "PERIOD
+   PROGRESS" / "ELAPSED TIME · NOT A GOAL". So the card opened on two ragged stacks
+   before any content.
+
+   ONE CARD IS LEFT WITH THE PROBLEM. On this day's pair measures ~170px and fits
+   the row whole — it only ever needed its halves declared unbreakable, which is the
+   rule below. Same discipline as the sun headline and the season head: break
+   between phrases, never inside one, and never wrap a row that did not need it.
+
+   ⚠ PERIOD PROGRESS NO LONGER HAS A META AT ALL (user-ruled 2026-08-13:
+   "ELAPSED TIME · NOT A GOAL" removed), so ITS HALF OF THIS SECTION IS DELETED WITH
+   IT — both `.timeprog` selectors are off the nowrap list and the `flex-wrap: wrap`
+   rule is gone, leaving only the `.otd` pair, which still needs them. Its overline
+   is a single title line at any width, and there is no dead rule left waiting to
+   fire on a card that cannot wrap.
+   THE MEASUREMENT IS KEPT, because it was the argument for the rule: the pair was
+   was 272.3 at the compacted ramp — not the ~315 this block carried for a while,
+   which was the desktop ramp's figure — against an interior of 270.9. It missed by
+   1.4px, which is why the card wrapped in this box and not on its mint page at a
+   true 330. Anything that puts a meta back on that card inherits the whole of that
+   1.4px problem.
+
+   ⚠ THE OVERLINE ICON IS NOT THIS BLOCK'S TO TOUCH, and an attempt to protect it
+   here made things worse before it was struck — recorded because the next reader
+   will be tempted by the same rule. These four sheets style `.ovl .ico` for
+   COLOUR only; nothing in the closure gives `.ico` a width, a height or a fill,
+   and the svgs carry a `viewBox` with no width/height attribute. The app's own
+   base icon rule lives outside daily/kit/small/theme, so in the app the icon is
+   already sized and this is invisible. Inside this exhibit it computes to 0px —
+   and adding `flex: 0 0 auto` does NOT pin a size, it merely stops the element
+   shrinking and hands it the replaced-element default (300×150 scaled by the
+   viewBox), which rendered a 105px black square in On this day and a 146px one
+   in Period progress, the second of which then pushed its own nowrap title into
+   the card's `overflow:hidden` and clipped it. Sizing it from --icon-size here
+   would work but is worse: it would ship a redundant declaration of chrome the
+   app already owns, and quietly override it. The rules below leave the icon
+   entirely alone. */
+:root.compact .daily .otd .ovl-t,
+:root.compact .daily .otd .ovl .meta { white-space: nowrap; }
+
+/* ---- WORD OF THE DAY ----------------------------------------------------
+   No layout change — the entry reads well here. One guard only: the headword is
+   --whimsy-size-display (34px) in a heading face, and "obdurate" fits at ~250px
+   where a longer headword does not. Left unbreakable it overruns the card's
+   overflow:hidden and simply vanishes mid-word; allowed to break, it takes a
+   second line and the card grows. A dictionary entry that grows is right; one
+   that truncates its own headword is not. */
+:root.compact .daily .word .w { overflow-wrap: anywhere; hyphens: auto; }
+
+/* ---- ON THIS DAY --------------------------------------------------------
+   THE YEAR STOPS BEING A COLUMN AND BECOMES AN EYEBROW. The timeline is
+   `46px 1fr` with a --space-8 (32px) column gap and its rail pinned at left:60px
+   — 78px of fixed structure before a word of the event is set. On 290px that
+   leaves the text 212px, about 30 characters, below the band where prose reads;
+   every anniversary would set as a narrow ragged tower beside a four-digit year.
+
+   Stacked, the year sits above its event as a mono eyebrow and the text takes
+   the full 290. The rail and node move to the left edge with it and stay in
+   register (rail centre 5, node centre 5), and --space-6 of content inset clears
+   the 10px node. The vertical-timeline device survives whole — it simply runs
+   down the card's edge instead of its middle, which is what a timeline in a
+   narrow column has always looked like. */
+:root.compact .daily .otd .tl::before { left: var(--space-2); }
+
+:root.compact .daily .otd .tl-ev { grid-template-columns: minmax(0, 1fr); column-gap: 0; row-gap: var(--space-2); padding-left: var(--space-6); }
+
+:root.compact .daily .otd .tl-ev::before { left: 0; }
+
+:root.compact .daily .otd .tl-yr { text-align: left; }
+
+/* ---- PERIOD PROGRESS · RE-MINTED ---------------------------------------
+   THE FIVE PERIODS ARE ONE NESTED OBJECT, SO THEY ARE DRAWN AS ONE. Five equal
+   64px donuts said five things with equal weight while only one of them moved.
+   One dial of five concentric tracks, one centre, one twelve-o'clock origin, draws
+   where this instant sits in every scale at once — and being one object instead of
+   five it renders at 132 in the column where each donut got 64. Beside it the same
+   five as a key: label and reading, the day loud, the four contexts muted.
+   The full argument and every struck alternative: `Mint - Progress card.html`,
+   twelve states, rulings of 2026-08-13 (dial over stack · quarter kept · one unit
+   for all five readings · the arithmetic in scope).
+
+   ⚠ THE ARITHMETIC IS THE LARGEST PART OF THIS RE-MINT AND IT IS NOT CSS. Read off
+   the capture's own dash arrays at Saturday 1 August 21:31: day 100% ·
+   week 85.7% (6/7) · month 3.23% (1/31) · year 58.36% (213/365). Those three are
+   whole units counted INCLUSIVE of the current one — and under that rule the day's
+   own unit is always 1/1, which is why the day ring read 100% from 00:00 onward.
+   Quarter (34.24%) matches neither that rule (32/92 = 34.8%) nor elapsed time
+   (34.7%): five readings, four rules, and the one the card is named for was a
+   constant. ONE RULE — elapsed real time over the period's real length, at one
+   instant, for all five — moves three of the five at that minute (100→89, 86→84,
+   3→2). FLOORED, NEVER ROUNDED: rounding is what printed a finished day at 21:31,
+   and at 23:50 on 31 December it would print a finished year. IN LOCAL TIME: a DST
+   day is 23 or 25 hours and its quarter 89.96 or 92.04 days, so every denominator
+   is a real interval between two local midnights, never a constant. WEEK START is
+   the component's setting (Monday in every state drawn here); the note prints the
+   week NUMBER, which is what makes the choice visible. None of it is a dial — it is
+   arithmetic in seconds that CSS never reads, the same ruling as the weather card's
+   minimum plotted span.
+
+   WHAT THE COMPONENT WRITES: --tp-day · --tp-week · --tp-month · --tp-quarter ·
+   --tp-year, each 0 at its period's start and 1 at its end, unitless and measured
+   on the PERIOD rather than on the drawing; plus --tp-ink, the current month's
+   slot. Every ring carries `pathLength="100"`, so the dash arithmetic is
+   `calc(var(--…) * 100)` and CSS never reproduces a circumference — which is what
+   lets the dial be any diameter. RETIRED from the capture: `.tp-grid`, `.tp`,
+   `.tp-ring`, `.tp-lbl`, every svg `<text>` (the percentage was baked in at a fixed
+   `font-size: 15` in a 64 viewBox — the frozen-geometry defect, and the reason
+   shrinking the rings was tried and struck: a 34px ring sets its own number at
+   ~8px), every `stroke-dasharray` pair, and the inline `stroke`/`style="color:…"`
+   the component wrote onto each ring. `.tp-note` survives, re-purposed.
+   ⚠ AND TWO DIALS GO TENANTLESS: --donut-size and --donut-stroke. Grepped across
+   `app/*.css`, `.tp-ring` was their ONLY tenant (the dashboard donut rides its own
+   --dist-donut-* pair, minted as siblings precisely so the tiers never borrow), so
+   this is not a re-valuation of a shared ceiling — the pair was this card's alone
+   and retires with the grid. theme.css should strike both; this block cannot, it
+   does not touch that sheet. */
+:root.compact {
+  --tp-dial:    132px;  /* the dial's DIAMETER — a new dial, not a re-valuation of --donut-size (one
+                           object where that was one of five, and that pair retires). The VALUE is
+                           --moon-disc's 132, taken as a sibling: the whimsy art dims are a family and
+                           this is the same job. ⚠ FIXED, NOT A CEILING, deliberately against the
+                           sheet's "the art fills the width it is given" semantics, because five
+                           concentric tracks have a minimum PITCH: the radii sit 9 units apart in a
+                           100-unit box, so the pitch is .09 × the dial — 11.9px at 132 against a 5px
+                           stroke, 6.9px of daylight. Below ~78px the daylight falls under 2px and the
+                           five tracks read as one disc. */
+  --tp-arc-w:     5px;  /* the arc AND track weight — one instrument, one line weight. Finer than the
+                           retired --donut-stroke (7px on a 64px donut, ratio .11): five tracks on a
+                           132px dial want .04. Drawn at 6 first and measured: 4.8px of gap against a
+                           5.8px stroke read as a ripple rather than as five tracks. Non-scaling, so
+                           this is the rendered pixel weight at any dial size. */
+}
+
+/* THE CARD. Alone in the whimsy set it carries `flex: 1 0 auto` — no declared
+   basis, so there is no fiction to correct and equally nothing to spend: every
+   pixel added grows the ALMANAC COLUMN directly. Enumerated in source order:
+
+     32 padding + 16 overline + 8 gap + 8 body margin + 132 dial + 8 gap
+        + 16 note  =  220, + 2 border = 222
+
+   Measured 220.8 here and 220.8 on the mint page at a true 330 — the same number at
+   both widths, which it was NOT until the overline's meta went (see the overline
+   section above): the pair missed this box's 270.9 interior by 1.4px, wrapped, and
+   cost the card 18px in the app's own column while costing nothing on the mint page.
+   ⚠ THE META IS GONE BY RULING, not by fit. "ELAPSED TIME · NOT A GOAL" was the
+   card's disclaimer against reading elapsed time as a target, and the ruling of
+   2026-08-13 removed it: the note names the periods, the key names the readings,
+   and nothing on the card now argues with itself about what it is for. The 18px is
+   a consequence, not the reason.
+
+   THE GAP IS RELOCATED, NOT ADDED, as on the weather card: daily.css gives `.ovl` a
+   --space-4 bottom margin ON TOP of the card's --space-6 gap, so the overline sat
+   24px from the art while everything else sat 16 apart. The card's gap comes down
+   to --space-4, the overline's margin goes, and 8 of the released space is spent on
+   the body's top margin — 16 before the picture, 8 between picture and note.
+   The overline's own two rules are in the ON THIS DAY section above; they are
+   shared with that card and are not restated here. */
+:root.compact .daily .timeprog { gap: var(--space-4); }
+
+:root.compact .daily .timeprog .ovl { margin-bottom: 0; }
+
+:root.compact .daily .timeprog .art { gap: var(--space-4); }
+
+/* THE BODY ROW IS DECLARED, NOT LEFTOVER. daily.css gives every whimsy field
+   `flex: 1 1 auto` — whatever the text leaves — and that is wrong wherever the
+   geometry IS the reading. Here it is the reading twice: the diameter sets the
+   pitch between five tracks, and a dial that changed size between one card and the
+   next would draw the same fraction at a different arc length. So the row takes the
+   dial's dimension as its basis and the KEY flexes into what is left.
+   MEASURED IN THIS BOX: interior 270.9 — dial 132, gap 16, key 122.9 against a
+   widest row of 82.9 (`QUARTER  34%`), so the key has 40px of slack at the
+   narrowest width the card is ever drawn at; on the mint page's true 330 it has 65. The dial is also the taller side (132 against
+   the key's 98.7), which is what makes the row's height the dial's height rather
+   than a text sum.
+   ⚠ NO WASH, NO WELL, NO BLEED. The sky fields sit on a whimsy ground and bleed
+   under the frame band; this row does not, and the tracks are why — five full
+   circles of --inset-background already state the extent of every period, so a
+   field ground behind them would be a second empty statement of the same thing. */
+:root.compact .daily .timeprog .tp-body {
+  display: flex; align-items: center; gap: var(--space-6);
+  flex: 0 0 var(--tp-dial); margin: var(--space-4) 0 0;
+}
+
+:root.compact .daily .timeprog .tp-dial { flex: 0 0 var(--tp-dial); width: var(--tp-dial); height: var(--tp-dial); display: block; }
+
+/* THE DIAL. THE FASTEST HAND IS OUTERMOST: day, week, month, quarter, year, inward.
+   STRUCK: containment order (year outside, as the ring that contains the others) —
+   the truer relation, and it loses on the card's whole argument, because the outer
+   track is the longest arc and the one the eye lands on, and giving it to the year
+   hands the most ink to the only reading that will look identical tomorrow. A
+   clock's fastest hand is its longest for the same reason.
+   ⚠ BUTT CAPS, NOT ROUND, and measured: a round cap adds half a stroke width at
+   each end, 2.5px of a 382px circumference on the day's track — 0.65% of the period
+   at each end, so a round-capped day arc reads ~1.3% ahead of the truth and CLOSES
+   ITS OWN GAP about twenty minutes before midnight. At the other end it draws a 5px
+   lozenge for a period one minute old. A card whose subject is fractions cannot
+   round its own ends off; the flooring rule is the same decision in arithmetic.
+   ⚠ A CONSEQUENCE, STATED: below ~0.9% the inner arcs are sub-pixel and read as
+   empty. That is correct — 0.5% of August is four hours — and it is why 0% must
+   also be a legal printed value rather than a rounded 1.
+   THE TRACK IS NEUTRAL, ARGUED NOT INHERITED. STRUCK: a track derived from --tp-ink
+   (the obvious "one family" move) at every legal amount — --whimsy-wash-mix leaves
+   the empty part of a ring at 26% ink, half the strength of a recessed CONTEXT arc
+   at 52%, so an empty month track would read very nearly as loud as a filled year
+   arc. Neutral is what makes empty read as empty; the hue is for what has elapsed. */
+:root.compact .daily .timeprog .tp-trk {
+  fill: none; stroke: var(--inset-background); stroke-width: var(--tp-arc-w);
+  vector-effect: non-scaling-stroke;
+}
+
+:root.compact .daily .timeprog .tp-arc {
+  fill: none; stroke-width: var(--tp-arc-w); stroke-linecap: butt;
+  vector-effect: non-scaling-stroke; stroke-dashoffset: 0;
+  stroke: color-mix(in oklch, var(--tp-ink), var(--panel-background) var(--whimsy-line-mix));
+}
+
+:root.compact .daily .timeprog .a-d { stroke-dasharray: calc(var(--tp-day) * 100) 100; stroke: var(--tp-ink); }
+
+:root.compact .daily .timeprog .a-w { stroke-dasharray: calc(var(--tp-week) * 100) 100; }
+
+:root.compact .daily .timeprog .a-m { stroke-dasharray: calc(var(--tp-month) * 100) 100; }
+
+:root.compact .daily .timeprog .a-q { stroke-dasharray: calc(var(--tp-quarter) * 100) 100; }
+
+:root.compact .daily .timeprog .a-y { stroke-dasharray: calc(var(--tp-year) * 100) 100; }
+
+/* THE TWELVE-O'CLOCK ORIGIN, IN THE CARD'S OWN GROUND. One radial slot across all
+   five tracks, painted last, so the dial states where every arc starts — five
+   concentric arcs with no shared visible datum read as a ripple, which is exactly
+   how the 6px first draft read. It does the 99% case's second job too: at .9998 the
+   arc's head arrives back at its own tail and the seam keeps the two ends from
+   fusing into a closed ring. A SLOT, not a line: --panel-background, the card's
+   literal ground, so it needs no ink of its own and cannot disagree with a theme. */
+:root.compact .daily .timeprog .tp-orig {
+  stroke: var(--panel-background); stroke-width: var(--border-standard);
+  vector-effect: non-scaling-stroke;
+}
+
+/* THE INK: ONE HUE FOR THE WHOLE DIAL — THE CURRENT MONTH'S SLOT — AND THE
+   HIERARCHY IS STRENGTH, NOT COLOUR. The day's arc is the ink undiluted; the four
+   contexts sit at one common recession. Two levels, because there are two kinds of
+   reading here: the one that moves and the four that do not.
+   STRUCK: FIVE COLOURS, which is what the capture had — --month-aug for day, month
+   AND quarter, a --week-shade-mix lightening for week, --accent for year. Three
+   meanings wearing one hue is not a scheme, and the year's --accent is a chrome
+   brand colour inside a whimsy interior, which the register law forbids outright.
+   STRUCK ALSO: a five-step recession ramp, faintest inward — it reads as
+   "importance decreases with period length", which is not true, and it puts the
+   smallest ring at the lowest contrast.
+   ⚠ THE MONTH SLOTS ARE A DELIBERATE BORROW, ARGUED. The register law says whimsy
+   interiors read the whimsy palette and habit colours never appear; these are
+   neither. The month slots are the app's own CALENDAR semantic (cadence and the
+   cover wall wear them) and this card's whole subject is the calendar, so it is the
+   one whimsy card that legitimately wears them — the capture already did, and the
+   dial changes hue with the month, twelve times a year, for free.
+   ⚠ INVISIBLE UNDER THE DEFAULT THEME: --month-aug and --whimsy-dusk are both
+   #e2703e today, so August's dial is identical either way and the choice only
+   becomes legible in January. Flagged so a later reader does not "fix" the borrow
+   by swapping in the whimsy dial and think nothing changed.
+   THE RECESSION REUSES --whimsy-line-mix (48%) RATHER THAN MINTING: its stated job
+   is "how far a whimsy LINE recedes toward its ground", which is precisely this.
+   Mixed FROM the ink TOWARD --panel-background, in that order — written the other
+   way round the panel becomes the base and every context arc comes out a pale wash,
+   the argument-order trap that made the weather mark unreadable.
+
+   THE KEY: label left, reading right, five rows, one alignment — the dial's tracks
+   read outside-in in the same order the rows read top-down, and that order is the
+   only thing binding a row to its arc. No swatches, no leader lines, no colour
+   coding: with one hue there is nothing to key.
+   ONE UNIT FOR ALL FIVE AND THE DAY LOUD IN SIZE AND INK — user-ruled. STRUCK BY
+   THAT RULING: the day as TIME REMAINING (`2h 29m left`), built and drawn through
+   nine states before it went. Its case was the sun card's — the one form of the
+   reading the picture cannot draw, in the unit a person acts on — and what it cost
+   was the column: two unit systems in five rows, so the four fractions read as a
+   footnote to a countdown rather than as the same measurement at four scales. It
+   also set the key's width by itself (`DAY  23h 50m left` is 134 against
+   `DAY  89%` at 80), which is why --tp-dial had the room to go to 132.
+   The day's fraction is therefore stated twice, drawn and printed — as every other
+   row is, which is the point: the row exempt from a pattern is the row that breaks
+   it. The FIGURE is pinned and the LABEL truncates if a ramp ever overruns the
+   column, never the other way round: an early pass had the ellipsis on the value
+   and printed `2h 29m l…` beside a label with room to spare. */
+:root.compact .daily .timeprog .tp-keys {
+  flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2);
+}
+
+:root.compact .daily .timeprog .tp-key {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4);
+  min-width: 0; font-size: var(--whimsy-size-caption); color: var(--text-muted);
+}
+
+:root.compact .daily .timeprog .tp-k { text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+
+:root.compact .daily .timeprog .tp-v { font-family: var(--font-mono); white-space: nowrap; }
+
+:root.compact .daily .timeprog .tp-key.is-live { color: var(--text-strong); }
+
+:root.compact .daily .timeprog .tp-key.is-live .tp-v {
+  flex: 0 0 auto; font-size: var(--whimsy-size-heading); font-weight: var(--weight-bold);
+  line-height: 1; letter-spacing: -.01em;
+}
+
+:root.compact .daily .timeprog .tp-key.is-live .tp-k { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* THE NOTE NAMES THE PERIODS INSTEAD OF RESTATING THEM. `Day 213 of 365 · week 31 ·
+   Q3 · Saturday 21:31` was three items about one and a half facts: 213/365 IS the
+   year ring's 58%, `week 31` IS the week ring, and the clock time is what the day's
+   own reading now says. Identity is the one thing the dial cannot draw — an arc at
+   34% cannot say Q3 — so the note carries `Saturday 1 August · week 31 · Q3` and
+   nothing that is already a fraction. LEFT, NOT CENTRED, AND NO MARGIN OF ITS OWN:
+   everything else on the card is left-aligned to the same edge, and the sheet's
+   --space-5 top margin was adding to the card's gap. */
+:root.compact .daily .timeprog .tp-note {
+  margin: 0; text-align: left; font-size: var(--whimsy-size-caption); color: var(--text-muted);
+}
+
+/* NO no-data, NO stale, NO offline — worth writing down, because every other whimsy
+   card needed all three. Sun and weather read a network; this card's datum is the
+   CLOCK, so there is nothing to fail, nothing to go stale, and nothing to hold a
+   fixed height for. Whimsy-fails-silent has no work to do here.
+   ⚠ THE OPPOSITE IS THE risk: the readings are live and nothing re-renders them.
+   The whole reading derives from six declared properties, so a re-render is six
+   string writes and no re-layout. A percentage lasts ~14 minutes at the day's scale
+   (the ruled unit is what makes that true — a remaining-time figure would have been
+   wrong within the minute), so the tick belongs beside whatever already re-renders
+   the sun card's countdown. This card must not mint a second clock. */
+
+/* ═══ THE SHELF · 1351 by weight 2.3 · 1 · 1.15 · 1 · 1 ════════════════════
+   WIDTHS, measured on the live page: horoscope 417 · tarot 205 · rediscover 229 ·
+   countdowns 205 · lifetime 205. The weights stand; the cards are recomposed for
+   the widths those weights actually produce.
+
+   AND THE BAND'S HEIGHT, RULED 2026-08-13 — 317.1 → 245.1, measured here after the
+   port: horoscope 245.1 (the binding card now) · tarot 241.9 · countdowns 234.5 ·
+   rediscover 155.4 · lifetime 161.1. Full argument, three states measured side by
+   side: `Mint - Shelf row.html`.
+   ⚠ THIS PAGE'S SHELF BOX DRAWS THE ROW 24px NARROW — 1325.9 against the app's 1351,
+   because the colbox pads .daily inside itself while the app's row is already inside
+   that padding (the same cross-page difference the almanac column carries). The mint
+   page zeroes it and is the app-true one. It matters on exactly one measurement here:
+   the tarot's caption line, which at 165 of interior is ~2px from wrapping and did
+   wrap in this box until it took a ramp step down. See the tarot section.
+   A FLEX ROW IS AS TALL AS ITS TALLEST CARD, AND NOTHING ELSE IN IT GETS A VOTE.
+   Measured with the row's stretch removed, which is the only way to see who was
+   paying for whom: horoscope 317.1 · tarot 309.0 · countdowns 297.8 · rediscover
+   155.4 · lifetime 161.1. No single villain — three cards wanted about 300 and two
+   wanted about 160, so the two short ones were stretched ~156px, which is why the
+   rediscover door read as a tall empty frame.
+   ⚠ --shelf-height WAS NOT THE CAUSE and is untouched. It is 168 and it is a FLOOR
+   (daily.css pass 7: the shelf grows to absorb what the triptych leaves), so it was
+   149px below the content and had never bound. It is the first dial anybody reaches
+   for, which is why this is written down.
+   ⚠ ONLY ONE OF THE THREE TALL CARDS HAD A HEIGHT THAT WAS NOT SOMEBODY'S CHOICE.
+   The horoscope's 317 was a scroll window and the countdowns' 298 a row rhythm —
+   both numbers. `.tarot-card` declares `aspect-ratio: var(--tarot-card-w) /
+   var(--tarot-card-h)`, 1 : 1.75 standard stock, so its height is its width × 1.75
+   and it stops nowhere: at the 88px the last pass ruled, the face alone was 154
+   before a caption line. THE BAND'S FLOOR WAS THEREFORE A DECISION ABOUT HOW SMALL A
+   TAROT CARD MAY BE.
+   WHAT SHIPPED (state B): the face at 63 × 110 — the same stock ratio at 60% — the
+   horoscope's reading at five lines and its disc at 48, the countdown rhythm on a
+   dial at 8, and ONE CUT PER TALL CARD. Each dial value is at its use-site below.
+   STRUCK, PRICED, AND RECORDED so it is not re-proposed as new: state A, dials only,
+   67 × 117 with the reading at six lines — 281.8, which is 36.7 short, and which
+   leaves COUNTDOWNS as the binding card. Also struck: putting the tarot face back
+   beside its caption (the one anatomy that reaches ~200 without shrinking the face,
+   and the 2026-08-11 pass replaced it because at 165 of interior the caption gets
+   65px and "The Devil" clips); `align-items: flex-start` so nothing stretches (five
+   heights on one shelf is a ragged band, and these cards are a row of equals);
+   and `max-height` on `.shelf`, which would clip the face rather than shorten it.
+   ⚠ TWO OF B'S FOUR PARTS ARE COMPONENT-SIDE, and the dials do nothing without them.
+   The tarot's caption is composed as TWO lines — "attachment · shadow · upright" —
+   the `.up` element gone rather than hidden, because a card that renders an empty
+   element is a card waiting to grow the line back; "daily draw" was what the card IS,
+   on a card whose overline says Tarot. And the countdown card PAGES TWO EVENTS, not
+   three: the pager already existed to say what is hidden, so the cut costs a reading
+   and no information. ⚠ Its page count is arithmetic — events ÷ page size — so the
+   same event set repages: the capture showed 3 of "1 / 2" and this shows 2 of "1 / 3".
+   ⚠ AND 63 × 110 IS THE LAST SIZE THE FACE CAN BE SCALED TO. Its drawn detail was
+   composed at 104 × 182; at 60% the title sets at ~5px. Below this the face has to be
+   REDRAWN with fewer marks, which is a different job from re-valuing a dial.
+   ⚠ THE TWO SHORT CARDS ARE STILL STRETCHED 84 AND 90. The band is a row of equals
+   by ruling; if it reads empty again the answer is content in those cards, not height
+   off the band. */
+
+/* ---- HOROSCOPE · 417 / 377 inner ---------------------------------------
+   THE SIGN BECOMES A HEADER, NOT A SIDEBAR. `.horo .sign` is a fixed 104px
+   column with a --space-7 gutter, so the reading — the card's entire content —
+   gets 249px, about 34 characters, inside a scroll cap showing four lines of a
+   fifteen-line text. That is a keyhole, and shrinking the sign in place would
+   buy only ~40px of it.
+
+   Turned on its side, the glyph and the sign name make one compact header row
+   and the reading takes the full 377 — ~52 characters, a real measure — while
+   the card gets no wider. The disc comes down to --horo-disc because at header
+   size it is a lockup with its own name, not a portrait. The reading drops one
+   ramp step to --whimsy-size-body: at 18px a 377px measure sets 52 characters,
+   at 16px it sets 58, and this is running prose, not a pull quote — the one text
+   on the screen that wants the smaller face.
+
+   Together those took the visible window from four lines to about eight, and the
+   height ruling of 2026-08-13 then brought it to FIVE (--horo-read-h 176 → 112) and
+   the disc with it (56 → 48). The scroll STAYS either way (user-ruled 2026-08-01,
+   "cap the height… by forcing a scrollbar onto the horoscope card"): the cap is what
+   moved, never the mechanism, and the reading it holds is twelve lines at any cap.
+   The cap is on its own dial because the old derivation off --shelf-height assumed
+   the side-by-side anatomy this rule replaces — and because the shelf header's
+   ruling re-values it, which a derived value could not have taken. */
+:root.compact .daily .horo .body { flex-direction: column; align-items: stretch; gap: var(--space-5); }
+
+:root.compact .daily .horo .sign { display: flex; flex-direction: row; align-items: center; gap: var(--space-5); width: auto; text-align: left; }
+
+:root.compact .daily .horo .sign .disc2 { width: var(--horo-disc); height: var(--horo-disc); margin: 0; flex: 0 0 auto; }
+
+:root.compact .daily .horo .sign .gl { font-size: var(--whimsy-size-heading); }
+
+:root.compact .daily .horo .sign .nm { margin-top: 0; }
+
+:root.compact .daily .horo p { max-height: var(--horo-read-h); font-size: var(--whimsy-size-body); }
+
+/* ---- TAROT · 205 / 165 inner -------------------------------------------
+   THE WORST CARD ON THE SHELF, and the only one that fails outright rather than
+   merely crowding. The face is --tarot-card-w (104) beside a --space-6 gutter,
+   leaving its text 45px: "The Devil" sets on two lines, the keyword line clips
+   to "attachme", and "UPRIGHT DAILY DRAW" stacks into three. A drawn card whose
+   name you cannot read has failed at the one thing it does.
+
+   STACKED AND CENTRED — face over title, which is how a tarot card is actually
+   presented and needs no width at all. The name then has the full 165 and sets
+   on one line.
+
+   THE FACE COMES DOWN WITH IT, AND BOTH DIALS MOVE TOGETHER: `.tarot-card`
+   declares `aspect-ratio: var(--tarot-card-w) / var(--tarot-card-h)`, so
+   re-valuing the width alone would silently restretch the card off the standard
+   1 : 1.75 stock. This pass took it to 88 / 154, that ratio at 85%; the height
+   ruling of 2026-08-13 took it again to 63 / 110, the same ratio at 60%, and that is
+   the last size it can be SCALED to — see the shelf header. The caption folds to two
+   lines with it, which is why `.up` no longer exists in this card's markup. */
+:root.compact { --tarot-card-w: 63px; --tarot-card-h: 110px; }
+
+:root.compact .daily .tarot .body { flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--space-5); }
+
+/* THE FOLDED KEYWORD LINE TAKES ONE RAMP STEP DOWN, and it is a fit fix with a
+   measurement behind it: "attachment · shadow · upright" sets ~160px at
+   --whimsy-size-small against a 165px interior. Two pixels of slack is not a fit —
+   it wrapped to two lines in the shared exhibit's box (which draws the row 24px
+   narrow) and cost back 17px of the height the fold had just bought. At
+   --whimsy-size-caption it sets ~148 and clears at either width. Legitimate on this
+   line and not a general shrink: it is a metadata line under a title, which is the
+   register --whimsy-size-caption is for. */
+:root.compact .daily .tarot .kw { font-size: var(--whimsy-size-caption); }
+
+/* `.up`'s rule goes with the element: the caption is two lines now, and a rule for
+   markup that is no longer emitted is the dead-rule defect this page keeps catching. */
+
+/* ---- REDISCOVER · 229 / 189 inner --------------------------------------
+   DELIBERATELY UNTOUCHED, and worth recording why rather than tuning it for
+   symmetry. It is the only whimsy card that survived the narrowing intact,
+   because everything in it is either fluid (the 4-column mini wall, the portal)
+   or short and centred (the date plate, the door link) — it has no fixed-width
+   child to outrank its track, which is the fault behind almost every other rule
+   in this block. The date wrapping to two centred lines is the composition
+   working, not failing. No rule. */
+
+/* ---- COUNTDOWNS · 205 / 165 inner --------------------------------------
+   `.cdrow` puts the figure and its unit left and pushes `.cdmeta` right with
+   `margin-left:auto`, and that meta block is TWO nowrap lines — the event name
+   and its date. On 165px a three-digit count at the (now 38px) stat size takes
+   ~130px by itself, so the meta gets ~35px and cannot shrink, being nowrap by
+   declaration. The row overflows every time the count reaches three digits,
+   which for a countdown is most of its life.
+
+   The meta drops to its own full-width line beneath the figure and turns from a
+   right-aligned stack into a left-aligned baseline pair, so the card reads
+   number-then-what-it-is, top to bottom. `.nm` gives up nowrap with it: on a
+   full-width line a long event name should take a second line, not push a date
+   out of the card. */
+/* THE COUNTDOWN RHYTHM IS A DIAL NOW. `.cd .cdrow + .cdrow` took --space-6 straight
+   off the scale, so this card's internal rhythm could not be tuned without moving
+   every 16px space in the app. Minted as a name for a number that already existed,
+   then re-valued to 8 by the height ruling. */
+:root.compact { --cd-row-gap: 8px; }
+
+:root.compact .daily .cd .cdrow + .cdrow { margin-top: var(--cd-row-gap); }
+
+:root.compact .daily .cd .cdrow { flex-wrap: wrap; row-gap: var(--space-2); }
+
+:root.compact .daily .cd .cdmeta { flex: 1 0 100%; margin-left: 0; flex-direction: row; align-items: baseline; gap: var(--space-4); text-align: left; }
+
+:root.compact .daily .cd .cdmeta .nm { white-space: normal; }
+
+/* ---- LIFETIME · 205 / 165 inner ----------------------------------------
+   A number-and-label pair per row, held apart by space-between. The ramp change
+   alone fixes the lead row (48px "1,284" plus "days tracked" overran 165; at
+   38px it clears), so this is a guard rather than a redesign: if a figure ever
+   does outgrow its row the label wraps beneath it, still right-aligned, instead
+   of the pair overflowing the card silently. Same discipline as the sun
+   headline — decide where it breaks before it breaks. */
+:root.compact .daily .life .r { flex-wrap: wrap; column-gap: var(--space-5); row-gap: var(--space-1); }
+
+:root.compact .daily .life .r .l { flex: 1 0 auto; text-align: right; }
+
+/* ═══ ONE FINDING THIS BLOCK CANNOT FIX ════════════════════════════════════
+   THE SKY COLUMN WAS TALLER THAN THE CANVAS, AND THE RE-MINT HAS ALL BUT CLOSED
+   IT — which changes the size of this finding, not its shape.
+
+   Its five cards carry `flex: <grow> 0 <basis>` as INLINE styles the component
+   computes from the span system — 285 · 156 · 149 · 247 · 230, which is 1067px
+   of basis plus four --space-5 gaps = 1115px. The shrink factor is 0, so those
+   bases are FLOORS: the column cannot be compressed below them whatever
+   --triptych-min says. And small.css sets --triptych-min: 860 for this canvas —
+   a floor 255px BELOW the height the column then demanded, so the dial was
+   describing a state that could not occur. At ~1115 inside a content pane of
+   ~1090 the shelf began below the fold on every working day: the pane scrolling
+   PAST the fold is ruled and expected (2026-07-19), but scrolling before the
+   first screenful is finished is a different thing, and it is why the shelf
+   cards above had never been seen beside the columns they sit under.
+
+   ⚠ MEASURED NOW: 959px — cards 190 · 195 · 127 · 210 · 195 at true scale. Three
+   deltas, none of them coordinated: the sun re-mint proposing a 215 basis where
+   the span system computes 285, the ported 24px stat ramp taking a row of type
+   out of every card in the column, and the weather re-mint proposing 230 where
+   the card had declared 156 (its parts already summed to 166, so the declared
+   number had been a fiction — see the ported weather block, section 3). The
+   triptych still FITS the pane and the shelf still starts at the fold. This block
+   is no longer a dent.
+
+   THE FINDING SURVIVES ANYWAY, AND THAT IS THE PART WORTH READING. 959 is still
+   99px above --triptych-min's 860, so the dial still describes a state that
+   cannot occur — the mismatch went from 255px to 99px, which turns a fiction
+   into a rounding error, and a fiction is the easier of the two to notice. And
+   the column now fits by accident rather than by construction: two CSS rules here
+   quietly disagreeing with component-computed bases, plus a ramp override, is
+   not a floor anyone can rely on. ⚠ AND IT IS DRIFTING THE WRONG WAY: each card
+   re-mint has moved this number, weather by +41, and there are three sky cards
+   still to redraw.
+
+   THE ANSWER IS A DIAL ON THE COMPONENT SIDE, and it belongs to whoever owns the
+   span system: the sky spans are quoted in a unit (`sliver` = 2×1, `glance` =
+   1×1) and the pixel bases are that unit multiplied out. Propose
+   `--whimsy-span-unit` at :root, read by the span calculator the way wallPack
+   reads --wall-cols — one number, re-valued on this canvas, and all five bases
+   follow, the sun's included — which would also retire the 215-vs-285
+   disagreement this page currently leans on. Guessing its value from outside the calculator would be inventing
+   geometry, so it is named here and not set. Same class of proposal as
+   --pstrip-days above, and the same precedent behind it. */
+

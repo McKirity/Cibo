@@ -693,3 +693,26 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
 :is(.csdash, .advs) .monthpop .mcell:hover{background:var(--hover-wash);}
 :is(.csdash, .advs) .monthpop .mcell.sel{background:var(--selected-wash); color:var(--accent); font-weight:var(--weight-bold);}
 :is(.csdash, .advs) .monthpop .mcell.dead{color:var(--text-muted); opacity:.5; cursor:default;}
+
+/* ---- .kit-sr — the screen-reader-only utility, landed 2026-08-12 with the
+   whimsy re-mints. THREE cards reference it (sun · weather · progress), which
+   is why it lives here and not three times in small.css. */
+/* ---- 11 · THE STATE, FOR READERS WHO CANNOT SEE IT --------------------
+   Everything this card says about WHERE THE SUN IS, it says in colour and in
+   position. A screen reader got "Sun · 14h 08m · 2m · 05:01 rise · 19:10 set"
+   — the numbers, and no picture. Solar noon and late afternoon were
+   indistinguishable, which is the one distinction the card exists to draw.
+   One hidden sentence per card fixes it, generated from the same --sun-alt the
+   art is drawn from, so it can never drift from what is on screen. It sits last
+   in the reading row so it is announced after the figures rather than before.
+   \u26a0 --whimsy-fade AND FRIENDS CANNOT HELP HERE: hiding text accessibly is not a
+   colour problem, and the one wrong answer is `display:none`, which removes it
+   from the accessibility tree along with the screen. This is the standard clip
+   recipe. It is CHROME, not whimsy — it belongs in kit.css next to the other
+   utilities, not in the whimsy layer, and it is written here only because the
+   sheets carry no such utility yet. */
+.kit-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px;
+  padding: 0; border: 0; overflow: hidden; white-space: nowrap;
+  clip-path: inset(50%);
+}

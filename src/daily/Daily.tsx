@@ -313,14 +313,40 @@ function WorkingDay({
   const moonOn = cardOn(config, "moon");
   const almOn = cardOn(config, "almanac");
   const otdOn = cardOn(config, "otd");
+  const horoOn = cardOn(config, "horoscope");
+  const tarotOn = cardOn(config, "tarot");
+  const redOn = cardOn(config, "rediscover");
+  const cdOn = cardOn(config, "countdowns");
+  const lifeOn = cardOn(config, "lifetime");
   const quoteOn = cardOn(config, "quote");
   const wordOn = cardOn(config, "word");
   const showSkyCol = skyOn || moonOn;
-  const showAlmanacCol = catchUp.length > 0 || quoteOn || wordOn || almOn || otdOn;
+  /* ⚠ `catchUp.length > 0` LEFT THIS TEST 2026-08-11. The catch-up card used to
+     live in the almanac column, so a single unfinalized day held a 330px column
+     open beside the habits even with every whimsy card switched off — the floor
+     the user asked to remove. It is a banner over the spine now, and the almanac
+     column exists only for almanac CARDS. */
+  const showAlmanacCol = quoteOn || wordOn || almOn || otdOn;
+  /* THE SHELF IS NOT DRAWN WHEN IT IS EMPTY (2026-08-11). It carries
+     `min-height: var(--shelf-height)` and `flex: 1 0 auto` — right while it holds
+     cards, and a band of reserved emptiness once every card is switched off. */
+  const showShelf = horoOn || tarotOn || redOn || cdOn || lifeOn;
+  /* The triptych declares THREE fixed tracks, so hiding an outer column used to
+     leave the spine auto-placed into the track beside it — with both off, the
+     habits sat in the 380px sky track and two empty tracks followed them. The
+     modifier tells the sheet how many tracks to declare; the sheet keeps the
+     geometry (small.css re-values the dials, and a theme may not touch either). */
+  const triptychCls = [
+    "triptych",
+    showSkyCol ? "" : "no-sky",
+    showAlmanacCol ? "" : "no-almanac",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <div className="daily">
-      <div className="triptych">
+    <div className={showSkyCol || showAlmanacCol ? "daily" : "daily spine-only"}>
+      <div className={triptychCls}>
         {/* The sky column: stable geometry, the same cards every day. Its inner
             .sky-stack is what the FINAL flexes the cards inside. */}
         {showSkyCol && (
@@ -343,12 +369,17 @@ function WorkingDay({
         )}
 
         <div className="col spine">
-          <Spine dayKey={dayKey} onFinalized={onFinalized} />
+          <Spine
+            dayKey={dayKey}
+            onFinalized={onFinalized}
+            banner={
+              catchUp.length > 0 ? <CatchUpCard days={catchUp} onOpenDay={onOpenDay} /> : undefined
+            }
+          />
         </div>
 
         {showAlmanacCol && (
           <div className="col almanac">
-            {catchUp.length > 0 && <CatchUpCard days={catchUp} onOpenDay={onOpenDay} />}
             {quoteOn && <QuoteCard dayKey={dayKey} />}
             {wordOn && <WordCard dayKey={dayKey} />}
             {almOn && <FactCard dayKey={dayKey} />}
@@ -366,21 +397,25 @@ function WorkingDay({
         )}
       </div>
 
+      {showShelf && (
       <div className="shelf">
-        {cardOn(config, "horoscope") && (
+        {horoOn && (
           <HoroscopeCard config={config} reading={snapshot.horoscope ?? null} isToday={isToday} />
         )}
-        {cardOn(config, "tarot") && <TarotCard draw={snapshot.tarot ?? null} isToday={isToday} />}
+        {tarotOn && <TarotCard draw={snapshot.tarot ?? null} isToday={isToday} />}
         {/* "Upgraded in the new model: a DOOR to that day's cover wall" — live
             since the wall exists. */}
-        <RediscoverCard dayKey={dayKey} pastDays={pastDays} onOpenDay={onOpenDay} />
-        <CountdownsCard config={config} dayKey={dayKey} />
-        <LifetimeCard
-          daysTracked={dayRows.length}
-          sessions={lifetime?.sessionCount ?? 0}
-          entries={lifetime?.entryCount ?? 0}
-        />
+        {redOn && <RediscoverCard dayKey={dayKey} pastDays={pastDays} onOpenDay={onOpenDay} />}
+        {cdOn && <CountdownsCard config={config} dayKey={dayKey} />}
+        {lifeOn && (
+          <LifetimeCard
+            daysTracked={dayRows.length}
+            sessions={lifetime?.sessionCount ?? 0}
+            entries={lifetime?.entryCount ?? 0}
+          />
+        )}
       </div>
+      )}
 
     </div>
   );

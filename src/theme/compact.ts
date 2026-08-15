@@ -1,60 +1,58 @@
 /**
  * COMPACT — the small-canvas LAYOUT LAYER's switch (re-pointed Phase 2
- * step 4, 2026-08-10; born Build step 6a as the density lever). The
- * tri-state `auto | on | off`; **auto keys off WINDOW width, never the
- * device** (~1600px TRUE width — zoom-corrected, the 2026-08-09 fix).
- * Per-device, on the settings file (deviceStore); the control lives in
- * Settings → Appearance.
+ * step 4, 2026-08-10; born Build step 6a as the density lever).
  *
- * Mechanism: one class on the root element — `.compact` — mirroring
- * `.reduce-effects` (the corpus-wide root-class doctrine). What the class
- * MEANS changed at the re-point: the density value sheet (theme/compact.css)
- * tested worse than the plain base at the Mac's 90% zoom and is DELETED;
- * `src/small.css` — the per-screen small-window re-compositions over the
- * base sheets — is now the class's only consumer. Screens still never test
- * the class directly.
+ * ⚠ NO LONGER A SETTING. USER-RULED 2026-08-13: *"remove compact mode, that's
+ * only for macbook in the end."* The tri-state `auto | on | off` and its
+ * Settings → Appearance row are GONE; what survives is the `auto` rule alone,
+ * which is the only one that was ever describing something true. Compact is not
+ * a preference — it is a CONSEQUENCE of being on the small canvas — so it is
+ * now derived from window width and cannot be set at all.
+ *
+ * ⚠ THIS SUPERSEDES THE 3-LEVER MODEL'S MIDDLE LEVER. [[Sync & Per-Device
+ * Settings]] and [[Design Standardization & Process]] both describe compact as
+ * a tri-state per-device setting; that is stale as of this ruling, and the
+ * levers the user actually sets are now UI scale and reduce-effects. The vault
+ * notes are owed the amendment — flagged, not silently reconciled here.
+ *
+ * WHAT THE REMOVAL FIXES, and it is not only tidiness: a stored `off` STUCK.
+ * The whole whimsy re-mint is `:root.compact`-scoped, and a store carrying an
+ * explicit `off` from an earlier test session rendered every re-minted card as
+ * an empty box at every window size, with nothing on screen saying why (found
+ * 2026-08-13). A derived value cannot be left in a state that contradicts the
+ * window it is describing.
+ *
+ * Mechanism is unchanged: one class on the root element — `.compact` —
+ * mirroring `.reduce-effects` (the corpus-wide root-class doctrine). Screens
+ * still never test the class directly; `src/small.css` is its only consumer.
+ *
+ * ⚠ `cibo.compactMode` IS DELIBERATELY NOT READ AND NOT CLEANED UP. A stored
+ * value is inert the moment nothing reads it, and a migration that deletes a
+ * key buys nothing while adding a write path to a file the boot shim reads
+ * synchronously. It simply stops mattering.
  */
 
-import { deviceGet, deviceSet } from "../settings/deviceStore";
 import { currentZoomFactor } from "../settings/local";
 
-export type CompactMode = "auto" | "on" | "off";
-export const COMPACT_KEY = "cibo.compactMode";
-/** The Sync note's "~1600px" window-width knee for compact-auto. */
+/** The Sync note's "~1600px" window-width knee. */
 export const COMPACT_AUTO_BELOW = 1600;
 
-const lsGet = (): CompactMode => {
-  const v = deviceGet(COMPACT_KEY);
-  return v === "on" || v === "off" || v === "auto" ? v : "auto";
-};
-
-export const getCompactMode = (): CompactMode => lsGet();
-
-// `compactApplied` was DELETED 2026-08-04: its only stated consumer was the dev
-// switch's readout, and that switch retired 2026-08-02 — Settings → Appearance
-// reads `getCompactMode()` instead.
-
-function resolve(mode: CompactMode): void {
+function resolve(): void {
   // The knee tests the WINDOW's width, not the CSS viewport: `innerWidth` is
-  // CSS px, which webview zoom INFLATES below 100% — at the Mac's ruled 0.9
-  // scale a 1512 window reads as 1680 and compact-auto silently switched OFF
-  // on the exact device the lever exists for (the two levers of the 3-lever
-  // model cancelling; found at the step-4 preview pass, 2026-08-09).
+  // CSS px, which webview zoom INFLATES below 100% — at the Mac's ruled 0.85
+  // scale a 1512 window reads as 1779 and compact silently switched OFF on the
+  // exact device the lever exists for (the two levers of the 3-lever model
+  // cancelling; found at the step-4 preview pass, 2026-08-09).
   // Multiplying the zoom back out recovers the width the ruling names. Zoom
   // changes re-resolve for free: setZoom moves `innerWidth`, which fires the
-  // resize listener below.
+  // resize listener below — which is also what makes the Developer screen
+  // toggle carry compact with it without writing to compact at all.
   const width = window.innerWidth * currentZoomFactor();
-  const on = mode === "on" || (mode === "auto" && width < COMPACT_AUTO_BELOW);
-  document.documentElement.classList.toggle("compact", on);
+  document.documentElement.classList.toggle("compact", width < COMPACT_AUTO_BELOW);
 }
 
-export function setCompactMode(mode: CompactMode): void {
-  deviceSet(COMPACT_KEY, mode);
-  resolve(mode);
-}
-
-/** Launch wiring: apply the stored mode and follow window resizes live. */
+/** Launch wiring: resolve once, then follow the window forever. */
 export function initCompact(): void {
-  resolve(lsGet());
-  window.addEventListener("resize", () => resolve(lsGet()));
+  resolve();
+  window.addEventListener("resize", resolve);
 }

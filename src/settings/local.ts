@@ -58,13 +58,48 @@ export const clampUiScale = (pct: number): number =>
 
 export const getUiScale = (): number => clampUiScale(Number(lsGet(UI_SCALE_KEY) ?? UI_SCALE_DEFAULT));
 
-/** Parity zoom — Developer's dial, composed onto UI scale while preview is on. */
+/** Parity zoom — Developer's dial, composed onto UI scale in MacBook mode.
+ *  The screen preset sets it (85 / 100); the slider stays for hand-tuning. */
 export const PARITY_ZOOM_KEY = "cibo.dev.parityZoom";
+/** The MacBook preset's parity. Was hand-set to 85 and never moved off it. */
+export const PARITY_MACBOOK = 85;
 export const clampParity = (pct: number): number =>
   !Number.isFinite(pct) ? 100 : Math.min(120, Math.max(80, Math.round(pct)));
 export const getParityZoom = (): number => clampParity(Number(lsGet(PARITY_ZOOM_KEY) ?? 100));
+/**
+ * THE SCREEN PRESET — one control for the whole MacBook/desktop swap.
+ *
+ * USER-RULED 2026-08-13: *"I just want one single toggle that changes the
+ * screen from mac to 2k, no matter the actual screen"* — reversing an
+ * arrangement that took FOUR settings across TWO panes to reach either view
+ * (preview on/off + parity + UI scale in one place, compact in another), which
+ * is how the store ended up in a state no single control could explain.
+ *
+ * What one pick now moves:
+ *   window   1512×982, or the size remembered before the first MacBook pick
+ *   parity   PARITY_MACBOOK / 100 — user-ruled to follow the mode
+ *   compact  NOTHING IS WRITTEN. It derives from window width (theme/compact),
+ *            so it follows the resize for free and can never disagree with the
+ *            window it describes. The bug this replaces was exactly that
+ *            disagreement, held in a stored value.
+ *   UI scale UNTOUCHED, deliberately — it is the user's own comfort lever and
+ *            composes on top, so the preset must not overwrite a hand-set value.
+ *
+ * ⚠ THE TWO ZOOMS MULTIPLY, so the preview reproduces the Mac's CANVAS only
+ * while UI scale sits at 100: 1512 ÷ 0.85 = 1779 CSS, the ruled figure. Set UI
+ * scale to 90 as well and the preview composes 0.765 while the real Mac at the
+ * same setting composes 0.90 — the two stop agreeing. Fine for the instrument's
+ * job (layout at the small canvas) as long as it is known; it is written down
+ * here because nothing on screen says it.
+ *
+ * The key is kept verbatim from the MacBook-preview era so a set flag survives
+ * the reshape — the same convention REDUCE_KEY was kept under.
+ */
+export type ScreenMode = "macbook" | "desktop";
 export const MB_PREVIEW_KEY = "cibo.dev.macbookPreview";
-export const getMacBookPreview = (): boolean => lsGet(MB_PREVIEW_KEY) === "1";
+export const getScreenMode = (): ScreenMode => (lsGet(MB_PREVIEW_KEY) === "1" ? "macbook" : "desktop");
+/** Kept as the predicate `currentZoomFactor` reads — one name per question. */
+export const getMacBookPreview = (): boolean => getScreenMode() === "macbook";
 
 /**
  * The composed zoom the app itself applies — UI scale × parity while the
@@ -98,18 +133,23 @@ export const setParityZoom = (pct: number): void => {
 };
 
 /**
- * The MacBook preview toggle — the ruled Settings → Developer anatomy
+ * The screen preset's write half — the ruled Settings → Developer anatomy
  * (snap to 1512×982 logical · REMEMBER and restore the prior size · parity
- * zoom composes while on). Geometry half was born as a dev button 2026-08-01;
- * this is its real home. Reading it is for LAYOUT, not legibility — Phase 2
- * owns real-hardware tuning.
+ * zoom composes in MacBook mode). Geometry half was born as a dev button
+ * 2026-08-01; this is its real home. Reading it is for LAYOUT, not legibility
+ * — Phase 2 owns real-hardware tuning.
  */
 const MB_PRIOR_KEY = "cibo.dev.macbookPriorSize";
 const MB_W = 1512;
 const MB_H = 982;
 
-export const setMacBookPreview = async (on: boolean): Promise<void> => {
+export const setScreenMode = async (mode: ScreenMode): Promise<void> => {
+  const on = mode === "macbook";
   lsSet(MB_PREVIEW_KEY, on ? "1" : "0");
+  // Parity follows the mode (user-ruled). Written through the setter so the
+  // clamp and the zoom re-apply are the same ones the slider goes through —
+  // two writers, one path.
+  setParityZoom(on ? PARITY_MACBOOK : 100);
   if (!inTauri()) return;
   try {
     const { LogicalSize } = await import("@tauri-apps/api/dpi");

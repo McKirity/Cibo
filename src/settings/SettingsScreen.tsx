@@ -39,7 +39,7 @@ import {
 import {
   clampUiScale,
   getForceOpaque,
-  getMacBookPreview,
+  getScreenMode,
   getParityZoom,
   getPomoBreak,
   getPomoIntervals,
@@ -48,7 +48,7 @@ import {
   getSignalStyle,
   getUiScale,
   setForceOpaque,
-  setMacBookPreview,
+  setScreenMode,
   setParityZoom,
   setPomoBreak,
   setPomoIntervals,
@@ -57,10 +57,10 @@ import {
   setSignalStyle,
   setUiScale,
   UI_SCALE_STEP,
+  type ScreenMode,
   type SignalStyle,
 } from "./local";
 import { getPick, openThemesFolder, scanThemes, setTheme, type ThemeEntry } from "../theme/loader";
-import { getCompactMode, setCompactMode, type CompactMode } from "../theme/compact";
 import { cloudSub } from "./cloudRoot";
 import {
   autosaveQuery,
@@ -587,7 +587,6 @@ function AppearancePane() {
   const [themes, setThemes] = useState<ThemeEntry[]>([]);
   const [pick, setPick] = useState(getPick());
   const [scale, setScale] = useState(getUiScale());
-  const [compact, setCompact] = useState<CompactMode>(getCompactMode());
   const [reduce, setReduce] = useState(getReduceEffects());
   const [opaque, setOpaque] = useState(getForceOpaque());
 
@@ -690,24 +689,12 @@ function AppearancePane() {
                 />
               </span>
             </div>
-            <div className="crow">
-              <span className="clabel">Compact mode</span>
-              <DevMark />
-              <span className="cright">
-                <Seg
-                  value={compact}
-                  options={[
-                    { v: "auto", label: "Auto" },
-                    { v: "on", label: "On" },
-                    { v: "off", label: "Off" },
-                  ]}
-                  onPick={(v) => {
-                    setCompactMode(v);
-                    setCompact(v);
-                  }}
-                />
-              </span>
-            </div>
+            {/* COMPACT MODE'S ROW IS GONE — user-ruled 2026-08-13, *"remove
+                compact mode, that's only for macbook in the end."* It is not a
+                preference but a consequence of the canvas, so it now derives
+                from window width in theme/compact.ts and has no control at all.
+                The pane keeps the two levers the user actually sets: UI scale
+                above, reduce effects below. */}
             <div className="crow">
               <span className="clabel">Reduce effects</span>
               <DevMark />
@@ -873,7 +860,7 @@ function TimersPane() {
 // build must not offer a control that floods a real store with fixture rows -
 // and the seeder module loads on click, so it stays out of the launch graph.
 function DeveloperPane() {
-  const [preview, setPreview] = useState(getMacBookPreview());
+  const [screen, setScreen] = useState<ScreenMode>(getScreenMode());
   const [parity, setParity] = useState(getParityZoom());
   const [seedStatus, setSeedStatus] = useState("");
   const [seedBusy, setSeedBusy] = useState(false);
@@ -960,19 +947,29 @@ function DeveloperPane() {
     <Pane title="Developer">
       <div className="pbody">
         <div className="ctrlstack">
+          {/* ONE CONTROL FOR THE WHOLE SWAP — user-ruled 2026-08-13, *"I just
+              want one single toggle that changes the screen from mac to 2k, no
+              matter the actual screen."* It moves the window, and parity
+              follows it; compact follows the WINDOW rather than this control,
+              so there is nothing here that can disagree with what is on screen.
+              UI scale below is untouched by it, deliberately — see setScreenMode. */}
           <div className="crow">
-            <span className="clabel">MacBook preview</span>
+            <span className="clabel">Screen</span>
             <DevMark />
             <span className="cright">
               <Seg
-                value={preview ? "on" : "off"}
+                value={screen}
                 options={[
-                  { v: "on", label: "On" },
-                  { v: "off", label: "Off" },
+                  { v: "macbook", label: "MacBook" },
+                  { v: "desktop", label: "2K" },
                 ]}
                 onPick={(v) => {
-                  void setMacBookPreview(v === "on");
-                  setPreview(v === "on");
+                  void setScreenMode(v);
+                  setScreen(v);
+                  // Parity is written by the preset; mirror it into the
+                  // slider's own state or the dial would show a stale number
+                  // until the pane remounts.
+                  setParity(getParityZoom());
                 }}
               />
             </span>

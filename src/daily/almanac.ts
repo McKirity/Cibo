@@ -19,7 +19,9 @@
  */
 import type { DatedEvent } from "./whimsyConfig";
 import { dayStart } from "./sky";
-import { weekNum, weekStartDow } from "../metrics/dates";
+/* The `../metrics/dates` import went with `timeProgress` (below): `weekNum` and
+ * `weekStartDow` were its only readers in this file. Nothing else here is
+ * week-aware — the almanac deals in days and dates. */
 
 const DAY_MS = 86_400_000;
 
@@ -252,59 +254,21 @@ export const holidayFor = (dayKey: string): string | null =>
 
 // ── config- and data-driven ───────────────────────────────────────────────────
 
-export interface TimeProgress {
-  dayPct: number;
-  weekPct: number;
-  monthPct: number;
-  yearPct: number;
-  /** 1-based day of year — the footer's "Day N of M". */
-  doy: number;
-  daysInYear: number;
-  /** The week's display number — `dates.weekNum`, the app-wide answer. */
-  week: number;
-  /** 1–4. */
-  quarter: number;
-  /** Progress through the containing calendar quarter. */
-  quarterPct: number;
-}
+/* `timeProgress` and its `TimeProgress` interface RETIRED 2026-08-14.
+ *
+ * They were the ORIGINAL rule for the five period fractions. `periodProgress`
+ * replaced them on the progress card (2026-08-13) but the cover wall's year
+ * tile still called this one, which left TWO implementations of one set of
+ * numbers — agreeing except across a DST boundary, where this rule's fixed
+ * 86_400_000 denominator runs ~4% out on a 23- or 25-hour day. The wall tile
+ * is drawn at 23:59 of the day itself, which is exactly where that divergence
+ * is largest.
+ *
+ * The wall migrated at the 2026-08-14 sweep and this had no other reader, so it
+ * goes rather than lingering as a second answer somebody could pick up again.
+ * `dayOfYear` STAYS — two live readers remain in this file.
+ * The one rule now lives in daily/periodProgress.ts, under test. */
 
-/** Progress through the containing periods. `now` only affects the day figure.
- * The week/quarter/year footer figures were reunited here from
- * TimeProgressCard's inline math (2026-07-30 dedup) — `dayOfYear`'s rounding
- * carries the DST fix, so nothing here divides local-midnight diffs naively. */
-export function timeProgress(dayKey: string, now: Date): TimeProgress {
-  const d = dayStart(dayKey);
-  const year = d.getFullYear();
-  const jan1 = new Date(year, 0, 1);
-  const daysInYear = (new Date(year + 1, 0, 1).getTime() - jan1.getTime()) / DAY_MS;
-  const daysInMonth = new Date(year, d.getMonth() + 1, 0).getDate();
-  // The week runs from the CONFIGURED start (2026-08-04's dial), not a
-  // hardcoded Monday: this card sits beside the nav calendar and the cadence
-  // dashboards, and a fixed Mon–Sun made its Week ring disagree with both.
-  const dow = (d.getDay() - weekStartDow() + 7) % 7;
-  const sameDay = now.getFullYear() === d.getFullYear() && now.getMonth() === d.getMonth() && now.getDate() === d.getDate();
-  const msIntoDay = sameDay ? now.getTime() - d.getTime() : DAY_MS;
-  const doy = dayOfYear(dayKey);
-  const q = Math.floor(d.getMonth() / 3);
-  // Anchored at noon, as the card always computed it — never within an hour of
-  // a DST boundary, so the ratio stays exact.
-  const noon = new Date(year, d.getMonth(), d.getDate(), 12);
-  const qStart = new Date(year, q * 3, 1);
-  const qEnd = new Date(year, q * 3 + 3, 1);
-  return {
-    dayPct: Math.min(1, Math.max(0, msIntoDay / DAY_MS)),
-    weekPct: (dow + msIntoDay / DAY_MS) / 7,
-    monthPct: (d.getDate() - 1 + msIntoDay / DAY_MS) / daysInMonth,
-    yearPct: (doy - 1 + msIntoDay / DAY_MS) / daysInYear,
-    doy,
-    daysInYear,
-    // weekNum, not a count of 7-day blocks from Jan 1 — the hand-rolled form
-    // disagreed with every other week label in the app AND with ISO itself.
-    week: weekNum(dayKey).week,
-    quarter: q + 1,
-    quarterPct: (noon.getTime() - qStart.getTime()) / (qEnd.getTime() - qStart.getTime()),
-  };
-}
 
 export interface Countdown {
   /**

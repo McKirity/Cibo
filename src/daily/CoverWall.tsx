@@ -94,9 +94,11 @@ import { useCoverUrl } from "../kit/CoverArt";
 import { useWallData } from "./useWallData";
 import { useMilestoneDay } from "./useMilestoneDay";
 import { displayTemp, weatherWords } from "./feedData";
-import { holidayFor, factFor, onThisDay, quoteFor, signGlyph, timeProgress, wordFor } from "./almanac";
+import { holidayFor, factFor, onThisDay, quoteFor, signGlyph, wordFor } from "./almanac";
 import { moonDiscPaths, moonInfo, seasonBand, seasonInfo, sunInfo } from "./sky";
 import { cardOn, loadWhimsyConfig } from "./whimsyConfig";
+import { periodProgress } from "./periodProgress";
+import { weekStartDow } from "../metrics/dates";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { hoursMinutes, stars } from "../metrics/format";
 import "./daily.css";
@@ -993,7 +995,15 @@ function Whimsy({
       );
     }
     case "year": {
-      const p = timeProgress(dayKey, new Date(`${dayKey}T23:59:00`));
+      // ONE RULE FOR THE FIVE PERIOD NUMBERS (2026-08-14). This tile read
+      // almanac.ts's `timeProgress` while the progress card read
+      // `periodProgress` — two implementations of the same five fractions,
+      // agreeing at this instant except across a DST boundary, where the old
+      // rule's fixed 86_400_000 denominator runs ~4% out on a 23- or 25-hour
+      // day. The tile is drawn at 23:59 of the day itself, which is where that
+      // divergence is largest.
+      // `timeProgress` retires with this call site — it had no other reader.
+      const p = periodProgress(dayKey, new Date(`${dayKey}T23:59:00`), weekStartDow());
       return (
         <>
           <span className="wl">Year</span>
@@ -1001,12 +1011,12 @@ function Whimsy({
             {MONTH_VARS.map((v) => (
               <i key={v} style={{ flex: 1, background: `var(${v})` }} />
             ))}
-            <div className="tick" style={{ left: `${Math.round(p.yearPct * 100)}%` }} />
+            <div className="tick" style={{ left: `${Math.round(p.year * 100)}%` }} />
           </div>
           <div className="foot">
             <span>{dayKey.slice(0, 4)}</span>
             <span>
-              <b>{Math.round(p.yearPct * 100)}%</b>
+              <b>{Math.round(p.year * 100)}%</b>
             </span>
           </div>
         </>

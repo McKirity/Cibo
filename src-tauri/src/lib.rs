@@ -179,7 +179,7 @@ mod backup;
 /// Failure is never a gate: every step degrades to the configured size, which is
 /// exactly today's behaviour.
 fn fit_window_to_screen(app: &tauri::AppHandle) {
-    use tauri::{LogicalSize, Manager};
+    use tauri::{LogicalPosition, LogicalSize, Manager};
 
     let Some(win) = app.get_webview_window("main") else {
         return;
@@ -198,7 +198,9 @@ fn fit_window_to_screen(app: &tauri::AppHandle) {
     // LOGICAL px, and on a HiDPI panel those differ by the scale factor. Mixing
     // them would ask for a 3024-wide window on the Mac.
     let scale = monitor.scale_factor();
-    let area = monitor.work_area().size.to_logical::<f64>(scale);
+    let work = monitor.work_area();
+    let area = work.size.to_logical::<f64>(scale);
+    let origin = work.position.to_logical::<f64>(scale);
     let current = size.to_logical::<f64>(scale);
 
     let width = current.width.min(area.width);
@@ -208,9 +210,17 @@ fn fit_window_to_screen(app: &tauri::AppHandle) {
     }
 
     let _ = win.set_size(LogicalSize::new(width, height));
-    // A window shrunk from its top-left corner leaves itself parked off-centre;
-    // and if the OS placed it for a 1600x1000 box it may now sit part-off-screen.
-    let _ = win.center();
+    // PLACED BY HAND, not by `center()` (2026-08-15, found on the Mac the day
+    // this shipped): center() computes from the size the window HAS, and the
+    // resize above has not necessarily landed when it runs — so it centred a
+    // 1600-wide box on a 1512 screen and parked the window 44px off the LEFT
+    // edge. Doing the arithmetic ourselves cannot race, and centring on the
+    // WORK AREA rather than the monitor also respects an origin that sits below
+    // a menu bar.
+    let _ = win.set_position(LogicalPosition::new(
+        origin.x + (area.width - width).max(0.0) / 2.0,
+        origin.y + (area.height - height).max(0.0) / 2.0,
+    ));
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

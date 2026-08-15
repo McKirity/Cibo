@@ -205,6 +205,45 @@
   padding-bottom: var(--scrollbar-width);
 }
 
+/* ⚠ 16px IS A FLOOR HERE, NOT A WIDTH — user-ruled 2026-08-15, MacBook view
+   only; the 2K canvas keeps the base sheet's `1fr` tracks untouched.
+   MEASURED on the small canvas: 53 × 16px + 52 × 2px gaps = 952px of track
+   inside a 1133px container, so the block sat 181px short of its own box with
+   nothing able to close the gap — the tracks were a FIXED size and simply did
+   not ask for the rest. `minmax(<floor>, 1fr)` keeps everything the 16px was
+   for (below ~950px the tracks stop shrinking and `.cols` scrolls, exactly as
+   the note above describes) while any container with room now fills.
+   ⚠ THE FLOOR MUST STAY A LENGTH. `minmax()` takes a flex value only as its
+   MAXIMUM, so `minmax(1fr,1fr)` is invalid and throws the whole declaration
+   away — which is why this cannot simply be hoisted into the base sheet, where
+   the dial is `1fr`. That is also the reason this pair is written out here in
+   full rather than parameterised across both canvases. */
+:root.compact .heat .cells,
+:root.compact .heat .months {
+  grid-template-columns: repeat(53, minmax(var(--heat-week-col), 1fr));
+}
+
+/* THE WEEKDAY LABELS ARE A SMALL-CANVAS FAULT ONLY, and the arithmetic says
+   why. `.hcell` is `aspect-ratio:1/1`, so a cell row is as tall as a week
+   column is WIDE; a label row cannot shrink below its own line box, which is
+   `--size-caption` × `--line-normal` ≈ 21px. At the desktop's ~25px columns
+   the cells are the taller of the two and the labels sit inside them. At 16px
+   they are not, so the label column becomes the taller, `.heat` stretches both
+   to the larger height, `.cells` does not grow with it, and the seven labels
+   spread over more height than the seven cell rows — drifting further each row
+   and worst at `Sat`. Removing the rows' auto minimum lets the label column
+   take its height FROM the cells instead of competing with them.
+   Scoped to `.wdrows` because `EntryDashboard`'s `EntryHeatmap` is a second
+   copy of this markup with no `.wdrows`, and it is user-confirmed correct. */
+:root.compact .heat .weekdays .wdrows {
+  grid-template-rows: repeat(7, minmax(0, 1fr));
+}
+:root.compact .heat .weekdays .wdrows .wd {
+  min-height: 0;
+  line-height: 1;
+  overflow: hidden;
+}
+
 /* ---- WAVE TIMELINE — user-ruled 2026-08-10: the lane's numbers were *"barely
    readable"* here. The face is 10px on the desktop canvas, which the 0.85 UI
    scale renders at an effective ~8.5px — small type is the first thing a zoom

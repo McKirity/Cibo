@@ -491,15 +491,33 @@ export function heatmapCells(
 }
 
 /** Month labels for the heatmap header: {col, label} where a new month begins. */
-export function heatmapMonths(today: string, weeks = 53): { col: number; label: string }[] {
+export function heatmapMonths(
+  today: string,
+  weeks = 53,
+  from: string | null = null,
+): { col: number; label: string }[] {
   const startIdx = dayIndex(weekStart(today)) - (weeks - 1) * 7;
+  // `from` is the same pinned-year bound `heatmapCells` takes, and it exists
+  // here for the same reason: a 53-week grid ending on 31 Dec opens on a week
+  // that STARTED in the previous December, so a year view labelled its first
+  // column "Dec" and its second "Jan" — two Decembers in a view of one year,
+  // printed one ~16px column apart and overlapping into "Deđan" (user-ruled
+  // 2026-08-15: "just remove december"). Months wholly before the pinned year
+  // are dropped. Left null — every rolling window — nothing is dropped, which
+  // keeps the trailing-53-weeks face's two Augusts, correct for a window that
+  // is not about a year.
+  const fromMonth = from != null ? monthKey(from) : null;
   const out: { col: number; label: string }[] = [];
   let lastMonth = "";
   for (let col = 0; col < weeks; col++) {
     const mk = monthKey(dayFromIndex(startIdx + col * 7));
     if (mk !== lastMonth) {
-      out.push({ col, label: MONTHS_SHORT[Number(mk.slice(5)) - 1] });
+      // `lastMonth` advances even when the label is dropped: it tracks where
+      // the month CHANGES, not what was printed, so a skip cannot make the
+      // next month re-test against a stale key.
       lastMonth = mk;
+      if (fromMonth != null && mk < fromMonth) continue;
+      out.push({ col, label: MONTHS_SHORT[Number(mk.slice(5)) - 1] });
     }
   }
   return out;

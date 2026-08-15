@@ -393,6 +393,6 @@ export function buildRangeDashboard(input: RangeBuildInput, sel: ScopeSel): Rang
       avgWake: wakeMean != null ? fmtHM(wakeMean) : "—",
     },
     flags: { panels, noun: NIGHTS },
-    heatmap: { views, months: heatmapMonths(scopeTo), trio },
+    heatmap: { views, months: heatmapMonths(scopeTo, 53, isYear ? `${sel.year}-01-01` : null), trio },
   };
 }

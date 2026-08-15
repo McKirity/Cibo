@@ -422,17 +422,30 @@ button.doorlink:hover {
   font-size: var(--size-caption);
   color: var(--text-muted);
   cursor: pointer;
+  /* ⚠ NO DIVIDER — USER-RULED 2026-08-15 ("remove the calendar divider from any
+     themes that use it, except for blame"). This carried
+     `border-right: var(--border-hairline) solid var(--divider)`, which stood
+     `--space-1` (2px) from the first day cell — and an unfinalized day draws
+     its attention ring as a `--border-standard` INSET shadow, hard against
+     that same edge, so a 1px rule and a 1.5px ring sat 2px apart and read as
+     one collided mark. A clearance fix was tried first and rejected on sight:
+     the week column is 30px wide, so there is no room to buy separation with,
+     and the rule was worth less than the space it cost.
+     ⚠ BLAME! IS UNAFFECTED AND KEEPS ITS DIVIDER — it does not rely on this
+     border, it draws its own bevel pair (`box-shadow: inset -1px 0 0
+     --rail-bevel-dark, 1px 0 0 --rail-bevel-light`), which is the housing
+     idiom rather than a hairline. Its `border-color: var(--rail-bevel-dark)`
+     on `:is(.dow,.wk)` still dresses `.dow`'s bottom border and is merely
+     inert for `.wk` now. Subnautica had already opted out on its own
+     (`border-color: transparent; box-shadow: none`), so this ruling only ever
+     changes the Default and Void. */
   padding-right: var(--space-3);
-  border-right: var(--border-hairline) solid var(--divider);
   background: none;
-  border-top: none;
-  border-left: none;
-  border-bottom: none;
+  border: none;
   font-family: var(--font-ui);
   transition: color var(--motion-fast) var(--ease-standard);
 }
 .rail .cal .wk:empty {
-  border-right: none;
   cursor: default;
 }
 .rail .cal .wk:hover {

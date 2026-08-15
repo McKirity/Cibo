@@ -37,7 +37,20 @@
    `height:auto` the flex row's default `stretch` does the rest, so a row of
    tiles is as tall as its tallest member and no taller. */
 .trow{display:grid; grid-template-columns:repeat(var(--trow-cols, 3), minmax(0,1fr)); gap:var(--space-6); align-items:stretch;}
+/* ⚠ THE GUTTER IS PER-CHART SINCE 2026-08-15, because ONE NUMBER CANNOT SERVE
+   THESE CHARTS. `--chart-axis-gutter` (56px) is sized for the widest y-label in
+   the app — Sleep's `23:00`, five mono characters — while the habit trend draws
+   `0h`…`16h` and Creation draws unit ticks. A chart with short labels therefore
+   carried ~25px of dead indent, which is what reads as the graph not starting
+   at its container's edge. The labels are absolutely positioned and
+   right-aligned against the plot, so the gutter is pure reserved space: making
+   it per-chart costs nothing and clips nothing.
+   Overriding the DIAL rather than the padding keeps `.xaxis`'s `margin-left`
+   and `.yaxis`'s `right:` calc in step automatically — they read the same
+   property, so the three cannot drift. (Comparing Statistics keeps its own
+   `padding-left:0`: it is the one tenant with NO `.yaxis` at all.) */
 .chartwrap{position:relative; padding-left:var(--chart-axis-gutter);}
+.trend .chartwrap{--chart-axis-gutter:34px;}
 .cover{width:var(--cover-w); height:var(--cover-h); border-radius:var(--radius-small); position:relative; cursor:pointer; overflow:hidden; background:repeating-linear-gradient(135deg, var(--inset-background), var(--inset-background) 7px, var(--divider) 7px, var(--divider) 14px); transition:box-shadow var(--motion-fast) var(--ease-standard);}
 .deltachip{display:inline-flex; align-items:center; gap:var(--space-2); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--verdict-done); background:color-mix(in oklch, var(--verdict-done), var(--window-background) var(--tint-mix)); border-radius:var(--radius-small); padding:var(--space-2) var(--space-4);}
 .mast{display:grid; grid-template-columns:auto 1fr auto; gap:var(--space-7); align-items:start; padding-left:calc(var(--frame-clear-grand) + var(--space-4) + var(--space-5));}
@@ -227,8 +240,57 @@
 .tsl-table .k{text-align:right; text-transform:uppercase; letter-spacing:.04em; font-size:var(--size-caption); color:var(--text-muted); align-self:center;}
 .tsl-table .v{font-family:var(--font-mono); color:var(--text-secondary);}
 .tlabel{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); font-weight:var(--weight-bold); margin:0 0 var(--space-4);}
+/* THE TWO CHARTS FILL THEIR CELLS — user-ruled 2026-08-15 ("make the width and
+   height flexible so that the graphs in the trends panel can reach the ends of
+   their containers"). The row was already `align-items:stretch`, so the two
+   CELLS have always been equal height; what did not fill was the content —
+   `.linechart` and `.vbars` each carried a FIXED `height:var(--chart-height)`
+   (220px), so both sat at 220px inside whatever the row actually was, and the
+   bar chart's extra `padding-top` made the pair look misaligned on top of it.
+   Making the children flex columns and the charts `flex:1 1 auto` hands both
+   the cell's real height, and `--chart-height` demotes to a MINIMUM.
+   ⚠ The line chart needed no JS change: it is box-sized off `useBox`, a
+   ResizeObserver, so it re-reads its own height and redraws the moment CSS
+   stops pinning it. */
 .trend{display:grid; grid-template-columns:2fr 1fr; gap:0; align-items:stretch;}
+/* ⚠ BOTH COLUMNS ARE GRIDS, NOT FLEX COLUMNS — 2026-08-15, second attempt.
+   The first used `flex:1` for the plot row and it did NOT fill: measured,
+   `.sparkbars` ended at 652 while its parent `.spark` ended at 671, a 19px
+   shortfall with no element in it (`.spark` has exactly two children). A grid
+   `minmax(…,1fr)` row has no such escape — it is resolved from the container's
+   height rather than negotiated from content, so the plot row reaches the
+   column's bottom by definition.
+   THE TWO COLUMNS ARE NOW THE SAME THREE-ROW SHAPE: head (auto) · plot (1fr) ·
+   foot (--axis-foot). The left spends its foot on `.xaxis`; the right reserves
+   the identical amount as `.sparkbars` padding and hangs the month labels in
+   it. Both plots therefore end at `columnBottom − --axis-foot`, whatever the
+   two heads do — and the heads DO differ, since the right one carries a delta
+   chip and the left is one line of text. That difference was previously paid
+   out of the plot's bottom edge, which is what put the bars above the line. */
+.trend > div{display:grid; grid-template-rows:auto minmax(var(--chart-height),1fr) var(--axis-foot); min-height:0;}
 .trend > div:first-child{padding-right:var(--space-7);}
+.trend .spark{grid-template-rows:auto minmax(var(--chart-height),1fr) var(--axis-foot); height:auto;}
+.trend .linechart{height:100%; min-height:0;}
+/* THE TWO CHARTS SHARE ONE FOOT so their baselines land on the same line BY
+   CONSTRUCTION rather than by two numbers happening to agree (2026-08-15,
+   user-ruled: "make the hours by month graph taller so that the bottom borders
+   are aligned to the adjacent graph"). `--axis-foot` is the height of the
+   label strip under a plot; the left column spends it on `.xaxis`, the right
+   reserves the identical amount as `.sparkbars` padding and hangs its month
+   labels in it. Both plots therefore end at `columnBottom − --axis-foot`.
+   ⚠ The earlier attempt at this targeted `.vbars`, which the trends row does
+   not contain — the monthly chart is `.sparkbars`. It matched nothing.
+   Measured before the fix: left baseline 637, bars' feet 627. */
+.trend{--axis-foot:calc(var(--size-caption) * var(--line-tight) + var(--space-3));}
+.trend .xaxis{height:calc(var(--size-caption) * var(--line-tight)); margin-top:var(--space-3);}
+.trend .chartwrap{grid-row:2; min-height:0;}
+.trend .xaxis{grid-row:3; margin-top:0; height:var(--axis-foot); display:flex; align-items:center;}
+.trend .sparkbars{grid-row:2; min-height:0;}
+/* The month labels hang into row 3 — the same strip `.xaxis` occupies — so the
+   bars' feet stay flush with row 2's bottom edge, which is the zero line. */
+.trend .sparkbars .col{position:relative; height:100%;}
+.trend .sparkbars .col .mo{position:absolute; left:0; right:0; top:100%; height:var(--axis-foot); display:flex; align-items:center; justify-content:center;}
+.trend .chartwrap{display:flex; flex-direction:column; flex:1 1 auto; min-height:0;}
 .trio{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--space-6);}
 /* `.trio.four` deleted 2026-08-04 — both `.trio` tenants are `trio grouped`
    with their columns set inline. */

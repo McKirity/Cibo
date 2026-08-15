@@ -654,6 +654,31 @@ describe("shape 9 · heatmap cells", () => {
     expect(months.map((m) => m.label)).toEqual(["Dec", "Jan", "Feb", "Mar"]);
     expect(months.map((m) => m.col)).toEqual([...months.map((m) => m.col)].sort((a, b) => a - b));
   });
+
+  it("drops months before a pinned year, so a year view shows one December", () => {
+    // A 53-week grid ending 31 Dec opens on a week that started in the PREVIOUS
+    // December — hence "Dec" at col 0 and "Dec" again at the far end.
+    const rolling = heatmapMonths("2025-12-31", 53);
+    expect(rolling[0].label).toBe("Dec");
+    expect(rolling.filter((m) => m.label === "Dec")).toHaveLength(2);
+
+    const pinned = heatmapMonths("2025-12-31", 53, "2025-01-01");
+    expect(pinned.filter((m) => m.label === "Dec")).toHaveLength(1);
+    expect(pinned[0].label).toBe("Jan");
+    // The surviving December is the year's own, still at the far end, and the
+    // twelve labels stay in column order with none invented.
+    expect(pinned.map((m) => m.label)).toEqual(
+      ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    );
+    expect(pinned.map((m) => m.col)).toEqual([...pinned.map((m) => m.col)].sort((a, b) => a - b));
+  });
+
+  it("drops nothing for a rolling window, whose repeated month is correct", () => {
+    // The trailing-53-weeks face legitimately opens and closes in the same
+    // month; `from` is null there and the repeat must survive.
+    const months = heatmapMonths("2026-08-15", 53, null);
+    expect(months[0].label).toBe(months[months.length - 1].label);
+  });
 });
 
 // ── Shape 10 · Waves (probe A5) ───────────────────────────────────────────────

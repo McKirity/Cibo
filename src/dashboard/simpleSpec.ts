@@ -416,7 +416,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
       colorVar,
       flavor,
       masthead,
-      attendance: { cells, months: heatmapMonths(scopeTo), tiles },
+      attendance: { cells, months: heatmapMonths(scopeTo, 53, isYear ? `${(sel as { year: string }).year}-01-01` : null), tiles },
       dayspark: { delta, deltaNote, bars, max },
       statRows: null,
       dist: null,
@@ -885,7 +885,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
         ]
       : [],
     cells: hcells,
-    months: heatmapMonths(trendEnd),
+    months: heatmapMonths(trendEnd, 53, isYear ? `${sel.year}-01-01` : null),
     trio,
   };
 

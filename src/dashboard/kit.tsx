@@ -232,15 +232,21 @@ function TrendChart({
   // Box-sized viewBox: the SVG's viewBox equals its measured pixel box (shared
   // useBox hook — a ResizeObserver keeps it in sync, redrawing on resize).
   const { ref, w, h } = useBox<SVGSVGElement>();
+  // `pad` is HEADROOM ONLY since 2026-08-15 — it was applied at BOTH ends, so
+  // the zero gridline floated 8px above the SVG's bottom edge and no CSS could
+  // line the neighbouring bar chart up with a line drawn inside someone else's
+  // viewBox. With the bottom pad gone the baseline IS `.chartwrap`'s bottom,
+  // which is a box the sibling column can be measured against. Measured: the
+  // zero line sat at 637 while the bars' feet sat at 627.
   const pad = 8;
   const n = line.length;
   // A 1-bucket window has no line to draw: guard the n−1 denominator (the
   // single point centres) and skip the paths — CreationTrend's pattern (2026-07-30).
   const X = (i: number) => (n > 1 ? pad + ((w - 2 * pad) * i) / (n - 1) : w / 2);
-  const Y = (v: number) => pad + (h - 2 * pad) * (1 - v / vmax);
+  const Y = (v: number) => pad + (h - pad) * (1 - v / vmax);
   const pts = line.map((v, i) => `${X(i)},${Y(v)}`);
   const dLine = w > 0 && n > 1 ? `M${pts.join("L")}` : "";
-  const dArea = w > 0 && n > 1 ? `${dLine}L${X(n - 1)},${h - pad}L${X(0)},${h - pad}Z` : "";
+  const dArea = w > 0 && n > 1 ? `${dLine}L${X(n - 1)},${h}L${X(0)},${h}Z` : "";
   const yVals = [4, 3, 2, 1, 0].map((k) => (vmax * k) / 4);
 
   return (

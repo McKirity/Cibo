@@ -880,7 +880,7 @@ function buildHeatmap(
         ]
       : null,
     cells,
-    months: heatmapMonths(end),
+    months: heatmapMonths(end, 53, from),
     legends,
     measureNoun: { count: "words", time: "time" },
   };

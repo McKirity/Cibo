@@ -472,7 +472,7 @@ export function buildConsumptionDashboard(
     (day) => dayDominantCat.get(day) ?? null,
     isYear ? `${sel.year}-01-01` : null,
   );
-  const monthsHdr = heatmapMonths(trendEnd);
+  const monthsHdr = heatmapMonths(trendEnd, 53, isYear ? `${sel.year}-01-01` : null);
   const legendTypes = typeFilter ? [typeFilter] : input.typeVocab;
   const heatLegend = legendTypes.map((t) => ({ label: t, colorVar: typeSlot.get(t) ?? "--cat-1" }));
   const bDayAll = best(fSessions, "day", "minutes");

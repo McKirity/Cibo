@@ -154,6 +154,65 @@ fn calibre_cover(library_path: String, book_path: String) -> Result<tauri::ipc::
 
 mod backup;
 
+/// FIT THE WINDOW TO THE SCREEN IT OPENS ON (Phase 2 step 4, 2026-08-15).
+///
+/// `tauri.conf.json` opens at a fixed 1600x1000, which is WIDER AND TALLER THAN
+/// A 14" MacBook'S ENTIRE SCREEN (1512x982 logical, less the menu bar). Found on
+/// the real hardware the day the Mac joined: every launch opened oversized, and
+/// because compact-auto keys off a window width below 1600, the small canvas the
+/// whole step was spent building never engaged until the window was maximised by
+/// hand. A fixed opening size is a claim about a screen nobody measured.
+///
+/// So: shrink to the monitor's WORK AREA (the OS's own answer, already less the
+/// macOS menu bar and Dock, the Windows taskbar). This only ever SHRINKS — a
+/// desktop with room keeps the configured size, so nothing changes on the PC.
+///
+/// Rust rather than `local.ts`, which owns the app's other geometry: config
+/// windows are created before the setup hook runs (verified in tauri 2.11.5's
+/// `app.rs`), so this lands BEFORE the window is shown. The JS equivalent would
+/// paint the oversized window first and snap it after.
+///
+/// ⚠ The minimums in `tauri.conf.json` had to come down with it — they were the
+/// 1512x982 design floor, i.e. the Mac's whole screen, and a minimum the display
+/// cannot satisfy silently clamps this back to oversized.
+///
+/// Failure is never a gate: every step degrades to the configured size, which is
+/// exactly today's behaviour.
+fn fit_window_to_screen(app: &tauri::AppHandle) {
+    use tauri::{LogicalSize, Manager};
+
+    let Some(win) = app.get_webview_window("main") else {
+        return;
+    };
+    let monitor = match win.current_monitor() {
+        Ok(Some(m)) => m,
+        // No monitor answer (headless, a display asleep mid-launch) - the
+        // configured size is the honest fallback.
+        _ => return,
+    };
+    let Ok(size) = win.inner_size() else {
+        return;
+    };
+
+    // Work area is PHYSICAL; the window is configured and reasoned about in
+    // LOGICAL px, and on a HiDPI panel those differ by the scale factor. Mixing
+    // them would ask for a 3024-wide window on the Mac.
+    let scale = monitor.scale_factor();
+    let area = monitor.work_area().size.to_logical::<f64>(scale);
+    let current = size.to_logical::<f64>(scale);
+
+    let width = current.width.min(area.width);
+    let height = current.height.min(area.height);
+    if width >= current.width && height >= current.height {
+        return; // It already fits. Leave the user's screen alone.
+    }
+
+    let _ = win.set_size(LogicalSize::new(width, height));
+    // A window shrunk from its top-left corner leaves itself parked off-centre;
+    // and if the OS placed it for a 1600x1000 box it may now sit part-off-screen.
+    let _ = win.center();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -180,6 +239,7 @@ pub fn run() {
         // pending restore marker is applied here or never.
         .setup(|app| {
             backup::apply_pending_restore(app.handle());
+            fit_window_to_screen(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

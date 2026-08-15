@@ -32,10 +32,37 @@
  * synchronously. It simply stops mattering.
  */
 
+import { useSyncExternalStore } from "react";
 import { currentZoomFactor } from "../settings/local";
 
 /** The Sync note's "~1600px" window-width knee. */
 export const COMPACT_AUTO_BELOW = 1600;
+
+/**
+ * THE CLASS IS ALSO A REACT SUBSCRIPTION (2026-08-14).
+ *
+ * A root class is enough while the difference is CSS-only, and it was until the
+ * whimsy re-mints: those replaced the cards' MARKUP, so the small canvas and the
+ * desktop now draw different trees and a component has to know which. A class
+ * toggle is invisible to React, so without this the screen toggle would need a
+ * reload to redress the cards — which is a papercut the instrument exists to
+ * avoid.
+ *
+ * `useSyncExternalStore` rather than a state + effect: the value is read during
+ * render by several cards, and this is the API that guarantees they all see the
+ * same one in the same pass.
+ */
+const subscribers = new Set<() => void>();
+let current = false;
+
+export const subscribeCompact = (fn: () => void): (() => void) => {
+  subscribers.add(fn);
+  return () => subscribers.delete(fn);
+};
+/** The current state, readable outside React. */
+export const isCompact = (): boolean => current;
+/** The hook: re-renders the caller when the canvas crosses the knee. */
+export const useCompact = (): boolean => useSyncExternalStore(subscribeCompact, isCompact, () => false);
 
 function resolve(): void {
   // The knee tests the WINDOW's width, not the CSS viewport: `innerWidth` is
@@ -48,7 +75,15 @@ function resolve(): void {
   // resize listener below — which is also what makes the Developer screen
   // toggle carry compact with it without writing to compact at all.
   const width = window.innerWidth * currentZoomFactor();
-  document.documentElement.classList.toggle("compact", width < COMPACT_AUTO_BELOW);
+  const on = width < COMPACT_AUTO_BELOW;
+  document.documentElement.classList.toggle("compact", on);
+  // Notify only on a CROSSING. `resolve` runs on every resize event, and waking
+  // every subscribed card on each pixel of a window drag would re-render the
+  // whole sky column continuously for a value that did not change.
+  if (on !== current) {
+    current = on;
+    for (const fn of subscribers) fn();
+  }
 }
 
 /** Launch wiring: resolve once, then follow the window forever. */

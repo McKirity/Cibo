@@ -25,6 +25,7 @@ import {
   weatherWords,
   wxLede,
   WX_BOX,
+  WX_BOX_DESKTOP,
   type WxLede,
   type HoroscopeSnap,
   type TarotSnap,
@@ -38,7 +39,10 @@ import {
   seasonBand,
   seasonInfo,
   nextSunrise,
+  SUN_ARC,
   sunAltitude,
+  sunArcPath,
+  sunArcPoint,
   sunInfo,
   sunReadingInstant,
   sunStateSentence,
@@ -50,6 +54,7 @@ import {
 import {
   countdowns,
   type Anniversary,
+  dayOfYear,
   factFor,
   holidayFor,
   onThisDay,
@@ -61,6 +66,7 @@ import {
 import { MONTHS_LONG, MONTHS_SHORT } from "../metrics/format";
 import { weekStartDow } from "../metrics/dates";
 import { pad2, todayLocal } from "../metrics/clock";
+import { useCompact } from "../theme/compact";
 import { periodProgress, pct } from "./periodProgress";
 import type { WhimsyConfig } from "./whimsyConfig";
 
@@ -136,7 +142,7 @@ const I_STAR = ["M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962
  * and day length demotes to the denominator, which is what it was doing
  * semantically all along. `0m` at sunset is the range endpoint, not an error.
  */
-export function SunCard({ sun, lat, lon, dayKey, now }: {
+function SunCardSmall({ sun, lat, lon, dayKey, now }: {
   sun: SunInfo;
   lat: number;
   lon: number;
@@ -252,6 +258,16 @@ export function SunCard({ sun, lat, lon, dayKey, now }: {
  * percentages would now sit an hour off their own ticks at both ends. The axis
  * and the curve share one x-space, and this is the other half of that.
  */
+/**
+ * The DESKTOP axis — the inset box's positions (restored 2026-08-14). These
+ * ARE the 4.2/27.1/50/72.9/95.8 the small card's list replaced: correct for a
+ * curve inset 10 units of 240 each side, wrong for one that runs edge to edge.
+ * Two boxes, two axes; each is exact for its own.
+ */
+const WX_HOURS_DESKTOP: Array<[left: string, label: string]> = [
+  ["4.2%", "12a"], ["27.1%", "6a"], ["50%", "12p"], ["72.9%", "6p"], ["95.8%", "12a"],
+];
+
 const WX_HOURS: Array<[left: string, label: string]> = [
   ["0%", "12a"], ["25%", "6a"], ["50%", "12p"], ["75%", "6p"], ["100%", "12a"],
 ];
@@ -399,7 +415,7 @@ function wxSentence(
  * is 1 and the field is fully veiled, while the marker stays at the hour the
  * forecast was captured. Honest by construction.
  */
-export function WeatherCard({
+function WeatherCardSmall({
   snap,
   unit,
   isToday,
@@ -544,6 +560,324 @@ export function WeatherCard({
       </div>
     </div>
   );
+}
+
+
+/* ══ THE DESKTOP CARDS ═══════════════════════════════════════════════════════
+   User-ruled 2026-08-14: the whimsy re-mints are the SMALL canvas's cards, and
+   at 2K the originals come back. Each pair is chosen by `useCompact()`, so only
+   one tree ever renders and the two stylesheets never meet on one element.
+
+   ⚠ THESE ARE THE FROZEN DESIGNS. They correspond to the FINALs and, by this
+   project's law, do not change without a ruling — which is why keeping both is
+   not "two implementations to maintain". The SMALL cards are the ones that
+   evolve. Exactly one deviation was ruled in, on the weather marker below.
+
+   ⚠ AND THE DRAWINGS COME BACK, NOT THE ARITHMETIC. Every number these cards
+   read is the tested one the small cards use: `periodProgress` for the rings
+   (the old `timeProgress` drew a finished ring on every back-dated day, and is
+   retired for cause), and the real observation for the weather marker. ONE
+   SOURCE OF NUMBERS, TWO PICTURES. The one exception is `sunArcPoint`, which is
+   not arithmetic at all — it samples the drawn curve, so it belongs to the
+   drawing that has it. ═══════════════════════════════════════════════════ */
+
+/** The arc-era sun: a dashed parabola with the disc riding it. */
+function SunCardDesktop({ sun, lon, now }: { sun: SunInfo; lon: number; now: Date }) {
+  const p = sunArcPoint(sun, now);
+  const len =
+    sun.state === "midnight-sun" ? "24h 00m" : sun.state === "polar-night" ? "0h 00m" : hm(sun.dayLengthMin);
+  return (
+    <div className="card whimsy sun-card" style={{ flex: "2.2 0 285px" }}>
+      <Ovl label="Sun" d={I_SUN} />
+      <div className="sun-len">
+        <span className="whead">{len}</span>
+        <span className="delta">
+          {sun.deltaMin === 0
+            ? "same as yesterday"
+            : (sun.deltaMin > 0 ? "▲ " : "▼ ") + hm(Math.abs(sun.deltaMin)) + " vs yesterday"}
+        </span>
+      </div>
+      <div className="field sun-field">
+        <svg className="arc" viewBox={`0 0 ${SUN_ARC.w} ${SUN_ARC.h}`} preserveAspectRatio="none" aria-hidden="true">
+          <line
+            x1="0"
+            y1={SUN_ARC.horizon}
+            x2={SUN_ARC.w}
+            y2={SUN_ARC.horizon}
+            stroke="color-mix(in oklab, var(--whimsy-dusk), var(--whimsy-day) 46%)"
+            strokeWidth="1.5"
+          />
+          <path d={sunArcPath()} fill="none" stroke="var(--whimsy-sun)" strokeWidth="2" strokeDasharray="3 7" strokeLinecap="round" />
+        </svg>
+        {p.visible && <div className="sun-disc" style={{ left: p.xPct + "%", top: p.yPct + "%" }} />}
+        {sun.state === "normal" ? (
+          <>
+            <span className="sun-end rise">
+              rise<b className="kv">{sun.sunrise ? atLocation(sun.sunrise, lon) : "—"}</b>
+            </span>
+            <span className="sun-end set">
+              set<b className="kv">{sun.sunset ? atLocation(sun.sunset, lon) : "—"}</b>
+            </span>
+          </>
+        ) : (
+          <span className="sun-end rise">{sun.state === "midnight-sun" ? "does not set" : "does not rise"}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** The 78px illustrated condition marks — the desktop card's own family, drawn
+ *  in the frozen face's stroke vocabulary. The small card's 22px marks are a
+ *  separate set (`WxGlyph`) and deliberately so: these are illustrations sized
+ *  for their own tile, those are glyphs sized to sit inside a line of type. */
+const WX_CLOUD_STROKE = "color-mix(in oklch, var(--whimsy-day), var(--text-strong) 22%)";
+
+function WxGlyphDesktop({ glyph }: { glyph: WeatherGlyph }) {
+  const sun = (cx: number, cy: number, r: number, ray: number) => (
+    <g stroke="var(--whimsy-sun)" strokeWidth="1.8" strokeLinecap="round">
+      <circle cx={cx} cy={cy} r={r} fill="var(--whimsy-sun)" stroke="none" />
+      {Array.from({ length: 8 }, (_, i) => {
+        const a = (i * Math.PI) / 4;
+        const r1 = r + 3.5;
+        const r2 = r + 3.5 + ray;
+        return <line key={i} x1={cx + r1 * Math.cos(a)} y1={cy + r1 * Math.sin(a)} x2={cx + r2 * Math.cos(a)} y2={cy + r2 * Math.sin(a)} />;
+      })}
+    </g>
+  );
+  const cloud = (d: string) => <path d={d} fill="var(--panel-background)" stroke={WX_CLOUD_STROKE} strokeWidth="1.5" />;
+  const CLOUD_LOW = "M18 42 a8 8 0 0 1 1-15 a10 10 0 0 1 19 2 a7 7 0 0 1 -1 13 z";
+  const CLOUD_MID = "M17 36 a8 8 0 0 1 1-15 a10 10 0 0 1 19 2 a7 7 0 0 1 -1 13 z";
+  const box = (kids: React.ReactNode) => (
+    <svg width="54" height="46" viewBox="0 0 60 48" aria-hidden="true">{kids}</svg>
+  );
+  switch (glyph) {
+    case "sun":
+      return box(sun(30, 24, 8.5, 4.5));
+    case "partly":
+      return box(<>{sun(24, 16, 7.5, 4)}{cloud(CLOUD_LOW)}</>);
+    case "cloud":
+      return box(cloud("M16 38 a9 9 0 0 1 1-17 a11 11 0 0 1 21 2 a8 8 0 0 1 -1 15 z"));
+    case "fog":
+      return box(
+        <>
+          {cloud(CLOUD_MID)}
+          <g stroke={WX_CLOUD_STROKE} strokeWidth="1.5" strokeLinecap="round">
+            <line x1="15" y1="41" x2="41" y2="41" />
+            <line x1="20" y1="45" x2="36" y2="45" />
+          </g>
+        </>,
+      );
+    case "rain":
+      return box(
+        <>
+          {cloud(CLOUD_MID)}
+          <g stroke={WX_CLOUD_STROKE} strokeWidth="1.6" strokeLinecap="round">
+            <line x1="22" y1="40" x2="20" y2="46" />
+            <line x1="29" y1="40" x2="27" y2="46" />
+            <line x1="36" y1="40" x2="34" y2="46" />
+          </g>
+        </>,
+      );
+    case "snow":
+      return box(
+        <>
+          {cloud(CLOUD_MID)}
+          <g fill={WX_CLOUD_STROKE}>
+            <circle cx="22" cy="42" r="1.5" />
+            <circle cx="29" cy="45" r="1.5" />
+            <circle cx="36" cy="42" r="1.5" />
+          </g>
+        </>,
+      );
+    case "storm":
+      return box(
+        <>
+          {cloud(CLOUD_MID)}
+          <path d="M28 39 L22 47 L27 47 L25 52 L33 43 L28 43 Z" fill="var(--whimsy-sun)" stroke="none" />
+        </>,
+      );
+  }
+}
+
+/** The row-layout weather card: glyph tile · now-block · curve panel. */
+function WeatherCardDesktop({
+  snap,
+  unit,
+  isToday,
+}: {
+  snap: WeatherSnap | null;
+  unit: "F" | "C";
+  isToday: boolean;
+}) {
+  if (snap == null) {
+    return (
+      <div className="card whimsy" style={{ flex: "1.2 0 156px" }}>
+        <Ovl label="Weather" d={I_WX} />
+        <div className="art wx">
+          <div className="wx-nowblock">
+            <span className="whead">{"—"}</span>
+            <div className="cond">{isToday ? "Waiting on the forecast" : "No weather captured"}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  const { cond, glyph } = weatherWords(snap.code);
+  // ⚠ THE ONE RULED DEVIATION FROM THE FROZEN DESIGN (2026-08-14, user-ruled
+  // "fix weather, it's fine if it isn't frozen"). The original placed the marker
+  // at NOW while labelling it `snap.tempC` — the CAPTURE temperature. The
+  // snapshot is fetched once a day, so on any afternoon that drew an 08:00
+  // reading at the 20:00 position with nothing on screen saying so. The marker
+  // now sits at the hour the reading belongs to, which makes the picture and its
+  // label the same fact. The FINAL was drawn before anybody noticed.
+  const curve = buildWxCurve(snap.hourlyC, snap.hour, WX_BOX_DESKTOP);
+  const B = WX_BOX_DESKTOP;
+  return (
+    <div className="card whimsy" style={{ flex: "1.2 0 156px" }}>
+      <Ovl label="Weather" d={I_WX} />
+      <div className="art wx">
+        <div className="wx-glyph">
+          <WxGlyphDesktop glyph={glyph} />
+        </div>
+        <div className="wx-nowblock">
+          <span className="whead">{displayTemp(snap.tempC, unit)}&deg;</span>
+          <div className="cond">{cond}</div>
+          <div className="hl">
+            H {displayTemp(snap.hiC, unit)}&deg;&emsp;L {displayTemp(snap.loC, unit)}&deg;
+          </div>
+        </div>
+        {curve != null && (
+          <div className="wx-curve">
+            <div className="wx-plot">
+              <svg viewBox={`0 0 ${B.w} ${B.h}`} preserveAspectRatio="none" aria-hidden="true">
+                <path d={curve.areaPath} fill="color-mix(in oklch, var(--whimsy-sun), transparent var(--chart-area-mix))" stroke="none" />
+                <path d={curve.linePath} fill="none" stroke="var(--whimsy-sun)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                {curve.mark != null && (
+                  <>
+                    <line x1={curve.mark.x} y1={curve.mark.y} x2={curve.mark.x} y2={B.h} stroke="var(--whimsy-ink)" strokeWidth="1" strokeDasharray="2 3" opacity="0.5" />
+                    <circle cx={curve.mark.x} cy={curve.mark.y} r="3" fill="var(--whimsy-ink)" />
+                  </>
+                )}
+              </svg>
+              {curve.mark != null && (
+                <span
+                  className="wx-mark"
+                  style={{ left: `${((curve.mark.x / B.w) * 100).toFixed(1)}%`, top: `${((curve.mark.y / B.h) * 100).toFixed(1)}%` }}
+                >
+                  {displayTemp(snap.tempC, unit)}&deg;
+                </span>
+              )}
+            </div>
+            <div className="wx-hours" aria-hidden="true">
+              {WX_HOURS_DESKTOP.map(([left, label], i) => (
+                <span key={i} style={{ left }}>
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** 2·pi·r for r=28.5 in the 64-unit ring viewBox — the dash arithmetic's
+ *  constant. The SMALL card needs no equivalent: its arcs carry pathLength="100"
+ *  so CSS does the same sum without a circumference. */
+const RING_C = 179.07;
+
+/** One ring of the five-donut grid. */
+function Ring({ value, stroke, label }: { value: number; stroke: string; label: string }) {
+  const on = Math.max(0, Math.min(1, value)) * RING_C;
+  return (
+    <div className="tp">
+      <svg className="tp-ring" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="28.5" fill="none" stroke="var(--inset-background)" strokeWidth="7" />
+        <circle
+          cx="32"
+          cy="32"
+          r="28.5"
+          fill="none"
+          stroke={stroke}
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={on.toFixed(2) + " " + RING_C}
+          transform="rotate(-90 32 32)"
+          // color mirrors stroke because drop-shadow() reads `color`, never
+          // stroke — without it a theme cannot light this arc in its own hue.
+          style={{ color: stroke }}
+        />
+        <text x="32" y="32" textAnchor="middle" dominantBaseline="central" fontFamily="var(--font-mono)" fontSize="15" fontWeight="700" fill="var(--text-strong)">
+          {pct(value) + "%"}
+        </text>
+      </svg>
+      <span className="tp-lbl">{label}</span>
+    </div>
+  );
+}
+
+/** The five-donut grid — the FINAL's period-progress card. */
+function TimeProgressCardDesktop({ dayKey, now }: { dayKey: string; now: Date }) {
+  // ⚠ FED BY `periodProgress`, NOT THE OLD `timeProgress`. The drawing is
+  // restored; the arithmetic is not. The old rule read 100% from midnight on
+  // every back-dated day — a finished ring on an unfinished day, on the very
+  // surface the catch-up queue sits beside.
+  const t = periodProgress(dayKey, now, weekStartDow());
+  const mi = Number(dayKey.slice(5, 7)) - 1;
+  const monthVar = "var(" + MON_VAR[mi] + ")";
+  // Quarter takes the quarter's MIDDLE month, week a shaded month — the derived
+  // period colours the registry calls for; the year is the theme accent.
+  const qMid = "var(" + MON_VAR[Math.floor(mi / 3) * 3 + 1] + ")";
+  const weekVar = "color-mix(in oklch, " + monthVar + ", var(--window-background) var(--week-shade-mix))";
+  const d = new Date(dayKey + "T12:00:00");
+  const doy = dayOfYear(dayKey);
+  const yr = Number(dayKey.slice(0, 4));
+  const daysInYear = Math.round((new Date(yr + 1, 0, 1).getTime() - new Date(yr, 0, 1).getTime()) / 86_400_000);
+  return (
+    <div className="card whimsy timeprog" style={ALMANAC_FLEX}>
+      <div className="ovl">
+        <span className="ovl-t">
+          <svg className="ico" viewBox="0 0 24 24">
+            {I_TIME.map((seg, i) => (
+              <path key={i} d={seg} />
+            ))}
+          </svg>
+          Period progress
+        </span>
+        <span className="meta">elapsed time &middot; not a goal</span>
+      </div>
+      <div className="art" style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        <div className="tp-grid">
+          <Ring value={t.day} stroke={monthVar} label="Day" />
+          <Ring value={t.week} stroke={weekVar} label="Week" />
+          <Ring value={t.month} stroke={monthVar} label="Month" />
+          <Ring value={t.quarter} stroke={qMid} label="Quarter" />
+          <Ring value={t.year} stroke="var(--accent)" label="Year" />
+        </div>
+        <div className="tp-note">
+          {"Day " + doy + " of " + daysInYear + " · week " + t.weekNumber + " · Q" + t.quarter1 + " · " + WEEKDAY_FMT.format(d) + " " + pad2(now.getHours()) + ":" + pad2(now.getMinutes())}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── THE THREE CHOOSERS ──────────────────────────────────────────────────
+   One line each, and the branch is the WHOLE difference between the canvases.
+   `useCompact()` is a subscription to the root class, so the Developer screen
+   toggle re-dresses these live — no reload. */
+export function SunCard(props: { sun: SunInfo; lat: number; lon: number; dayKey: string; now: Date }) {
+  return useCompact() ? <SunCardSmall {...props} /> : <SunCardDesktop sun={props.sun} lon={props.lon} now={props.now} />;
+}
+
+export function WeatherCard(props: { snap: WeatherSnap | null; unit: "F" | "C"; isToday: boolean; now: Date }) {
+  return useCompact() ? <WeatherCardSmall {...props} /> : <WeatherCardDesktop snap={props.snap} unit={props.unit} isToday={props.isToday} />;
+}
+
+export function TimeProgressCard(props: { dayKey: string; now: Date }) {
+  return useCompact() ? <TimeProgressCardSmall {...props} /> : <TimeProgressCardDesktop {...props} />;
 }
 
 export function SeasonCard({ dayKey, lat }: { dayKey: string; lat: number }) {
@@ -916,7 +1250,7 @@ const MON_VAR = ["--month-jan", "--month-feb", "--month-mar", "--month-apr", "--
  * must never restate a fraction the dial already draws; that was the old note's
  * whole content ("Day 213 of 365" IS the year arc).
  */
-export function TimeProgressCard({ dayKey, now }: { dayKey: string; now: Date }) {
+function TimeProgressCardSmall({ dayKey, now }: { dayKey: string; now: Date }) {
   const t = periodProgress(dayKey, now, weekStartDow());
   const mi = Number(dayKey.slice(5, 7)) - 1;
   const d = new Date(dayKey + "T12:00:00");
@@ -1073,6 +1407,9 @@ export function HoroscopeCard({
  * "The Star" would fabricate a reading the app has not made.
  */
 export function TarotCard({ draw, isToday }: { draw: TarotSnap | null; isToday: boolean }) {
+  // Read BEFORE the early return: hooks may not sit under a conditional, the
+  // NavCalendar crash of 2026-08-04 being this codebase's own record of it.
+  const compact = useCompact();
   if (draw != null) {
     const longName = draw.name.length > 11;
     return (
@@ -1110,7 +1447,19 @@ export function TarotCard({ draw, isToday }: { draw: TarotSnap | null; isToday: 
                 the shelf band's height and no fact.
                 THE ELEMENT IS DELETED, NOT HIDDEN: a card that renders an empty
                 element is a card waiting to grow the line back. */}
-            <div className="kw">{[...draw.keywords, draw.reversed ? "reversed" : "upright"].join(" · ")}</div>
+            {/* TWO LINES ON THE SMALL CANVAS, THREE AT 2K. The fold was the
+                tarot's share of the shelf-height cut, and that ruling was
+                explicitly about the MacBook band being too tall — at 2560 the
+                band has the room, so the FINAL's third line is the right card.
+                The element is still absent rather than hidden when folded. */}
+            {compact ? (
+              <div className="kw">{[...draw.keywords, draw.reversed ? "reversed" : "upright"].join(" · ")}</div>
+            ) : (
+              <>
+                <div className="kw">{draw.keywords.join(" · ")}</div>
+                <div className="up">{draw.reversed ? "reversed" : "upright"} · daily draw</div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -1228,30 +1577,37 @@ const CD_DATE = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "sho
  * on its own. Three events read "1 / 2" at a page of three and "1 / 3" at a page
  * of two. Nothing else has to move.
  *
- * ⚠ AND IT MAKES `.dense` UNREACHABLE. The dense variant fires past TWO rows, a
- * threshold deliberately NOT tied to the page size (daily.css ~line 919: the
- * FINAL's evidence is that two roomy rows fit a shelf card). At a page of two,
- * `list.length > 2` can never hold — so the numeral keeps its full size and the
- * "since" line, which dense hides, comes back on past events. That is a real
- * consequence of the ruling rather than an oversight, and it is the right way
- * round: dense existed because three rows did not fit, and now there are never
- * three. The code and its rules are LEFT IN PLACE, not deleted — the threshold
- * is its own recorded decision and the page size is the thing that was ruled.
- * ⚠ WORTH MEASURING IN THE APP: the mint measured this card at 234.5 against a
- * binding horoscope at 245.1, on markup that carried `.dense`. The roomy form is
- * taller, so if the band comes out over 245 this is the first place to look.
+ * ⚠ AND IT DECIDES WHETHER `.dense` FIRES AT ALL. The dense variant kicks in past
+ * TWO rows, a threshold deliberately NOT tied to the page size (daily.css: the
+ * FINAL's evidence is that two roomy rows fit a shelf card). So the two canvases
+ * land on opposite sides of it: at 2K's page of three `.dense` is live and the
+ * card steps down, while at the small page of two `list.length > 2` can never
+ * hold, the numeral keeps its full size, and the "since" line that dense hides
+ * comes back. Both are correct — dense exists because three rows do not fit, and
+ * on the small canvas there are never three.
+ * ⚠ WORTH MEASURING ON THE SMALL CANVAS: the mint measured this card at 234.5
+ * against a binding horoscope at 245.1, on markup that carried `.dense`. The
+ * roomy form is taller, so if the band comes out over 245 this is the first
+ * place to look.
  */
-const CD_PER_PAGE = 2;
+const CD_PER_PAGE_SMALL = 2;
+/** The FINAL's three, kept at 2K — the cut to two was the countdown card's
+ *  share of the same MacBook-only shelf-height ruling. */
+const CD_PER_PAGE_DESKTOP = 3;
 
 export function CountdownsCard({ config, dayKey }: { config: WhimsyConfig; dayKey: string }) {
   const all = countdowns(config.events, dayKey);
-  const pages = Math.max(1, Math.ceil(all.length / CD_PER_PAGE));
+  // ⚠ THE PAGE COUNT IS ARITHMETIC, so the same event set repages on its own
+  // when the size changes — three events read "1 / 2" at a page of three and
+  // "1 / 3" at a page of two, with nothing else to update.
+  const perPage = useCompact() ? CD_PER_PAGE_SMALL : CD_PER_PAGE_DESKTOP;
+  const pages = Math.max(1, Math.ceil(all.length / perPage));
   const [wanted, setPage] = useState(0);
   // Clamped rather than reset in an effect: the event list can shrink under us
   // (the dev panel, or a one-shot dropping off once it is past), and a stale
   // index would otherwise render an empty page.
   const page = Math.min(wanted, pages - 1);
-  const list = all.slice(page * CD_PER_PAGE, page * CD_PER_PAGE + CD_PER_PAGE);
+  const list = all.slice(page * perPage, page * perPage + perPage);
   // The FINAL draws two roomy rows. Past that the big numeral stops fitting
   // beside its label, so the card steps down to a denser row.
   const dense = list.length > 2;

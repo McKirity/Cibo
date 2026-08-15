@@ -663,7 +663,10 @@
        visible — the spec falls out of the existing transform, uncomputed.
      · negative altitude pushes it past the edge and it is simply gone. No
        night-mode rule, no opacity fade, no second drawing.
-   The old `.sun-field::before` gradient and the `.arc` svg are both retired:
+   The `.sun-field::before` gradient and the `.arc` svg are neutralised HERE and
+   restored on the desktop (2026-08-14 — the 2K card is the original again), so
+   these two rules are load-bearing rather than tidy-up: the base still paints
+   both, and this card must not have them:
    the sky is now painted by the band that clips it, so one box does both jobs.
 
    ⚠ THE FIELD IS DECLARED, NOT LEFTOVER — A DEVIATION FROM THE FROZEN SHEET,
@@ -682,9 +685,13 @@
 
 :root.compact .daily .sun-card .sun-field::before { background: none; }
 
-/* `.arc` needed no hide rule in the end: the component stopped emitting the svg
-   when it landed 2026-08-13, and daily.css's `.sun-field .arc` went with it. A
-   rule hiding markup nobody writes is a trap for the next reader of this block. */
+/* `.arc` STILL needs no hide rule, but for a different reason than on 2026-08-13
+   — worth restating, because the first reason expired. Then: the element was gone
+   from every render. Now (2026-08-14): `daily.css`'s `.sun-field .arc` is back for
+   the desktop card, but the components BRANCH, so the small canvas never emits the
+   svg and there is nothing here to hide. The guarantee moved from "deleted" to
+   "not rendered on this canvas", which is weaker — if the two markups are ever
+   merged back into one, this is where the arc reappears under the sky band. */
 
 :root.compact .daily .sun-card .sun-sky {
   position: absolute; left: 0; right: 0; top: 0; height: var(--sun-horizon-y);
@@ -864,10 +871,10 @@
   font-family: var(--font-ui); color: var(--text-muted);
 }
 
-/* The old in-field labels are retired with the text move — and RETIRED means
-   gone, not hidden: the component stopped emitting `.sun-end` on 2026-08-13 and
-   daily.css's four rules for it went in the same edit, so the hide rule that
-   stood here has nothing left to hide. */
+/* The in-field labels leave the SMALL card with the text move. They are not
+   retired app-wide: daily.css's four `.sun-end` rules were restored 2026-08-14
+   with the desktop card, which still pins rise/set into the field's corners.
+   No hide rule is needed because this canvas's markup does not emit them. */
 
 /* ---- 7 · NIGHT ---------------------------------------------------------
    The sky, the land and the vanished disc all fall out of --sun-alt going
@@ -1546,8 +1553,10 @@
    name inherits its RULES, not just its meaning. That wash is also the pre-dial
    42% invention section 4 replaces with --whimsy-wash-mix.
    ⚠ AMENDED 2026-08-13 AT THE COMPONENT PORT: that base rule is now DELETED
-   from daily.css, so this reset no longer overrides anything. It stays as belt
-   and braces — the class name is generic enough that a future tile rule would
+   from daily.css and RESTORED on 2026-08-14 with the desktop card, so this reset
+   is live again and doing exactly the job the paragraph above describes — the
+   class name is shared by both markups, and only this rule keeps the 78px tile
+   off the 22px mark. It stays — the class name is generic enough that a future tile rule would
    land on it silently, which is the whole hazard described above. */
 :root.compact .daily .wx-card .wx-glyph {
   grid-column: 1; grid-row: 1 / span 2; align-self: center;

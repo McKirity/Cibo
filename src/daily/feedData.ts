@@ -145,6 +145,17 @@ export const displayTemp = (c: number, unit: "C" | "F"): number =>
 export const WX_BOX = { w: 240, h: 92, x0: 0, x1: 240, yTop: 12, yBot: 84 } as const;
 
 /**
+ * The DESKTOP card's box — the pre-re-mint geometry, restored 2026-08-14 with
+ * the original card. The curve is inset 10 units each side because that plot is
+ * a 147px panel beside a 78px glyph and needs its own margins; the small card's
+ * runs edge to edge because it owns the full interior and its axis sits under
+ * it. Two canvases, two pictures, ONE generator — `buildWxCurve` takes the box
+ * rather than either caller keeping a second copy of the arithmetic.
+ */
+export const WX_BOX_DESKTOP = { w: 240, h: 93, x0: 10, x1: 230, yTop: 16, yBot: 86 } as const;
+export type WxBox = typeof WX_BOX | typeof WX_BOX_DESKTOP;
+
+/**
  * THE MINIMUM PLOTTED SPAN, in degrees C — the flat day's fix.
  *
  * Normalised to its own range, a 1.4° fog day draws the identical dramatic
@@ -186,6 +197,12 @@ export interface WxCurve {
    * the sampling ever coarsens, the level has to come off the same spline.
    */
   lvl: number | null;
+  /**
+   * The same observation in the box's OWN coordinates, for the desktop card,
+   * which draws its marker as svg geometry rather than placing it in CSS.
+   * Null whenever `lvl` is.
+   */
+  mark: { x: number; y: number } | null;
 }
 
 const pt = (n: number): string => n.toFixed(1);
@@ -195,10 +212,10 @@ const pt = (n: number): string => n.toFixed(1);
  * visual grammar as the drawn sample curve. `markT` is hours since local
  * midnight (0–24), or null for no marker.
  */
-export const buildWxCurve = (hourlyC: number[], markT: number | null): WxCurve | null => {
+export const buildWxCurve = (hourlyC: number[], markT: number | null, box: WxBox = WX_BOX): WxCurve | null => {
   const n = hourlyC.length;
   if (n < 2) return null;
-  const { x0, x1, yTop, yBot, h } = WX_BOX;
+  const { x0, x1, yTop, yBot, h } = box;
   let min = Infinity;
   let max = -Infinity;
   for (const v of hourlyC) {
@@ -232,16 +249,19 @@ export const buildWxCurve = (hourlyC: number[], markT: number | null): WxCurve |
   const areaPath = `${d} L ${x1} ${h} L ${x0} ${h} Z`;
 
   let lvl: WxCurve["lvl"] = null;
+  let mark: WxCurve["mark"] = null;
   if (markT != null && Number.isFinite(markT)) {
     const t = Math.max(0, Math.min(24, markT));
     const s = (t / 24) * (n - 1);
     const i = Math.min(n - 2, Math.floor(s));
     const f = s - i;
+    const x = xs[i] + (xs[i + 1] - xs[i]) * f;
     const y = ys[i] + (ys[i + 1] - ys[i]) * f;
     lvl = 1 - y / h;
+    mark = { x, y };
   }
 
-  return { linePath: d, areaPath, lvl };
+  return { linePath: d, areaPath, lvl, mark };
 };
 
 /**

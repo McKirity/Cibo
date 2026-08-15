@@ -285,6 +285,14 @@
                 background:var(--whimsy-sun); transform:translate(-50%,-50%); }
   .sun-disc::after { content:""; position:absolute; inset:-6px; border-radius:var(--radius-full);
                        border:2px solid color-mix(in oklch, var(--whimsy-sun), transparent 66%); }
+    .sun-len { display:flex; align-items:baseline; gap:var(--space-5); margin-bottom:var(--space-4); }
+  .sun-field .arc { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .sun-end { position:absolute; bottom:15%; font-size:var(--whimsy-size-caption);
+               text-transform:uppercase; letter-spacing:.06em; color:var(--whimsy-dusk); }
+  .sun-end.rise { left:var(--space-5); }
+  .sun-end.set { right:var(--space-5); text-align:right; }
+  .sun-end .kv { display:block; margin-top:2px; font-size:var(--whimsy-size-body); text-transform:none; letter-spacing:0;
+                   font-weight:var(--weight-medium); color:color-mix(in oklch, var(--whimsy-dusk), var(--text-strong) 25%); }
   /* ---- WEATHER — one 24h curve, split at now ----
      ⚠ THE ROW LAYOUT IS GONE (re-mint, 2026-08-13). The card was a horizontal
      row — 78px glyph tile · a stacked now-block · a curve column behind a
@@ -308,6 +316,41 @@
   .wx-hours span { position:absolute; transform:translateX(-50%); }
   .wx-hours span:first-child { transform:none; }
   .wx-hours span:last-child { transform:translateX(-100%); }
+  /* ══ THE DESKTOP CARDS, RESTORED 2026-08-14 ═══════════════════════════
+     User-ruled: the whimsy re-mints are the SMALL canvas's cards, and at 2K the
+     originals come back. The re-mints replaced MARKUP, not just values, so the
+     base sheet had nothing left to style and 2K rendered bare divs — my error at
+     the 08-13 ruling: "small canvas only" was taken to mean the desktop kept
+     working, and it could not.
+     THE COMPONENTS NOW BRANCH ON `useCompact()` and only one tree renders at a
+     time, so these rules and small.css's never meet on the same element.
+     ⚠ EXCEPT WHERE THE TWO MARKUPS SHARE A CLASS NAME — `.sun-field::before` and
+     `.wx-glyph` are in BOTH, so small.css's resets for them are load-bearing, not
+     leftovers. Do not tidy them away. `.sun-disc` is shared too and is meant to
+     be: the base carries its anatomy, compact re-places it. ═══════════════ */
+  /* ---- WEATHER — sun glyph on a daylight tile, temperature is the headline ---- */
+    .wx { display:flex; align-items:center; gap:var(--space-5); }
+  .wx-nowblock { flex:0 0 auto; }
+  .wx-curve { flex:1 1 auto; min-width:0; align-self:stretch; display:flex; flex-direction:column;
+                padding-left:var(--space-5); margin-left:var(--space-2);
+                border-left:var(--border-hairline) solid var(--divider); }
+  /* 2026-07-18 fit, pass 2 — the svg stretches to fill (preserveAspectRatio none) but TEXT
+       leaves the svg for HTML overlays so it never distorts; positions are plot-% (data, the
+       sun-disc idiom). The 92px floor carries over from the pre-fit svg rule. */
+    .wx-plot { position:relative; flex:1 1 auto; min-height:92px; }
+  .wx-plot svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  /* text-strong, NOT --whimsy-ink (the frozen choice): the mark is data text on
+     the CHROME panel ground, and whimsy-ink is art-register — Void's near-black
+     ink vanished on its near-black panel (found 2026-07-31). Same register as
+     .whead, which already reads text-strong. */
+  .wx-mark { position:absolute; transform:translate(-50%,-100%); margin-top:calc(-1 * var(--space-2));
+               font-family:var(--font-mono); font-size:var(--whimsy-size-caption);
+               font-weight:var(--weight-bold); color:var(--text-strong); }
+  .wx-glyph { flex:0 0 auto; width:78px; height:78px; border-radius:var(--radius-medium);
+                background:color-mix(in oklch, var(--whimsy-day), var(--panel-background) 42%);
+                display:flex; align-items:center; justify-content:center; }
+  .wx .cond { font-size:var(--whimsy-size-small); color:var(--text-secondary); margin-top:var(--space-2); }
+  .wx .hl { font-family:var(--font-mono); font-size:var(--whimsy-size-small); color:var(--text-muted); margin-top:var(--space-2); }
   /* ---- SEASON · YEAR — the bars stretch the card ---- */
   .season-head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:var(--space-5); }
   .season-head b { font-size:var(--whimsy-size-subheading); font-weight:var(--weight-medium); }
@@ -441,6 +484,25 @@
   
   
   
+  /* ---- PERIOD PROGRESS · the five-donut grid, RESTORED 2026-08-14 ----
+     The desktop's original card. Struck at the 2026-08-12 re-mint, which said
+     five equal donuts "said five things with equal weight while only one of them
+     moved" — true in a 330px column, which is why the SMALL card is one dial.
+     At 550 the grid was what the FINAL drew and it reads fine.
+     ⚠ ONE DELIBERATE DEVIATION FROM THE RESTORE: the rings took --donut-size and
+     --donut-stroke, and those were RETIRED from the roster with the re-mint and
+     swept out of all 13 theme sheets on 2026-08-14. Bringing the picture back is
+     not a reason to re-open the roster, so the grid rides LOCAL dials at the same
+     values — the --triptych-sky-col precedent. A retired name stays retired.
+     ⚠ AND THE ARITHMETIC IS NOT RESTORED WITH THE DRAWING. `timeProgress` is
+     gone for cause — it drew a finished ring on every back-dated day. This grid
+     is fed by `periodProgress`, the same tested rule the small card uses: ONE
+     SOURCE OF NUMBERS, TWO PICTURES. */
+  :root { --tp-ring-size: 64px; --tp-ring-stroke: 7px; }
+  .tp-grid { display:flex; justify-content:space-between; align-items:flex-start; gap:var(--space-3); }
+  .tp { display:flex; flex-direction:column; align-items:center; gap:var(--space-3); flex:1 1 0; min-width:0; }
+  .tp-ring { width:var(--tp-ring-size); height:auto; aspect-ratio:1; max-width:100%; display:block; }
+  .tp-lbl { font-size:var(--whimsy-size-caption); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); }
   .tp-note { font-size:var(--whimsy-size-caption); color:var(--text-muted); text-align:center; margin-top:var(--space-5); }
   /* =================================================================
        THE FORM SPINE — the logging path. Scrolls independently.
@@ -662,6 +724,7 @@
                   aspect-ratio:var(--tarot-card-w) / var(--tarot-card-h); max-height:100%; display:block; }
   .tarot .nm { font-family:var(--font-heading); font-size:var(--whimsy-size-heading); font-weight:var(--weight-bold); }
   .tarot .kw { font-size:var(--whimsy-size-small); color:var(--text-muted); margin-top:var(--space-2); }
+  .tarot .up { font-size:var(--whimsy-size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-secondary); margin-top:var(--space-4); }
   
   /* rediscover — the door variant: a portal onto a past day */
     .redisc .go { cursor:pointer; }
@@ -936,8 +999,8 @@
  * it is not tried again. `.sun-field` and `.night-field` have ZERO intrinsic
  * height by construction: every child is absolutely positioned (`.sun-sky`
  * inset-anchored · `.sun-ground` · `.stars` inset:0 · `.sky-cap`; the examples
- * were `.arc` and `.sun-end` until the 2026-08-13 re-mint struck both, and the
- * property they illustrated is unchanged). The
+ * `.arc` and `.sun-end` are the DESKTOP card's, `.sun-sky`/`.sun-ground` the
+ * small one's — the property they illustrate holds for both). The
  * fields exist only to receive LEFTOVER space via `flex:1 1 auto` inside a card
  * whose height is already decided. So `flex-basis:0` is load-bearing: it is what
  * gives each card a definite height out of the column, from which the field
@@ -977,11 +1040,11 @@
  * FINAL's evidence is that two roomy rows fit a shelf card, so a full
  * three-row page still steps down. A last page of one or two gets the roomy
  * form back, "since" line included.
- * ⚠ WHICH MEANS THE `.dense` RULES BELOW ARE CURRENTLY UNREACHABLE. At a page
- * of two, `list.length > 2` can never hold. They are kept rather than deleted
- * because the threshold and the page size are two separate decisions and only
- * the page size was ruled — but nothing renders them today, so do not read
- * them as describing anything on screen.
+ * ⚠ WHICH PUTS THE TWO CANVASES ON OPPOSITE SIDES OF IT. The desktop pages
+ * THREE (the FINAL's number) so `.dense` fires there; the small canvas pages TWO
+ * since the 2026-08-13 shelf-height ruling, where `list.length > 2` can never
+ * hold and the roomy form — "since" line included — is what renders. The rules
+ * below therefore describe the 2K card only.
  */
 .daily .cd .cdmeta {
   flex: 1 1 auto;

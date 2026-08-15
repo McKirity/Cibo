@@ -235,6 +235,109 @@ export function sunStateSentence(state: SunState, alt: number, rising: boolean):
   return "Late afternoon. The sun is low and falling.";
 }
 
+/* ══ THE ARC, RESTORED 2026-08-14 ══════════════════════════════════════════
+   Struck on 2026-08-13 with the sun re-mint, and back because the DESKTOP keeps
+   the original card: the re-mint's ruling was *"the arc is cool, but there's no
+   space for it on the macbook"*, and at 2560 there is. The two canvases now draw
+   different pictures of the same sky, so both position functions are live.
+   ⚠ THEY ANSWER DIFFERENT QUESTIONS, and neither is a worse version of the other.
+   `sunArcPoint` asks WHERE ON THE DRAWN CURVE the sun is — it samples the Bézier,
+   so it exists only while that curve is drawn. `sunAltitude` asks HOW HIGH the sun
+   is, which is a fact about the sky. The small card needs the second because it
+   deleted the curve; the desktop card needs the first because it kept it.
+   Deleting this on 08-13 was correct at the time — it had no reader — and
+   restoring it is not a reversal of that. ═══════════════════════════════════ */
+
+/**
+ * Where the sun disc sits ON the drawn arc.
+ *
+ * The FINAL draws the path as a quadratic Bézier in a 400x168 viewBox:
+ *   M6 150 Q200 -90 394 150
+ * so the disc must be evaluated on that same curve, not floated near it.
+ *
+ * The parameter is the fraction of DAYLIGHT elapsed — from this location's own
+ * sunrise to its own sunset — which is what makes the disc actually track the
+ * coordinates. (The first implementation used `1 - |now - solarNoon| / 12h`,
+ * which barely moves when longitude changes and is symmetric about noon, so
+ * morning and afternoon landed on the same spot. It looked static because it
+ * very nearly was.)
+ */
+/**
+ * THE SUN ARC, defined once.
+ *
+ * The drawn path and the disc's position are the same curve, so they are
+ * derived from one set of constants rather than written out twice — two copies
+ * would drift the moment either is tuned.
+ *
+ * SHRUNK AND RAISED from the FINAL's `M6 150 Q200 -90 394 150` (user-ruled
+ * 2026-07-26). The decoration layer reserves `--frame-clear-whimsy` inside every
+ * whimsy card for an ornamental frame, and the art field bleeds to the card's
+ * inner edges — so the frame band overlaps the field at the sides and, most
+ * of all, along the BOTTOM, which is exactly where the horizon rule and the
+ * rise/set labels sit.
+ *
+ * Two moves, in order:
+ *   1. shrink  — control point -90 -> -44 and feet drawn in 6/394 -> 30/370, so
+ *                the disc (32px + a 6px glow, ~22px of reach) clears the side
+ *                bands and does not ride into the top of the field.
+ *   2. raise   — the whole group lifted 14 units (150 -> 136), taking the
+ *                horizon, both feet and the apex with it, so the bottom band
+ *                has room to be painted under nothing.
+ *
+ * `.sun-end`'s bottom offset is raised in step (daily.css) — it is measured
+ * from the same edge and would otherwise stay behind while the rule moved.
+ */
+export const SUN_ARC = {
+  w: 400,
+  h: 168,
+  x0: 30,
+  y0: 136,
+  /** Control point. */
+  cx: 200,
+  cy: -44,
+  x1: 370,
+  y1: 136,
+  /** The horizon rule the feet sit on. */
+  horizon: 136,
+} as const;
+
+/** The `d` attribute for the drawn arc — same curve the disc is placed on. */
+export const sunArcPath = (): string =>
+  `M${SUN_ARC.x0} ${SUN_ARC.y0} Q${SUN_ARC.cx} ${SUN_ARC.cy} ${SUN_ARC.x1} ${SUN_ARC.y1}`;
+
+export interface SunArcPoint {
+  /** Percentages within the field box. */
+  xPct: number;
+  yPct: number;
+  /** False during polar night — there is no disc to draw. */
+  visible: boolean;
+}
+
+export function sunArcPoint(sun: SunInfo, now: Date): SunArcPoint {
+  let t: number;
+  if (sun.state === "polar-night") {
+    return { xPct: 0, yPct: 0, visible: false };
+  } else if (sun.state === "midnight-sun") {
+    // No rise or set: run the parameter over the whole solar day so the disc
+    // still travels, anchored so it peaks at solar noon.
+    const fromNoon = (now.getTime() - sun.solarNoon.getTime()) / DAY_MS;
+    t = Math.min(1, Math.max(0, fromNoon + 0.5));
+  } else if (sun.sunrise && sun.sunset) {
+    const span = sun.sunset.getTime() - sun.sunrise.getTime();
+    t = span > 0 ? (now.getTime() - sun.sunrise.getTime()) / span : 0;
+    t = Math.min(1, Math.max(0, t)); // parked at the horizon outside daylight
+  } else {
+    t = 0.5;
+  }
+
+  // Evaluate the same quadratic Bézier the path is drawn from.
+  const u = 1 - t;
+  const A = SUN_ARC;
+  const x = u * u * A.x0 + 2 * u * t * A.cx + t * t * A.x1;
+  const y = u * u * A.y0 + 2 * u * t * A.cy + t * t * A.y1;
+  return { xPct: (x / A.w) * 100, yPct: (y / A.h) * 100, visible: true };
+}
+
 export interface MoonInfo {
   /** 0 = new, 0.25 = first quarter, 0.5 = full, 0.75 = last quarter. */
   phase: number;

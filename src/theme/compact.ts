@@ -37,7 +37,7 @@ import { SMALL_CANVAS_BELOW, currentZoomFactor } from "../settings/local";
 
 /**
  * The Sync note's "~1600px" window-width knee. SINGLE-SOURCED in settings/local
- * since 2026-08-15, where MacBook view now reads the same figure to decide the
+ * since 2026-08-14, where MacBook view now reads the same figure to decide the
  * same question — import direction forced the home, not ownership.
  */
 export const COMPACT_AUTO_BELOW = SMALL_CANVAS_BELOW;

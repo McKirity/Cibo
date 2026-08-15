@@ -193,7 +193,7 @@ export const setScreenMode = async (mode: ScreenMode): Promise<void> => {
 const trueWindowWidth = (): number => window.innerWidth * currentZoomFactor();
 
 /**
- * MACBOOK VIEW FOLLOWS THE CANVAS — USER-RULED 2026-08-15, on the hardware.
+ * MACBOOK VIEW FOLLOWS THE CANVAS — USER-RULED 2026-08-14, on the hardware.
  *
  * *"I do not want the default view, I want specifically that. Toggle THAT once
  * the threshold is cleared."* Ruled after seeing both on the real 14": the

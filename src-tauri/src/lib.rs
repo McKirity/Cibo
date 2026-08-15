@@ -154,7 +154,7 @@ fn calibre_cover(library_path: String, book_path: String) -> Result<tauri::ipc::
 
 mod backup;
 
-/// CREATE THE PER-DEVICE SETTINGS DIRECTORY (Phase 2 step 4, 2026-08-15).
+/// CREATE THE PER-DEVICE SETTINGS DIRECTORY (Phase 2 step 4, 2026-08-14).
 ///
 /// `deviceStore.ts` writes `settings.json` and `timer-heartbeat.json` into the
 /// app's local data dir — and NOTHING HAS EVER CREATED IT. On Windows it exists
@@ -167,7 +167,7 @@ mod backup;
 /// scale, reduce-effects, `cibo.cloudRoot` (so backups/images/themes had no
 /// root), the sync relay override, and the timer heartbeat — whose ABSENCE is
 /// the clean-quit invariant, so a file that can never be written reads as a
-/// clean quit forever and crash recovery can never fire. Found 2026-08-15 when
+/// clean quit forever and crash recovery can never fire. Found 2026-08-14 when
 /// a hand-written relay key failed with ENOENT on the DIRECTORY, which is the
 /// only reason any of this surfaced: the app's own failure mode is a warning
 /// nobody reads.
@@ -193,7 +193,7 @@ fn ensure_app_data_dir(app: &tauri::AppHandle) {
     }
 }
 
-/// FIT THE WINDOW TO THE SCREEN IT OPENS ON (Phase 2 step 4, 2026-08-15).
+/// FIT THE WINDOW TO THE SCREEN IT OPENS ON (Phase 2 step 4, 2026-08-14).
 ///
 /// `tauri.conf.json` opens at a fixed 1600x1000, which is WIDER AND TALLER THAN
 /// A 14" MacBook'S ENTIRE SCREEN (1512x982 logical, less the menu bar). Found on
@@ -249,7 +249,7 @@ fn fit_window_to_screen(app: &tauri::AppHandle) {
     }
 
     let _ = win.set_size(LogicalSize::new(width, height));
-    // PLACED BY HAND, not by `center()` (2026-08-15, found on the Mac the day
+    // PLACED BY HAND, not by `center()` (2026-08-14, found on the Mac the day
     // this shipped): center() computes from the size the window HAS, and the
     // resize above has not necessarily landed when it runs — so it centred a
     // 1600-wide box on a 1512 screen and parked the window 44px off the LEFT

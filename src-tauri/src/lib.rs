@@ -154,6 +154,45 @@ fn calibre_cover(library_path: String, book_path: String) -> Result<tauri::ipc::
 
 mod backup;
 
+/// CREATE THE PER-DEVICE SETTINGS DIRECTORY (Phase 2 step 4, 2026-08-15).
+///
+/// `deviceStore.ts` writes `settings.json` and `timer-heartbeat.json` into the
+/// app's local data dir — and NOTHING HAS EVER CREATED IT. On Windows it exists
+/// by accident: the WebView2 runtime makes the same folder for `EBWebView`
+/// before the app writes. On macOS the webview stores its data elsewhere, so the
+/// folder never appeared and every write threw ENOENT into `warnOnce` — one
+/// console line, then settings that hold for the session and vanish on quit.
+///
+/// ⚠ WHAT WAS ACTUALLY BROKEN ON THE MAC, all of it silent: the theme pick, UI
+/// scale, reduce-effects, `cibo.cloudRoot` (so backups/images/themes had no
+/// root), the sync relay override, and the timer heartbeat — whose ABSENCE is
+/// the clean-quit invariant, so a file that can never be written reads as a
+/// clean quit forever and crash recovery can never fire. Found 2026-08-15 when
+/// a hand-written relay key failed with ENOENT on the DIRECTORY, which is the
+/// only reason any of this surfaced: the app's own failure mode is a warning
+/// nobody reads.
+///
+/// ⚠ AND IT WOULD HAVE CORRUPTED THE FIRST RESTORE. The restore door sets
+/// `cibo.restorePending` and restarts immediately; that flag lives in this file,
+/// so the next boot would not have seen it, would have seeded a store whose real
+/// data was still in flight, and produced the exact doubling `sync-3` exists to
+/// prevent — on the very first two-device join.
+///
+/// Rust, not the fs plugin: this runs before the webview loads, so the directory
+/// is there before `initDeviceStore` reads. Failure only restores today's
+/// behaviour (localStorage passthrough), so it is logged, never fatal.
+fn ensure_app_data_dir(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    match app.path().app_local_data_dir() {
+        Ok(dir) => {
+            if let Err(e) = std::fs::create_dir_all(&dir) {
+                eprintln!("cibo: could not create app data dir {}: {e}", dir.display());
+            }
+        }
+        Err(e) => eprintln!("cibo: no app local data dir: {e}"),
+    }
+}
+
 /// FIT THE WINDOW TO THE SCREEN IT OPENS ON (Phase 2 step 4, 2026-08-15).
 ///
 /// `tauri.conf.json` opens at a fixed 1600x1000, which is WIDER AND TALLER THAN
@@ -248,6 +287,8 @@ pub fn run() {
         // created, which is the only moment the OPFS store is closed — a
         // pending restore marker is applied here or never.
         .setup(|app| {
+            // FIRST: the settings dir must exist before the webview reads it.
+            ensure_app_data_dir(app.handle());
             backup::apply_pending_restore(app.handle());
             fit_window_to_screen(app.handle());
             Ok(())

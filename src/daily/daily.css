@@ -129,6 +129,13 @@
 :root {
   --triptych-sky-col: 550px;
   --triptych-almanac-col: 550px;
+  /* The form label column. Was a raw `min-width:78px` on .flbl; promoted at the
+   * 2026-08-13 alignment fix, which needs the same number in two places (the
+   * label's width and the row's hanging indent) and must not carry two copies —
+   * `grep <NAME>` cannot find a number spelled twice. PRIVATE, like the pair
+   * above: mint candidate, and NOT theme-facing, since the layout law bars a
+   * theme from resizing the app's boxes. */
+  --flbl-w: 88px;
 }
 
 .daily {
@@ -476,7 +483,56 @@
   /* form widgets */
     .row { display:flex; align-items:center; gap:var(--space-5); flex-wrap:wrap; }
   .flbl { font-size:var(--size-caption); font-weight:var(--weight-bold); letter-spacing:.05em;
-            text-transform:uppercase; color:var(--text-muted); min-width:78px; }
+            text-transform:uppercase; color:var(--text-muted); min-width:var(--flbl-w); }
+  /* ---- THE LABEL COLUMN IS A HANGING INDENT (user-ruled 2026-08-13:
+     *"I want the typefields and toggles to all line up with each other"*).
+     A row is `label + fields` in a wrapping flex box, and a WRAPPED FLEX LINE
+     STARTS AT THE CONTAINER'S LEFT EDGE — there is no continuation indent in
+     flex layout. Writing declares both time and count, so its Measures row
+     carries two fields; when they do not fit, the words field wrapped and sat
+     flush against the card's border while every other field on the card began
+     at the label column. Seen on the 14" canvas, but it was never width-
+     specific: any row with two fields does it wherever they stop fitting.
+
+     The row is indented by the whole label column, and the label is pulled back
+     out of it by exactly the same amount, so it occupies the padding. Its outer
+     size is then -(w + gap) + w = -gap, the flex gap adds the gap back, and the
+     FIRST field lands precisely on the content edge — the same x every wrapped
+     line starts from. One number, two places, both off --flbl-w.
+
+     ⚠ THE WIDTH IS FIXED HERE, NOT `min-width`, AND THAT IS WHAT MAKES IT WORK.
+     The indent is a constant; a label free to grow past it would push its own
+     first field right while wrapped lines stayed at the constant, which is the
+     original defect with extra steps. Measured before changing anything: every
+     built-in label clears 78 (`MEASURES` is the longest at ~75), so this is the
+     geometry the cards already had — nothing moves except the wrapped line.
+     ⚠ THE LABEL IS `nowrap` AND THE COLUMN IS 88, BOTH CORRECTED 2026-08-13 THE
+     SAME DAY THEY LANDED. First written as 78 with `overflow-wrap:break-word`,
+     on the reasoning that a theme with a wider face should cost a taller label
+     rather than a broken column. UT/DR proved that wrong on sight: its face sets
+     `MEASURES` at ~81, so the column broke the WORD — `MEASURE` over `S` — which
+     is worse than either failure it was choosing between. A label is a single
+     token to a reader even when it is not one to the line-breaker.
+     So: never break, and give the column enough room that the common case does
+     not need to. 88 clears the widest built-in label in the widest bundled face
+     with ~7px to spare, measured off UT/DR rather than estimated. A label that
+     still exceeds it overflows into the 12px gap, which absorbs a few pixels
+     invisibly — a graceful degradation where a mid-word break was not.
+     ⚠ WHAT THIS DOES NOT COVER: a label long enough to cross the gap as well
+     would sit over its own field. `Select a <vocab>` is the one built-in that
+     can reach that, and it is FINE TODAY (user-checked on Keyboard, 2026-08-13).
+     If a theme or a vocabulary name ever pushes it there, the answer is the
+     auto-sized grid column — `.sess` as a two-track grid with the rows as
+     `display:contents`, so the column measures whatever the theme renders — and
+     that costs a wrapper element around each row's fields.
+     ⚠ SCOPED TO `.strip`, NEVER BARE `.row`. The cover wall's on-this-day tile
+     uses `.row` too, and its own rule sets `display:grid` WITHOUT padding — so a
+     bare `padding-left` here would leak straight into it. Third time this file
+     has paid for the same thing (`.gcap`, `.bars`, `.chartwrap`): the specific
+     rule only wins the properties it thinks to mention. */
+  .strip .row { padding-left:calc(var(--flbl-w) + var(--space-5)); }
+  .strip .row > .flbl { width:var(--flbl-w); min-width:0; white-space:nowrap;
+            margin-left:calc(-1 * (var(--flbl-w) + var(--space-5))); }
   .inp { display:inline-flex; align-items:center; gap:var(--space-3); font-family:var(--font-ui);
            min-height:calc(var(--size-body) * var(--line-normal));
            font-size:var(--size-body); color:var(--text-strong); background:var(--inset-background);

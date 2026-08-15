@@ -28,16 +28,65 @@
      value-sheet sanction, re-scoped from density to layout.
    ========================================================================= */
 
-/* ---- DAILY (working day) — HOLDING VALUES ONLY. The real re-composition is
-   a Claude Design session, first in the recompose queue; these carry the
-   preview pass's provisional shrink so compact-on is never worse than what
-   was already seen. Base 550s crush the spine to zero at this width; the
-   height floor (1115) exceeds the whole Mac window (982). */
+/* ---- DAILY (working day) — the triptych's two outer columns.
+   Base 550s crush the spine to zero at this width; the height floor (1115)
+   exceeds the whole Mac window (982), so both come down here.
+
+   ⚠ THE TWO COLUMNS ARE EVEN AT 330 — user-ruled 2026-08-13, sky 380 → 330,
+   *"make the columns even, mainly by reducing sky's width."* The 50px goes to
+   the SPINE, which is the point: fixed tracks either side of a `minmax(0,1fr)`
+   middle, so everything taken off an outer column lands on the logging strips.
+
+     row 1350.8 − sky 330 − almanac 330 − two 16px gaps  =  spine 658.8
+     (was 608.8, against a 556 floor)
+
+   ⚠ AND THE SKY CARDS WERE COMPOSED AT 380, so their interior is now 296 rather
+   than 346 (padding 16 a side + a 1px border). Nothing in the column carries a
+   fixed pixel width — checked, because a fixed size on a grid or flex child
+   becomes its track's FLOOR, which is the habit behind five of tier 2's
+   defects — so what can bite is WRAPPING, not overflow. The measured nowrap
+   runs clear it: the sun's reading row ~235, the weather masthead ~215 at its
+   sub-zero worst case, the hour axis 84.
+   ⚠ THE ONE TO WATCH is the sun card's reading row. It is `flex-wrap: wrap`
+   over a field with a FIXED basis, so a wrap grows the CARD by a line instead
+   of shrinking the figure — the tell is the sun card no longer starting level
+   with its neighbours in the column.
+   The almanac's 330 is unchanged and was already composed at it.
+
+   The real per-screen re-composition is still a Claude Design session; these
+   are the values that hold until it runs. */
 :root.compact {
-  --triptych-sky-col: 380px;
+  --triptych-sky-col: 330px;
   --triptych-almanac-col: 330px;
   --triptych-min: 860px;
 }
+
+/* ---- THE KIND ROW STAYS ON ONE LINE (user-ruled 2026-08-13: *"the dropdown
+   menu for writing's stage/wiki overflows to a second row… I want to stop that
+   as much as possible"*).
+
+   ⚠ THIS FAILURE WAS PREDICTED IN daily.css AND ARRIVED EXACTLY AS WRITTEN. That
+   sheet's --spine-inset note (~line 26) already had the arithmetic: KIND is the
+   widest row in an expanded habit — label + the Stage|Wiki control + the arrow +
+   `.inp.sel`'s DECLARED min-width 190 — and it warned that the segmented control
+   and the type ramp are content-sized, so "a theme with a bigger type ramp… eat[s]
+   the margin silently, and `.row` wraps rather than overflowing, which is a quiet
+   failure." Measured off the two screenshots: the control sets ~124 under the
+   Default and ~142 under UT/DR's face, against a field column of ~359. Default
+   clears by a hair; the wider face does not.
+
+   THE 190 IS THE DEFECT, and it is the tier-2 habit in its usual costume: a fixed
+   size on a flex CHILD is its line's FLOOR, not its width. The select does not
+   need 190 to be readable — it holds "—" or one stage name — it needed 190 to look
+   generous on a 550px desktop column. Here it floors the row.
+   So the floor comes down and the select GROWS INSTEAD: `flex` lets it take
+   whatever the line has left, so it still fills the row on a wide card and stops
+   dictating when the row breaks on a narrow one. Same reading, no floor.
+   ⚠ THE HEADROOM IS THE POINT, not the 120. At 120 the row's content bottoms out
+   near 306 against ~359, so the segmented control can grow ~50px — well past the
+   18 that broke it — before anything wraps. A theme with a wider face than UT/DR's
+   is the case this has to survive, and it is the case nobody can enumerate. */
+:root.compact .daily .strip .inp.sel { min-width: 120px; flex: 1 1 auto; }
 
 /* ---- COVER WALL — nine columns instead of fifteen (user-ruled 2026-08-11:
    *"let's try 9, if it doesn't work we can always go for 10"*).
@@ -633,7 +682,9 @@
 
 :root.compact .daily .sun-card .sun-field::before { background: none; }
 
-:root.compact .daily .sun-card .arc { display: none; }
+/* `.arc` needed no hide rule in the end: the component stopped emitting the svg
+   when it landed 2026-08-13, and daily.css's `.sun-field .arc` went with it. A
+   rule hiding markup nobody writes is a trap for the next reader of this block. */
 
 :root.compact .daily .sun-card .sun-sky {
   position: absolute; left: 0; right: 0; top: 0; height: var(--sun-horizon-y);
@@ -813,8 +864,10 @@
   font-family: var(--font-ui); color: var(--text-muted);
 }
 
-/* the old in-field labels are retired with the text move. */
-:root.compact .daily .sun-card .sun-end { display: none; }
+/* The old in-field labels are retired with the text move — and RETIRED means
+   gone, not hidden: the component stopped emitting `.sun-end` on 2026-08-13 and
+   daily.css's four rules for it went in the same edit, so the hide rule that
+   stood here has nothing left to hide. */
 
 /* ---- 7 · NIGHT ---------------------------------------------------------
    The sky, the land and the vanished disc all fall out of --sun-alt going
@@ -1308,6 +1361,40 @@
   left: calc(var(--wx-obs) * 100%); top: calc(100% - var(--wx-lvl) * 100%);
   transform: translate(-50%, -50%);
 }
+/* THE MARKER'S VALUE, user-ruled 2026-08-13 ("indicate the temperature on the
+   graph dot"), REVERSING the re-mint's retirement of `.wx-mark`.
+   ⚠ IT IS A DUPLICATE OF `.whead`, AND KNOWINGLY SO. The recomposition put the
+   observation's own temperature in the masthead — that is what made the old
+   card's disagreement (headline 31, marker 26, same minute) impossible — so the
+   dot and the figure now carry one number by construction. The label restates
+   it beside the picture rather than adding a reading. Recorded because the
+   struck rule's own argument was "the card says it twice", and this is the
+   ruling that answers it.
+
+   ⚠ IT SITS BESIDE THE DOT, NOT ABOVE IT, AND THE FIELD IS WHY. `.wx-field` is
+   `overflow: hidden` — that clip is what keeps the veil inside the rounded
+   corners — so the retired `.wx-mark`'s `translate(-50%, -100%)` would be cut
+   whenever the curve ran near the ceiling, which is exactly the hot part of the
+   day the marker is most often in. Centred on the dot's own y it cannot clip
+   vertically at all: the curve is inset 12–84 of 92, and half a caption line
+   box is under 8.
+   THE HORIZONTAL SIDE IS THE COMPONENT'S, not a media query's: it flips to the
+   dot's left once the observation passes the far side of the window, which is
+   the only way a label anchored to a data position can stay inside a clipped
+   box. Same division as everything else on this card — CSS draws what it is
+   given a number for. */
+:root.compact .daily .wx-card .wx-val {
+  position: absolute; pointer-events: none; white-space: nowrap;
+  left: calc(var(--wx-obs) * 100%); top: calc(100% - var(--wx-lvl) * 100%);
+  transform: translate(calc(var(--wx-dot) / 2 + var(--space-3)), -50%);
+  font-family: var(--font-mono); font-size: var(--whimsy-size-caption);
+  font-weight: var(--weight-bold); color: var(--text-strong);
+}
+/* past the far side, the label hangs off the dot's LEFT: -100% of its own width,
+   then back off the dot by the same gap the right-hand form uses. */
+:root.compact .daily .wx-card .wx-val.on-left {
+  transform: translate(calc(-100% - var(--wx-dot) / 2 - var(--space-3)), -50%);
+}
 
 /* ---- 7 · THE HOUR AXIS -------------------------------------------------
    THE COLLISION IS FIXED BY THE RECOMPOSITION, NOT BY A RULE — with one
@@ -1452,12 +1539,16 @@
    border, spanning both rows so the figure and the pair sit against it.
    `align-self:center` because an svg has no baseline to align.
    ⚠ THE TILE HAS TO BE UNDECLARED, NOT JUST UNUSED. daily.css's own `.wx-glyph`
-   still paints a wash and a --radius-medium corner on this class, and it went on
+   painted a wash and a --radius-medium corner on this class, and it went on
    painting them under the new markup: every mark sat on a pale blue chip tight to
    its outline — a small copy of the very object the 40px tile experiment was
    struck for (it cost 14px and read as a chip beside the type). Reusing a class
    name inherits its RULES, not just its meaning. That wash is also the pre-dial
-   42% invention section 4 replaces with --whimsy-wash-mix. */
+   42% invention section 4 replaces with --whimsy-wash-mix.
+   ⚠ AMENDED 2026-08-13 AT THE COMPONENT PORT: that base rule is now DELETED
+   from daily.css, so this reset no longer overrides anything. It stays as belt
+   and braces — the class name is generic enough that a future tile rule would
+   land on it silently, which is the whole hazard described above. */
 :root.compact .daily .wx-card .wx-glyph {
   grid-column: 1; grid-row: 1 / span 2; align-self: center;
   height: var(--wx-glyph); width: auto;

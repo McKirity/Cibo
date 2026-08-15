@@ -44,42 +44,54 @@ export function CadenceDashboard({
   // The other dashboards' today idiom — read the clock once per mount, not on
   // every render (conformed 2026-07-30).
   const [today] = useState(todayLocal);
-  const model = useMemo(
-    () =>
-      data.ready
-        ? // listCap: the Settings → Tracking → Metrics value; read at build
-          // time — a changed cap is live from the next navigation.
-          buildCadenceModel(data, scale, anchor, today, { listCap: dashboardListCap() })
-        : null,
-    [data, scale, anchor, today],
-  );
+  // Timed like the other five families (2026-08-15). This was the ONE dashboard
+  // family with no `.perf-line`, which made it the one family step 4's latency
+  // re-measure could not read — and the four cadence scales are exactly where
+  // the wide year heatmaps put the budget under pressure.
+  const { model, ms } = useMemo(() => {
+    if (!data.ready) return { model: null as CadenceModel | null, ms: 0 };
+    const t0 = performance.now();
+    // listCap: the Settings → Tracking → Metrics value; read at build time — a
+    // changed cap is live from the next navigation.
+    const model = buildCadenceModel(data, scale, anchor, today, { listCap: dashboardListCap() });
+    return { model, ms: performance.now() - t0 };
+  }, [data, scale, anchor, today]);
   if (!model) return <div className="cadash"><p className="perf-line">Loading…</p></div>;
   return (
     <CadenceView
       model={model}
+      ms={ms}
       onNavigate={onNavigate}
       onOpenHabit={onOpenHabit}
       onOpenEntry={onOpenEntry}
       onOpenDay={onOpenDay}
       today={today}
+      sessionCount={data.sessions.length}
+      entryCount={data.entries.length}
     />
   );
 }
 
 function CadenceView({
   model,
+  ms,
   onNavigate,
   onOpenHabit,
   onOpenEntry,
   onOpenDay,
   today,
+  sessionCount,
+  entryCount,
 }: {
   model: CadenceModel;
+  ms: number;
   onNavigate: (nav: CadenceNav) => void;
   onOpenHabit: (key: string) => void;
   onOpenEntry: (id: string, habitKey: string) => void;
   onOpenDay?: (day: string) => void;
   today: string;
+  sessionCount: number;
+  entryCount: number;
 }) {
   // A past or present day is a door to its cover wall; the future is a dead
   // route, which is the same rule the prev/next arrows already obey.
@@ -116,6 +128,11 @@ function CadenceView({
 
   return (
     <div className="cadash" data-scale={m.scale} style={{ ["--heat-ink" as string]: m.heatInk }}>
+      <div className="perf-line">
+        derived in {ms.toFixed(1)} ms · {sessionCount} sessions · {entryCount} entries ·
+        {" "}{m.scale} {m.header.id}
+      </div>
+
       {/* 1 · PERIOD HEADER */}
       <div className="cpanel tighthead">
         <div className="perhead">

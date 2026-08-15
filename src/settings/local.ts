@@ -95,6 +95,16 @@ export const getParityZoom = (): number => clampParity(Number(lsGet(PARITY_ZOOM_
  * The key is kept verbatim from the MacBook-preview era so a set flag survives
  * the reshape — the same convention REDUCE_KEY was kept under.
  */
+/**
+ * THE SMALL-CANVAS KNEE — the window width below which this is the MacBook
+ * canvas. Lives HERE, not in `theme/compact`, only because of import direction:
+ * compact.ts already reads `currentZoomFactor` from this module, so the constant
+ * has to travel the same way or the two modules form a cycle. It is the same
+ * number for both readers by construction — the project has been bitten twice by
+ * one figure written down in two places.
+ */
+export const SMALL_CANVAS_BELOW = 1600;
+
 export type ScreenMode = "macbook" | "desktop";
 export const MB_PREVIEW_KEY = "cibo.dev.macbookPreview";
 export const getScreenMode = (): ScreenMode => (lsGet(MB_PREVIEW_KEY) === "1" ? "macbook" : "desktop");
@@ -174,6 +184,51 @@ export const setScreenMode = async (mode: ScreenMode): Promise<void> => {
 };
 
 /**
+ * The window's TRUE logical width. `innerWidth` is CSS px, which webview zoom
+ * inflates below 100% — the same correction compact-auto makes, and the same
+ * reason it exists (a 1512 window at 0.85 reads as 1779). The product is
+ * zoom-INVARIANT, so it is safe to read while deciding a value the zoom itself
+ * depends on.
+ */
+const trueWindowWidth = (): number => window.innerWidth * currentZoomFactor();
+
+/**
+ * MACBOOK VIEW FOLLOWS THE CANVAS — USER-RULED 2026-08-15, on the hardware.
+ *
+ * *"I do not want the default view, I want specifically that. Toggle THAT once
+ * the threshold is cleared."* Ruled after seeing both on the real 14": the
+ * desktop composition on a small screen is not what the small canvas was built
+ * for, and MacBook view — parity 85 composed onto UI scale — is.
+ *
+ * ⚠ CLAUDE ARGUED AGAINST THIS TWICE AND WAS WRONG BOTH TIMES. The objection
+ * was arithmetic (0.85 parity × 0.85 UI scale = 0.72, "everything goes tiny"),
+ * which is true and beside the point: the user had LOOKED at both and preferred
+ * this one. A prediction does not outrank an observation of the thing itself.
+ *
+ * So the mode is DERIVED, exactly as compact is — same knee, same true-width
+ * reading, for the same reason the 2026-08-14 ruling gave when it stopped
+ * compact being a setting: a value describing the canvas must not be storable
+ * in a state that contradicts the canvas. The flag is still WRITTEN, because
+ * `currentZoomFactor` reads it and Settings draws it, but nothing keeps a pick
+ * that the window disagrees with.
+ *
+ * ⚠ CONSEQUENCE, AND IT IS INTENDED: on a screen below the knee the Developer
+ * toggle cannot be held on "2K". Flip it and the window it asks for still does
+ * not fit, so the next resolve puts it back. On a desktop the preset behaves
+ * exactly as it always did — its 1512×982 crosses the knee, its restore crosses
+ * back, and the derivation agrees with both.
+ */
+const adoptScreenModeForCanvas = (): void => {
+  if (!inTauri()) return;
+  const want = trueWindowWidth() < SMALL_CANVAS_BELOW;
+  if (want === getMacBookPreview()) return;
+  // Flag FIRST: setParityZoom re-applies the composed zoom, and the composition
+  // reads this flag. Written the other way round the zoom lands one pick stale.
+  lsSet(MB_PREVIEW_KEY, want ? "1" : "0");
+  setParityZoom(want ? PARITY_MACBOOK : 100);
+};
+
+/**
  * RE-APPLY THE PREVIEW GEOMETRY AT LAUNCH (`macbook-2`, 2026-08-08).
  *
  * The flag is per-device and persists; the WINDOW SIZE did not. The app has no
@@ -189,6 +244,11 @@ export const setScreenMode = async (mode: ScreenMode): Promise<void> => {
  */
 const restoreMacBookGeometry = async (): Promise<void> => {
   if (!inTauri() || !getMacBookPreview()) return;
+  // Already on the small canvas — real small hardware, sized to the screen's
+  // work area by the Rust launch fit. The preview's 1512×982 is a SIMULATION
+  // for a big screen; forcing it here would make the window taller than the
+  // display can show, which is the defect the fit was written to end.
+  if (trueWindowWidth() < SMALL_CANVAS_BELOW) return;
   const { LogicalSize } = await import("@tauri-apps/api/dpi");
   await withAppWindow(
     (win) => win.setSize(new LogicalSize(MB_W, MB_H)),
@@ -373,7 +433,12 @@ export function initLocalSettings(): void {
   void applyZoom();
   // The geometry half of the MacBook preview — persisted as a flag since it was
   // built, re-applied to the window only since 2026-08-08.
-  void restoreMacBookGeometry();
+  // …then let the canvas have the last word. CHAINED, not called after: the
+  // restore is async, so a bare call reads the width the window has NOT been
+  // resized to yet — on a desktop that cancels the preview flag one launch in
+  // one and flips it back when the resize finally lands.
+  void restoreMacBookGeometry().then(adoptScreenModeForCanvas);
+  window.addEventListener("resize", adoptScreenModeForCanvas);
   // Force-opaque re-derives per theme apply; the first run needs the body.
   const first = () => applyForceOpaque();
   if (document.body) first();

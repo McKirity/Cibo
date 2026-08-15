@@ -20,7 +20,7 @@
 // default import resolves to undefined under a plain esbuild bundle (Vite's
 // interop hides this — the verification harness is what caught it).
 import * as SunCalc from "suncalc";
-import { pad2 } from "../metrics/clock";
+import { pad2, todayLocal } from "../metrics/clock";
 
 const DAY_MS = 86_400_000;
 
@@ -107,93 +107,132 @@ export const atLocation = (d: Date, lon: number): string => {
 };
 
 /**
- * Where the sun disc sits ON the drawn arc.
+ * NORMALISED SOLAR ALTITUDE — the card's one number.
  *
- * The FINAL draws the path as a quadratic Bézier in a 400x168 viewBox:
- *   M6 150 Q200 -90 394 150
- * so the disc must be evaluated on that same curve, not floated near it.
+ * 1 at solar noon, 0 at the horizon, negative below it. The re-minted sun card
+ * (2026-08-12, `Mint - Sun card.html`) derives EVERYTHING from this: the disc's
+ * height in the sky band, both gradient stops, the land colour, the star
+ * scatter's opacity, and the fact that the sun is concealed at night. No rule
+ * in small.css detects "night" or "dusk" — they read this and clamp.
  *
- * The parameter is the fraction of DAYLIGHT elapsed — from this location's own
- * sunrise to its own sunset — which is what makes the disc actually track the
- * coordinates. (The first implementation used `1 - |now - solarNoon| / 12h`,
- * which barely moves when longitude changes and is symmetric about noon, so
- * morning and afternoon landed on the same spot. It looked static because it
- * very nearly was.)
+ * It replaces `sunArcPoint`, which sampled the drawn Bézier for a `top`
+ * percentage. That number described the shape of a drawing, so it was orphaned
+ * the moment the arc was struck.
+ *
+ * ⚠ THE ZERO IS PINNED TO THE HORIZON `getTimes` ACTUALLY CROSSES, and that is
+ * the whole reason for the `- HORIZON` on both sides. Normalising against
+ * geometric zero would put the picture's crossing minutes away from the
+ * countdown's: the card would print "0m" beside a disc not yet on the line. Two
+ * independently-derived numbers assumed equal is the failure this file is
+ * annotated about further down; derive them from one constant and they cannot
+ * disagree — and here they agree EXACTLY, not approximately.
+ *
+ * ⚠ THE CONSTANT IS MEASURED FROM THE LIBRARY, NOT COPIED FROM AN ALMANAC, AND
+ * THE UNITS ARE THE TRAP. The textbook rise/set altitude is −0.833° (34' of
+ * refraction plus the disc's 16' semi-diameter), but that is the GEOMETRIC
+ * angle, and `getPosition` returns the APPARENT one — refraction already
+ * applied — so at suncalc's own sunrise it reads −0.349°, the two corrections
+ * having cancelled to one. Measured over 636 crossings spanning six latitudes
+ * from Singapore to Reykjavik and a full year: −0.34904 at every single one, to
+ * five decimals. It is a constant of this library's refraction model, so the
+ * crossing lands on zero at any latitude and any date, the solstice at 64°N
+ * included.
+ *   And ⚠ DEGREES, not radians: this suncalc build returns degrees and says so
+ * in its own typings (the same shadowed-typings note at the top of this file).
+ * Written first as radians, the offset was 57× too small — a near no-op, which
+ * is exactly what a unit error looks like from the outside. It survived review
+ * and was caught only by a fail-first check that REFUSED TO FAIL: reverting the
+ * pin changed nothing, because the pin was never doing anything. A guard whose
+ * removal costs nothing was never guarding.
+ *
+ * ⚠ POLAR NIGHT IS NOT THE MIRROR OF MIDNIGHT SUN, and it is the one case that
+ * needs a branch. Midnight sun needs none — the ratio simply never reaches 0.
+ * But the divisor is "how far above the horizon the sun gets today", and on a
+ * day it never clears the horizon that is NEGATIVE — so a negative altitude
+ * over a negative span comes out POSITIVE, and the darkest day of the year
+ * would render as broad daylight. Guarded explicitly rather than clamped, since
+ * clamping would hide the sign error rather than answer it.
  */
-/**
- * THE SUN ARC, defined once.
- *
- * The drawn path and the disc's position are the same curve, so they are
- * derived from one set of constants rather than written out twice — two copies
- * would drift the moment either is tuned.
- *
- * SHRUNK AND RAISED from the FINAL's `M6 150 Q200 -90 394 150` (user-ruled
- * 2026-07-26). The decoration layer reserves `--frame-clear-whimsy` inside every
- * whimsy card for an ornamental frame, and the art field bleeds to the card's
- * inner edges — so the frame band overlaps the field at the sides and, most
- * of all, along the BOTTOM, which is exactly where the horizon rule and the
- * rise/set labels sit.
- *
- * Two moves, in order:
- *   1. shrink  — control point -90 -> -44 and feet drawn in 6/394 -> 30/370, so
- *                the disc (32px + a 6px glow, ~22px of reach) clears the side
- *                bands and does not ride into the top of the field.
- *   2. raise   — the whole group lifted 14 units (150 -> 136), taking the
- *                horizon, both feet and the apex with it, so the bottom band
- *                has room to be painted under nothing.
- *
- * `.sun-end`'s bottom offset is raised in step (daily.css) — it is measured
- * from the same edge and would otherwise stay behind while the rule moved.
- */
-export const SUN_ARC = {
-  w: 400,
-  h: 168,
-  x0: 30,
-  y0: 136,
-  /** Control point. */
-  cx: 200,
-  cy: -44,
-  x1: 370,
-  y1: 136,
-  /** The horizon rule the feet sit on. */
-  horizon: 136,
-} as const;
+const HORIZON = -0.34904; // degrees — see the note above before touching this
 
-/** The `d` attribute for the drawn arc — same curve the disc is placed on. */
-export const sunArcPath = (): string =>
-  `M${SUN_ARC.x0} ${SUN_ARC.y0} Q${SUN_ARC.cx} ${SUN_ARC.cy} ${SUN_ARC.x1} ${SUN_ARC.y1}`;
-
-export interface SunArcPoint {
-  /** Percentages within the field box. */
-  xPct: number;
-  yPct: number;
-  /** False during polar night — there is no disc to draw. */
-  visible: boolean;
+export function sunAltitude(sun: SunInfo, lat: number, lon: number, at: Date): number {
+  const span = SunCalc.getPosition(sun.solarNoon, lat, lon).altitude - HORIZON;
+  if (span <= 0) return -1; // polar night: the sun never reaches the horizon
+  const alt = SunCalc.getPosition(at, lat, lon).altitude;
+  return Math.min(1, Math.max(-1, (alt - HORIZON) / span));
 }
 
-export function sunArcPoint(sun: SunInfo, now: Date): SunArcPoint {
-  let t: number;
-  if (sun.state === "polar-night") {
-    return { xPct: 0, yPct: 0, visible: false };
-  } else if (sun.state === "midnight-sun") {
-    // No rise or set: run the parameter over the whole solar day so the disc
-    // still travels, anchored so it peaks at solar noon.
-    const fromNoon = (now.getTime() - sun.solarNoon.getTime()) / DAY_MS;
-    t = Math.min(1, Math.max(0, fromNoon + 0.5));
-  } else if (sun.sunrise && sun.sunset) {
-    const span = sun.sunset.getTime() - sun.sunrise.getTime();
-    t = span > 0 ? (now.getTime() - sun.sunrise.getTime()) / span : 0;
-    t = Math.min(1, Math.max(0, t)); // parked at the horizon outside daylight
-  } else {
-    t = 0.5;
-  }
+/**
+ * THE INSTANT THE CARD READS — `now` only when the card is drawing today.
+ *
+ * `now` is the live wall clock while the card's `SunInfo` belongs to `dayKey`,
+ * and the two part company the moment a back-dated day is opened from the
+ * catch-up queue. Reading them together would put THIS AFTERNOON'S sun over
+ * LAST TUESDAY'S sunrise and sunset — the same class of defect `msIntoDay` had
+ * on the progress card, where every back-dated day drew a finished ring.
+ *
+ * User-ruled 2026-08-13: a past day shows its SUNSET. The day is over, so the
+ * honest picture is the disc half sunk on the line with the countdown at zero —
+ * which the geometry already produces at altitude 0, with no state of its own.
+ * Both polar states have no sunset to read, so they fall back to solar noon
+ * (below the horizon under polar night, which is the correct picture there).
+ *
+ * A future day takes the same branch. It is a dead route by construction, so
+ * this is a fallback rather than a face anyone is meant to meet.
+ */
+export const sunReadingInstant = (sun: SunInfo, dayKey: string, now: Date): Date =>
+  dayKey === todayLocal() ? now : (sun.sunset ?? sun.solarNoon);
 
-  // Evaluate the same quadratic Bézier the path is drawn from.
-  const u = 1 - t;
-  const A = SUN_ARC;
-  const x = u * u * A.x0 + 2 * u * t * A.cx + t * t * A.x1;
-  const y = u * u * A.y0 + 2 * u * t * A.cy + t * t * A.y1;
-  return { xPct: (x / A.w) * 100, yPct: (y / A.h) * 100, visible: true };
+/**
+ * The next sunrise at or after `at` — the night headline's countdown target.
+ *
+ * Only ever consulted in the `normal` state, and (because a past day reads its
+ * own sunset, never night) only ever for today. Both polar states carry their
+ * own copy and never ask.
+ *
+ * Scans forward a few days rather than assuming tomorrow: the night before a
+ * polar night begins has no sunrise tomorrow. Returns null if none is found in
+ * that window, and the caller drops the figure rather than printing a guess.
+ */
+export function nextSunrise(lat: number, lon: number, at: Date): Date | null {
+  for (let i = 0; i <= 3; i++) {
+    const t = SunCalc.getTimes(new Date(at.getTime() + i * DAY_MS), lat, lon);
+    if (isValid(t.sunrise) && t.sunrise.getTime() > at.getTime()) return t.sunrise;
+  }
+  return null;
+}
+
+/**
+ * THE STATE, SAID IN WORDS — one hidden sentence per card, for readers who
+ * cannot see it.
+ *
+ * Everything this card says about WHERE THE SUN IS, it says in colour and
+ * position; a screen reader got the figures and no picture, so solar noon and
+ * late afternoon were indistinguishable — the one distinction the card exists
+ * to draw. Generated from the SAME altitude the art is drawn from, and living
+ * beside it, so the sentence cannot drift from what is on screen.
+ *
+ * `rising` cannot be inferred from altitude — .58 occurs twice a day — which is
+ * why it is passed rather than derived, exactly as `--sun-warm` is.
+ */
+export function sunStateSentence(state: SunState, alt: number, rising: boolean): string {
+  if (state === "midnight-sun") return "Midnight sun. The sun stays above the horizon all day.";
+  if (state === "polar-night") return "Polar night. The sun stays below the horizon all day.";
+  if (alt < 0) return "Night. The sun is below the horizon.";
+  // The endpoints first: at the horizon the disc is drawn exactly half visible,
+  // which is a shape worth naming rather than a low altitude worth grading.
+  if (alt < 0.02) return rising
+    ? "Sunrise. The sun is on the horizon, half above it."
+    : "Sunset. The sun is on the horizon, half below it.";
+  if (alt >= 0.97) return "Solar noon. The sun is at its highest today.";
+  if (rising) {
+    if (alt >= 0.66) return "Late morning. The sun is high and still climbing.";
+    if (alt >= 0.33) return "Morning. The sun is partway to its high point.";
+    return "Early morning. The sun is low and climbing.";
+  }
+  if (alt >= 0.66) return "Early afternoon. The sun has just passed its high point.";
+  if (alt >= 0.33) return "Afternoon. The sun is past its high point and falling.";
+  return "Late afternoon. The sun is low and falling.";
 }
 
 export interface MoonInfo {

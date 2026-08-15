@@ -265,7 +265,6 @@
     .sun-field > *, .night-field > * { z-index:1; }
   .moon-field > * { position:relative; z-index:1; }
   /* ---- SUN — arc over a daylight field, horizon wall-to-wall, disc at true position ---- */
-    .sun-len { display:flex; align-items:baseline; gap:var(--space-5); margin-bottom:var(--space-4); }
   .delta { display:inline-flex; align-items:center; gap:var(--space-2); font-size:var(--whimsy-size-small);
              font-weight:var(--weight-medium); color:var(--text-muted); background:var(--inset-background);
              border-radius:var(--radius-small); padding:var(--space-1) var(--space-4); }
@@ -275,45 +274,33 @@
   /* in oklab: day→dusk is a saturated hue-distant pair — the oklch hue arc
      invents hues between them (the 2026-07-26 derivation-law clause). */
   .sun-field::before { background:linear-gradient(to bottom, var(--whimsy-zenith), color-mix(in oklab, var(--whimsy-day), var(--whimsy-dusk) 20%)); }
-  .sun-field .arc { position:absolute; inset:0; width:100%; height:100%; display:block; }
   .sun-disc { position:absolute; width:32px; height:32px; border-radius:var(--radius-full);
                 background:var(--whimsy-sun); transform:translate(-50%,-50%); }
   .sun-disc::after { content:""; position:absolute; inset:-6px; border-radius:var(--radius-full);
                        border:2px solid color-mix(in oklch, var(--whimsy-sun), transparent 66%); }
-  .sun-end { position:absolute; bottom:15%; font-size:var(--whimsy-size-caption);
-               text-transform:uppercase; letter-spacing:.06em; color:var(--whimsy-dusk); }
-  .sun-end.rise { left:var(--space-5); }
-  .sun-end.set { right:var(--space-5); text-align:right; }
-  .sun-end .kv { display:block; margin-top:2px; font-size:var(--whimsy-size-body); text-transform:none; letter-spacing:0;
-                   font-weight:var(--weight-medium); color:color-mix(in oklch, var(--whimsy-dusk), var(--text-strong) 25%); }
-  /* ---- WEATHER — sun glyph on a daylight tile, temperature is the headline ---- */
-    .wx { display:flex; align-items:center; gap:var(--space-5); }
-  .wx-nowblock { flex:0 0 auto; }
-  .wx-curve { flex:1 1 auto; min-width:0; align-self:stretch; display:flex; flex-direction:column;
-                padding-left:var(--space-5); margin-left:var(--space-2);
-                border-left:var(--border-hairline) solid var(--divider); }
-  /* 2026-07-18 fit, pass 2 — the svg stretches to fill (preserveAspectRatio none) but TEXT
-       leaves the svg for HTML overlays so it never distorts; positions are plot-% (data, the
-       sun-disc idiom). The 92px floor carries over from the pre-fit svg rule. */
-    .wx-plot { position:relative; flex:1 1 auto; min-height:92px; }
-  .wx-plot svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
-  /* text-strong, NOT --whimsy-ink (the frozen choice): the mark is data text on
-     the CHROME panel ground, and whimsy-ink is art-register — Void's near-black
-     ink vanished on its near-black panel (found 2026-07-31). Same register as
-     .whead, which already reads text-strong. */
-  .wx-mark { position:absolute; transform:translate(-50%,-100%); margin-top:calc(-1 * var(--space-2));
-               font-family:var(--font-mono); font-size:var(--whimsy-size-caption);
-               font-weight:var(--weight-bold); color:var(--text-strong); }
+  /* ---- WEATHER — one 24h curve, split at now ----
+     ⚠ THE ROW LAYOUT IS GONE (re-mint, 2026-08-13). The card was a horizontal
+     row — 78px glyph tile · a stacked now-block · a curve column behind a
+     vertical seam — and the recomposition stacks it instead: masthead, reading
+     block, full-width plot, axis. Deleted with the markup they styled: `.wx`
+     (the art div), `.wx-nowblock`, `.wx-curve`, `.wx-plot` + its svg rule,
+     `.wx-mark` (the floating value label), and the `.wx .cond` / `.wx .hl` pair,
+     whose selectors could no longer match anything once `.wx` went.
+     ⚠ `.wx-glyph`'s TILE GOES TOO, and this one is a trap rather than a tidy-up:
+     the CLASS survives on the new markup as a 22px inline mark, so a rule sizing
+     it 78px square with a wash and a radius went on painting a pale chip tight
+     around every mark — reusing a class name inherits its RULES, not just its
+     meaning. (small.css re-asserts the reset under compact; belt and braces.)
+     ⚠ WHAT SURVIVES, DELIBERATELY: `.wx-hours` and its three span rules. The
+     axis is the one part of the old card the recomposition keeps whole — the
+     absolute percentage placement is exact, and the first/last-child transforms
+     are what keep the end labels inside the box. small.css only re-cuts its
+     HEIGHT (the 12px line box clipped the descenders of "12p" and "6p"). */
   .wx-hours { position:relative; flex:0 0 auto; height:var(--whimsy-size-caption); line-height:1;
                 margin-top:var(--space-2); font-size:var(--whimsy-size-caption); color:var(--text-muted); }
   .wx-hours span { position:absolute; transform:translateX(-50%); }
   .wx-hours span:first-child { transform:none; }
   .wx-hours span:last-child { transform:translateX(-100%); }
-  .wx-glyph { flex:0 0 auto; width:78px; height:78px; border-radius:var(--radius-medium);
-                background:color-mix(in oklch, var(--whimsy-day), var(--panel-background) 42%);
-                display:flex; align-items:center; justify-content:center; }
-  .wx .cond { font-size:var(--whimsy-size-small); color:var(--text-secondary); margin-top:var(--space-2); }
-  .wx .hl { font-family:var(--font-mono); font-size:var(--whimsy-size-small); color:var(--text-muted); margin-top:var(--space-2); }
   /* ---- SEASON · YEAR — the bars stretch the card ---- */
   .season-head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:var(--space-5); }
   .season-head b { font-size:var(--whimsy-size-subheading); font-weight:var(--weight-medium); }
@@ -331,10 +318,10 @@
      was actually given. First @container in the app. */
     .col.sky { container-type: inline-size; }
     @container (max-width: 470px) {
-      /* sun — the headline stays whole; the delta chip drops below it */
-      .sun-len { flex-wrap: wrap; row-gap: var(--space-2); }
-      .sun-len .whead, .sun-len .delta { white-space: nowrap; }
-      /* ⚠ THE WEATHER HALF WAS DELETED 2026-08-12 with the whimsy re-mints.
+      /* ⚠ THE SUN HALF WAS DELETED 2026-08-13 when the sun component landed. It
+         wrapped `.sun-len`, and all of that card's text now lives in `.sun-read`
+         on the card's own ground — one row that cannot collide with anything.
+         ⚠ THE WEATHER HALF WAS DELETED 2026-08-12 with the whimsy re-mints.
          What it did — give the curve its own full-width row and rotate the seam —
          the re-minted card now does unconditionally.
          ⚠ AND THE REASON RECORDED IN THE HANDOFF WAS WRONG: it said this block
@@ -344,10 +331,7 @@
          a 470px breakpoint, so it FIRES. `sky-col` was an authoring slip in the
          exhibits, not in the app. The weather half had to go precisely BECAUSE it
          fires: `.wx` survives the re-mint, and `flex-wrap:wrap` on the new card
-         would have re-flowed it against the drawn design.
-         The sun half below is now inert (`.sun-len` is retired for `.sun-read`)
-         and is kept only until the sun component lands, so the two can be removed
-         in one step and this comment does not outlive its subject. */
+         would have re-flowed it against the drawn design. */
       /* season — whole phrases wrap as units, never mid-phrase */
       .season-head { flex-wrap: wrap; row-gap: var(--space-2); }
       .season-head b, .season-head .kv { white-space: nowrap; }
@@ -894,8 +878,10 @@
  *
  * REBASING THE CARDS TO `flex: N 1 auto` WAS TRIED AND IS WRONG — recorded so
  * it is not tried again. `.sun-field` and `.night-field` have ZERO intrinsic
- * height by construction: every child is absolutely positioned (`.arc`
- * inset:0 · `.sun-disc` · `.sun-end` · `.stars` inset:0 · `.sky-cap`). The
+ * height by construction: every child is absolutely positioned (`.sun-sky`
+ * inset-anchored · `.sun-ground` · `.stars` inset:0 · `.sky-cap`; the examples
+ * were `.arc` and `.sun-end` until the 2026-08-13 re-mint struck both, and the
+ * property they illustrated is unchanged). The
  * fields exist only to receive LEFTOVER space via `flex:1 1 auto` inside a card
  * whose height is already decided. So `flex-basis:0` is load-bearing: it is what
  * gives each card a definite height out of the column, from which the field
@@ -927,13 +913,19 @@
  *     the date, which is what made the nowrap line overlong
  *   · a `.dense` variant past two entries: the numeral steps down a size and the
  *     rows tighten
- *   · PAGINATION at three rows a page (user-ruled 2026-07-26), so nothing is
- *     truncated and every dated event stays reachable
+ *   · PAGINATION, so nothing is truncated and every dated event stays
+ *     reachable — three rows a page (user-ruled 2026-07-26), TWO since
+ *     2026-08-13 (the shelf-height ruling; the constant is CD_PER_PAGE)
  *
  * The dense threshold stays at >2 rather than following the page size: the
  * FINAL's evidence is that two roomy rows fit a shelf card, so a full
  * three-row page still steps down. A last page of one or two gets the roomy
  * form back, "since" line included.
+ * ⚠ WHICH MEANS THE `.dense` RULES BELOW ARE CURRENTLY UNREACHABLE. At a page
+ * of two, `list.length > 2` can never hold. They are kept rather than deleted
+ * because the threshold and the page size are two separate decisions and only
+ * the page size was ruled — but nothing renders them today, so do not read
+ * them as describing anything on screen.
  */
 .daily .cd .cdmeta {
   flex: 1 1 auto;
@@ -962,8 +954,9 @@
 .daily .cd.dense .cdsince {
   display: none; /* the row cannot carry a third line at this density */
 }
-/* Pagination, replacing the "+N more" collapse (user-ruled 2026-07-26): four
- * rows a page, paged rather than truncated, so no dated event is unreachable.
+/* Pagination, replacing the "+N more" collapse (user-ruled 2026-07-26): paged
+ * rather than truncated, so no dated event is unreachable. The page size is the
+ * component's CD_PER_PAGE — three when this was written, two since 2026-08-13.
  * It sits OUTSIDE `.art` so the rows stay vertically centred in the card and
  * the control keeps a fixed seat at the bottom instead of drifting with the
  * page's row count. */
@@ -999,21 +992,6 @@
   font-family: var(--font-mono);
   font-size: var(--whimsy-size-caption);
   color: var(--text-muted);
-}
-
-/* The rise/set labels ride up with the horizon.
- *
- * `SUN_ARC.horizon` moved 150 -> 136 of 168 (user-ruled 2026-07-26, to leave the
- * decoration layer room along the field's bottom edge). These labels are
- * positioned from the same bottom edge, so without this they would stay put
- * while the rule they belong to lifted away from them.
- *
- * The FINAL sat them 15% up, with the horizon 10.7% up — about 4.3% of clear
- * air above the rule. Horizon is now 19% up, so the labels go to 23%, keeping
- * that same gap and lifting the whole group clear of the frame band.
- */
-.daily .sun-end {
-  bottom: 23%;
 }
 
 /* The quote mark's positioning context. `.qmark` is absolute against its

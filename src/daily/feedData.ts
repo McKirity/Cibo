@@ -133,17 +133,59 @@ export const displayTemp = (c: number, unit: "C" | "F"): number =>
 // ── The hourly curve's geometry (the drawn 240×93 box, 12a → 12a) ────────────
 
 /**
- * The frozen face's plot box: viewBox 240×93, `preserveAspectRatio="none"`
- * (the 2026-07-18 re-freeze), curve inset 10px each side, text as HTML
- * overlays positioned in plot-percent.
+ * The plot box — RE-CUT EDGE TO EDGE at the 2026-08-12 re-mint.
+ *
+ * Was `240×93` with the curve inset 10 units each side, because the plot was a
+ * 147px panel beside a 78px glyph and needed its own margins. The recomposition
+ * gives the plot the card's whole 345px interior and puts the hour axis under
+ * it, so the curve now runs 0→240 and the inset is gone: **the axis and the
+ * curve must share one x-space to the pixel**, and an inset the axis does not
+ * also carry would put every label a fraction of the day off its tick.
  */
-export const WX_BOX = { w: 240, h: 93, x0: 10, x1: 230, yTop: 16, yBot: 86 } as const;
+export const WX_BOX = { w: 240, h: 92, x0: 0, x1: 240, yTop: 12, yBot: 84 } as const;
+
+/**
+ * THE MINIMUM PLOTTED SPAN, in degrees C — the flat day's fix.
+ *
+ * Normalised to its own range, a 1.4° fog day draws the identical dramatic
+ * swing as a 10° one: the picture says "big day" while the masthead above it
+ * says 20 / 19, and the field's height means something different on every card.
+ * Padding the range to a floor and centring the data in it makes a flat day
+ * draw flat.
+ *
+ * ⚠ DELIBERATELY NOT A DIAL. It is arithmetic in degrees, and CSS never reads
+ * it — a custom property nothing consumes would put the app's only copy of the
+ * number somewhere the app cannot see it. 6 is the mint's own worked example
+ * (a floored day runs about 23 to 17).
+ * ⚠ AND THE PADDED SPAN IS NOT PRINTED ANYWHERE. The masthead reports the DAY's
+ * high and low, which is what a person means by them; on a floored day the box
+ * runs wider than that. Nothing is wrong, but nothing states the box's own
+ * bounds either — that is a y-scale's job, and the y-scale was struck.
+ */
+export const WX_MIN_SPAN_C = 6;
 
 export interface WxCurve {
   linePath: string;
   areaPath: string;
-  /** Marker position in viewBox coordinates, or null when no marker applies. */
-  mark: { x: number; y: number } | null;
+  /**
+   * The observation's height IN THE BOX — 0 at the floor, 1 at the ceiling —
+   * or null when there is no observation to place.
+   *
+   * ⚠ MEASURED ON THE BOX, NOT ON THE DATA, and that is the trap it avoids.
+   * Handed to CSS as a temperature, or as a fraction of the day's range, the
+   * stylesheet would have to reproduce this function's padding and floor to
+   * place the marker — a second copy of the arithmetic, in a language that
+   * cannot be tested against it. The copies drift the first time the padding
+   * moves and the marker slides off its own curve with nothing to catch it. As
+   * a fraction of the box, `top: calc(100% - var(--wx-lvl) * 100%)` IS the
+   * definition and there is nothing to keep in sync.
+   * ⚠ ONE RESIDUAL, HONESTLY: the path is a Catmull-Rom spline through the
+   * hourly samples while this interpolates linearly between them, so between
+   * two samples the marker can sit a fraction of a pixel off the drawn curve.
+   * It vanishes at the nodes and is under a pixel at hourly density — but if
+   * the sampling ever coarsens, the level has to come off the same spline.
+   */
+  lvl: number | null;
 }
 
 const pt = (n: number): string => n.toFixed(1);
@@ -163,10 +205,13 @@ export const buildWxCurve = (hourlyC: number[], markT: number | null): WxCurve |
     if (v < min) min = v;
     if (v > max) max = v;
   }
-  // A flat day still draws a line — pad the range so it sits mid-box.
-  if (max - min < 1) {
-    min -= 0.5;
-    max += 0.5;
+  // A flat day still draws a line, and draws FLAT — the range is padded to the
+  // minimum span and the data centred in it, so the curve's amplitude is a
+  // reading rather than an artefact of normalising to whatever happened.
+  if (max - min < WX_MIN_SPAN_C) {
+    const pad = (WX_MIN_SPAN_C - (max - min)) / 2;
+    min -= pad;
+    max += pad;
   }
   const X = (i: number) => x0 + (i / (n - 1)) * (x1 - x0);
   const Y = (v: number) => yBot - ((v - min) / (max - min)) * (yBot - yTop);
@@ -186,17 +231,69 @@ export const buildWxCurve = (hourlyC: number[], markT: number | null): WxCurve |
 
   const areaPath = `${d} L ${x1} ${h} L ${x0} ${h} Z`;
 
-  let mark: WxCurve["mark"] = null;
+  let lvl: WxCurve["lvl"] = null;
   if (markT != null && Number.isFinite(markT)) {
     const t = Math.max(0, Math.min(24, markT));
     const s = (t / 24) * (n - 1);
     const i = Math.min(n - 2, Math.floor(s));
     const f = s - i;
-    mark = {
-      x: xs[i] + (xs[i + 1] - xs[i]) * f,
-      y: ys[i] + (ys[i + 1] - ys[i]) * f,
-    };
+    const y = ys[i] + (ys[i + 1] - ys[i]) * f;
+    lvl = 1 - y / h;
   }
 
-  return { linePath: d, areaPath, mark };
+  return { linePath: d, areaPath, lvl };
+};
+
+/**
+ * THE LEDE — what is about to happen, this card's live fact.
+ *
+ * The sun card's move (make the headline live) does not transfer: the
+ * temperature was ALREADY live. What this card never said is what is COMING —
+ * `↗10 by 15:00` — which is the one weather reading worth acting on, and it
+ * needs no data the card was not already holding.
+ *
+ * ⚠ THE CLAUSE NAMES THE CHANGE, NOT THE DESTINATION, AND THAT IS THE WHOLE
+ * READING. Written once as "up to 31 by 15:00" — better English — it printed
+ * the same eleven characters at 04:40, 08:10 and 13:20, because the day's high
+ * and its hour are facts about the CALENDAR DAY and do not change until the
+ * high passes. That silently undid the property the card was rebuilt for, and
+ * it reprinted the masthead's own 31 besides. The DELTA is what recomputes
+ * hourly: 10, then 6, then 1.
+ *
+ * The target is the next TURNING POINT after `fromT`, or the end of the window
+ * if the curve never turns again.
+ * ⚠ WHICH MEANS THE WINDOW BOUNDS THE ANSWER, and that is the open ruling this
+ * card ships with (mint § 11): plotting midnight-to-midnight, an evening card
+ * names 00:00 where the real overnight low is at 04:00 — off the right edge.
+ * A rolling now−6h→now+18h window fixes it and costs the fixed hour axis and
+ * the meaning of "today's high". Ruled: ship the current window.
+ */
+export interface WxLede {
+  /** Signed change in DISPLAY degrees, already rounded. */
+  delta: number;
+  /** Hour of the turning point, 0–24, for formatting as a clock time. */
+  atHour: number;
+}
+
+export const wxLede = (hourlyC: number[], fromT: number, unit: "C" | "F"): WxLede | null => {
+  const n = hourlyC.length;
+  if (n < 2) return null;
+  const perHour = (n - 1) / 24;
+  const from = Math.max(0, Math.min(24, fromT));
+  const i0 = Math.min(n - 1, Math.ceil(from * perHour));
+  if (i0 >= n - 1) return null; // the window is spent; there is nothing ahead
+  // Walk to the next turning point: the first sample where the direction the
+  // curve is currently travelling reverses. Ties keep walking, so a flat stretch
+  // is not mistaken for a turn.
+  const dir = Math.sign(hourlyC[i0 + 1] - hourlyC[i0]);
+  let j = i0 + 1;
+  if (dir !== 0) {
+    while (j < n - 1 && Math.sign(hourlyC[j + 1] - hourlyC[j]) !== -dir) j++;
+  } else {
+    j = n - 1;
+  }
+  const nowC = hourlyC[i0];
+  const delta = displayTemp(hourlyC[j], unit) - displayTemp(nowC, unit);
+  if (delta === 0) return null; // nothing worth saying
+  return { delta, atHour: j / perHour };
 };

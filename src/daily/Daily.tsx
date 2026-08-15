@@ -352,7 +352,7 @@ function WorkingDay({
         {showSkyCol && (
           <div className="col sky">
             <div className="sky-stack">
-              {skyOn && <SunCard sun={sun} lon={config.lon} now={now} />}
+              {skyOn && <SunCard sun={sun} lat={config.lat} lon={config.lon} dayKey={dayKey} now={now} />}
               {skyOn && (
                 <WeatherCard
                   snap={snapshot.weather ?? null}

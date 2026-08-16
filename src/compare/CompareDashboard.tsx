@@ -18,6 +18,9 @@
 import { useMemo, useState, type CSSProperties, type ReactElement } from "react";
 import {
   AVG_SCOPES,
+  AVG_SCOPE_MAX_DAYS,
+  avgScopeAllowed,
+  effectiveAvgScope,
   AVG_SCOPE_MIN_DAYS,
   CHART_LABEL,
   ENTRY_FIELD,
@@ -37,7 +40,8 @@ import {
   type SplitField,
 } from "./compareSpec";
 import { CAT_SLOTS } from "../dashboard/specShared";
-import { tileRowPlan } from "../dashboard/tileRows";
+import { TILE_ROW_MAX, TILE_ROW_MAX_SMALL, tileRowPlan } from "../dashboard/tileRows";
+import { useCompact } from "../theme/compact";
 import { useCompareData } from "./useCompareData";
 // The chart renderers + Legend + the window dash roster (split out 2026-07-30,
 // dedup pass wave 4) — pure functions of CmpChart/CmpSeries.
@@ -289,7 +293,9 @@ function Refine({
   onPick,
 }: {
   label: string;
-  options: { id: string; label: string }[];
+  /** `why` is the disabled reason, and a disabled option carries it as its
+   *  tooltip — a greyed chip with no stated reason reads as a bug. */
+  options: { id: string; label: string; why?: string }[];
   value: string | null;
   onPick: (id: string) => void;
 }) {
@@ -301,6 +307,8 @@ function Refine({
           <button
             key={o.id}
             className={`opt${value === o.id ? " on" : ""}`}
+            disabled={o.why != null}
+            title={o.why}
             onClick={() => onPick(o.id)}
           >
             {o.label}
@@ -322,9 +330,23 @@ function Refine({
  */
 export function CompareDashboard() {
   const data = useCompareData();
+  // Two tiles per row on the small canvas — the same cap StatGroup took on
+  // 2026-08-15. This row builds its own tiles instead of going through that
+  // renderer, which is exactly why it was still packing three across and
+  // wrapping its labels after the entry dashboard stopped.
+  const compact = useCompact();
   const [cfg, setCfg] = useState<CompareCfg>(emptyCfg);
   const [openPicker, setOpenPicker] = useState<string | null>(null);
   const today = todayLocal();
+  // The longest window in play, in days — what the average-scope gate reads.
+  // Resolved here rather than taken off the result, because the chips have to
+  // grey out while the query is still being built and there is no result yet.
+  const spanDays = useMemo(() => {
+    const spans = cfg.windows
+      .map((w) => resolveWindow(w, today)?.days)
+      .filter((d): d is number => d != null);
+    return spans.length > 0 ? Math.max(...spans) : 0;
+  }, [cfg.windows, today]);
 
   const activeHabits = useMemo(
     () => data.habits.filter((h) => !h.archived).sort((a, b) => a.sortOrder - b.sortOrder),
@@ -563,20 +585,23 @@ export function CompareDashboard() {
                                  zero live values as no split at all (line ~616, the
                                  stale-preset rule), so the scope reads as the plain
                                  habit until you pick.
-                                 KEYED ON THE FIELD, NOT ON `searchable` — the two
-                                 2026-08-11 rulings govern different things: "nothing
-                                 pre-selected" is about the ENTRY split (both
-                                 sub-types), while "creation keeps the pills" is about
-                                 how the list is PRESENTED. So a creation habit browses
-                                 its handful of projects and still opens with none
-                                 chosen. */
+                                 ⚠ NOTHING IS PRE-SELECTED, ON ANY FIELD (user-ruled
+                                 2026-08-15: *"make sure that NOTHING is checked. All
+                                 possible options should be unchecked, don't prefill
+                                 them"*). This WIDENS the 2026-08-11 ruling, which said
+                                 the same thing about the ENTRY split alone — every
+                                 other field opened with its first two values ticked
+                                 (`values.slice(0, 2)`), so picking "split by fandom"
+                                 silently answered the question for you and the chart
+                                 drew two series nobody chose. The alphabetically-first
+                                 two are not a guess worth making.
+                                 The other half of 2026-08-11 is untouched: "creation
+                                 keeps the pills" is about how the list is PRESENTED,
+                                 not about what starts ticked. */
                               split:
                                 split?.field === f.field
                                   ? null
-                                  : {
-                                      field: f.field,
-                                      values: f.field === ENTRY_FIELD ? [] : f.values.slice(0, 2),
-                                    },
+                                  : { field: f.field, values: [] },
                             })
                           }
                         >
@@ -679,11 +704,23 @@ export function CompareDashboard() {
                         }
                       />
                     )}
+                    {/* The EFFECTIVE scope is shown as selected, so the chip
+                        row, the tiles and the chart never disagree about what is
+                        being averaged. The stored pick is left alone — narrow the
+                        window again and the original comes back. */}
                     {pick.family === "average" && (
                       <Refine
                         label="Average per"
-                        options={AVG_SCOPES.map((s) => ({ id: s, label: s[0].toUpperCase() + s.slice(1) }))}
-                        value={pick.scope ?? null}
+                        options={AVG_SCOPES.map((s) => ({
+                          id: s,
+                          label: s[0].toUpperCase() + s.slice(1),
+                          why: avgScopeAllowed(s, spanDays)
+                            ? undefined
+                            : `Too many bars — this window is ${spanDays} days, and averaging per ${s} is offered up to ${AVG_SCOPE_MAX_DAYS[s]}`,
+                        }))}
+                        value={
+                          pick.scope != null ? effectiveAvgScope(pick.scope, spanDays) : null
+                        }
                         onPick={(id) =>
                           setCfg((c) =>
                             c.measure == null
@@ -823,7 +860,10 @@ export function CompareDashboard() {
               // row is one longer than `result.tiles` whenever a delta exists —
               // planning off `result.tiles.length` alone would mis-span the last
               // row exactly when the group is at its most crowded.
-              const tilePlan = tileRowPlan(result.tiles.length + (result.delta != null ? 1 : 0));
+              const tilePlan = tileRowPlan(
+                result.tiles.length + (result.delta != null ? 1 : 0),
+                compact ? TILE_ROW_MAX_SMALL : TILE_ROW_MAX,
+              );
               const spanOf = (i: number): CSSProperties | undefined =>
                 tilePlan.spans[i] > 1 ? { gridColumn: `span ${tilePlan.spans[i]}` } : undefined;
               return (

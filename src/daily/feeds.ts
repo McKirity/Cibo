@@ -160,6 +160,28 @@ const RETRY_MS = 15 * 60_000;
 const attempted = new Map<string, number>();
 let inFlight: Promise<void> | null = null;
 
+/**
+ * WEATHER IS RE-READ ONCE PER APP SESSION (user-ruled 2026-08-15: the daily
+ * card *"should always return the actual temperature whenever the app starts or
+ * refreshes"*).
+ *
+ * Everything else in this file is capture-once — a horoscope and a tarot draw
+ * are the day's, and re-drawing them would be a different day's whimsy. The
+ * temperature is the one feed that goes STALE rather than merely old: a number
+ * captured at 7am and still on screen at 9pm is not describing anything.
+ *
+ * ⚠ MODULE SCOPE IS SESSION SCOPE, and that is the whole mechanism. This file
+ * is re-evaluated on a launch and on a reload — the two events the ruling names
+ * — so the flag arms itself exactly then and at no other time. A timer or a
+ * stored timestamp would have had to guess at the same boundary.
+ *
+ * It deliberately does NOT refresh per Daily mount: `ensureTodayFeeds` runs
+ * every time the screen mounts, and navigating back to Daily is not "the app
+ * starting". Without this flag a walk around the app would write the synced
+ * snapshot row on every return trip.
+ */
+let sessionWeatherRefreshed = false;
+
 const shouldTry = (day: string, card: string, now: number): boolean => {
   const at = attempted.get(`${day}:${card}`);
   return at == null || now - at >= RETRY_MS;
@@ -204,13 +226,31 @@ export const ensureTodayFeeds = async (config: WhimsyConfig): Promise<void> => {
         have.weather != null &&
         !(near(have.weather.lat, config.lat) && near(have.weather.lon, config.lon)) &&
         shouldTry(day, `weather@${config.lat},${config.lon}`, now);
-      if (wStale || (have.weather == null && shouldTry(day, "weather", now))) {
+      // The once-per-session re-read.
+      //
+      // ⚠ FINALIZE IS NOT THE BOUNDARY — THE DAY IS. A first pass guarded this
+      // on `finalized !== 1`, reasoning that finalize freezes the day's record,
+      // and it silently did nothing for a user who had already closed today:
+      // the card kept showing the 13:00 capture. Finalizing at one o'clock ends
+      // the day's BOOKKEEPING, not the day — the weather at nine in the evening
+      // is still today's weather, and the high and low the wall tile draws only
+      // get truer as the day runs out.
+      //
+      // The freeze the guard was reaching for is already structural and needs
+      // no help: `ensureTodayFeeds` computes its own day and only ever runs for
+      // TODAY, so a past day's snapshot can never be rewritten by anything here.
+      const wRefresh = !sessionWeatherRefreshed && have.weather != null;
+      if (wStale || wRefresh || (have.weather == null && shouldTry(day, "weather", now))) {
         attempted.set(`${day}:weather`, now);
         attempted.set(`${day}:weather@${config.lat},${config.lon}`, now);
         const w = await fetchWeather(config.lat, config.lon);
         if (w != null) additions.weather = w;
+        // ⚠ ARMED ON SUCCESS ONLY. Setting this before the fetch meant one
+        // transient failure spent the session's single re-read and left the
+        // morning's number on screen until the next launch — the flag is
+        // "we have a fresh reading", not "we tried".
+        if (w != null) sessionWeatherRefreshed = true;
       }
-
       const wantSign = sunSign(config.birthdate)?.name ?? null;
       const hStale =
         have.horoscope != null &&

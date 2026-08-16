@@ -17,6 +17,7 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { useCreationData } from "./useCreationData";
 import { useBox } from "./useBox";
+import { axisGutter } from "./axisGutter";
 import {
   buildCreationDashboard,
   type CreationHeatCell,
@@ -345,6 +346,9 @@ export function CreationTrend({ trend, color }: { trend: CreationModel["trend"];
   const X = (i: number) => pad + ((w - 2 * pad) * i) / (n - 1);
   const Y = (v: number) => pad + (h - 2 * pad) * (1 - v / vmax);
   const yVals = [4, 3, 2, 1, 0].map((k) => (vmax * k) / 4);
+  // Sized by this chart's own ticks, and handed to BOTH readers — `.xaxis` is a
+  // sibling of `.chartwrap`, so it does not inherit the override (./axisGutter).
+  const gutter = axisGutter(yVals.map((v) => fmtTick(v, s.unit)));
 
   let paths: React.ReactNode = null;
   if (w > 0 && n > 1 && !stacked && s.line) {
@@ -427,7 +431,7 @@ export function CreationTrend({ trend, color }: { trend: CreationModel["trend"];
             <div className="trend-empty">{trend.archivedEmpty}</div>
           ) : (
             <>
-              <div className="chartwrap">
+              <div className="chartwrap" style={gutter}>
                 <svg
                   ref={ref}
                   className="linechart"
@@ -451,7 +455,7 @@ export function CreationTrend({ trend, color }: { trend: CreationModel["trend"];
                     </div>
                   ))}
               </div>
-              <div className="xaxis">
+              <div className="xaxis" style={gutter}>
                 {w > 0 &&
                   trend.xticks.map((t) => {
                     const end = t.i === 0 ? " first" : t.i === n - 1 ? " last" : "";

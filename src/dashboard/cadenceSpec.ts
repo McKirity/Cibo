@@ -95,7 +95,7 @@ export interface StripVM {
   entryId?: string;
   total: string;
   best: string;
-  cells: DayCellState[] | null; // engaged marks at the row grain ("d"/"e"/"u"/"f")
+  cells: DayCellState[] | null; // engaged marks at the row grain ("d"/"m"/"u"/"f")
   inner?: boolean; // writing card-within-card inner line
 }
 
@@ -110,7 +110,13 @@ export interface HabitRowVM {
   done: string; // "22/28"
   expandable: boolean;
   expansion: null | {
-    storyCard: null | { groups: { heading: string; strips: StripVM[] }[]; story: StripVM[] };
+    /**
+     * ONE CARD PER ENTRY (user-ruled 2026-08-15, reversing the top-entry-only
+     * face): every entry the period touched gets its own categorical breakdown,
+     * not just the busiest one. `cap`/`more` govern this list when it is set,
+     * and `strips` is empty — a habit is either all cards or all plain strips.
+     */
+    storyCards: null | { story: StripVM; groups: { heading: string; strips: StripVM[] }[] }[];
     /** ALL ranked strips; the renderer shows `cap` and the "+ N more" expander reveals the rest. */
     strips: StripVM[];
     cap: number;
@@ -174,7 +180,6 @@ export interface CadenceModel {
   rows: HabitRowVM[];
   cellHeaders: { kind: "daynums"; count: number } | { kind: "weeknums"; nums: number[] } | { kind: "months" };
   bestColLabel: string;
-  rowLegendSleep: boolean;
 }
 
 export interface CadenceOptions {
@@ -273,8 +278,26 @@ export function buildCadenceModel(
   }
   const bestDay = statsRaw.bestDay?.day ?? null;
 
+  /* THE FIVE STATES, user-ruled 2026-08-15 (month first; the weekly strip reads
+     the same classifier and follows for free):
+       coloured  — finalized, with the shade carrying how much of the roster
+       accent    — the period's best finalized day, an overlay on the above
+       danger    — a PAST day left unfinalized
+       greyed    — finalized and nothing done: the decided "didn't"
+       outline   — a future day, and TODAY while it is still unfinalized
+     ⚠ TODAY READS AS FUTURE, NOT AS A MISS, and that clause is the point of the
+     re-cut. `d.future` is strictly `day > today`, so an unfinalized today used
+     to take the same face as a month-old day you never closed — the dashboard
+     accused you of a lapse at 9am on the day itself. A day you are still in has
+     not been missed; it has not happened yet. */
   const cellCls = (d: CrossDay): string =>
-    d.future ? "blank future" : !d.finalized ? "unf" : d.done === 0 ? "gap" : `g${d.stage}`;
+    d.future || (d.day === today && !d.finalized)
+      ? "blank future"
+      : !d.finalized
+        ? "unf"
+        : d.done === 0
+          ? "gap"
+          : `g${d.stage}`;
 
   // ── The verdict zone per scale ──
   let verdict: CadenceModel["verdict"];
@@ -474,7 +497,7 @@ export function buildCadenceModel(
 
   // ── Habit rows ──
   const rows = roster.map((h) =>
-    buildHabitRow(h, periodSessions.get(h.id)!, playedByHabit.get(h.id)!, days, bounds, scale, data, entryTitle, listCap, ownedWeeks),
+    buildHabitRow(h, periodSessions.get(h.id)!, playedByHabit.get(h.id)!, days, bounds, scale, data, entryTitle, listCap, ownedWeeks, today),
   );
 
   // ── Header ──
@@ -520,7 +543,6 @@ export function buildCadenceModel(
             : { kind: "months" },
     bestColLabel:
       scale === "quarter" ? "best week" : scale === "year" ? "best month · week" : "best day",
-    rowLegendSleep: roster.some((h) => h.kind === "range"),
   };
 }
 
@@ -537,6 +559,9 @@ function buildHabitRow(
   entryTitle: Map<string, string>,
   listCap: number,
   ownedWeeks: string[],
+  /** Needed by `dayCells`: an unfinalized TODAY reads as future, not as a
+   *  lapse. `CrossDay.future` is strictly `day > today` and cannot say it. */
+  today: string,
 ): HabitRowVM {
   const finDays = days.filter((d) => d.finalized).length;
   const doneDays = days.filter((d) => d.finalized && played.has(d.day)).length;
@@ -621,13 +646,24 @@ function buildHabitRow(
   } else if (isRange) {
     // Sleep's day cells are QUALITY marks — filled = 8h+ night (the FINAL's rule)
     const goodDays = new Set(sessions.filter((s) => s.kind === "range" && rangeMinutes(s) >= 480).map((s) => s.day));
+    /* THIRD SITE, SAME RE-ORDER (2026-08-15). Sleep's cells are QUALITY marks —
+       filled means an 8h+ night rather than merely a logged one — but the test
+       order was the same as the other two: a good night on an unfinalized day
+       drew filled. Finalize decides first here too; below it the quality rule
+       is untouched, so a short night on a closed day is still the outline. */
     cells = {
       states: days.map((d) =>
-        d.future ? "f" : goodDays.has(d.day) ? "d" : played.has(d.day) ? "m" : d.finalized ? "m" : "u",
+        d.future || (d.day === today && !d.finalized)
+          ? "f"
+          : !d.finalized
+            ? "u"
+            : goodDays.has(d.day)
+              ? "d"
+              : "m",
       ),
     };
   } else {
-    cells = { states: dayCells(days, played) };
+    cells = { states: dayCells(days, played, today) };
   }
 
   // ── Expansion ──
@@ -641,7 +677,7 @@ function buildHabitRow(
 
   let expansion: HabitRowVM["expansion"] = null;
   if (expandable) {
-    expansion = buildExpansion(h, sessions, days, bounds, scale, data, entryTitle, listCap, countPrimary, amtByDay, fmtAmt, ownedWeeks);
+    expansion = buildExpansion(h, sessions, days, bounds, scale, data, entryTitle, listCap, countPrimary, amtByDay, fmtAmt, ownedWeeks, today);
   }
 
   return {
@@ -665,22 +701,36 @@ function occupancy(
   bounds: PeriodBounds,
   scale: CadenceScale,
   ownedWeeks: string[],
+  today: string,
 ): DayCellState[] {
   const set = new Set(subset.map((s) => s.day));
   if (scale === "quarter")
     return ownedWeeks.map((ws) => {
       for (let i = 0; i < 7; i++) if (set.has(dayFromIndex(dayIndex(ws) + i))) return "d" as DayCellState;
-      return "e" as DayCellState;
+      return "m" as DayCellState;
     });
   if (scale === "year") {
     const y = bounds.from.slice(0, 4);
     return Array.from({ length: 12 }, (_, i) => {
       const mk = `${y}-${String(i + 1).padStart(2, "0")}`;
       for (const d of set) if (monthKey(d) === mk) return "d" as DayCellState;
-      return "e" as DayCellState;
+      return "m" as DayCellState;
     });
   }
-  return days.map((d) => (d.future ? "f" : set.has(d.day) ? "d" : d.finalized ? "e" : "u")) as DayCellState[];
+  /* ⚠ THE SAME ORDER AS `dayCells`, AND FOR THE SAME REASON (2026-08-15). This
+     tested `set.has(day)` before `finalized` too, so the strips INSIDE an
+     expanded habit row kept drawing logged cells on unfinalized days after the
+     row's own cells had gone red — the two tiers of one column disagreeing.
+     Fixing the habit tier alone is what made that visible. */
+  return days.map((d) =>
+    d.future || (d.day === today && !d.finalized)
+      ? "f"
+      : !d.finalized
+        ? "u"
+        : set.has(d.day)
+          ? "d"
+          : "m",
+  ) as DayCellState[];
 }
 
 function buildExpansion(
@@ -696,6 +746,7 @@ function buildExpansion(
   amtByDay: Map<string, number>,
   fmtAmt: (v: number) => string,
   ownedWeeks: string[],
+  today: string,
 ): NonNullable<HabitRowVM["expansion"]> {
   const isRange = h.kind === "range";
 
@@ -762,7 +813,7 @@ function buildExpansion(
       const bd = [...perDay.entries()].sort((a, b) => b[1] - a[1])[0];
       if (bd[1] > 0) bestTxt = `${dayLabel(bd[0])} · ${fmtAmt(bd[1])}`;
     }
-    return { title, door, entryId, total: totalTxt, best: bestTxt, cells: occupancy(subset, days, bounds, scale, ownedWeeks), inner };
+    return { title, door, entryId, total: totalTxt, best: bestTxt, cells: occupancy(subset, days, bounds, scale, ownedWeeks, today), inner };
   };
 
   // ── Project → entry strips (Writing = card-within-card) ──
@@ -774,42 +825,82 @@ function buildExpansion(
     }
     const ranked = [...byEntry.entries()].sort((a, b) => stripAmount(b[1]) - stripAmount(a[1]));
 
-    // Writing's shape: two measures + session categoricals → card-within-card
+    // The card-within-card shape: an entry-bearing habit whose SESSIONS carry a
+    // categorical. ⚠ It used to also require two measures, which quietly meant
+    // "Writing only" — Gamedev is `sub_type: creation` with a `gamedev_type` on
+    // every session and `measures_count: false`, so it never drew a card at all
+    // and its entries were bare totals. User-ruled 2026-08-15: the breakdown is
+    // for ALL creation habits, and a habit's measure COUNT was never the thing
+    // that decided whether its sessions had categories worth splitting.
+    //
+    // Nothing else is pulled in by the loosening: `catKeys` reads
+    // `valueBySession`, and consumption's categoricals (type, genre) are
+    // ENTRY-scoped, so gaming/reading/media contribute no keys and keep their
+    // plain strips. Keyboard, Coding and Sleep carry session categoricals but
+    // are `simple`/`range` and never reach this branch.
     const catKeys = new Set<string>();
     for (const s of sessions) {
       const rec = data.valueBySession.get(s.id);
       if (rec) for (const k of Object.keys(rec)) if (!data.flagDefs.has(k)) catKeys.add(k);
     }
-    if (h.measuresTime && h.measuresCount && catKeys.size > 0 && ranked.length > 0) {
-      const [topEntry, topSessions] = ranked[0];
-      const story = [stripFor(`${entryTitle.get(topEntry) ?? "—"} — the story`, topSessions, true, false, topEntry)];
-      const groups = [...catKeys].map((key) => {
-        const byValue = new Map<string, CadSession[]>();
-        for (const s of topSessions) {
-          const v = data.valueBySession.get(s.id)?.[key];
-          if (v == null) continue;
-          (byValue.get(v) ?? byValue.set(v, []).get(v)!).push(s);
-        }
+    if (catKeys.size > 0 && ranked.length > 0) {
+      /** One entry's sessions, split by each session categorical it carries. */
+      const groupsFor = (subset: CadSession[]) =>
+        [...catKeys]
+          .map((key) => {
+            const byValue = new Map<string, CadSession[]>();
+            for (const s of subset) {
+              const v = data.valueBySession.get(s.id)?.[key];
+              if (v == null) continue;
+              (byValue.get(v) ?? byValue.set(v, []).get(v)!).push(s);
+            }
+            return {
+              heading: data.defLabels.get(key) ?? key,
+              strips: [...byValue.entries()]
+                .sort((a, b) => stripAmount(b[1]) - stripAmount(a[1]))
+                .map(([v, ss]) => stripFor(v, ss, false, true)),
+            };
+          })
+          .filter((g) => g.strips.length > 0);
+
+      // ⚠ EVERY ENTRY, NOT JUST `ranked[0]` (user-ruled 2026-08-15, reversing
+      // the built face). The card was only ever given to the busiest entry of
+      // the period, and every other entry got a bare total line — so which
+      // entry you could see stages and wiki categories for changed as you moved
+      // between weeks, and the second-busiest was never breakable-down at all.
+      //
+      // The ranking SURVIVES: cards are still ordered by amount, so the busiest
+      // still leads and `cap`/"+ N more" still bound how much a crowded period
+      // draws. What changed is that the ones below the fold are cards too when
+      // you open them, rather than a different, poorer face.
+      const cards = ranked.map(([id, ss]) => {
+        const groups = groupsFor(ss);
         return {
-          heading: data.defLabels.get(key) ?? key,
-          strips: [...byValue.entries()]
-            .sort((a, b) => stripAmount(b[1]) - stripAmount(a[1]))
-            .map(([v, ss]) => stripFor(v, ss, false, true)),
+          // The suffix distinguishes an entry's own total from the sub-rows
+          // beneath it, so it is only earned when there ARE sub-rows. An entry
+          // whose sessions carry no categorical draws as a plain titled line.
+          story: stripFor(
+            groups.length > 0 ? `${entryTitle.get(id) ?? "—"} — the story` : entryTitle.get(id) ?? "—",
+            ss,
+            true,
+            false,
+            id,
+          ),
+          groups,
         };
-      }).filter((g) => g.strips.length > 0);
-      const rest = ranked.slice(1).map(([id, ss]) => stripFor(entryTitle.get(id) ?? "—", ss, true, false, id));
+      });
       return {
-        storyCard: { story, groups },
-        strips: rest,
-        cap: listCap - 1,
-        more: Math.max(0, rest.length - (listCap - 1)),
+        storyCards: cards,
+        strips: [],
+        cap: listCap,
+        more: Math.max(0, cards.length - listCap),
         sleepLine: null,
         measureStrip,
       };
     }
 
     const strips = ranked.map(([id, ss]) => stripFor(entryTitle.get(id) ?? "—", ss, true, false, id));
-    return { storyCard: null, strips, cap: listCap, more: Math.max(0, strips.length - listCap), sleepLine: null, measureStrip };
+    return { storyCards: null, strips, cap: listCap, more: Math.max(0, strips.length - listCap), sleepLine: null, measureStrip };
   }
 
   // ── Range → ranges line + flag strips ──
@@ -851,16 +942,16 @@ function buildExpansion(
     const nightsCount = rangeSessions.length;
     const eightPlus = rangeSessions.filter((s) => rangeMinutes(s) >= 480);
     if (nightsCount > 0)
-      strips.push({ title: "8 h+ nights", door: false, total: `${eightPlus.length} of ${nightsCount}`, best: "—", cells: occupancy(eightPlus, days, bounds, scale, ownedWeeks) });
+      strips.push({ title: "8 h+ nights", door: false, total: `${eightPlus.length} of ${nightsCount}`, best: "—", cells: occupancy(eightPlus, days, bounds, scale, ownedWeeks, today) });
     const beforeNoon = rangeSessions.filter((s) => minOfDay(s.end!) < 12 * 60);
     if (nightsCount > 0)
-      strips.push({ title: "up before noon", door: false, total: `${beforeNoon.length} of ${nightsCount}`, best: "—", cells: occupancy(beforeNoon, days, bounds, scale, ownedWeeks) });
+      strips.push({ title: "up before noon", door: false, total: `${beforeNoon.length} of ${nightsCount}`, best: "—", cells: occupancy(beforeNoon, days, bounds, scale, ownedWeeks, today) });
     for (const flagKey of data.flagDefs) {
       const flagged = rangeSessions.filter((s) => data.valueBySession.get(s.id)?.[flagKey] != null);
       if (flagged.length > 0)
-        strips.push({ title: (data.defLabels.get(flagKey) ?? flagKey).toLowerCase(), door: false, total: `${flagged.length} nights`, best: "—", cells: occupancy(flagged, days, bounds, scale, ownedWeeks) });
+        strips.push({ title: (data.defLabels.get(flagKey) ?? flagKey).toLowerCase(), door: false, total: `${flagged.length} nights`, best: "—", cells: occupancy(flagged, days, bounds, scale, ownedWeeks, today) });
     }
-    return { storyCard: null, strips, cap: strips.length, more: 0, sleepLine, measureStrip: null };
+    return { storyCards: null, strips, cap: strips.length, more: 0, sleepLine, measureStrip: null };
   }
 
   // ── Categorical simple → per-value strips ──
@@ -875,7 +966,7 @@ function buildExpansion(
   }
   const ranked = [...byValue.entries()].sort((a, b) => stripAmount(b[1]) - stripAmount(a[1]));
   const strips = ranked.map(([v, ss]) => stripFor(v, ss, false));
-  return { storyCard: null, strips, cap: listCap, more: Math.max(0, strips.length - listCap), sleepLine: null, measureStrip };
+  return { storyCards: null, strips, cap: listCap, more: Math.max(0, strips.length - listCap), sleepLine: null, measureStrip };
 }
 
 const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);

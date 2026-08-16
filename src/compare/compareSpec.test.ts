@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { setWeekStartDow } from "../metrics/dates";
 import { resolveWindow, type ResolvedWindow } from "../kit/periodWindow";
-import { periodsInWindow, windowBuckets } from "./compareSpec";
+import {
+  AVG_SCOPES,
+  avgScopeAllowed,
+  effectiveAvgScope,
+  periodsInWindow,
+  windowBuckets,
+} from "./compareSpec";
 
 /**
  * Matrix probe **A8** — Comparing Statistics' Average divides by **calendar
@@ -152,5 +158,42 @@ describe("window resolution — the divisor's input", () => {
     const w = resolveWindow({ mode: "month", from: "2026-01", to: "2026-03" }, "2026-06-01");
     expect(w).not.toBeNull();
     expect(periodsInWindow(w!, "month")).toBe(3);
+  });
+});
+
+describe("average scope gates on the window's length (2026-08-15)", () => {
+  it("offers day up to 90 days and not past it", () => {
+    expect(avgScopeAllowed("day", 90)).toBe(true);
+    expect(avgScopeAllowed("day", 91)).toBe(false);
+    expect(avgScopeAllowed("day", 365)).toBe(false);
+  });
+
+  it("offers week up to 365 days and not past it", () => {
+    expect(avgScopeAllowed("week", 365)).toBe(true);
+    expect(avgScopeAllowed("week", 366)).toBe(false);
+  });
+
+  it("never gates month, quarter or year", () => {
+    for (const s of ["month", "quarter", "year"] as const)
+      for (const d of [1, 90, 365, 5000]) expect(avgScopeAllowed(s, d)).toBe(true);
+  });
+
+  it("falls back to the FINEST scope the window still allows", () => {
+    expect(effectiveAvgScope("day", 30)).toBe("day"); // legal, untouched
+    expect(effectiveAvgScope("day", 365)).toBe("week");
+    expect(effectiveAvgScope("day", 366)).toBe("month");
+    expect(effectiveAvgScope("week", 366)).toBe("month");
+  });
+
+  it("never coarsens a scope that is already legal", () => {
+    for (const s of AVG_SCOPES)
+      for (const d of [1, 89, 90, 91, 365, 366, 4000])
+        if (avgScopeAllowed(s, d)) expect(effectiveAvgScope(s, d)).toBe(s);
+  });
+
+  it("always returns something the window allows", () => {
+    for (const s of AVG_SCOPES)
+      for (const d of [1, 90, 91, 365, 366, 4000])
+        expect(avgScopeAllowed(effectiveAvgScope(s, d), d)).toBe(true);
   });
 });

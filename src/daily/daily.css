@@ -544,7 +544,16 @@
      DROPPED, which is what kept this animation dead through two fixes. */
   /* form widgets */
     .row { display:flex; align-items:center; gap:var(--space-5); flex-wrap:wrap; }
-  .flbl { font-size:var(--size-caption); font-weight:var(--weight-bold); letter-spacing:.05em;
+  /* ⚠ THE LABEL RUNS TIGHTER THAN THE CAPTION RAMP (user-ruled 2026-08-15: the
+     Subnautica face pushed "TOOK MEDICATION" past the column and it broke
+     mid-word). Two things were spending width for nothing: `.05em` of tracking
+     across a 15-character phrase is a whole character's worth on its own, and
+     the caption size was inherited from a ramp sized for prose, not for a
+     fixed-width gutter. Both dialled back here rather than per-theme, so a
+     wider face on the next seat has the same headroom.
+     Expressed as a fraction of the ramp, not a new number: the label follows
+     `--size-caption` wherever a theme puts it. */
+  .flbl { font-size:calc(var(--size-caption) * .85); font-weight:var(--weight-bold); letter-spacing:normal;
             text-transform:uppercase; color:var(--text-muted); min-width:var(--flbl-w); }
   /* ---- THE LABEL COLUMN IS A HANGING INDENT (user-ruled 2026-08-13:
      *"I want the typefields and toggles to all line up with each other"*).
@@ -593,7 +602,20 @@
      has paid for the same thing (`.gcap`, `.bars`, `.chartwrap`): the specific
      rule only wins the properties it thinks to mention. */
   .strip .row { padding-left:calc(var(--flbl-w) + var(--space-5)); }
-  .strip .row > .flbl { width:var(--flbl-w); min-width:0; white-space:nowrap;
+  /* ⚠ THE LABEL WRAPS (2026-08-15). It was `nowrap` in a FIXED 88px box, so a
+     label wider than the column did not shorten, it OVERFLOWED — straight
+     across the control beside it. "TOOK MEDICATION" is ~128px of uppercase
+     caption and sat on top of its own Yes chip.
+     It only surfaced now because flag labels became PHRASES: the 2026-08-07
+     ruling re-authored them as completed actions ("Took Medication") so the
+     range dashboard could build its header and subtitle from one string. Every
+     other label here is a single short word, which is why an 88px nowrap column
+     held for four months. Wrong at every canvas size since — `--flbl-w` has no
+     per-canvas override — and it will meet the next long label the creator
+     mints, so wrapping is the fix rather than a wider column.
+     `break-word` is the backstop for a single word longer than the column,
+     which wrapping alone cannot help. */
+  .strip .row > .flbl { width:var(--flbl-w); min-width:0; white-space:normal; overflow-wrap:normal;
             margin-left:calc(-1 * (var(--flbl-w) + var(--space-5))); }
   .inp { display:inline-flex; align-items:center; gap:var(--space-3); font-family:var(--font-ui);
            min-height:calc(var(--size-body) * var(--line-normal));
@@ -657,9 +679,22 @@
   /* datetime (kit-picker-datetime) */
     .dt { display:inline-flex; align-items:stretch; background:var(--inset-background);
           border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); overflow:hidden; }
-  .dt .dpart { display:flex; align-items:center; gap:var(--space-3); padding:var(--space-3) var(--space-4); }
-  .dt .dpart.date { color:var(--text-secondary); border-right:var(--border-hairline) solid var(--border); }
-  .dt .dpart.time { font-family:var(--font-mono); color:var(--text-strong); }
+  /* ⚠ ONE FACE ACROSS BOTH HALVES (user-ruled 2026-08-15: *"make sure that the
+     format is consistent, the fonts are all off"*). The two sides of a single
+     control wore different type: the date was the UI font in `--text-secondary`
+     at the inherited body size, the time was MONO in `--text-strong`. Read
+     together — `Fri 15 Aug | 22:31` inside one bordered box — they looked like
+     two controls that had been glued rather than one field with two parts.
+     Mono for both is the side that wins because this is a DATETIME: the date is
+     mostly numerals too, the app's data-value idiom is mono everywhere else,
+     and the tabular figures keep the field from twitching as the day changes.
+     `--text-strong` for both, with only the icon left muted — the date is not a
+     lesser answer than the time. */
+  .dt .dpart { display:flex; align-items:center; gap:var(--space-3); padding:var(--space-3) var(--space-4);
+               font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-strong); }
+  .dt .dpart.date { border-right:var(--border-hairline) solid var(--border); }
+  /* The placeholder stays muted — it is an absence, not a value. */
+  .dt .dpart .cap { color:var(--text-muted); }
   .dt .ico { color:var(--text-muted); }
   .derived { display:flex; align-items:center; gap:var(--space-5); font-family:var(--font-mono); font-size:var(--size-small);
                color:var(--text-secondary); background:var(--inset-background); border-radius:var(--radius-small);
@@ -865,15 +900,34 @@
      component cannot live inside a screen's nesting block. `.timepop`'s own
      internals stay here (Daily is their only tenant); they read the surface
      rule from kit.css. */
-  .timepop { padding:var(--space-4) var(--space-4) var(--space-5); width:340px; }
-  .timepop .thead { font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin-bottom:var(--space-3); }
-  .timepop .tstrip { display:flex; gap:var(--space-2); overflow:hidden; }
-  .timepop .tcell { flex:0 0 auto; padding:var(--space-3) var(--space-4); border-radius:var(--radius-small); font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-secondary); cursor:pointer; white-space:nowrap; }
+  /* HOUR × MINUTE COLUMNS (user-ruled 2026-08-15, replacing the relative
+     half-hour strip and the full-day scrub — the reasoning is at the
+     derivation in DateTimePicker.tsx). The box shrinks 340 → auto: two mono
+     columns need a fraction of the width the clipped strip was asking for. */
+  .timepop { padding:var(--space-3); }
+  .timepop .tcols { display:flex; gap:var(--space-3); }
+  /* ~7 rows visible, so the list reads as scrollable without becoming a wall.
+     The scroll position is set from the selection when the field takes focus.
+
+     ⚠ THE WIDTH IS DECLARED, AND THAT IS WHAT KILLS THE HORIZONTAL SCROLLBAR
+     (2026-08-15). Left to `auto` the column shrink-wrapped its cells, and then
+     the VERTICAL scrollbar took its 10px gutter out of that same content box —
+     so cells sized to fit no longer fitted, by exactly the gutter, and each
+     column grew a horizontal scrollbar for ten pixels of overflow. (Setting
+     `overflow-y` also forces the other axis from `visible` to `auto`, which is
+     why a bar appeared rather than the overflow simply showing.)
+     Two mono characters plus the cell's padding plus the gutter is the whole
+     width; the mono face is declared here so `ch` measures the glyph the cells
+     actually draw. `overflow-x: hidden` is the belt — nothing here is ever
+     wider than two characters, so there is genuinely nothing to scroll to. */
+  .timepop .tcol { font-family:var(--font-mono); font-size:var(--size-small);
+    width:calc(2ch + var(--space-4) * 2 + var(--scrollbar-width));
+    max-height:calc(var(--step-btn-size) * 7); overflow-y:auto; overflow-x:hidden;
+    display:flex; flex-direction:column; gap:1px; }
+  .timepop .tcol + .tcol { border-left:var(--border-hairline) solid var(--divider); padding-left:var(--space-3); }
+  .timepop .tcell { flex:0 0 auto; padding:var(--space-2) var(--space-4); border-radius:var(--radius-small); font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-secondary); cursor:pointer; white-space:nowrap; text-align:center; }
   .timepop .tcell:hover { background:var(--hover-wash); color:var(--text-strong); }
   .timepop .tcell.sel { background:var(--accent); color:var(--text-on-filled); }
-  .timepop .tnote { margin-top:var(--space-4); font-size:var(--size-caption); color:var(--text-muted); }
-  .timepop .tscrub { margin-top:var(--space-5); height:var(--space-3); border-radius:var(--radius-full); background:var(--inset-background); position:relative; }
-  .timepop .tscrub > i { position:absolute; top:50%; width:14px; height:14px; border-radius:var(--radius-full); background:var(--raised-background); border:var(--border-standard) solid var(--accent); transform:translate(-50%,-50%); box-shadow:var(--shadow-low); }
   .dt-live { overflow:visible; }
   .dt-live .dpart { position:relative; cursor:pointer; }
   .dt-live .dpart .cue { margin-left:var(--space-3); color:var(--text-muted); }
@@ -893,9 +947,11 @@
      recorded at the use site rather than smuggled in.
 
      `.pkin` is the entry picker's type-ahead field inside `.picker`; `.timein`
-     is the datetime's typeable 24h field, which the frozen `.tnote` itself
-     calls the PRIMARY path ("this strip is the fallback"). Neither paints: they
-     inherit the chip they sit in.
+     is the datetime's typeable 24h field, which the FROZEN file's `.tnote`
+     called the PRIMARY path ("this strip is the fallback") — the note was
+     removed 2026-08-15, the ranking it recorded still stands. Neither paints:
+     they inherit the chip they sit in, which since the same day means the
+     control's one mono face rather than two.
 
      The `.bare` <select> halves (3 rules incl. an `option` rule for an element
      that cannot exist) were DELETED 2026-08-04 — VocabSelect was ruled off the
@@ -1597,7 +1653,21 @@
                   border-color: color-mix(in oklch, var(--whimsy-day), var(--border) 60%); }
   .whim-weather .wl { color: color-mix(in oklch, var(--whimsy-ink), var(--whimsy-day) 20%); }
   .whim-weather .body { flex:1 1 auto; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; }
-  .whim-weather .t { font-family:var(--font-mono); font-size:var(--size-display); font-weight:var(--weight-bold); line-height:1; color:var(--whimsy-ink); }
+  /* ⚠ THE HEADLINE STEPS DOWN 34 → 24px BECAUSE THERE ARE TWO NUMBERS NOW
+     (user-ruled 2026-08-15 — the wall tile shows the day's high and low, not the
+     capture temperature; the live reading moved to the daily form's card).
+     The tile is a 1×1 GLANCE — one wall unit, ~96px of inner width — and at the
+     drawn display size a single `78°` is 61px, so a pair could not share the
+     line at any spacing. High 24px + low 18px + the gap comes to ~81px, which
+     still clears a theme that spends its whole type budget going bigger.
+     No slash between them: it reads well and costs ~14px the tile has not got.
+     The low is the same face a step down and washed toward the day colour —
+     high-then-low by weight is the reading every weather face uses, and the
+     `title` states it in words for anyone the convention does not reach. */
+  .whim-weather .hl { display:flex; align-items:baseline; gap:var(--space-3); }
+  .whim-weather .t { font-family:var(--font-mono); font-size:var(--size-heading); font-weight:var(--weight-bold); line-height:1; color:var(--whimsy-ink); }
+  .whim-weather .lo { font-family:var(--font-mono); font-size:var(--size-subheading); font-weight:var(--weight-bold); line-height:1;
+                      color: color-mix(in oklch, var(--whimsy-ink), var(--whimsy-day) 30%); }
   .whim-weather .c { font-size:var(--size-caption); color: color-mix(in oklch, var(--whimsy-ink), var(--whimsy-day) 26%); margin-top:var(--space-2); }
 
   .whim-horo .sign { display:flex; align-items:center; gap:var(--space-3); font-family:var(--font-heading);

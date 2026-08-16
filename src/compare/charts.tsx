@@ -23,6 +23,7 @@ export const WINDOW_DASHES = [
 export function BarsChart({ chart }: { chart: CmpChart }) {
   const { ref, w: W, h: H } = useBox<SVGSVGElement>();
   const n = chart.bucketLabels.length;
+  const labelStep = Math.max(1, Math.ceil(n / 13));
   const stacked = chart.kind === "sbar";
   const groups = chart.bucketLabels.map((_, bi) => chart.series.map((s) => s.values[bi] ?? 0));
   const y = (v: number) => H - (v / chart.yMax) * H;
@@ -90,9 +91,18 @@ export function BarsChart({ chart }: { chart: CmpChart }) {
             </>
           )}
         </svg>
+        {/* ⚠ THINNED LIKE THE LINE CHART'S, WHICH IS 150 LINES BELOW AND HAS
+            DONE THIS SINCE IT WAS WRITTEN (2026-08-15). Every bucket got a
+            label here, and `.gb-xaxis span` is `flex:1 1 0` — so a day-grain
+            year gave 365 spans about four pixels wide and the axis rendered as
+            one unbroken run of digits. Same file, same problem, same fix, and
+            the same target of ~13 so the two charts' axes read alike.
+            The SPANS all stay: they are what keeps a label centred over its own
+            bar group, so the ones between strides render empty rather than
+            being dropped. */}
         <div className="gb-xaxis">
           {chart.bucketLabels.map((l, i) => (
-            <span key={i}>{l}</span>
+            <span key={i}>{i % labelStep === 0 ? l : ""}</span>
           ))}
         </div>
       </div>
@@ -179,7 +189,11 @@ export function Donut({ chart }: { chart: CmpChart }) {
           ))}
         </svg>
         <div className="dcenter">
-          <span className="dval">{fmtNum(total)}</span>
+          {/* The character count, so the value can shrink to the hole rather than
+              cross the ring — see `.donut .dval` in dashboard.css. */}
+          <span className="dval" style={{ ["--dval-len" as string]: fmtNum(total).length }}>
+            {fmtNum(total)}
+          </span>
           <span className="dsub">total</span>
         </div>
       </div>

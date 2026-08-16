@@ -9,9 +9,11 @@
  * the ladder's opaque tier (kit.css § kit-picker-datetime) and the anatomy
  * stands as drawn. The owed re-design is DISCHARGED.
  *
- * TYPING IS THE PRIMARY PATH; the popovers are the fallback (the frozen file
- * says so in its own `.tnote`). Both open on `:focus-within`, the same
- * script-free discipline the strips use.
+ * TYPING IS THE PRIMARY PATH; the popovers are the fallback — the FROZEN file
+ * said so in a `.tnote`, which is where this reading comes from. The note
+ * itself is gone (2026-08-15, below): the design still holds, only the caption
+ * announcing it does not. Both open on `:focus-within`, the same script-free
+ * discipline the strips use.
  *
  * THE DATE AND THE TIME ARE HELD SEPARATELY — user-ruled 2026-07-26: "once a
  * date has been selected via calendar, it shouldn't auto fill the time either."
@@ -40,6 +42,16 @@ const DATE_LABEL = new Intl.DateTimeFormat(undefined, {
   day: "numeric",
   month: "short",
 });
+/**
+ * ⚠ THE THREE ANNOTATIONS ARE GONE (user-ruled 2026-08-15: *"remove all the
+ * annotations from it"*): the calendar's "Future days … Empty ≠ future", the
+ * time popover's "Time — type 24h, or pick" head, and its "Typing the 24h time
+ * is the primary path" foot. All three explained the CONTROL'S OWN MECHANICS
+ * rather than saying anything about the data — a dead day is already drawn
+ * dead, and a field you can type into does not need to announce that typing is
+ * allowed. Comparing Statistics struck its equivalent on 2026-07-27 under the
+ * same no-explainer-prose law; this picker predates that sweep and was missed.
+ */
 const dateLabel = (day: string): string => DATE_LABEL.format(new Date(`${day}T12:00:00`));
 
 /**
@@ -100,30 +112,40 @@ export function DateTimePicker({
   // always whole weeks, week-start first (metrics/dates.monthGridCells — 2026-07-30 dedup).
   const cells = monthGridCells(view.y, view.m);
 
-  const scrub = useRef<HTMLDivElement>(null);
-  const scrubTo = (clientX: number) => {
-    const box = scrub.current?.getBoundingClientRect();
-    if (box == null || box.width === 0) return;
-    const frac = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
-    const mins = Math.min(1435, Math.round((frac * 1439) / 5) * 5);
-    setTyped(null);
-    onChange(date, `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`);
-  };
+  const hourCol = useRef<HTMLDivElement>(null);
+  const minCol = useRef<HTMLDivElement>(null);
 
   const stepMonth = (delta: number) => {
     const m = view.m + delta;
     setCursor({ y: view.y + Math.floor(m / 12), m: ((m % 12) + 12) % 12 });
   };
 
-  // The fallback strip: seven half-hour cells centred on the current value.
-  const baseMinutes = /^\d{2}:\d{2}$/.test(shownTime)
-    ? Number(shownTime.slice(0, 2)) * 60 + Number(shownTime.slice(3, 5))
-    : 12 * 60;
-  const centre = Math.round(baseMinutes / 30) * 30;
-  const strip = Array.from({ length: 7 }, (_, i) => {
-    const m = (((centre + (i - 3) * 30) % 1440) + 1440) % 1440;
-    return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
-  });
+  /* THE FALLBACK IS TWO ABSOLUTE COLUMNS (user-ruled 2026-08-15). It was a
+     seven-cell half-hour strip centred on the current value, stacked over a
+     full-day scrub bar, and the pair was the problem: the strip was RELATIVE
+     (±90 min around your answer) and the bar ABSOLUTE (midnight to midnight),
+     so the dot's position said nothing about which cell was lit — two mental
+     models in one popover. The strip also re-centred after every pick, so the
+     row jumped under the cursor, and seven cells came to ~450px inside a 340px
+     box with `overflow: hidden`, which sliced the last one and a half in half.
+     Hours and minutes match the `HH:MM` the field already asks you to type, so
+     the popover and the keyboard path now teach the same thing. */
+  const valid = /^\d{2}:\d{2}$/.test(shownTime);
+  const curHour = valid ? shownTime.slice(0, 2) : null;
+  const curMin = valid ? shownTime.slice(3, 5) : null;
+  const HOURS = Array.from({ length: 24 }, (_, i) => pad(i));
+  const MINUTES = Array.from({ length: 12 }, (_, i) => pad(i * 5));
+  /* The columns scroll, so the selected row has to be brought into view when
+     the popover appears. It appears on `:focus-within` — pure CSS, no mount to
+     hook — so the field's own focus is the event, and `offsetTop` is used
+     rather than `scrollIntoView`, which would also scroll the page. */
+  const revealSelected = () => {
+    for (const ref of [hourCol, minCol]) {
+      const col = ref.current;
+      const sel = col?.querySelector<HTMLElement>(".tcell.sel");
+      if (col != null && sel != null) col.scrollTop = sel.offsetTop - col.clientHeight / 2 + sel.offsetHeight / 2;
+    }
+  };
 
   return (
     <span className="dt dt-live">
@@ -203,17 +225,16 @@ export function DateTimePicker({
               );
             })}
           </div>
-          <div className="calnote">
-            Future days (after today) are dead for logging — you can't have done a session tomorrow.
-            Empty ≠ future.
-          </div>
         </div>
       </span>
 
       <span
         className={`dpart time${shutTime ? " shut" : ""}`}
+        onFocus={revealSelected}
         onMouseDown={(e) => {
           setShutTime(false);
+          // The popover is about to appear; bring the picked rows into view.
+          requestAnimationFrame(revealSelected);
           // The chip is bigger than the 5-character field inside it; clicking
           // the clock glyph or the padding used to focus nothing, so the
           // popover never opened.
@@ -257,53 +278,39 @@ export function DateTimePicker({
           }}
         />
         <div className="timepop">
-          <div className="thead">Time — type 24h, or pick</div>
-          <div className="tstrip">
-            {strip.map((t) => (
-              <span
-                className={`tcell${t === time ? " sel" : ""}`}
-                key={t}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation(); // the wrapper's mousedown would re-open
-                  setTyped(null);
-                  onChange(date, t);
-                  setShutTime(true);
-                }}
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-          {/* A DRAGGABLE DIAL. The frozen file draws `.tscrub` as a static
-              indicator, but it is shaped like a control and reads as one — the
-              user went straight for it, and grabbing it merely stole focus from
-              the input and closed the whole popover. It now scrubs the day,
-              snapped to 5 minutes, and `preventDefault` keeps the focus (and so
-              the popover) where it is. */}
-          <div
-            className="tscrub"
-            ref={scrub}
-            role="slider"
-            aria-valuemin={0}
-            aria-valuemax={1439}
-            aria-valuenow={baseMinutes}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              scrubTo(e.clientX);
-              const move = (ev: MouseEvent) => scrubTo(ev.clientX);
-              const up = () => {
-                window.removeEventListener("mousemove", move);
-                window.removeEventListener("mouseup", up);
-              };
-              window.addEventListener("mousemove", move);
-              window.addEventListener("mouseup", up);
-            }}
-          >
-            <i style={{ left: `${(baseMinutes / 1440) * 100}%` }} />
-          </div>
-          <div className="tnote">
-            Typing the 24h time is the primary path; this strip is the fallback.
+          <div className="tcols">
+            <div className="tcol" ref={hourCol}>
+              {HOURS.map((h) => (
+                <span
+                  className={`tcell${h === curHour ? " sel" : ""}`}
+                  key={h}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation(); // the wrapper's mousedown would re-open
+                    setTyped(null);
+                    onChange(date, `${h}:${curMin ?? "00"}`);
+                  }}
+                >
+                  {h}
+                </span>
+              ))}
+            </div>
+            <div className="tcol" ref={minCol}>
+              {MINUTES.map((mm) => (
+                <span
+                  className={`tcell${mm === curMin ? " sel" : ""}`}
+                  key={mm}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setTyped(null);
+                    onChange(date, `${curHour ?? "00"}:${mm}`);
+                  }}
+                >
+                  {mm}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </span>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TILE_ROW_MAX, TILE_ROW_MAX_SMALL, balancedCols, tileRowPlan } from "./tileRows";
+import { TILE_ROW_MAX, TILE_ROW_MAX_SMALL, balancedCols, rowSeams, tileRowPlan } from "./tileRows";
 
 /**
  * The ruling this guards (2026-08-10): four tiles draw 2×2, never 3+1. The
@@ -198,5 +198,59 @@ describe("the real groups on the entry dashboard", () => {
   it("draws Dates & streaks as 2×2, list tiles and all", () => {
     // first day · last day · current streak (list) · longest streak (list)
     expect(rowsOf(4)).toEqual([2, 2]);
+  });
+});
+
+describe("rowSeams — the flush-run edges, per row", () => {
+  const seamsOf = (n: number, max = TILE_ROW_MAX) => {
+    const { tracks, spans } = tileRowPlan(n, max);
+    return rowSeams(tracks, spans);
+  };
+
+  it("marks one first and one last per row — four across two rows", () => {
+    expect(seamsOf(4).map((s) => [s.first, s.last, s.laterRow])).toEqual([
+      [true, false, false],
+      [false, true, false],
+      [true, false, true],
+      [false, true, true],
+    ]);
+  });
+
+  it("leaves a single row exactly as :first-child/:last-child would", () => {
+    for (const n of [1, 2, 3]) {
+      const s = seamsOf(n);
+      expect(s.map((x) => x.laterRow)).toEqual(Array(n).fill(false));
+      expect(s[0].first).toBe(true);
+      expect(s[n - 1].last).toBe(true);
+      expect(s.filter((x) => x.first)).toHaveLength(1);
+    }
+  });
+
+  it("gives a spanning orphan BOTH edges of its own row", () => {
+    // Three at a cap of two: the third spans the row, so it is first and last.
+    const plan = tileRowPlan(3, 2);
+    const s = rowSeams(plan.tracks, plan.spans);
+    expect(s[2]).toEqual({ first: true, last: true, laterRow: true });
+  });
+
+  it("holds at every size, at both caps", () => {
+    for (const max of [2, TILE_ROW_MAX]) {
+      for (let n = 1; n <= 40; n++) {
+        const s = seamsOf(n, max);
+        expect(s).toHaveLength(n);
+        // Every row opens with a first and closes with a last, in that order.
+        let open = false;
+        for (const x of s) {
+          if (x.first) {
+            expect(open).toBe(false);
+            open = true;
+          }
+          if (x.last) {
+            expect(open).toBe(true);
+            open = false;
+          }
+        }
+      }
+    }
   });
 });

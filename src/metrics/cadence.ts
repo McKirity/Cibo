@@ -298,13 +298,36 @@ export function verdictStats(
 
 export type DayCellState = "d" | "m" | "u" | "f"; // done · missed · unknown · future
 
-/** Day-grain verdict cells for one habit over the period's days. */
+/**
+ * Day-grain verdict cells for one habit over the period's days.
+ *
+ * ⚠ FINALIZE IS TESTED BEFORE THE LOG, user-ruled 2026-08-15. It used to be the
+ * other way round — `played.has(day)` came first — so a day you had logged
+ * against but never closed drew as DONE, and an open day showed a scatter of
+ * finished-looking cells among its unfinalized ones. Whether a habit was done
+ * is not settled until the day is: *"that entire cell column should be red"*.
+ *
+ * The four states, in the order they are decided:
+ *   f — future, and TODAY while it is still unfinalized. A day you are in has
+ *       not been missed; the same clause the month verdict panel took.
+ *   u — a PAST day left unfinalized. The whole column, every habit, because it
+ *       is a fact about the day and not about any one habit.
+ *   d — finalized and logged.
+ *   m — finalized and not logged: the decided "didn't".
+ */
 export function dayCells(
   days: ReadonlyArray<{ day: string; finalized: boolean; future: boolean }>,
   played: ReadonlySet<string>,
+  today: string,
 ): DayCellState[] {
   return days.map((d) =>
-    d.future ? "f" : played.has(d.day) ? "d" : d.finalized ? "m" : "u",
+    d.future || (d.day === today && !d.finalized)
+      ? "f"
+      : !d.finalized
+        ? "u"
+        : played.has(d.day)
+          ? "d"
+          : "m",
   );
 }
 

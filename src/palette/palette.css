@@ -167,6 +167,16 @@
 .advs-incomplete{font-size:var(--size-caption); color:var(--text-muted);}
 .advs-cond-body{display:flex; flex-direction:column; gap:var(--space-3); margin-top:var(--space-3);}
 .advs-inline{display:flex; align-items:center; gap:var(--space-4); flex-wrap:wrap;}
+/* ⚠ CENTRING IS WRONG WHEN ONE CHILD IS TALLER THAN THE CONTROLS (2026-08-15,
+   user-reported: *"Last session options should be better aligned with each
+   other"*). `DayField` renders `.cpfield`, a COLUMN of caption-above-input, so
+   it is two rows tall; `align-items:center` then centres the bare `before`/
+   `after` chips against label AND input together and floats them a caption's
+   height above the box they belong beside. Aligning to the FOOT puts every
+   control on one line and leaves the caption where it belongs, over its own
+   field. Only this row mixes the two kinds — the other conditions are chips and
+   number boxes, all one row tall, and they keep the centring. */
+.advs-inline.withlabel{align-items:flex-end;}
 .advs-unit{font-size:var(--size-caption); color:var(--text-muted);}
 /* THE FIELD WAS AUTHORED FOR SEVEN DIGITS AND BORDER-BOX ATE TWO OF THEM
    (Phase 2 step 4, tier 3, user-ruled 2026-08-11: *"wide enough to accommodate
@@ -197,3 +207,10 @@
 /* the RUN control (user-ruled 2026-07-29 — results wait for it): the kit
    accent button, full-width at the builder's foot */
 .advs-run{width:100%; justify-content:center; margin-top:var(--space-2);}
+
+/* The priority clause's arrow chips (2026-08-15). `.prio` stacks three 7px
+   chevrons with a 1px gap, which is drawn for a library CARD; inside a builder
+   chip it sits a couple of pixels taller than the `>=` chips beside it. The
+   card's own tightening is borrowed verbatim — `.libscreen .gcap .gtprio .prio`
+   closes the gap for the same reason. */
+.advs .wopts .prio { gap: 0; }

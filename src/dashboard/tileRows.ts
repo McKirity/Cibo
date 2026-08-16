@@ -140,3 +140,36 @@ export const balancedCols = (count: number, maxCols: number = TILE_ROW_MAX): num
   const rows = Math.ceil(count / cap);
   return Math.ceil(count / rows);
 };
+
+/**
+ * WHERE EACH ROW STARTS AND ENDS, walked from a plan's spans.
+ *
+ * `:nth-child(odd)` is "first in its row" only while the grid is two tracks
+ * wide, and a plan's track count moves with the item count — four items give
+ * 2 tracks, five give 6, six give 3. Any nth-child seam rule is therefore
+ * correct for exactly one group size and silently wrong for the next.
+ *
+ * Its tenant is the distributions panel, whose columns are drawn as one flush
+ * run separated by hairlines: `:first-child` and `:last-child` strip the outer
+ * padding, and both assume a single row. `first`/`last` here are those two per
+ * ROW, and `laterRow` is what a row seam hangs on.
+ */
+export function rowSeams(
+  tracks: number,
+  spans: readonly number[],
+): { first: boolean; last: boolean; laterRow: boolean }[] {
+  const out: { first: boolean; last: boolean; laterRow: boolean }[] = [];
+  let run = 0;
+  let row = 0;
+  for (const span of spans) {
+    const first = run === 0;
+    run += span;
+    const last = run >= tracks;
+    out.push({ first, last, laterRow: row > 0 });
+    if (last) {
+      run = 0;
+      row++;
+    }
+  }
+  return out;
+}

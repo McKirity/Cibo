@@ -55,17 +55,29 @@
    EVERY ROW HOLDS ONE LINE (user-ruled 2026-07-27): the chip rows never wrap,
    so a row's options stay scannable as a set. The chips shrink their padding
    rather than the row growing a second line. */
-/* ONE GRID, not a stack of flex rows: the label column takes `max-content`, so
-   it fits the longest label ("Average per") without wrapping AND every row's
-   chips still start at the same x. A fixed label width is what put "AVERAGE /
-   PER" on two lines. */
-.csdash .refines{display:grid; grid-template-columns:max-content 1fr; align-items:center; gap:var(--space-4); margin-top:var(--space-6); padding-top:var(--space-5); border-top:var(--border-hairline) solid var(--divider);}
-.csdash .refine{display:contents;}
-.csdash .refine-l{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-weight:var(--weight-bold); white-space:nowrap;}
+/* LABEL ABOVE THE CHIPS since 2026-08-16 (user-ruled at the SU walk: the five
+   "Average per" pills overran the 460px builder into the frame — "the text is
+   impinging on the border" — because a wide theme font spends more of the row
+   than the label column left it). The 2026-07-27 one-line ruling is KEPT: the
+   pills stay one unwrapped line — the label just stops paying for it out of
+   the same width. This supersedes the one-grid two-column layout that stood
+   here; its own comment noted a fixed label width once put "AVERAGE / PER" on
+   two lines, and on its own line it cannot. */
+.csdash .refines{display:flex; flex-direction:column; gap:var(--space-5); margin-top:var(--space-6); padding-top:var(--space-5); border-top:var(--border-hairline) solid var(--divider);}
+.csdash .refine{display:block;}
+.csdash .refine-l{display:block; margin-bottom:var(--space-3); font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-weight:var(--weight-bold); white-space:nowrap;}
 .csdash .refine-opts{display:flex; flex-wrap:nowrap; gap:var(--space-3); min-width:0;}
 /* Roomier than the base chip, not tighter: the one-line rule is paid for by
    the max-content label columns, not by squeezing the pills (2026-07-27). */
 .csdash .refine-opts .opt{padding:var(--space-3) var(--space-4); white-space:nowrap;}
+/* A gated average scope (2026-08-15 — day past 90 days, week past 365; the rule
+   and its reasoning are in compareSpec's AVG_SCOPE_MAX_DAYS). Borrowed verbatim
+   from `.segpick button:disabled` two blocks up rather than minted: this is the
+   same thing — a builder chip the current query cannot offer — and it should not
+   read as a second kind of unavailable. The REASON rides a `title`, set in
+   CompareDashboard; a greyed chip that will not say why reads as a bug. */
+.csdash .refine-opts .opt:disabled{color:var(--text-muted); opacity:.5; cursor:not-allowed;}
+.csdash .refine-opts .opt:disabled:hover{color:var(--text-muted);}
 
 /* the add-row ghost control (.addrow) — HOISTED to kit.css 2026-07-30 (the
    dedup pass; scopes kept). */
@@ -216,6 +228,17 @@
    kit.css's (claimed at the 2026-07-30 dedup pass; the local copy died with
    it). CS keeps only its OWN deviations: the results-track sizing, and the
    uncomputable-configuration face — a stated reason, not a silent zero. */
-.csdash .emptybox{flex:1 1 auto; min-height:420px;}
+/* CENTERED FLEX COLUMN since 2026-08-16 (user, SU walk: "statistics having
+   issues"). The box relied on kit's text-align:center, but shell.css's global
+   `.ico` is display:block — a BLOCK ignores text-align, so the glyph and the
+   hint arrow stranded at the LEFT edge on every theme; only a theme walk made
+   it look theme-caused. Timers' emptybox is the precedent (flex column,
+   items centered). Centering the content vertically is also what gives a
+   decoration `stamp-empty` (painted center-top by decoration.css; SU is the
+   role's first tenant) its headroom — before this, the mark overlapped the
+   title. */
+.csdash .emptybox{flex:1 1 auto; min-height:420px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--space-3);}
+.csdash .emptybox .eglyph .ico{width:56px; height:56px; stroke-width:1.25px; color:var(--text-muted);}
+.csdash .emptybox .ehint{display:inline-flex; align-items:center; gap:var(--space-3);}
 .csdash .emptybox.bad{border-color:color-mix(in oklch, var(--danger), var(--panel-background) var(--tint-border));}
 .csdash .emptybox.bad .eglyph{color:var(--danger);}

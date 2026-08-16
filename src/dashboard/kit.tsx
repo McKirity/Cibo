@@ -10,7 +10,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useBox } from "./useBox";
 import { heatRowLabels } from "../metrics/dates";
-import { TILE_ROW_MAX, TILE_ROW_MAX_SMALL, tileRowPlan } from "./tileRows";
+import { TILE_ROW_MAX, TILE_ROW_MAX_SMALL, rowSeams, tileRowPlan } from "./tileRows";
+import { axisGutter } from "./axisGutter";
 import { useCompact } from "../theme/compact";
 import { CoverInner } from "../kit/CoverArt";
 import type {
@@ -130,10 +131,45 @@ export function DistributionColumns({ columns }: { columns: DistColumnSpec[] }) 
   // Charts flex to fill the panel (standing rule, 2026-07-21): the grid always
   // has exactly as many equal tracks as columns — four across (Reading/Media
   // All-types), three, two, or one — never a fixed grid that leaves empty space.
+  //
+  // TWO PER ROW ON THE SMALL CANVAS (user-ruled 2026-08-15: *"the distributions
+  // panel is extremely tight with 4 in a row for macbook. Split it and put two
+  // on the next row"*). Reading draws four — type · status · genre · rating —
+  // and a column is a label, a bar and a count on ONE line, so at a quarter of
+  // this panel the bar is a stub and the labels wrap.
+  //
+  // ⚠ THE CAP IS THREE, NOT TWO (user-corrected 2026-08-15: *"it's fine to have
+  // three in a row. But when it becomes four, then it needs to become 2 x 2"*).
+  // That is `TILE_ROW_MAX` — the same cap the desktop stat rows use — so three
+  // columns render exactly as they do at 2K and only four and up re-flow. It
+  // also means the plan does the splitting: four → 2×2, five → 3 + 2, six →
+  // 3 + 3, each row flush by the 2026-08-10 no-empty-space ruling.
+  //
+  // `rowSeams` is what the hairlines hang on, and it exists because
+  // `:nth-child(odd)` is "first in its row" only while the grid is TWO tracks
+  // wide — and the track count moves with the column count (4 → 2 tracks,
+  // 5 → 6, 6 → 3), so any nth-child rule is right for one group size and
+  // silently wrong for the next.
+  const compact = useCompact();
+  const plan = compact ? tileRowPlan(columns.length, TILE_ROW_MAX) : null;
+  const seams = plan != null ? rowSeams(plan.tracks, plan.spans) : null;
   return (
-    <div className="trio grouped" style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}>
-      {columns.map((c) => (
-        <div className="dcol" key={c.title}>
+    <div
+      className="trio grouped"
+      style={{ gridTemplateColumns: `repeat(${plan?.tracks ?? columns.length}, minmax(0, 1fr))` }}
+    >
+      {columns.map((c, i) => (
+        <div
+          className={`dcol${
+            seams == null
+              ? ""
+              : `${seams[i].first ? " rowfirst" : ""}${seams[i].last ? " rowlast" : ""}${
+                  seams[i].laterRow ? " rowlater" : ""
+                }`
+          }`}
+          key={c.title}
+          style={plan != null ? { gridColumn: `span ${plan.spans[i]}` } : undefined}
+        >
           <div className="chead">
             <span className="ct">{c.title}</span>
             {c.meta && <span className="cm">{c.meta}</span>}
@@ -257,10 +293,13 @@ function TrendChart({
   const dLine = w > 0 && n > 1 ? `M${pts.join("L")}` : "";
   const dArea = w > 0 && n > 1 ? `${dLine}L${X(n - 1)},${h}L${X(0)},${h}Z` : "";
   const yVals = [4, 3, 2, 1, 0].map((k) => (vmax * k) / 4);
+  // The gutter is this chart's own longest tick, not the app's (./axisGutter).
+  // Both readers get it: `.xaxis` is a sibling, so it does not inherit.
+  const gutter = axisGutter(yVals.map((v) => `${v}h`));
 
   return (
     <>
-      <div className="chartwrap">
+      <div className="chartwrap" style={gutter}>
         {/* `--trend-hue` + the .trendline class (2026-08-03): the lead trace is
             the ONLY path a theme should be able to single out. Before this the
             kit drew every series as a bare `path[fill="none"]`, so a theme
@@ -292,7 +331,7 @@ function TrendChart({
             </div>
           ))}
       </div>
-      <div className="xaxis">
+      <div className="xaxis" style={gutter}>
         {w > 0 &&
           xticks.map((t) => {
             const end = t.i === 0 ? " first" : t.i === n - 1 ? " last" : "";

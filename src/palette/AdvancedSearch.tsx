@@ -27,6 +27,10 @@
  * different steps, different container (screen panel vs. morphing overlay).
  */
 import { stars } from "../metrics/format";
+// The priority arrows. ⚠ Reaching into the library's atoms from the palette:
+// `PrioGlyph` is now drawn on TWO screens, which is the kit-block membership
+// test — flagged to the user as a hoist candidate rather than moved here.
+import { PrioGlyph } from "../library/bits";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import type { WindowCfg } from "../kit/periodWindow";
 import { DayField, PeriodPicker } from "../kit/PeriodPicker";
@@ -842,10 +846,23 @@ function EntryCondRows({
           {c.kind === "priority" && (
             <div className="advs-inline">
               <OpChips op={c.op} ops={[">=", "=", "<="]} onPick={(o) => patch(i, { ...c, op: o })} />
+              {/* The ARROWS, not `P0`…`P3` (user-ruled 2026-08-15). `PrioGlyph`
+                  is the app's priority face everywhere it is drawn — the library
+                  card and the bulk picker — and this builder was the one place
+                  still spelling the number out. The rating row directly below
+                  already draws its own idiom (stars), so the two clauses stay
+                  told apart by their symbols rather than by reading the label.
+                  The count rides a `title`: three empty chevrons is a legible
+                  "lowest", but it should not be the only way to know it is 0. */}
               <div className="wopts">
                 {[0, 1, 2, 3].map((n) => (
-                  <span key={n} className={`opt${c.n === n ? " on" : ""}`} onClick={() => patch(i, { ...c, n })}>
-                    P{n}
+                  <span
+                    key={n}
+                    className={`opt${c.n === n ? " on" : ""}`}
+                    title={n === 0 ? "Priority 0 — none" : `Priority ${n}`}
+                    onClick={() => patch(i, { ...c, n })}
+                  >
+                    <PrioGlyph p={n} />
                   </span>
                 ))}
               </div>
@@ -882,7 +899,13 @@ function EntryCondRows({
             />
           )}
           {c.kind === "lastSession" && (
-            <div className="advs-inline">
+            /* `withlabel`: this is the one condition row that puts a BARE chip
+               group beside a control carrying its own caption, so the row cannot
+               centre — see palette.css. Render-side rather than `:has(.cpfield)`,
+               which is barred here (the 2026-07-29 hover-lag report: :has()
+               invalidation re-runs style recalc on every hover while the screen
+               is mounted). The component knows what it rendered. */
+            <div className="advs-inline withlabel">
               <div className="wopts">
                 <span className={`opt${c.dir === "before" ? " on" : ""}`} onClick={() => patch(i, { ...c, dir: "before" })}>
                   before

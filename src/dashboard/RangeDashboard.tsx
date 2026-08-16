@@ -22,6 +22,7 @@ import type { ScopeSel } from "./creationSpec";
 import { HEAT_CLASS } from "./specShared";
 import { heatPoolStyle, Panel, StatGroup, StatTile } from "./kit";
 import { useBox } from "./useBox";
+import { axisGutter } from "./axisGutter";
 import "../dashboard.css";
 import "./screen.css";
 
@@ -145,7 +146,12 @@ export function RangeDashboard({ habitKey }: { habitKey: string }) {
                           />
                         </svg>
                         <div className="dcenter">
-                          <span className="dval">{f.days.toLocaleString()}</span>
+                          <span
+                            className="dval"
+                            style={{ ["--dval-len" as string]: f.days.toLocaleString().length }}
+                          >
+                            {f.days.toLocaleString()}
+                          </span>
                           <span className="dsub">{m.flags.noun}</span>
                         </div>
                       </div>
@@ -259,6 +265,9 @@ function BedWakeChart({ charts, color }: { charts: RangeModel["charts"]; color: 
   // are legal and pin to the axis edge rather than drawing off-canvas (2026-07-30).
   const Y = (clockHours: number) => pad + (h - 2 * pad) * Math.min(1, h18(clockHours) / 18);
   const yTicks = [21, 24, 27, 30, 33]; // 21:00 · 00:00 · 03:00 · 06:00 · 09:00
+  // Five mono characters — this is the chart the 56px roster dial was sized
+  // for, so its gutter is unchanged; it is derived now rather than assumed.
+  const gutter = axisGutter(yTicks.map((c) => fmtHM((c >= 24 ? c - 24 : c) * 60)));
 
   const band = (key: "bed" | "wake", opacity: number) =>
     segments(months, (mo) => (mo[key] ? 1 : null)).map((seg, si) => {
@@ -295,7 +304,7 @@ function BedWakeChart({ charts, color }: { charts: RangeModel["charts"]; color: 
       <div className="rchart-head">
         <span className="ct">Bed &amp; wake</span>
       </div>
-      <div className="chartwrap">
+      <div className="chartwrap" style={gutter}>
         <svg ref={ref} className="rangechart" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet">
           {w > 0 && (
             <>
@@ -340,7 +349,7 @@ function BedWakeChart({ charts, color }: { charts: RangeModel["charts"]; color: 
             </div>
           ))}
       </div>
-      <div className="xaxis">
+      <div className="xaxis" style={gutter}>
         {w > 0 &&
           months.map((mo, i) => {
             const end = i === 0 ? " first" : i === n - 1 ? " last" : "";
@@ -383,6 +392,9 @@ function DurationChart({ months, color }: { months: RangeModel["charts"]["months
   const yTicks: number[] = [];
   for (let v = Math.ceil(vmin / step) * step; v <= vmax + 1e-9; v += step) yTicks.push(v);
   const fmtHTick = (v: number) => (Number.isInteger(v) ? `${v}h` : `${v.toFixed(1)}h`);
+  // `10h` — or `7.5h` when the zoomed window is tighter than 3h and the ticks
+  // step to half hours. THAT is why a second hand-tuned px constant was refused.
+  const gutter = axisGutter(yTicks.map(fmtHTick));
   const X = (i: number) => pad + ((w - 2 * pad) * i) / (n - 1);
   const Y = (v: number) => pad + (h - 2 * pad) * (1 - (v - vmin) / (vmax - vmin));
   const segs = segments(months, (mo) => mo.durationH);
@@ -392,7 +404,7 @@ function DurationChart({ months, color }: { months: RangeModel["charts"]["months
       <div className="rchart-head">
         <span className="ct">Sleep duration</span>
       </div>
-      <div className="chartwrap">
+      <div className="chartwrap" style={gutter}>
         <svg ref={ref} className="rangechart" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet">
           {w > 0 && (
             <>
@@ -444,7 +456,7 @@ function DurationChart({ months, color }: { months: RangeModel["charts"]["months
             </div>
           ))}
       </div>
-      <div className="xaxis">
+      <div className="xaxis" style={gutter}>
         {w > 0 &&
           months.map((mo, i) => {
             const end = i === 0 ? " first" : i === n - 1 ? " last" : "";

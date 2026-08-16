@@ -210,6 +210,75 @@
   gap: 0;
 }
 
+/* ---- DONUT LEGENDS GO UNDERNEATH THE WHEEL (user-ruled 2026-08-15: *"I can't
+   read the actual legend values anymore… place the legends underneath the donut
+   chart"*).
+
+   Side by side, the legend gets whatever the 200px wheel leaves — inside a
+   half-width `.distrow4` panel on this canvas that is a couple of hundred
+   pixels for a name, a value and a percent. ⚠ AND THE PREVIOUS FIX IS WHAT MADE
+   IT UNREADABLE RATHER THAN UGLY: giving the legend its real anatomy brought
+   `white-space: nowrap` + `text-overflow: ellipsis` with it, so labels that used
+   to wrap onto a second line now TRUNCATE. Both are the same shortage; wrapping
+   merely announced it more honestly. The width is the thing to fix, and stacking
+   is what buys it — the legend gets the whole panel instead of what is left over.
+
+   The name column takes `1fr` here so it absorbs that new width and drives the
+   value and percent to the panel's right edge: a legend row reads
+   `▪ Outline ———— 38 h  20%` rather than three things huddled at the left.
+   `align-self: stretch` is needed because the wrapper centres its children on
+   the cross axis, which in a column flex would otherwise shrink the legend back
+   to its own content width and give the extra room away again.
+
+   Every donut on the canvas, not just the entry dashboard's — `.donutwrap` is
+   the shape's own context, the creation dashboard mounts the same one into
+   panels just as narrow, and a legend that reads one way on one screen and
+   another way on the next is worse than either. 2K keeps them side by side. */
+:root.compact .donutwrap {
+  flex-direction: column;
+}
+:root.compact .donutwrap .dleg {
+  align-self: stretch;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+
+/* ---- DISTRIBUTIONS · FOUR SPLIT TO 2 × 2, AND THE SEAMS HAVE TO FOLLOW.
+   User-ruled 2026-08-15 (*"extremely tight with 4 in a row for macbook. Split it
+   and put two on the next row"*), corrected the same day: *"it's fine to have
+   three in a row. But when it becomes four, then it needs to become 2 x 2."*
+
+   The COUNT is set in kit.tsx — it is an inline `grid-template-columns`, which
+   no stylesheet can outrank without `!important`, so it belongs where the value
+   is written. What belongs here is everything the second row breaks.
+
+   `.trio.grouped` draws its columns as one flush run separated by hairlines:
+   every `.dcol` carries a left rule, and `:first-child`/`:last-child` strip the
+   outer padding so the group sits edge to edge. All three assume ONE ROW.
+   ⚠ AND `:nth-child(odd)` IS NOT THE FIX, though it was the first one written
+   here: it means "first in its row" only while the grid is two tracks wide, and
+   the track count moves with the column count — four gives 2 tracks, five gives
+   6, six gives 3. It would have been right for the case in front of us and
+   quietly wrong for the next one. The edges are walked from the plan instead
+   (`rowSeams`, tested) and arrive as classes. */
+:root.compact .trio.grouped > .dcol.rowfirst {
+  padding-left: 0;
+  border-left: none;
+}
+:root.compact .trio.grouped > .dcol.rowlast {
+  padding-right: 0;
+}
+/* The row seam. Vertical rules separate columns; a horizontal one separates the
+   rows, or the second row reads as a second panel that lost its heading. The
+   gap sits ABOVE the rule and the padding below it, so the rows breathe evenly
+   — `.trio.grouped` zeroes both gaps and only the row gap comes back. */
+:root.compact .trio.grouped {
+  row-gap: var(--space-6);
+}
+:root.compact .trio.grouped > .dcol.rowlater {
+  padding-top: var(--space-6);
+  border-top: var(--border-hairline) solid var(--divider);
+}
+
 /* ---- ACTIVITY HEATMAP (kit-grid-heatmap — the entry dashboard's, and every
    other tenant of `.heat`) — user-ruled at the walk, 2026-08-10: *"the heatmap
    shrank and doesn't align with the axis labels… we can use a scroll bar
@@ -513,10 +582,11 @@
    shape as the lesson that fix already carries, one step on: no LENGTH width,
    the dial as the ceiling.
 
-   Scoped to `.cells` so the `.rowlegend` swatches — same class name, equal
-   specificity, a flex item rather than a grid one — are not caught. Month's dot
-   rule below matches at equal specificity and later, so it still wins its own
-   width and centring. */
+   Scoped to `.cells` so a bare `.cell` outside the grid — a flex item rather
+   than a grid one — is not caught (the `.rowlegend` swatches were the tenant
+   until the verdict legends were removed 2026-08-16; the scope stays, it is
+   correct regardless). Month's dot rule below matches at equal specificity and
+   later, so it still wins its own width and centring. */
 :root.compact .cadash .cells .cell {
   width: 100%;
   justify-self: center;

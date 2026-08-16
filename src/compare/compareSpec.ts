@@ -229,6 +229,48 @@ export interface ColumnSpec {
 export const AVG_SCOPES: AvgScope[] = ["day", "week", "month", "quarter", "year"];
 
 /**
+ * HOW LONG A WINDOW MAY BE BEFORE AN AVERAGE SCOPE STOPS BEING OFFERED.
+ *
+ * User-ruled 2026-08-15: *"Day average should be unavailable past 90 days both
+ * in relative and custom, week average unavailable past 365 days."*
+ *
+ * An Average buckets at its OWN scope — one bar per period — so "average per
+ * day" over a year asks for 365 grouped bars, about a pixel each, under 365
+ * labels. `grainFor` coarsens every other measure as the window grows and the
+ * average scope is the one path that bypasses it, which is why this is the only
+ * place the chart could run away.
+ *
+ * The cap is on the WINDOW, so a custom Date → Date range is gated by exactly
+ * the same rule as a relative one — it is the span in days that decides, not
+ * how the span was asked for. Month, quarter and year are unbounded: their
+ * bucket counts grow slowly enough that `grainFor`'s own ceilings never come
+ * into play.
+ */
+export const AVG_SCOPE_MAX_DAYS: Partial<Record<AvgScope, number>> = {
+  day: 90,
+  week: 365,
+};
+
+/** Whether `scope` may be averaged over a window of `spanDays`. */
+export function avgScopeAllowed(scope: AvgScope, spanDays: number): boolean {
+  const cap = AVG_SCOPE_MAX_DAYS[scope];
+  return cap == null || spanDays <= cap;
+}
+
+/**
+ * The scope actually used for a window: the picked one, or the finest legal
+ * scope when the window has outgrown it.
+ *
+ * A stored pick is not corrected in place — widen the window and the chart
+ * falls back, narrow it again and the original pick returns. Writing it back
+ * would silently lose what was asked for the first time the window moved.
+ */
+export function effectiveAvgScope(scope: AvgScope, spanDays: number): AvgScope {
+  if (avgScopeAllowed(scope, spanDays)) return scope;
+  return AVG_SCOPES.find((s) => avgScopeAllowed(s, spanDays)) ?? "year";
+}
+
+/**
  * The shortest window that can carry one period of a scope — the gate for the
  * relative chips and the error threshold for a custom range.
  *
@@ -674,8 +716,14 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
   // An Average buckets at its OWN scope (the grain override below), so the
   // allowance must count those buckets too — grainFor's would enable a line
   // for one year-sized bucket, a single invisible point (fixed 2026-07-30).
+  // ⚠ THE EFFECTIVE SCOPE, NOT THE PICKED ONE (2026-08-15). The picker gates
+  // day past 90 days and week past 365, but a window can be WIDENED under a
+  // pick that was legal when it was made — so the spec falls back too, or the
+  // one path that bypasses `grainFor` could still ask for 365 bars.
   const avgGrain: Grain | null =
-    pick.family === "average" && pick.scope != null ? pick.scope : null;
+    pick.family === "average" && pick.scope != null
+      ? effectiveAvgScope(pick.scope, spanDays)
+      : null;
   // With avgGrain set, line and bar bucket at the SAME grain — count once
   // instead of walking the windows twice (2026-07-30).
   const avgBuckets =
@@ -900,7 +948,17 @@ export function buildResult(cfg: CompareCfg, data: CmpData, today: string): CmpR
       })
       .join(" vs ");
     const periodPart = wins.length > 1 ? wins.map((w) => w.label).join(" · ") : wins[0].label;
-    const title = [scopePart, measure.label, periodPart, CHART_LABEL[chartKind]].join(" · ");
+    // ⚠ A FIFTH PART, user-ruled 2026-08-15 — the ruled SCOPE · MEASURE · PERIOD
+    // · CHART order is untouched and this hangs off the end. A chart's bars are
+    // rarely one per day: `grainFor` has always coarsened a long window down to
+    // weeks, months or quarters, and it said so nowhere, so "Last 365 days ·
+    // bar" drew four quarterly bars with nothing to explain them. Omitted for
+    // hbar and donut, which read series TOTALS and have no buckets to describe.
+    const grainPart =
+      chartKind === "hbar" || chartKind === "donut" ? null : `shown by ${grain}`;
+    const title = [scopePart, measure.label, periodPart, CHART_LABEL[chartKind], grainPart]
+      .filter((p) => p != null)
+      .join(" · ");
 
     // The ONE surviving caption: the Writing⇄Keyboard derive annotation, which
     // is a warning about the data rather than a description of the chart, and

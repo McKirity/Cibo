@@ -37,20 +37,24 @@
    `height:auto` the flex row's default `stretch` does the rest, so a row of
    tiles is as tall as its tallest member and no taller. */
 .trow{display:grid; grid-template-columns:repeat(var(--trow-cols, 3), minmax(0,1fr)); gap:var(--space-6); align-items:stretch;}
-/* ⚠ THE GUTTER IS PER-CHART SINCE 2026-08-15, because ONE NUMBER CANNOT SERVE
-   THESE CHARTS. `--chart-axis-gutter` (56px) is sized for the widest y-label in
-   the app — Sleep's `23:00`, five mono characters — while the habit trend draws
-   `0h`…`16h` and Creation draws unit ticks. A chart with short labels therefore
-   carried ~25px of dead indent, which is what reads as the graph not starting
-   at its container's edge. The labels are absolutely positioned and
-   right-aligned against the plot, so the gutter is pure reserved space: making
-   it per-chart costs nothing and clips nothing.
+/* ⚠ THE GUTTER IS DERIVED FROM EACH CHART'S OWN LABELS SINCE 2026-08-15 — the
+   arithmetic and the reasoning live in dashboard/axisGutter.ts, which every
+   `.yaxis`-bearing chart calls. `--chart-axis-gutter` (56px) stays the roster
+   dial and the fallback; it is sized for the widest label in the app, Sleep's
+   `23:00`, and a chart drawing `10h` was paying 22px of dead indent for it.
    Overriding the DIAL rather than the padding keeps `.xaxis`'s `margin-left`
-   and `.yaxis`'s `right:` calc in step automatically — they read the same
-   property, so the three cannot drift. (Comparing Statistics keeps its own
-   `padding-left:0`: it is the one tenant with NO `.yaxis` at all.) */
-.chartwrap{position:relative; padding-left:var(--chart-axis-gutter);}
-.trend .chartwrap{--chart-axis-gutter:34px;}
+   and `.yaxis`'s `right:` calc in step — the three read one property and cannot
+   drift. ⚠ But `.xaxis` is a SIBLING of `.chartwrap` at all four call sites, so
+   an override placed on `.chartwrap` alone reaches the plot and NOT the ticks:
+   the earlier `.trend .chartwrap{34px}` moved the plot 22px left of its own
+   x labels. Both elements take the style object.
+   (Comparing Statistics keeps its own `padding-left:0`: it is the one tenant
+   with NO `.yaxis` at all, and it calls nothing here.) */
+/* The mono/caption face is here for the `ch` in the gutter calc, not for any
+   text of its own — `.yaxis` and `.xtick` set their own. `ch` resolves against
+   the element that USES the value, so `.chartwrap` and `.xaxis` must share the
+   label's metric or they compute different gutters from the same string. */
+.chartwrap{position:relative; padding-left:var(--chart-axis-gutter); font-family:var(--font-mono); font-size:var(--size-caption);}
 .cover{width:var(--cover-w); height:var(--cover-h); border-radius:var(--radius-small); position:relative; cursor:pointer; overflow:hidden; background:repeating-linear-gradient(135deg, var(--inset-background), var(--inset-background) 7px, var(--divider) 7px, var(--divider) 14px); transition:box-shadow var(--motion-fast) var(--ease-standard);}
 .deltachip{display:inline-flex; align-items:center; gap:var(--space-2); font-size:var(--size-small); font-weight:var(--weight-medium); color:var(--verdict-done); background:color-mix(in oklch, var(--verdict-done), var(--window-background) var(--tint-mix)); border-radius:var(--radius-small); padding:var(--space-2) var(--space-4);}
 .mast{display:grid; grid-template-columns:auto 1fr auto; gap:var(--space-7); align-items:start; padding-left:calc(var(--frame-clear-grand) + var(--space-4) + var(--space-5));}
@@ -105,14 +109,26 @@
 .hall .cover{height:var(--hall-h); width:calc(var(--hall-h) * var(--lib-cover-ratio)); flex:0 0 auto;}
 /* (the hall's own scrollbar rules retired 2026-08-01 at the scrollbar mint — it
    rides the app-wide overlay-minimal recipe, kit.css § Scrollbars) */
-.hcell{aspect-ratio:1/1; border-radius:var(--radius-cell); background:var(--panel-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); cursor:default;}
+/* ⚠ EVERY CELL CARRIES THE LATTICE, FILLED ONES INCLUDED (user-ruled
+   2026-08-15: *"are heatmaps supposed to have a visible grid, it washes out in
+   subnautica. Add some faint outlines"*). Levels 1–4 used to set
+   `box-shadow: none`, so the grid existed only between EMPTY cells and
+   dissolved wherever the data actually was — worst on a theme whose `--divider`
+   sits close to its ground, which is what made Subnautica the one that showed
+   it. The ring is the same hairline at the same dial; it simply stops being
+   switched off.
+   `--heat-grid` is a LOCAL property, not a roster dial: it defaults to
+   `--divider` so nothing changes for a theme that says nothing, and a theme
+   that needs its own lattice pitch sets one value instead of four rules. */
+:root{ --heat-grid: var(--divider); }
+.hcell{aspect-ratio:1/1; border-radius:var(--radius-cell); background:var(--panel-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--heat-grid); cursor:default;}
 /* Heat levels read the published ramp complements (--heat-bg-N, derived from
    --heatmap-ramp by src/theme/derived.ts at every theme apply — step 6a; the
    90/62/34/0 transcription is retired). */
-.hcell.l1{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-1)); box-shadow:none;}
-.hcell.l2{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-2)); box-shadow:none;}
-.hcell.l3{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-3)); box-shadow:none;}
-.hcell.l4{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-4)); box-shadow:none;}
+.hcell.l1{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-1)); box-shadow:inset 0 0 0 var(--border-hairline) var(--heat-grid);}
+.hcell.l2{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-2)); box-shadow:inset 0 0 0 var(--border-hairline) var(--heat-grid);}
+.hcell.l3{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-3)); box-shadow:inset 0 0 0 var(--border-hairline) var(--heat-grid);}
+.hcell.l4{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-4)); box-shadow:inset 0 0 0 var(--border-hairline) var(--heat-grid);}
 /* The week column's width, hoisted to :root so the small-canvas layer can give
    it a real size and scroll (src/small.css). `1fr` here IS the previous literal
    — the desktop is byte-unchanged. PRIVATE dial, mint candidate (the
@@ -224,8 +240,9 @@
 .tile .tl .dot{width:var(--space-5); height:var(--space-5); border-radius:var(--radius-small); flex:0 0 auto;}
 .tile .ts{font-size:var(--size-small); color:var(--text-secondary); min-height:0;}
 /* `.tile .ts b` deleted 2026-08-04 — subtitles are plain strings in every spec
-   and every renderer. (Contrast `.calnote b`/`.rline b`/`.mcard .mtitle b`,
-   which ARE live: the review layer really does emit HTML.) */
+   and every renderer. (Contrast `.rline b`/`.mcard .mtitle b`, which ARE live:
+   the review layer really does emit HTML. `.calnote b` was the third example
+   until the verdict legends were removed 2026-08-16.) */
 .tile .tv{font-family:var(--font-mono); font-size:var(--size-stat-value); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong); white-space:nowrap;}
 .tile .tv .tdt{display:block; font-family:var(--font-ui); font-size:var(--size-caption); font-weight:var(--weight-regular); color:var(--text-muted); margin-bottom:var(--space-2); white-space:nowrap; line-height:1;}
 .tile .tv .u{font-family:var(--font-ui); font-size:var(--size-body); color:var(--text-muted); font-weight:var(--weight-regular); margin-left:2px;}
@@ -314,7 +331,7 @@
    of them. Even columns and one-tile-wider cannot both hold; evenness is what
    was ruled, so the list tile is a tile like the others. */
 .trow.tall .tile{height:auto; min-height:var(--tile-height);}
-.xaxis{position:relative; height:1.2em; margin-top:var(--space-3); margin-left:var(--chart-axis-gutter);}
+.xaxis{position:relative; height:calc(var(--size-caption) * var(--line-tight)); margin-top:var(--space-3); margin-left:var(--chart-axis-gutter); font-family:var(--font-mono); font-size:var(--size-caption);}
 .xtick{position:absolute; transform:translateX(-50%); white-space:nowrap; line-height:1; font-family:var(--font-mono); font-size:var(--size-caption); color:var(--text-muted);}
 .xtick.first{left:0; transform:none;}
 .xtick.last{left:auto; right:0; transform:none;}
@@ -373,7 +390,7 @@
 .dleg .lg{display:flex; align-items:center; gap:var(--space-4); font-size:var(--size-small); color:var(--text-secondary);}
 .dleg .lg i{width:var(--space-5); height:var(--space-5); border-radius:var(--radius-cell); flex:0 0 auto;}
 .donut{width:var(--dist-donut-size); height:var(--dist-donut-size); flex:0 0 auto; position:relative; border-radius:var(--radius-full);}
-.donutwrap{display:flex; gap:var(--space-7); align-items:center; min-height:var(--chart-height);}
+.donutwrap{display:flex; gap:var(--space-7); align-items:center; justify-content:center; min-height:var(--chart-height);}
 .donut .dhole{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:calc(var(--dist-donut-size) - 2 * var(--dist-donut-stroke)); height:calc(var(--dist-donut-size) - 2 * var(--dist-donut-stroke)); border-radius:var(--radius-full); background:var(--panel-background); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--font-mono); text-align:center;}
 .donut .dhole .dh-l{font-family:var(--font-ui); font-size:var(--size-caption); color:var(--text-muted);}
 .donut .dhole .dh-v{font-size:var(--size-subheading); font-weight:var(--weight-bold); color:var(--text-strong);}
@@ -484,13 +501,34 @@
    hours / percent line up in columns across rows (each .lg goes
    `display:contents` so its children become the grid's own items). Supersedes
    the staged gamedev .dleg variant, claimed here. */
-.creationdash .donutwrap{display:flex; gap:var(--space-7); align-items:center; justify-content:center; flex:1; min-height:var(--chart-height);}
-.creationdash .dleg{display:grid; grid-template-columns:auto minmax(0,auto) auto auto; align-content:center; column-gap:var(--space-4); row-gap:var(--space-3); flex:0 1 auto; min-width:0;}
-.creationdash .dleg .lg{display:contents;}
-.creationdash .dleg .lg i{width:var(--space-6); height:var(--space-6); border-radius:var(--radius-cell); flex:0 0 auto;}
-.creationdash .dleg .lgn{font-size:var(--size-body); color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.creationdash .dleg .lgv{font-family:var(--font-mono); font-size:var(--size-body); color:var(--text-strong); text-align:right; white-space:nowrap;}
-.creationdash .dleg .lgp{font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-muted); text-align:right; white-space:nowrap;}
+/* Centring moved UP into the base `.donutwrap` (2026-08-15) so the selector has
+   ONE declaration in this sheet; `flex:1` stays creation's, because only its
+   `.dchart` is a flex column for the wrapper to grow inside. */
+.creationdash .donutwrap{flex:1;}
+/* ⚠ SCOPED TO THE DONUT, NOT TO THE SCREEN, SINCE 2026-08-15. These six were
+   `.creationdash …`, and the donut Shape they dress is imported by the ENTRY
+   dashboard too — whose root is `.edash`, so on that screen `.lgn`, `.lgv` and
+   `.lgp` matched NOTHING AT ALL. There is no base rule for any of them; the
+   variant is the whole anatomy. The legend rendered in the UI font with no
+   alignment and no `nowrap`, so `43 h` broke between the number and its unit
+   and the percent column came out ragged (user-reported: *"the donut charts in
+   the entry dashboards are going to need work"*).
+   ⚠ THE MISSING-BASE-RULE LESSON IN MIRROR — the recorded instances are a
+   modifier whose base never existed (`.field.none` without `.field`); here the
+   VARIANT carries everything and the second tenant gets nothing. `.mtoggle
+   button` in this same panel has a base at line 401, which is why the metric
+   pills looked right beside a legend that did not.
+   `.donutwrap` is the honest scope because it is what these rules describe — a
+   legend belonging to a donut — and it travels to every screen that mounts one.
+   Creation is byte-identical (its `.dleg` is inside `.donutwrap`), and the
+   entry's SPLIT legend is deliberately untouched: `.dleg.splitleg` lives in
+   `.splitwrap` and wears its own face. */
+.donutwrap .dleg{display:grid; grid-template-columns:auto minmax(0,auto) auto auto; align-content:center; column-gap:var(--space-4); row-gap:var(--space-3); flex:0 1 auto; min-width:0;}
+.donutwrap .dleg .lg{display:contents;}
+.donutwrap .dleg .lg i{width:var(--space-6); height:var(--space-6); border-radius:var(--radius-cell); flex:0 0 auto;}
+.donutwrap .dleg .lgn{font-size:var(--size-body); color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.donutwrap .dleg .lgv{font-family:var(--font-mono); font-size:var(--size-body); color:var(--text-strong); text-align:right; white-space:nowrap;}
+.donutwrap .dleg .lgp{font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-muted); text-align:right; white-space:nowrap;}
 .creationdash .hbars{display:flex; flex-direction:column; gap:var(--space-6); flex:1;}
 .creationdash .lols{display:flex; flex-direction:column; gap:var(--space-6); padding-top:var(--space-3); flex:1; justify-content:center;}
 .creationdash .mast{display:grid; grid-template-columns:auto 1fr; gap:var(--space-7); align-items:start; padding-left:calc(var(--frame-clear-grand) + var(--space-4) + var(--space-5));}
@@ -572,5 +610,26 @@
 .flagpanel .fpct span{font-family:var(--font-ui); font-size:var(--size-caption); font-weight:var(--weight-regular); color:var(--text-muted);}
 .donut .dcenter{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--space-1);}
 .donut .dsub{font-size:var(--size-caption); color:var(--text-muted);}
-.donut .dval{font-family:var(--font-mono); font-size:var(--size-display); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong);}
+/* ⚠ THE VALUE SHRINKS TO FIT THE HOLE (user-ruled 2026-08-15: *"make sure donut
+   center big enough for multiple digits"*). At the drawn 34px a monospaced glyph
+   is ~20px wide, so the hole — `--dist-donut-size` less its ring on both sides,
+   124px — holds five characters. `73,418` is six and crossed the ring; a
+   seven-figure word count would have crossed it by half its width.
+
+   The face is UNCHANGED for everything that already fitted: this is a `min()`,
+   so the drawn size wins until the string is too long for the hole, and only
+   then does the value step down. Nothing about the ring moves — the drawn
+   thickness is the drawn thickness, and if a shrunk number ever reads too small
+   the other lever is thinning the ring, which is a design call and not this one.
+
+   `--dval-len` is the string's CHARACTER COUNT, set by the two donut centres
+   that draw one. ⚠ Its FALLBACK OF 1 IS LOAD-BEARING: `.dval` is a shared name
+   with two non-donut tenants (a HabitCreator time input, an entry-dashboard
+   rule row), and a site that never sets the property must compute the drawn
+   size exactly as before.
+   The two ratios: `.82` is how much of the hole's diameter the value may use —
+   the sub-label sits under it, so it cannot have the full chord — and `.6` is a
+   monospaced advance as a share of the em, which is what makes a character
+   count convertible into a width at all. */
+.donut .dval{font-family:var(--font-mono); font-size:min(var(--size-display), calc((var(--dist-donut-size) - 2 * var(--dist-donut-stroke)) * .82 / (var(--dval-len, 1) * .6))); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong);}
 .donut svg{width:100%; height:100%; transform:rotate(-90deg); display:block;}

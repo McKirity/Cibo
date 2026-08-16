@@ -192,13 +192,45 @@
      `translateX(-100%)` of a box collapsing to 0 is a slide of nothing. Pinned
      width → a stable box that moves a real 380px. Restore looked right only
      because the box grew back while the transform ran.
-     `z-index` is content-local and unnamed (the ladder's own carve-out): the
-     content pane follows the rail in DOM order, so without it the rail slides
-     UNDER the growing pane instead of over it. */
+     `z-index` keeps the rail over the content pane, which follows it in DOM
+     order — without it the rail slides UNDER the growing pane instead of over
+     it.
+     ⚠ IT IS 8, NOT 1, SINCE 2026-08-15, and the reason is that the ladder's
+     "content-local stacking stays local" carve-out is NOT TRUE: `.content`
+     declares no position and no z-index, so it creates no stacking context, and
+     every screen-local `z-index: 1` competes directly with the rail's — winning
+     on DOM order, because the pane comes second. Daily's sun card is the one
+     that showed it (`.sun-field > * { z-index: 1 }`, daily.css): its sky
+     painted straight over the rail's Jump popover.
+     ⚠ AND ISOLATING `.content` IS NOT THE FIX, though it is the tidier-looking
+     one: modals mount INSIDE their screen (the import modal in `.libscreen` is
+     the recorded case), so a stacking context there would trap `.dimlayer` at
+     z-40 under a rail it is supposed to dim.
+     8 clears screen-local stacking including the inline form popovers at 6, and
+     stays below the toast slot at 12 and the dim at 40, so nothing that should
+     cover the rail stops doing so. */
   width: var(--rail-width);
   position: relative;
-  z-index: 1;
   transition: transform var(--motion-deliberate) var(--ease-standard);
+}
+/* ⚠ THE TIER IS DECLARED AT `.app-frame > .rail`, NOT `.rail`, AND THAT IS THE
+   WHOLE POINT (2026-08-15). kit.css's ladder says in as many words that
+   "layering is kit-level, never a theme dial" — and a theme sheet is injected
+   AFTER every bundled stylesheet, so a bare `.rail` here loses to a bare
+   `.rail` there on order alone. Blame! declares exactly that: a cast-shadow
+   rule with `position: relative; z-index: 1`, reasoning in its own comment that
+   1 is safe because "the ladder starts at 6".
+   ⚠ THAT REASONING IS THE TRAP, and it is worth stating because the next theme
+   will reach for the same thing: the rail is a STACKING CONTEXT ROOT, so its
+   number is not competing with the ladder, it is the CEILING for everything
+   inside it. Pinning the root to 1 caps the z-12 Jump popover at 1 and hands
+   the pane's screen-local art the win on DOM order. The theme was trying to
+   stay out of the way and trapped the rail's whole subtree instead.
+   One child selector settles it: the app owns the tier, the theme keeps its
+   shadow, and 8 serves that shadow BETTER than 1 did — the cast still needs to
+   land on the pane, and at 8 it clears the pane's own `z-index: 1` children. */
+.app-frame > .rail {
+  z-index: 8;
 }
 /* NOT `display:none` any more: that vanishes the rail on frame 1 and there is
    nothing left to animate. The zero-width column plus the rail's own

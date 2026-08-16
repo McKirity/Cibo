@@ -84,10 +84,14 @@
 
 /* ---- frames (9-slice) --------------------------------------------------- */
 /* panel frame — the five parallel panel implementations + kinship tenants
-   (kit-band-current · kit-table-library's catalog box) */
+   (kit-band-current · kit-table-library's catalog box).
+   `.daily .card` LEFT THIS LIST 2026-08-16 (audit): every daily card renders
+   as `card whimsy` or `card catch`, both re-claimed at whimsy weight below —
+   the panel claim matched NOTHING, and a future plain `.daily .card` would
+   have silently arrived at panel weight with no reviewer aware this tenant
+   entry was empty. A new daily card must choose its role explicitly. */
 :root .panel, :root .hero,
 :root .cadash .cpanel,
-:root .daily .card,
 :root .csdash .bsec,
 :root .mapscreen .trunk,
 :root .libscreen .cat, :root .libscreen .tbar,

@@ -10,7 +10,7 @@
  * past day is a door to its cover wall, and a FUTURE day stays a dead route
  * (no target until the date arrives).
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState , type ReactNode } from "react";
 import { buildCadenceModel, type CadenceModel, type HabitRowVM, type StripVM } from "./cadenceSpec";
 import { dashboardListCap } from "../settings/store";
 import { useCadenceData } from "./useCadenceData";
@@ -180,9 +180,10 @@ function CadenceView({
                   const go = dayDoor(c.day);
                   return (
                   /* No state captions on gap/unfinalized cells (user-ruled
-                     2026-07-31): the appearance carries the state, the legend
-                     names it, the tooltip keeps the words. Best keeps its
-                     caption — it carries a count, not a state. */
+                     2026-07-31): the appearance carries the state, the tooltip
+                     keeps the words (the legend line did too, until every
+                     verdict legend was removed 2026-08-16, user-ruled). Best
+                     keeps its caption — it carries a count, not a state. */
                   <div key={c.day ?? `x${i}`} className={`vc ${c.cls}${c.best ? " best" : ""}${go ? " door" : ""}`} title={c.tip ?? undefined} onClick={go} role={go ? "button" : undefined} tabIndex={go ? 0 : undefined} onKeyDown={go ? onKeyActivate(go) : undefined}>
                     <span className="dn">{c.label}</span>
                     {c.best && c.done != null && <span className="hc">best · {c.done}/{c.active}</span>}
@@ -190,7 +191,6 @@ function CadenceView({
                   );
                 })}
               </div>
-              <div className="calnote"><b>Shade</b> = habits done · <b>dashed</b> = unfinalized · <b>ring</b> = best day</div>
             </div>
             <StatGrid m={m} cols={2} dayDoor={dayDoor} />
           </div>
@@ -203,8 +203,9 @@ function CadenceView({
                 return (
                 /* The .wfin state line is GONE (user-ruled 2026-07-31): its
                    whole vocabulary (unfinalized/future/finalized) restated
-                   the column's appearance; the legend names the states and
-                   the tooltip keeps the words. */
+                   the column's appearance; the tooltip keeps the words (the
+                   legend did too, until every verdict legend was removed
+                   2026-08-16, user-ruled). */
                 <div key={c.day ?? i} className={`wcol ${c.cls}${c.best ? " best" : ""}${go ? " door" : ""}`} title={c.tip ?? undefined} onClick={go} role={go ? "button" : undefined} tabIndex={go ? 0 : undefined} onKeyDown={go ? onKeyActivate(go) : undefined}>
                   <span className="wdow">{weekDayName(i)}</span>
                   <span className="wdate">{c.label}</span>
@@ -213,7 +214,6 @@ function CadenceView({
                 );
               })}
             </div>
-            <div className="calnote"><b>Shade</b> = habits done · <b>dashed</b> = unfinalized · <b>ring</b> = best day</div>
             <StatGrid m={m} cols={6} dayDoor={dayDoor} />
           </>
         )}
@@ -383,14 +383,12 @@ function CadenceView({
               onShowMore={() => setMoreShown(new Set(moreShown).add(r.key))}
             />
           ))}
-          {m.rowLegendSleep && (
-            <div className="rowlegend">
-              <span className="lg"><span className="cell d" /> done</span>
-              <span className="lg"><span className="cell m" /> missed</span>
-              <span className="lg"><span className="cell u" /> unknown</span>
-              <span className="lg"><span className="cell d" style={{ ["--cell-ink" as string]: "var(--habit-6)" }} /> 8 h+ night</span>
-            </div>
-          )}
+          {/* The sleep row legend is GONE with every other verdict legend
+              (user-ruled 2026-08-16). ⚠ It was the one on-screen place stating
+              that Sleep's filled cell means an 8 h+ NIGHT rather than merely a
+              logged one (the quality rule in buildHabitRow) — that meaning now
+              lives nowhere the user can read; surfaced at the removal, not
+              resolved. */}
         </div>
       </div>
     </div>
@@ -485,16 +483,14 @@ function HabitRowView({
            falling back to --verdict-done green / --text-muted grey). */
         <div className="exp" style={{ ["--cell-ink" as string]: ink }}>
           {r.expansion.sleepLine && <SleepLine v={r.expansion.sleepLine} />}
-          {r.expansion.storyCard && (
-            <div className="scard">
-              {r.expansion.storyCard.story.map((s, i) => <StripView key={`s${i}`} s={s} story onOpenEntry={onOpenEntry} />)}
-              {r.expansion.storyCard.groups.map((g) => (
-                <div key={g.heading}>
-                  <div className="shead">{g.heading}</div>
-                  {g.strips.map((s, i) => <StripView key={i} s={s} />)}
-                </div>
-              ))}
-            </div>
+          {/* ONE CARD PER ENTRY (user-ruled 2026-08-15). The list obeys the same
+              `cap`/"+ N more" the plain strips do — a habit sets one list or the
+              other, never both, so the expander governs whichever is present. */}
+          {r.expansion.storyCards && (
+            <StoryCards
+              cards={moreShown ? r.expansion.storyCards : r.expansion.storyCards.slice(0, r.expansion.cap)}
+              onOpenEntry={onOpenEntry}
+            />
           )}
           {(moreShown ? r.expansion.strips : r.expansion.strips.slice(0, r.expansion.cap)).map((s, i) => (
             <StripView key={i} s={s} onOpenEntry={onOpenEntry} />
@@ -538,7 +534,97 @@ function CellStrip({ cells }: { cells: HabitRowVM["cells"] }) {
  *  spec marked them `door: true` from the start and the CSS reserves the
  *  `.edoor` arrow column; the click and the arrow were never wired (found at
  *  the 2026-07-31 GUI pass). Vocab strips stay inert. */
-function StripView({ s, story, onOpenEntry }: { s: StripVM; story?: boolean; onOpenEntry?: (entryId: string) => void }) {
+/**
+ * The per-entry breakdown cards, each collapsible (user-ruled 2026-08-15:
+ * *"only have the first be fully expanded, rest is closed upon opening"*).
+ *
+ * ⚠ THE DEFAULT RE-ARMS BECAUSE THIS COMPONENT MOUNTS WITH THE EXPANSION. The
+ * habit row renders it only while open, so closing the row unmounts it and the
+ * next open starts from a fresh `useState` — first card expanded, the rest
+ * closed, every time. Holding the set in `HabitRowView` would have needed an
+ * effect watching `open` to reset it; mounting IS the reset.
+ *
+ * ⚠ THE CHEVRON IS ITS OWN CONTROL, NOT THE ROW. The entry line is a DOOR —
+ * clicking it opens that entry's dashboard — so hanging the toggle on the strip
+ * would have made one target mean two things. A card with no categoricals gets
+ * no chevron at all: there is nothing under it to reveal, and an affordance
+ * that opens onto nothing is worse than none.
+ */
+function StoryCards({
+  cards,
+  onOpenEntry,
+}: {
+  cards: { story: StripVM; groups: { heading: string; strips: StripVM[] }[] }[];
+  onOpenEntry?: (entryId: string) => void;
+}) {
+  const [open, setOpen] = useState<Set<number>>(() => new Set([0]));
+  const toggle = (i: number) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(i)) next.add(i);
+      return next;
+    });
+  return (
+    <>
+      {cards.map((card, ci) => {
+        const has = card.groups.length > 0;
+        const isOpen = has && open.has(ci);
+        return (
+          <div className={`scard${has ? " foldable" : ""}${isOpen ? " open" : ""}`} key={ci}>
+            {/* ⚠ THE FOLD RIDES IN THE STRIP'S OWN COLUMN 1, not in a wrapper
+                around it. `.estrip` shares `--row-cols` with the habit row and
+                starts its title at column 2 — column 1 IS the chevron gutter,
+                already reserved so the two tiers line up. Wrapping the strip in
+                a flex row to sit a button beside it pushed the whole seven-column
+                grid right by a chevron's width and, because the strip stopped
+                being a direct child of `.scard`, silently dropped the negative
+                margin that pulls it flush. Two indents from one wrapper. */}
+            <StripView
+              s={card.story}
+              story
+              onOpenEntry={onOpenEntry}
+              lead={
+                has ? (
+                  <button
+                    className="sfold"
+                    aria-expanded={isOpen}
+                    aria-label={`${isOpen ? "Collapse" : "Expand"} ${card.story.title}`}
+                    onClick={(e) => {
+                      e.stopPropagation(); // the strip itself is a door to the entry
+                      toggle(ci);
+                    }}
+                  >
+                    <Ico d={ICONS.chevronRight} />
+                  </button>
+                ) : undefined
+              }
+            />
+            {isOpen &&
+              card.groups.map((g) => (
+                <div key={g.heading}>
+                  <div className="shead">{g.heading}</div>
+                  {g.strips.map((s, i) => <StripView key={i} s={s} />)}
+                </div>
+              ))}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function StripView({
+  s,
+  story,
+  lead,
+  onOpenEntry,
+}: {
+  s: StripVM;
+  story?: boolean;
+  /** Rendered in the grid's column 1 — the gutter `.et` leaves free. */
+  lead?: ReactNode;
+  onOpenEntry?: (entryId: string) => void;
+}) {
   const go = s.door && s.entryId != null && onOpenEntry != null ? () => onOpenEntry(s.entryId!) : undefined;
   return (
     <div
@@ -549,12 +635,19 @@ function StripView({ s, story, onOpenEntry }: { s: StripVM; story?: boolean; onO
       tabIndex={go ? 0 : undefined}
       onKeyDown={go ? onKeyActivate(go) : undefined}
     >
+      {lead}
       <span className="et">{!s.inner && <span className="tick" />}{s.title}</span>
       <span className="etot">{s.total}</span>
       <span className="ebest">{s.best}</span>
       {s.cells && (
         <span className="cells" style={{ gridTemplateColumns: `repeat(${s.cells.length},1fr)` }}>
-          {s.cells.map((c, i) => <span key={i} className={`cell ${c === "f" ? "fut" : c === "d" ? "d" : c === "u" ? "u" : "e"}`} />)}
+          {/* ⚠ THE STATE IS PASSED THROUGH, as `CellStrip` above already does
+              (2026-08-15). This mapped everything that was not f/d/u onto
+              `.cell.e` — a FILLED grey — so a strip cell for "closed day, this
+              entry not touched" drew as a grey block while the habit row above
+              it drew the same fact as an empty outline. One meaning, two faces,
+              in the same column. `.cell.e` has no producer left. */}
+          {s.cells.map((c, i) => <span key={i} className={`cell ${c === "f" ? "fut" : c}`} />)}
         </span>
       )}
       <span className="edoor">{s.door && <Ico d={ICONS.forward} />}</span>

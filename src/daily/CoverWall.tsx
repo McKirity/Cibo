@@ -1145,11 +1145,22 @@ function WeatherWall({
   config: ReturnType<typeof loadWhimsyConfig>;
 }) {
   const { cond } = weatherWords(t.snap.code);
+  // THE DAY'S HIGH AND LOW, not the capture temperature (user-ruled
+  // 2026-08-15). The wall is the FINALIZED day — a record, read weeks later —
+  // and a single reading there answers "what was it at the moment the app
+  // happened to fetch", which is a fact about the app rather than about the
+  // day. High and low describe the whole day and do not go stale.
+  // The live reading moved the other way the same day: the daily form's card
+  // now re-reads the actual temperature on every launch (daily/feeds.ts). One
+  // ruling, two faces — the open day shows NOW, the closed day shows the DAY.
   return (
     <>
       <span className="wl">Weather</span>
       <div className="body">
-        <span className="t">{displayTemp(t.snap.tempC, config.tempUnit)}&deg;</span>
+        <span className="hl" title={`High ${displayTemp(t.snap.hiC, config.tempUnit)}°, low ${displayTemp(t.snap.loC, config.tempUnit)}°`}>
+          <span className="t">{displayTemp(t.snap.hiC, config.tempUnit)}&deg;</span>
+          <span className="lo">{displayTemp(t.snap.loC, config.tempUnit)}&deg;</span>
+        </span>
         <span className="c">{cond}</span>
       </div>
     </>

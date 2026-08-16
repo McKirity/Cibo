@@ -67,14 +67,34 @@
 .cadash .vc.g3 .dn, .cadash .vc.g3 .hc{color:var(--text-on-filled);}
 .cadash .vc.g4{background:color-mix(in oklch, var(--heat-ink, var(--finalize-mark)), var(--panel-background) var(--heat-bg-4)); box-shadow:none;}
 .cadash .vc.g4 .dn, .cadash .vc.g4 .hc{color:var(--text-on-filled);}
-.cadash .vc.gap .hc{color:var(--text-muted);}
-.cadash .vc.unf{background:var(--panel-background); box-shadow:none; border:var(--border-standard) dashed var(--finalize-outline);}
-.cadash .vc.unf .dn, .cadash .vc.unf .hc{color:var(--text-muted);}
+/* ⚠ THE MONTH'S FIVE STATES WERE RE-CUT 2026-08-15 (user-ruled). Two of them
+   used to be near-indistinguishable: a finalized day with nothing on it drew as
+   the bare cell, and a future day drew as the bare cell with its ring switched
+   off — so "you decided you did nothing" and "this has not happened" were a
+   hairline apart. They are now opposite: the decided one is FILLED grey, the
+   not-yet one is EMPTY with its outline kept. The classifier is in cadenceSpec;
+   this is only the paint. */
+/* GREYED — finalized, nothing done. A filled well tone, because this is an
+   ANSWER: you closed the day and it was empty. */
+.cadash .vc.gap{background:var(--inset-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider);}
+.cadash .vc.gap .dn, .cadash .vc.gap .hc{color:var(--text-muted);}
+/* DANGER — a PAST day never finalized. It was a dashed `--finalize-outline`,
+   which is the same quiet grey the whole grid is drawn in; the one state that
+   wants something FROM you now says so. `--danger` rather than
+   `--verdict-missed`: a missed day is data, an unclosed one is a job. Ring plus
+   wash, never colour alone (the app-wide rule). */
+.cadash .vc.unf{background:color-mix(in oklch, var(--danger), var(--panel-background) var(--tint-mix));
+  box-shadow:none; border:var(--border-standard) solid var(--danger);}
+.cadash .vc.unf .dn, .cadash .vc.unf .hc{color:var(--danger);}
 .cadash .vc.best{box-shadow:inset 0 0 0 var(--focus-ring-weight) var(--accent);}
-.cadash .vc.blank{background:none; box-shadow:none;}
+/* OUTLINE — future, and today while it is still open. Empty, but it keeps the
+   base cell's ring: a day that is coming is still a day. */
+.cadash .vc.blank{background:none;}
 .cadash .vc.blank .dn{color:var(--text-muted);}
-.cadash .calnote{margin-top:var(--space-3); font-size:var(--size-caption); color:var(--text-muted); line-height:var(--line-normal);}
-.cadash .calnote b{color:var(--text-secondary); font-weight:var(--weight-medium);}
+/* `.calnote` — the verdict legend line under the month calendar and week
+   strip — REMOVED 2026-08-16, user-ruled ("remove the verdict legends on all
+   cadence dashboards entirely"), with the sleep `.rowlegend`. The tooltips
+   alone keep the words now. */
 
 /* --- 2 · kit-chart-verdict — STRIP (weekly) ------------------------------- */
 .cadash .wstrip{display:grid; grid-template-columns:repeat(7,1fr); gap:var(--space-5);}
@@ -294,14 +314,50 @@
 .cadash .cell{height:var(--cad-cell-size); border-radius:var(--radius-cell); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); background:var(--panel-background); width:auto; min-width:0; max-width:var(--cad-cell-size); justify-self:stretch;}
 .cadash[data-scale="quarter"] .cell, .cadash[data-scale="year"] .cell, .cadash[data-scale="week"] .cell{max-width:calc(var(--cad-cell-size) * 2);}
 .cadash .cell.d{background:var(--cell-ink, var(--verdict-done)); box-shadow:none;}
-.cadash .cell.m{background:transparent; box-shadow:inset 0 0 0 var(--border-standard) var(--verdict-missed);}
-.cadash .cell.u{background:transparent; box-shadow:none; border:var(--border-hairline) dotted var(--verdict-unknown);}
-.cadash .cell.e{background:var(--window-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider);}
-.cadash .cell.fut{background:none; box-shadow:none;}
+/* ⚠ THE TWO OUTLINE STATES SWAPPED WEIGHT 2026-08-15 (user-ruled). `m` — the
+   day was closed and this habit was not done — kept its shape and lost its
+   colour: it is an ordinary fact about a finished day, not an alarm, and it was
+   wearing `--verdict-missed` while the state that actually wants something from
+   you wore a hairline dotted grey. `u` — a PAST day never finalized — takes the
+   ring instead, in `--danger` rather than `--verdict-missed` on the same
+   distinction the month panel draws: a missed day is DATA, an unclosed one is a
+   JOB. It reads across the whole column, because it is a fact about the day. */
+/* THE EMPTY RING'S INK IS A TEXT DIAL — user-ruled 2026-08-16 ("for all
+   themes… add bezels to the empty cells, as in many themes they're hard to
+   see"). --divider drowned wherever a theme's ground sat near it (Subnautica's
+   recessed plate was the finding; its theme-side patch of the same day is
+   SUPERSEDED by this). Same law as the scrollbar thumb (kit.css § Scrollbars,
+   trap b): chrome that must be visible on ANY theme ground takes a TEXT-weight
+   dial — --text-muted is readable on every theme's surfaces by contract,
+   --divider/--border are not. Weight unchanged: the 08-15 ruling set the
+   quietness; this fixes only the ink. Applies to all three empty faces —
+   m · fut · iv0 — so the grains cannot drift apart again. */
+.cadash .cell.m{background:transparent; box-shadow:inset 0 0 0 var(--border-standard) var(--text-muted);}
+.cadash .cell.u{background:color-mix(in oklch, var(--danger), var(--panel-background) var(--tint-mix));
+  box-shadow:none; border:var(--border-standard) solid var(--danger);}
+/* `.cell.e` — the filled grey "not done" — RETIRED 2026-08-15, user-ruled:
+   the state is `.cell.m` at both tiers now, empty with an outline. Nothing
+   emits `e` any more; the class is gone rather than left as a face with no
+   producer. */
+/* FUTURE WEARS `m`'s OUTLINE — user-ruled 2026-08-16, REVERSING the drawn
+   no-affordance face FOR THESE CELLS ONLY (the day-door law is untouched: a
+   fut cell is still click-dead, and the verdict calendar + nav calendar keep
+   their blank future). Chosen over teaching the quarter/year builders a future
+   state — those grains already emit `m` for future weeks/months, so one ring
+   everywhere beats plumbing `today` through the intensity functions. The cost,
+   taken knowingly: "didn't" and "not yet" share a face, told apart by where
+   today sits in the row. */
+.cadash .cell.fut{background:none; box-shadow:inset 0 0 0 var(--border-standard) var(--text-muted);}
 /* week/month-grain intensity — habit-hue ramp over --cell-ink, reading the
    published --heat-bg-N complements (iv1..iv3 ride stops 2..4 — the drawn
    face's three lit levels) */
-.cadash .cell.iv0{background:var(--window-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider);}
+/* iv0 WEARS `m`'s FACE — user-ruled 2026-08-16 ("the higher tier cadence
+   dashboards have grayed out cells while the lower tiers just have them empty,
+   we need to be consistent"). It was a filled grey (--window-background + a
+   hairline), i.e. the `.cell.e` face one grain up, and `e` was retired
+   2026-08-15 for exactly this: nothing-happened draws as an empty outline,
+   at every grain. */
+.cadash .cell.iv0{background:transparent; box-shadow:inset 0 0 0 var(--border-standard) var(--text-muted);}
 .cadash .cell.iv1{background:color-mix(in oklch, var(--cell-ink, var(--text-muted)), var(--panel-background) var(--heat-bg-2)); box-shadow:none;}
 .cadash .cell.iv2{background:color-mix(in oklch, var(--cell-ink, var(--text-muted)), var(--panel-background) var(--heat-bg-3)); box-shadow:none;}
 .cadash .cell.iv3{background:color-mix(in oklch, var(--cell-ink, var(--text-muted)), var(--panel-background) var(--heat-bg-4)); box-shadow:none;}
@@ -348,6 +404,19 @@
 .cadash .estrip.more:hover .et{color:var(--accent);}
 /* Writing's card-within-card */
 .cadash .scard{border:var(--border-hairline) solid var(--divider); border-radius:var(--radius-small); background:var(--panel-background); padding:var(--space-4); margin-bottom:var(--space-4);}
+/* The per-entry card's fold (user-ruled 2026-08-15). The chevron matches the
+   habit row's exactly — `chevronRight` plus a rotate on the open state, one
+   idiom on this screen rather than two — and it is a BUTTON beside the strip
+   rather than the strip itself, because the strip is a door to the entry. */
+/* Column 1 of the strip's own grid — the gutter `.et` leaves free, and the
+   same track the habit row hangs its chevron in, so the two line up vertically.
+   No wrapper: one around the strip would push its seven columns out of step
+   with the row above and cost it the card's negative margin. */
+.cadash .sfold{grid-column:1; display:flex; align-items:center; justify-content:center;
+  padding:0; border:none; background:none; color:var(--text-muted); cursor:pointer;}
+.cadash .sfold .ico{width:18px; height:18px; transition:transform var(--motion-standard) var(--ease-standard);}
+.cadash .scard.open .sfold .ico{transform:rotate(90deg);}
+.cadash .sfold:hover{color:var(--text-strong);}
 .cadash .shead{font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-weight:var(--weight-bold); padding:var(--space-4) var(--space-5) var(--space-2) var(--space-6);}
 .cadash .estrip.inner .et{padding-left:calc(var(--space-6) * 2); font-weight:var(--weight-regular);}
 /* the measure micro-bars — REAL per-bucket amounts */
@@ -364,9 +433,8 @@
 .cadash .sl-band .blab{position:absolute; top:-26px; left:0; font-size:var(--size-caption); color:var(--text-secondary); white-space:nowrap; font-weight:var(--weight-medium);}
 .cadash .sl-avg{position:absolute; top:28px; width:var(--border-heavy); height:34px; background:var(--habit-6); border-radius:var(--radius-full);}
 .cadash .sl-tick{position:absolute; top:58px; font-size:var(--size-caption); color:var(--text-muted); transform:translateX(-50%);}
-.cadash .rowlegend{display:flex; align-items:center; gap:var(--space-6); flex-wrap:wrap; margin-top:var(--space-4);}
-.cadash .rowlegend .lg{display:inline-flex; align-items:center; gap:var(--space-3); font-size:var(--size-caption); color:var(--text-secondary);}
-.cadash .rowlegend .lg .cell{width:16px; height:16px;}
+/* `.rowlegend` — the sleep row's done/didn't/unfinalized/8h+ legend — REMOVED
+   2026-08-16 with `.calnote` (user-ruled, all verdict legends). */
 
 
 /* DAY DOORS — live 2026-07-27 with Daily state 2. A past day opens its cover

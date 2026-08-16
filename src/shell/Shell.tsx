@@ -180,6 +180,34 @@ export function Shell() {
         const home = defaultLogDay();
         setView(home === todayLocal() ? { kind: "daily" } : { kind: "daily", day: home });
       }
+      // ── RELOAD, and it is PARITY rather than a fifth app hotkey (2026-08-15,
+      // reported from the Mac: *"cmd + r doesn't refresh or hot reload the app
+      // like it does on the pc"*).
+      //
+      // The PC never had a reload BINDING — it has WebView2, whose browser
+      // accelerator keys (Ctrl+R · F5 · F12 …) are on unless an app turns them
+      // off, and this one never has. WKWebView ships no such thing, and reload
+      // on macOS is conventionally a MENU item that a browser provides; Tauri's
+      // default menu is the only one we install and its View submenu holds
+      // exactly one entry, fullscreen. So ⌘R was bound to nothing at all —
+      // nothing was broken, the affordance simply never existed on that side.
+      //
+      // Binding it here rather than adding the menu item makes both platforms
+      // take ONE path instead of leaving Windows on the webview's and macOS on
+      // a menu's. `window.location.reload()` is the app's own idiom already
+      // (FatalLaunch's Retry) and needs no capability — the Tauri webview API
+      // would, and an ungranted capability fails SILENTLY here.
+      //
+      // ⚠ A RELOAD IS NOT A RESTART: it skips the close path, so the auto-save
+      // buffer (up to `autosave_minutes`, default 10) is dropped and a running
+      // clock falls back to its heartbeat file. That exposure is not new — it
+      // is exactly what Ctrl+R has always done on the PC — but it is now
+      // reachable on both.
+      if ((e.ctrlKey || e.metaKey) && (e.key === "r" || e.key === "R")) {
+        e.preventDefault();
+        window.location.reload();
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
         setPaletteOpen((open) => {

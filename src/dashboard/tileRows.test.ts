@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TILE_ROW_MAX, balancedCols, tileRowPlan } from "./tileRows";
+import { TILE_ROW_MAX, TILE_ROW_MAX_SMALL, balancedCols, tileRowPlan } from "./tileRows";
 
 /**
  * The ruling this guards (2026-08-10): four tiles draw 2×2, never 3+1. The
@@ -146,6 +146,43 @@ describe("tileRowPlan — no empty space in any row", () => {
 
   it("survives an empty group", () => {
     expect(tileRowPlan(0)).toEqual({ tracks: 1, spans: [] });
+  });
+});
+
+describe("the small canvas caps a row at two (2026-08-15)", () => {
+  it("splits the three-tile group that was overlapping — 2 + 1, flush", () => {
+    // The entry dashboard's WORDS group: total · avg/day · best day. At three
+    // across on the 14" the side list overflowed back over the number.
+    expect(tileRowPlan(3, TILE_ROW_MAX_SMALL)).toEqual({ tracks: 2, spans: [1, 1, 2] });
+  });
+
+  it("leaves the groups that already read cleanly alone", () => {
+    // TIME and DATES & STREAKS are four tiles: 2×2 under either cap, so the
+    // change must be invisible on them.
+    expect(tileRowPlan(4, TILE_ROW_MAX_SMALL)).toEqual(tileRowPlan(4, TILE_ROW_MAX));
+    expect(tileRowPlan(2, TILE_ROW_MAX_SMALL)).toEqual(tileRowPlan(2, TILE_ROW_MAX));
+    expect(tileRowPlan(1, TILE_ROW_MAX_SMALL)).toEqual(tileRowPlan(1, TILE_ROW_MAX));
+  });
+
+  it("never puts more than two tiles on a row, at any group size", () => {
+    for (let n = 1; n <= 40; n++) expect(balancedCols(n, TILE_ROW_MAX_SMALL)).toBeLessThanOrEqual(2);
+  });
+
+  it("still fills every row exactly under the small cap", () => {
+    for (let n = 1; n <= 40; n++) {
+      const { tracks, spans } = tileRowPlan(n, TILE_ROW_MAX_SMALL);
+      let run = 0;
+      const sums: number[] = [];
+      for (const sp of spans) {
+        run += sp;
+        if (run >= tracks) {
+          sums.push(run);
+          run = 0;
+        }
+      }
+      if (run > 0) sums.push(run);
+      for (const sum of sums) expect(sum).toBe(tracks);
+    }
   });
 });
 

@@ -43,7 +43,7 @@ type Tab = "manual" | "hotkeys" | "about";
 const HOTKEYS: { action: string; keys: string; note?: string }[] = [
   { action: "Command palette", keys: "Ctrl K" },
   { action: "Back / Forward", keys: "Alt ← · Alt →", note: "also the mouse side buttons, and the titlebar arrows" },
-  { action: "Today's Daily", keys: "Ctrl H" },
+  { action: "Today's Daily", keys: "Ctrl E" },
   { action: "Close overlay", keys: "Esc", note: "the top overlay only" },
 ];
 

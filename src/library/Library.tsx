@@ -47,6 +47,7 @@ import { ImportModal } from "../importers/ImportModal";
 import { consumeLibraryImport } from "../shell/navRequest";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { deviceGet, deviceSet } from "../settings/deviceStore";
+import { useCompact } from "../theme/compact";
 import "./library.css";
 
 const PER_PAGE_COLS = "--lib-grid-cols";
@@ -141,6 +142,8 @@ export function Library({
   onOpenEntry: (id: string) => void;
 }) {
   const data = useLibraryData(habitKey);
+  // The toolbar's doors shed their labels below the knee — see the .tdoors block.
+  const compact = useCompact();
 
   const [state, setState] = useState<LibraryViewState>(() => loadViewState(habitKey));
   const [search, setSearch] = useState("");
@@ -420,21 +423,51 @@ export function Library({
               </button>
             )}
           </div>
+          {/* ⚠ EVERY LABEL HERE IS WRAPPED, and that is load-bearing rather than
+              tidiness: on the small canvas the bar runs out of room and these
+              three doors drop their words to become icon buttons (user-ruled
+              2026-08-15 — "change the excess buttons to just icons so they can
+              all sit in one line"), which small.css can only do to an ELEMENT.
+              A bare text node has nothing to hide. The wrapper is inline and
+              changes nothing at 2K.
+
+              The tip carries the word the icon loses, so it is set only when
+              the word is actually gone — at 2K it would be a tooltip repeating
+              a label the user is already reading. `aria-label` is unconditional:
+              it costs nothing when the text is visible and is the only name the
+              button has when it is not. */}
           <div className="tdoors">
-            <button className="btn-accent" onClick={() => setCreationOpen(true)}>
+            <button
+              className="btn-accent"
+              aria-label="New entry"
+              data-tip={compact ? "New entry" : undefined}
+              onClick={() => setCreationOpen(true)}
+            >
               <Ico d={ICON.plus} size={14} />
-              New entry
+              <span className="blab">New entry</span>
             </button>
-            <button className="btn-plain" onClick={() => setBulkOpen(true)} disabled={empty}>
+            <button
+              className="btn-plain"
+              aria-label="Bulk edit"
+              data-tip={compact ? "Bulk edit" : undefined}
+              disabled={empty}
+              onClick={() => setBulkOpen(true)}
+            >
               <Ico d={ICON.edit} size={14} />
-              Bulk edit
+              <span className="blab">Bulk edit</span>
             </button>
             {/* ONE live "Import" door per library (the 2026-08-01 ruling); the
                 step-8-era disabled branch was dead code and left 2026-08-04. */}
             {importerDoors(habitKey).map((label) => (
-              <button key={label} className="btn-plain" onClick={() => setImportOpen(true)}>
+              <button
+                key={label}
+                className="btn-plain"
+                aria-label={label}
+                data-tip={compact ? label : undefined}
+                onClick={() => setImportOpen(true)}
+              >
                 <Ico d={ICON.download} size={14} />
-                {label}
+                <span className="blab">{label}</span>
               </button>
             ))}
             {/* the grid⇄list toggle was REMOVED with the list view (user-ruled

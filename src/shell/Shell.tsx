@@ -135,7 +135,7 @@ export function Shell() {
   }, [view, habits]);
 
   // Back/forward bindings: Alt+←/→ and mouse buttons 4/5 (the ruled set, minus
-  // the chrome arrows below). `Ctrl+H` (was `Ctrl+Home`, user-ruled 2026-08-03) went live 2026-07-27 — its target is
+  // the chrome arrows below). `Ctrl/Cmd+E` (was `Ctrl+H`, user-ruled 2026-08-15; `Ctrl+Home` before that) went live 2026-07-27 — its target is
   // Daily, and Daily now exists in both states. `Ctrl+K` went live 2026-07-29
   // with the palette — the four-hotkey set ([[Shell Mechanics]] § 7) is whole.
   // The palette is NEVER summoned over a modal holding input (the overlay
@@ -151,12 +151,28 @@ export function Shell() {
   const [creatorPending, setCreatorPending] = useState(false);
   useEffect(() => {
     const onHome = (e: KeyboardEvent) => {
-      // `Ctrl+H`, USER-RULED 2026-08-03, replacing the ruled-and-drawn
-      // `Ctrl+Home`. Home never fired reliably in testing and the cause was
-      // never identified; a letter key is unambiguous across every keyboard,
-      // needs no Fn combination, and collides with nothing the app binds. The
-      // four-hotkey SET is unchanged — this is one member's spelling.
-      if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
+      // `Ctrl/Cmd+E`, USER-RULED 2026-08-15. The third spelling of this one
+      // hotkey and the four-hotkey SET is still unchanged — `Ctrl+Home` was
+      // ruled and drawn, became `Ctrl+H` on 2026-08-03 (Home never fired
+      // reliably and the cause was never found), and became `E` the day the Mac
+      // showed why `H` could not stay.
+      //
+      // ⚠ `⌘H` IS HIDE APPLICATION on macOS, one of the few chords the platform
+      // reserves outright, and this handler was binding it — accepting `metaKey`
+      // and calling `preventDefault()`, so on the Mac ⌘H navigated to the working
+      // day and ate the system shortcut. From Daily, which is where the app
+      // launches, "navigate to Daily" is indistinguishable from nothing
+      // happening (*"ill be hitting cmd + h to minimize/hide it, but it doesn't
+      // do anything"*). Re-lettering beat dropping `metaKey`, because ⌃-anything
+      // is not what a Mac user reaches for — the point is that BOTH platforms
+      // keep the modifier their users expect.
+      //
+      // ⚠ `⌘E` IS FREE, and that was checked rather than assumed: it is absent
+      // from Tauri's default macOS menu (About · Services · Hide · Hide Others ·
+      // Quit · Close · the Edit and Window submenus), which is the only menu this
+      // app installs. THE STANDING TEST A CHORD HAS TO PASS: not "does anything
+      // else in the app use it" but "does the PLATFORM already own it".
+      if ((e.ctrlKey || e.metaKey) && (e.key === "e" || e.key === "E")) {
         e.preventDefault();
         // The day cutoff "sets logging DEFAULTS only" — before the cutoff
         // hour, home is still yesterday's working day, DATE-ADDRESSED so the

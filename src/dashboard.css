@@ -119,12 +119,16 @@
    --triptych-* precedent). Phase 2 step 4, 2026-08-10. */
 :root{ --heat-week-col: 1fr; }
 .heat{display:grid; grid-template-columns:auto 1fr; gap:var(--space-4);}
-.heat .cells{display:grid; grid-template-columns:repeat(53,var(--heat-week-col)); grid-template-rows:repeat(7,1fr); gap:var(--space-1);}
+/* `--heat-weeks` is the COLUMN COUNT, published inline by the entry face when
+   it trims its window to the entry's own history (dashboard/heatWeeks, 2026-08-15).
+   The fallback IS the previous literal, so every other tenant — and the whole 2K
+   canvas — computes byte-identically. */
+.heat .cells{display:grid; grid-template-columns:repeat(var(--heat-weeks, 53),var(--heat-week-col)); grid-template-rows:repeat(7,1fr); gap:var(--space-1);}
 .heat .cols{display:flex; flex-direction:column; gap:var(--space-2); min-width:0;}
 /* `line-height` is PINNED so the months line has a known height — the weekday
    column's head box below is sized off the same two dials, and the two must
    agree exactly or every label row drifts. */
-.heat .months{display:grid; grid-template-columns:repeat(53,var(--heat-week-col)); gap:var(--space-1); font-size:var(--size-caption); line-height:var(--line-tight); color:var(--text-muted);}
+.heat .months{display:grid; grid-template-columns:repeat(var(--heat-weeks, 53),var(--heat-week-col)); gap:var(--space-1); font-size:var(--size-caption); line-height:var(--line-tight); color:var(--text-muted);}
 /* `min-width:0` IS THE ALIGNMENT FIX (2026-08-10). A `1fr` track is
    `minmax(auto,1fr)`, so a NOWRAP label whose text is wider than its track
    INFLATES that track — the months grid then carries twelve fat tracks and

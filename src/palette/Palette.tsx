@@ -38,7 +38,6 @@
  * the Settings-sections + manual-pages tier joined 2026-08-03 with the manual
  * reader — the last absent teleport group.)
  */
-import { relLabel } from "../metrics/format";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { EntryCreationModal } from "../library/EntryCreationModal";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
@@ -56,14 +55,8 @@ import { openThemesFolder } from "../theme/loader";
 import { publishDoctor, runDoctor } from "../db/doctor";
 import { requestProbeAll } from "../shell/navRequest";
 import type { SettingsSection } from "../shell/views";
-import { monthVar, parsePeriods, periodDisplay, type PeriodScale, type PlaceMatch } from "./periodGrammar";
-import {
-  placeId,
-  readLastVerb,
-  readRecents,
-  recordLastVerb,
-  type RecentPlace,
-} from "./recents";
+import { parsePeriods, type PeriodScale, type PlaceMatch } from "./periodGrammar";
+import { readLastVerb, recordLastVerb } from "./recents";
 import { useSearchData } from "./useSearchData";
 import "./palette.css";
 
@@ -402,32 +395,7 @@ export function PaletteOverlay({
     return m;
   }, [data.entries]);
 
-  // ── The Recent group (user-ruled 2026-07-29 — the at-rest face leads with
-  // nouns). ONE source: the shell's visit ledger — see the REMOVED-merge note
-  // below. Read once per summon — the overlay mounts fresh each time.
-  const [visits] = useState(readRecents);
   const [lastVerb] = useState(readLastVerb);
-  // RECENT = the VISIT LEDGER ONLY (user-ruled 2026-07-29, second pass: the
-  // section is "recently OPENED" — a logging-recency merge kept injecting
-  // rows the user never opened, day-labelled "today" because a session
-  // carries no clock; the merge is REMOVED with the label complaint, not
-  // patched). Unresolvable places (a deleted entry, an archived habit) are
-  // dropped before the cap so the group never shows dead doors.
-  const recents = useMemo<{ id: string; at: number; place: RecentPlace }[]>(() => {
-    const entryIds = new Set(data.entries.map((e) => e.id));
-    const keys = new Set(data.habits.flatMap((h) => (h.key != null ? [h.key] : [])));
-    const resolvable = (p: RecentPlace): boolean => {
-      if (p.kind === "entry") return entryIds.has(p.id) && keys.has(p.habitKey);
-      if (p.kind === "habit") return keys.has(p.key);
-      if (p.kind === "library") return keys.has(p.habitKey);
-      return true; // periods and days always resolve
-    };
-    return visits
-      .filter((v) => resolvable(v.place))
-      .map((v) => ({ id: placeId(v.place), at: v.at, place: v.place }))
-      .sort((a, b) => b.at - a.at)
-      .slice(0, 5);
-  }, [visits, data.habits, data.entries]);
 
   // ── Row list (render order = keyboard order) ──────────────────────────────
   const rows = useMemo<Row[]>(() => {
@@ -477,12 +445,7 @@ export function PaletteOverlay({
         <span className="pal-dot" style={{ ["--pal-hue" as string]: `var(${colourVar})` }} />
       </span>
     );
-    const habitById = new Map(data.habits.map((h) => [h.id, h]));
     const habitByKey = new Map(data.habits.filter((h) => h.key != null).map((h) => [h.key as string, h]));
-    // The recents loop resolved each remembered entry with a linear `find`
-    // over the whole entry list; one map, built beside the habit maps it
-    // already builds here (2026-08-04).
-    const entryById = new Map(data.entries.map((e) => [e.id, e]));
     // LEAD RULING (user-ruled 2026-07-29): an ENTRY wears its owning habit's
     // GLYPH tinted in the habit colour — the dot survives only on days/periods.
     const entryLead = (h: (typeof data.habits)[number] | undefined) =>
@@ -518,69 +481,24 @@ export function PaletteOverlay({
     }
 
     if (query.trim() === "") {
-      // STATE 1 — at rest, RESTRUCTURED 2026-07-29 (user-ruled, in-canvas —
-      // a knowing delta over the FINAL's verb-inventory rest face). Leads with
-      // the NOUNS you can teleport to (Recent, in query row anatomy), so ↵
-      // opens a THING by default and typing reads as FILTERING. A "Jump to"
-      // screen list was drawn and CUT — the nav rail owns those doors.
-      for (const r of recents) {
-        const p = r.place;
-        const when = relLabel(r.at);
-        if (p.kind === "entry") {
-          const e = entryById.get(p.id);
-          const h = e != null ? habitById.get(e.habitId) : undefined;
-          if (e == null || h == null) continue;
-          out.push(
-            palRow(`recent-${r.id}`, entryLead(h), e.title, {
-              sub: h.name,
-              meta: <span className="pal-tier">{when}</span>,
-              fire: () => fireAction({ t: "entry", id: e.id, habitKey: h.key as string }),
-            }),
-          );
-        } else if (p.kind === "habit" || p.kind === "library") {
-          const key = p.kind === "habit" ? p.key : p.habitKey;
-          const h = habitByKey.get(key);
-          if (h == null) continue;
-          const count = entryCounts.get(h.id) ?? 0;
-          out.push(
-            palRow(
-              `recent-${r.id}`,
-              habitLead(h.colourSlot, h.icon, h.name),
-              p.kind === "library" ? `${h.name} — Library` : h.name,
-              {
-                sub:
-                  p.kind === "library"
-                    ? "catalog"
-                    : h.kind === "project"
-                      ? `${count} ${count === 1 ? "entry" : "entries"}`
-                      : h.kind,
-                meta: <span className="pal-tier">{when}</span>,
-                fire: () =>
-                  fireAction(
-                    p.kind === "library" ? { t: "library", key } : { t: "habit", key },
-                  ),
-              },
-            ),
-          );
-        } else if (p.kind === "period") {
-          const disp = periodDisplay(p.scale, p.anchor);
-          out.push(
-            palRow(`recent-${r.id}`, dotLead(disp.colourVar), disp.title, {
-              sub: disp.sub,
-              meta: <span className="pal-tier">{when}</span>,
-              fire: () => go(() => nav.openCadence(p.scale, p.anchor)),
-            }),
-          );
-        } else {
-          out.push(
-            palRow(`recent-${r.id}`, dotLead(monthVar(Number(p.day.slice(5, 7)))), p.day, {
-              sub: "daily",
-              meta: <span className="pal-tier">{when}</span>,
-              fire: () => go(() => nav.openDay(p.day)),
-            }),
-          );
-        }
-      }
+      // STATE 1 — at rest. THE COMMANDS ARE THE WHOLE FACE (user-ruled
+      // 2026-08-15: *"remove the most recent section. When I open the palette, I
+      // found that I want to go straight to actions"* — both canvases).
+      //
+      // This SUPERSEDES the 2026-07-29 restructure, which had put a Recent group
+      // of visited nouns above the verbs so that ↵ opened a THING by default and
+      // typing read as filtering. The nouns are still reachable in one keystroke
+      // — they are what typing searches — so what the group actually cost was the
+      // top of the list, every summon, to a guess about where you were going.
+      // ⚠ It also carried the FINAL's own rest face BACK, which was a verb
+      // inventory; the 2026-07-29 note called itself "a knowing delta over the
+      // FINAL" and this returns to it rather than inventing a third shape.
+      //
+      // ⚠ ONE THING WENT WITH IT, surfaced rather than quietly absorbed: the
+      // period grammar ("Q3", "week 31") had no hint anywhere else. The FINAL's
+      // prose hint was CUT on 2026-07-29 *because* Recent's period row taught it
+      // by example, and with the group gone nothing teaches it. Flagged to the
+      // user the day this landed; the manual still documents it.
       // THE COMMANDS (user-ruled 2026-07-29): ONE flat list, ALPHABETICAL,
       // with the LAST-TOUCHED live verb lifted to the top — marked in the
       // tier slot ("last used"), never with a second header. Advanced Search
@@ -669,7 +587,7 @@ export function PaletteOverlay({
       }
     }
     return out;
-  }, [picking, query, projectHabits, entryCounts, groups, periods, data.habits, data.entries, recents, lastVerb, today, go, nav, fireAction, firePlace]);
+  }, [picking, query, projectHabits, entryCounts, groups, periods, data.habits, data.entries, lastVerb, today, go, nav, fireAction, firePlace]);
 
   const selectable = useMemo(() => rows.filter((r) => r.selectable), [rows]);
 
@@ -799,17 +717,11 @@ export function PaletteOverlay({
               No entry, habit, screen, or period matches <b>“{query.trim()}”</b>.
             </div>
           ) : query.trim() === "" ? (
-            // The FINAL's prose hint is CUT (user-ruled 2026-07-29) — the
-            // period grammar is taught by Recent's period row alone.
+            // At rest the palette IS its verb inventory (user-ruled 2026-08-15).
+            // The header stays: the typing face groups its results under headers
+            // too, so dropping this one would make the two faces disagree about
+            // whether a list carries a name.
             <>
-              {recents.length > 0 && <div className="pal-grp">Recent</div>}
-              {recents.length > 0 && (
-                <div className="pal-list">
-                  {rows
-                    .filter((r) => r.key.startsWith("recent-"))
-                    .map((r) => r.node(r.key === selKey, () => setSel(selectable.findIndex((s) => s.key === r.key))))}
-                </div>
-              )}
               <div className="pal-grp">Actions</div>
               <div className="pal-list">
                 {rows

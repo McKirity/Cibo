@@ -21,6 +21,8 @@
  * --wave-break-w dial (70), the band height rides --wave-band-h via CSS.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCompact } from "../theme/compact";
+import { heatFitWeeks, heatWeeks, trimHeatCols } from "./heatWeeks";
 import {
   DateOnly,
   stringListToJson,
@@ -28,6 +30,7 @@ import {
 import { NonEmptyString100, NonEmptyString1000, NonNegativeInt, PositiveInt } from "@evolu/common";
 import { evolu } from "../db/evolu";
 import { dayFromIndex, dayGap, dayIndex, heatRowLabels, monthKey } from "../metrics/dates";
+import { HEATMAP_WEEKS, heatmapMonths } from "../metrics/shapes";
 import { useEntryData, type EntryData } from "./useEntryData";
 import {
   buildEntryDashboard,
@@ -189,7 +192,8 @@ export function EntryDashboard({
             </Panel>
           )}
 
-          {/* ── Activity heatmap (trailing 53 weeks; Words⇄Time when two-measure) ── */}
+          {/* ── Heatmap (53 weeks ending at the last logged day; Words⇄Time when
+              two-measure) ── */}
           <EntryHeatmap heatmap={m.heatmap} />
 
           {/* ── Word-growth curve (creation two-measure only) — beneath the
@@ -1462,6 +1466,61 @@ function GrowthCurve({ g, colorVar }: { g: GrowthSpec; colorVar: string }) {
 function EntryHeatmap({ heatmap }: { heatmap: Omit<CreationModel["heatmap"], "trio"> }) {
   const [measure, setMeasure] = useState<"count" | "time">(heatmap.measures ? "count" : "time");
 
+  // ── HOW MANY WEEKS THIS ENTRY DRAWS (user-ruled 2026-08-15; the arithmetic and
+  //    its reasoning live in ./heatWeeks). SMALL CANVAS ONLY — at 2K the block
+  //    stays the full 53-week year, which is what `heatWeeks` returns for an
+  //    unmeasured box, so the desktop path never even measures.
+  //
+  //    The two numbers the fit depends on are READ FROM CSS, not repeated here:
+  //    `--heat-week-col` is the track minimum (16px under compact, `1fr` at 2K —
+  //    which is why this is guarded on `compact`) and the column gap is whatever
+  //    `.cells` actually renders. Keeping CSS the owner is what stops this from
+  //    silently disagreeing with the sheet the day either value is tuned.
+  const compact = useCompact();
+  const { ref: colsRef, w: colsW } = useBox<HTMLDivElement>();
+  const [trackMin, setTrackMin] = useState(0);
+  const [colGap, setColGap] = useState(0);
+  useLayoutEffect(() => {
+    const el = colsRef.current?.querySelector<HTMLElement>(".cells");
+    if (el == null) return;
+    const cs = getComputedStyle(el);
+    setTrackMin(parseFloat(cs.getPropertyValue("--heat-week-col")) || 0);
+    setColGap(parseFloat(cs.columnGap) || 0);
+  }, [compact, colsRef]);
+
+  const weeks = compact
+    ? heatWeeks({ fitWeeks: heatFitWeeks(colsW, trackMin, colGap), maxWeeks: HEATMAP_WEEKS })
+    : HEATMAP_WEEKS;
+  const cells = weeks === HEATMAP_WEEKS ? heatmap.cells : trimHeatCols(heatmap.cells, HEATMAP_WEEKS, weeks);
+  // Recomputed rather than re-based: a trimmed grid's leftmost column is usually
+  // mid-month, and shifting the old labels would leave it unnamed. `heatmapMonths`
+  // is pure and takes the count, so asking it again is both cheaper and correct.
+  const months = weeks === HEATMAP_WEEKS ? heatmap.months : heatmapMonths(heatmap.end, weeks, null);
+
+  // OPEN ON THE RECENT END. This is the SAME three lines `kit.tsx`'s Heatmap has
+  // carried since 2026-08-10, and their absence here is the whole of the user's
+  // *"it starts all the way to the left"* (2026-08-15) — the block scrolls on the
+  // small canvas, and a scroller opens at 0, which is the OLDEST week. Nothing
+  // was choosing the left edge; it is where a scroll container starts.
+  //
+  // ⚠ THIS IS THE SECOND COPY OF THE HEATMAP MARKUP, and the second time it has
+  // cost a fix that the shared block already had (the 2026-08-10 weekday-row and
+  // month-label work is the first, recorded in the doc log). Anything done to one
+  // of these two from here on has to be done to both, or read the other first.
+  //
+  // `scrollLeft` clamps itself, so this is a no-op wherever the block still fits
+  // — the 2K canvas is untouched without having to ask whether it scrolls.
+  // `useLayoutEffect`, so the pin happens before paint rather than as a visible
+  // jump from the left edge.
+  // It survives the trimming above as a BELT-AND-BRACES: once the count fits by
+  // construction there is nothing to scroll, but the first paint happens before
+  // the box has been measured, and a container that is not overflowing ignores
+  // this anyway.
+  useLayoutEffect(() => {
+    const el = colsRef.current;
+    if (el != null) el.scrollLeft = el.scrollWidth;
+  }, [colsRef, weeks]);
+
   const cellFace = (c: CreationHeatCell) => {
     if (c.day == null) return { style: { visibility: "hidden" } as CSSProperties, cls: "hcell", tip: undefined };
     const lvl = c.levels[measure];
@@ -1469,7 +1528,7 @@ function EntryHeatmap({ heatmap }: { heatmap: Omit<CreationModel["heatmap"], "tr
   };
 
   return (
-    <Panel title="Activity heatmap">
+    <Panel title="Heatmap">
       {heatmap.measures && (
         <div className="segrow">
           <span className="seglbl">Measure</span>
@@ -1482,7 +1541,13 @@ function EntryHeatmap({ heatmap }: { heatmap: Omit<CreationModel["heatmap"], "tr
           </div>
         </div>
       )}
-      <div className="heat" style={heatPoolStyle(heatmap.cells, (c) => c.levels[measure])}>
+      <div
+        className="heat"
+        style={{
+          ...heatPoolStyle(cells, (c) => c.levels[measure]),
+          ["--heat-weeks" as string]: weeks,
+        }}
+      >
         <div className="weekdays">
           <span className="wd" />
           {heatRowLabels().map((d, i) => (
@@ -1491,16 +1556,16 @@ function EntryHeatmap({ heatmap }: { heatmap: Omit<CreationModel["heatmap"], "tr
             </span>
           ))}
         </div>
-        <div className="cols">
+        <div className="cols" ref={colsRef}>
           <div className="months">
-            {heatmap.months.map((mo) => (
+            {months.map((mo) => (
               <span key={mo.col} style={{ gridColumnStart: mo.col + 1 }}>
                 {mo.label}
               </span>
             ))}
           </div>
           <div className="cells">
-            {heatmap.cells.map((c, i) => {
+            {cells.map((c, i) => {
               const f = cellFace(c);
               return <div key={i} className={f.cls} style={f.style} title={f.tip} />;
             })}

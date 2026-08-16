@@ -412,9 +412,25 @@ export function buildEntryDashboard(input: EntryBuildInput): EntryModel {
       ? buildDistributions(defs, sessions, valOf, twoMeasure, unitWord, unitAbbr)
       : null;
 
-  // ── Heatmap (trailing 53 weeks — no year scopes, no scope faces here; the
-  //    Words⇄Time measure toggle rides twoMeasure) ──
-  const heatmap = buildCreationHeatmap([], sessions, valOf, today, null, twoMeasure, unitAbbr);
+  // ── Heatmap (53 weeks ending at the entry's LAST LOGGED DAY — no year scopes,
+  //    no scope faces here; the Words⇄Time measure toggle rides twoMeasure) ──
+  //
+  // ⚠ THE WINDOW ENDS AT THE ENTRY, NOT AT TODAY (user-ruled 2026-08-15:
+  // *"it starts all the way to the left instead of to the right… it needs to
+  // start with the last time it was logged"*). It was a trailing window off
+  // `today`, which is right for a HABIT — a habit is a thing you are still
+  // doing — and wrong for an ENTRY, which has an end. A book finished in March
+  // drew its whole reading history crushed against the left edge with five
+  // months of blank to the right, and one finished over a year ago drew an
+  // entirely empty grid: the face was showing how long ago the entry ended
+  // rather than what happened while it ran.
+  //
+  // Nothing else needs to move — `buildCreationHeatmap` derives its month
+  // labels from the same `end`, and cells past it are hidden by the shared grid
+  // walk, so the last logged day lands on the right edge by construction.
+  // `today` remains the fallback for an entry with no sessions at all, where
+  // there is no last day to anchor to and the grid is empty either way.
+  const heatmap = buildCreationHeatmap([], sessions, valOf, lastDay ?? today, null, twoMeasure, unitAbbr);
 
   // ── Day log ──
   const daylog = buildDayLog(sessions, template, twoMeasure, unitAbbr, dayMin, dayCnt, defs, valOf);

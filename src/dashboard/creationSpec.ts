@@ -23,6 +23,7 @@ import {
   dayMinutes,
   distinctDays,
   heatChip,
+  HEATMAP_WEEKS,
   heatmapGrid,
   heatmapMonths,
   periodDelta,
@@ -235,6 +236,10 @@ export interface CreationModel {
     measures: { key: "count" | "time"; label: string }[] | null;
     cells: CreationHeatCell[];
     months: { col: number; label: string }[];
+    /** The window's last day. The entry face re-derives its month strip from
+     *  this after trimming the column count (dashboard/heatWeeks); the habit
+     *  face ignores it and stays a full year. */
+    end: string;
     legends: Record<string, { label: string; colorVar: string }[]>;
     trio: TileSpec[];
     measureNoun: { count: string; time: string };
@@ -880,7 +885,8 @@ function buildHeatmap(
         ]
       : null,
     cells,
-    months: heatmapMonths(end, 53, from),
+    months: heatmapMonths(end, HEATMAP_WEEKS, from),
+    end,
     legends,
     measureNoun: { count: "words", time: "time" },
   };

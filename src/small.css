@@ -173,6 +173,43 @@
   width: auto;
 }
 
+/* ---- LIBRARY · THE UTILITY BAR RUNS TO A SECOND LINE, and the three DOORS pay
+   for it (user-ruled 2026-08-15: *"I either want to prevent this, reorganize, or
+   change the excess buttons to just icons so they can all sit in one line"* —
+   the third).
+
+   `.tbar` is a wrapping flex, so the failure is a wrap rather than a clipped
+   edge: the search box (240px floor) · six filter chips · Owned · a conditional
+   Clear · three doors come to a little over what this canvas gives the bar, and
+   the overflow lands on the doors because they sit last behind `margin-left:
+   auto`. It is marginal at rest and certain the moment a filter goes active,
+   because that is when Clear appears and when a chip's label grows from "Status"
+   to "Status: Current".
+
+   ⚠ THE DOORS ARE THE RIGHT THING TO CUT, and not because they matter least.
+   They are the only items here whose ICON ALONE IS THE WHOLE MESSAGE — plus,
+   pencil, download are the app's own three verbs for make / change / fetch, and
+   they carry those meanings everywhere else in the app. A filter chip cannot do
+   that: its value IS its text ("Genre: Horror"), so shrinking one would cost
+   information rather than repeat it. Roughly 180px comes back, against an
+   overflow of well under half that, so the line still holds with Clear showing.
+
+   The word goes to `data-tip` (kit-tooltip) and `aria-label` (unconditional, in
+   Library.tsx), so nothing is only-an-icon to a screen reader or to a hover.
+   The 2K bar has room for all three labels and keeps every one of them. */
+:root.compact .libscreen .tdoors .blab {
+  display: none;
+}
+/* Square them off as they lose their words — the horizontal padding was sized
+   around a label, and left on an icon it reads as a button that failed to load
+   its text rather than one that never had any. The gap goes with it: there is
+   nothing left to sit beside the glyph. */
+:root.compact .libscreen .tdoors .btn-accent,
+:root.compact .libscreen .tdoors .btn-plain {
+  padding: var(--space-3);
+  gap: 0;
+}
+
 /* ---- ACTIVITY HEATMAP (kit-grid-heatmap — the entry dashboard's, and every
    other tenant of `.heat`) — user-ruled at the walk, 2026-08-10: *"the heatmap
    shrank and doesn't align with the axis labels… we can use a scroll bar
@@ -220,8 +257,19 @@
    full rather than parameterised across both canvases. */
 :root.compact .heat .cells,
 :root.compact .heat .months {
-  grid-template-columns: repeat(53, minmax(var(--heat-week-col), 1fr));
+  grid-template-columns: repeat(var(--heat-weeks, 53), minmax(var(--heat-week-col), 1fr));
 }
+
+/* ⚠ `--heat-weeks` IS WHY THE MAXIMUM CAN STAY `1fr` HERE. The entry face
+   publishes a count derived FROM this container's width (2026-08-15, the
+   fill-don't-scroll ruling — dashboard/heatWeeks), so a track is never asked to
+   hold more than about the 16px floor; `1fr` then spends the remainder and the
+   block ends flush with the panel, which is the whole point of the exercise.
+   ⚠ A fixed ceiling was tried here first and REMOVED the same day: it was
+   guarding against a balloon that the count itself makes impossible — `.hcell`
+   is `aspect-ratio: 1/1`, so a wide column is a tall cell, but a count computed
+   from the width can never produce one. It only ever cost the block its flush
+   right edge on a wide window. */
 
 /* THE WEEKDAY LABELS ARE A SMALL-CANVAS FAULT ONLY, and the arithmetic says
    why. `.hcell` is `aspect-ratio:1/1`, so a cell row is as tall as a week
@@ -436,6 +484,42 @@
 :root.compact .cadash .estrip,
 :root.compact .cadash .mstrip {
   gap: var(--space-4);
+}
+
+/* ---- CADENCE · the verdict cells sit LEFT of the headers that name them
+   (2026-08-15). The day letters are `text-align: center` in their tracks; the
+   cells are not centred in theirs, so at week scale — a 44px cell in a ~63px
+   track here — every mark reads ~10px left of its own column head.
+
+   ⚠ THE CAUSE IS THE FALLBACK, NOT A MISSING RULE. `.cell` carries
+   `justify-self: stretch` + `max-width`, and **a stretch that a max-size
+   forbids falls back to START, not to centre** — so the cell is capped at the
+   dial and then parked at the track's left edge. Nothing declares that
+   alignment; it is what stretch does when it cannot stretch.
+
+   The drawn face centres them (`weekly-cadence.html` line 1079,
+   `justify-self: center`); the app lost it on 2026-08-10 when the cell was
+   rewritten to the no-width/stretch/max-width form that let a month's 31 tracks
+   shrink. That rewrite was right and this is the half it dropped.
+
+   ⚠ AND THE RE-CENTRING CANNOT SIMPLY BE `justify-self: center` — a centred
+   grid item is no longer stretched, so `width: auto` on an EMPTY span resolves
+   to fit-content, which is **zero**: the cells would vanish. Nor can the width
+   come back as a length, which is the track floor the 2026-08-10 fix removed.
+   `width: 100%` is the form that satisfies both: a percentage against an
+   indefinite track is treated as auto during INTRINSIC sizing, so it
+   contributes nothing to the floor, and it resolves to the full track at layout
+   time — clamped by the dial's `max-width`, then centred in what is left. Same
+   shape as the lesson that fix already carries, one step on: no LENGTH width,
+   the dial as the ceiling.
+
+   Scoped to `.cells` so the `.rowlegend` swatches — same class name, equal
+   specificity, a flex item rather than a grid one — are not caught. Month's dot
+   rule below matches at equal specificity and later, so it still wins its own
+   width and centring. */
+:root.compact .cadash .cells .cell {
+  width: 100%;
+  justify-self: center;
 }
 
 /* ---- CADENCE · MONTH draws DOTS, not cells (user-ruled 2026-08-10: *"what if

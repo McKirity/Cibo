@@ -431,6 +431,14 @@ export function periodDelta(
 
 // ── Shape 9 · Heatmap cells ───────────────────────────────────────────────────
 
+/**
+ * The heatmap's full width in week columns — a rolling YEAR, and the count the
+ * grid, the month strip and every caller are built at. Named here because the
+ * entry face now trims BELOW it (dashboard/heatWeeks) and a trimmed count has
+ * to be compared against something with one owner.
+ */
+export const HEATMAP_WEEKS = 53;
+
 export interface HeatmapCell {
   day: string | null; // null = a future cell (hidden)
   minutes: number;
@@ -453,7 +461,7 @@ export function heatmapGrid<T>(
   hidden: () => T,
   opts: { weeks?: number; from?: string | null } = {},
 ): T[] {
-  const weeks = opts.weeks ?? 53;
+  const weeks = opts.weeks ?? HEATMAP_WEEKS;
   const startIdx = dayIndex(weekStart(end)) - (weeks - 1) * 7;
   const endIdx = dayIndex(end);
   const fromIdx = opts.from != null ? dayIndex(opts.from) : -Infinity;
@@ -475,7 +483,7 @@ export function heatmapGrid<T>(
 export function heatmapCells(
   dayMin: Map<string, number>,
   today: string,
-  weeks = 53,
+  weeks = HEATMAP_WEEKS,
   catOf?: (day: string) => string | null,
   from: string | null = null,
 ): HeatmapCell[] {
@@ -493,7 +501,7 @@ export function heatmapCells(
 /** Month labels for the heatmap header: {col, label} where a new month begins. */
 export function heatmapMonths(
   today: string,
-  weeks = 53,
+  weeks = HEATMAP_WEEKS,
   from: string | null = null,
 ): { col: number; label: string }[] {
   const startIdx = dayIndex(weekStart(today)) - (weeks - 1) * 7;

@@ -10,7 +10,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useBox } from "./useBox";
 import { heatRowLabels } from "../metrics/dates";
-import { tileRowPlan } from "./tileRows";
+import { TILE_ROW_MAX, TILE_ROW_MAX_SMALL, tileRowPlan } from "./tileRows";
+import { useCompact } from "../theme/compact";
 import { CoverInner } from "../kit/CoverArt";
 import type {
   DistColumnSpec,
@@ -99,7 +100,15 @@ export function StatGroup({ label, tiles, tall }: { label: string; tiles: TileSp
   // and a short last row widens its tiles rather than leaving a gap. This is the
   // one renderer every variable-length tile group goes through, which is why the
   // ruling costs a couple of lines here rather than a sweep.
-  const plan = tileRowPlan(tiles.length);
+  //
+  // The cap follows the CANVAS (2026-08-15): two across on the small one, where
+  // three leaves a tile too narrow to hold its number and its side list at once
+  // — see TILE_ROW_MAX_SMALL for the measurements. Everything else about the
+  // plan is unchanged, so the last row still widens to sit flush. Subscribing
+  // here rather than reading the root class means the groups re-shape when the
+  // window crosses the knee, with no reload.
+  const compact = useCompact();
+  const plan = tileRowPlan(tiles.length, compact ? TILE_ROW_MAX_SMALL : TILE_ROW_MAX);
   return (
     <div className="tgroup">
       <div className="tlabel">{label}</div>

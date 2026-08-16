@@ -61,7 +61,7 @@ dashboard for a stretch of time (day, week, month, quarter, year), a **habit** d
 habit across all time, and an **entry** dashboard for one specific game, book, or project.
 
 Navigation behaves like a browser — back and forward work, including the mouse's side buttons
-and `Alt` with the arrow keys. `Ctrl K` opens the command palette from anywhere, and `Ctrl H`
+and `Alt` with the arrow keys. `Ctrl K` opens the command palette from anywhere, and `Ctrl E`
 takes you back to today. Overlays and dialogs are never places you can navigate back to; they
 just close.
 

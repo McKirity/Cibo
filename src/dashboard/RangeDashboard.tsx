@@ -482,7 +482,7 @@ function EmptyState({ name }: { name: string }) {
             tooltip); "Set an icon" routes to Settings → Habits since
             2026-08-04 (the re-wire batch — its picker shipped at step 10). */}
         <div className="edoors">
-          <button className="btn-accent" type="button" disabled title="Log nights from the Daily screen (Ctrl+H)">Log a night</button>
+          <button className="btn-accent" type="button" disabled title="Log nights from the Daily screen (Ctrl+E)">Log a night</button>
           <button className="btn-plain" type="button" title="Opens Settings → Habits" onClick={() => requestSettingsNav("habits")}>Set an icon</button>
         </div>
       </div>

@@ -48,6 +48,33 @@
 export const TILE_ROW_MAX = 3;
 
 /**
+ * The same cap on the SMALL CANVAS — TWO (Phase 2 step 4, 2026-08-15, user-ruled
+ * at the entry-dashboard walk: *"when text starts getting all cramped like that,
+ * start moving into the next row"*).
+ *
+ * A stat tile is two things side by side — the big `.tv` number in an `auto`
+ * track and the `.tsl` side list in the `minmax(0,1fr)` beside it — so a tile
+ * has a real floor: the number is `white-space: nowrap` and takes whatever it
+ * takes, and everything the tile shrinks by comes off the LIST. At three across
+ * on the 14" the entry dashboard's WORDS group gave each tile ~178px of inner
+ * width against a number ("208,115") that is ~168px on its own, leaving the list
+ * about ten pixels and **overflowing it back across the number**. That is the
+ * cramping: not tight text, two things drawn on top of each other.
+ *
+ * ⚠ THE NUMBER IS OBSERVED, NOT CHOSEN. Two across is what the TIME and DATES &
+ * STREAKS groups on that same screen already draw — same panel, same tile
+ * anatomy, longer side lists ("WK 1h 03m") — and they read cleanly. The fix is
+ * to give the third group the shape its neighbours already have.
+ *
+ * Still nothing measures text, and this does not reopen that: the cap is a
+ * property of the CANVAS, not of any tile's content, so there is no
+ * measure → wrap → re-measure loop. `tileRowPlan` does the rest — three tiles at
+ * a cap of two draw 2 + 1 with the orphan spanning the full row, so the
+ * "no empty space in any row" half of the 2026-08-10 ruling still holds.
+ */
+export const TILE_ROW_MAX_SMALL = 2;
+
+/**
  * ⚠ EVERY TILE IS ONE COLUMN, INCLUDING THE LIST TILE. `.tlist` used to take
  * `flex:1.6` — deliberately wider than its neighbours — and the first pass
  * preserved that as a two-column SPAN. It was tried and struck the same day

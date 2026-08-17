@@ -476,7 +476,13 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
    and would push the chip across its neighbour in a narrow one (the lesson the
    Subnautica pass paid for twice — `.subadd-in` held 183px in a 54px track).
    Whimsy's countdown rows are exactly such a track. */
-.datefield-in { border:none; background:transparent; font-family:var(--font-mono); font-size:var(--size-body); color:var(--text-strong); width:11ch; min-width:0; padding:0; }
+/* 12ch, not the content's exact 11 (`firstrun-date-1`, Phase 2 step 4→5): on
+   macOS the rendered glyphs outran 11ch and the field clipped its own
+   placeholder to "yyyy-mm-" — found on hardware in a screen the preview pass
+   had walked. `ch` measures the font's "0"; macOS resolves the stack and
+   input metrics differently, so an exact-fit width is a bet re-decided per
+   platform. One ch of slack ends the bet. Verify on the Mac walk. */
+.datefield-in { border:none; background:transparent; font-family:var(--font-mono); font-size:var(--size-body); color:var(--text-strong); width:12ch; min-width:0; padding:0; }
 .datefield-in:focus { outline:none; }
 .datefield-in::placeholder { color:var(--text-muted); }
 /* the popover anchors to the chip — z 6 = the named z-popover-inline tier */

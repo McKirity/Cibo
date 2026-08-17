@@ -146,11 +146,12 @@ const bootGate = new Promise<"setup" | "shell">((r) => (resolveGate = r));
  * afterwards is then a no-op, or a legitimate migration of an older store).
  *
  * The cap exists for the honest failure: a relay that is down, or a
- * valid-but-empty phrase. On timeout we proceed as a fresh store — the seed
- * runs, and if the relay wakes up later with real history, the doubling this
- * flag exists to prevent CAN still happen; the console says exactly that. A
- * long wait with no words reads as a dead app, so the wait wears a notice
- * (pre-theme by nature, like the fatal screen — inline styles only).
+ * valid-but-empty phrase. ⚠ ON TIMEOUT WE NO LONGER PROCEED AS A FRESH STORE
+ * (changed 2026-08-16 — the old behaviour seeded and doubled every row three
+ * times in one evening): the caller halts on `false` and mounts
+ * `mountRestoreBlocked`. A long wait with no words reads as a dead app, so the
+ * wait wears a notice (pre-theme by nature, like the fatal screen — inline
+ * styles only).
  */
 async function awaitRestoreDelivery(): Promise<boolean> {
   const CAP_MS = 90_000;
@@ -180,6 +181,87 @@ async function awaitRestoreDelivery(): Promise<boolean> {
   }
 }
 
+/**
+ * THE BLOCKED RESTORE (Phase 2 step 4, 2026-08-16) — what a failed delivery
+ * gets INSTEAD of a seed.
+ *
+ * Until today the timeout fell through to `runSeed` with a console warning
+ * predicting the consequence, and the consequence duly arrived: the seed plants
+ * 11 fresh-id habits into a store whose owner's real rows are still in flight,
+ * the relay delivers them, and CRDT merge keeps BOTH — sync-3's doubling, by
+ * the very path the flag exists to prevent. Reproduced three times in one
+ * evening: once with the relay down, twice with a healthy network, losing to
+ * Evolu's reconnect backoff outrunning the 90s cap.
+ *
+ * ⚠ THE OLD FALLBACK WAS THE WORST AVAILABLE ONE. An empty store with no
+ * `first_run_complete` renders the FIRST-RUN screen — indistinguishable from
+ * total data loss to the person looking at it, while being the exact path that
+ * mints the duplicate seed. It fails open, loudly, into the failure.
+ *
+ * So: fail CLOSED and say so. The flag stays armed (the next launch retries by
+ * construction), nothing is written, and the screen states the one fact that
+ * matters — the data is safe elsewhere.
+ *
+ * ⚠ THE SECOND DOOR IS NOT OPTIONAL. A valid phrase for an identity that
+ * genuinely has no data yet can never satisfy the wait, so a retry-only screen
+ * would strand that user forever. "Start fresh" is the old behaviour, kept —
+ * but as a CHOICE someone makes, not a default that fires on a timeout.
+ *
+ * Pre-theme by nature like the wait notice and the fatal screen: raw DOM,
+ * inline styles, no dials.
+ */
+function mountRestoreBlocked(): void {
+  const wrap = document.createElement("div");
+  wrap.style.cssText =
+    "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;" +
+    "background:#f4f4f6;color:#333;font:15px system-ui,sans-serif;z-index:9999;padding:24px";
+  const box = document.createElement("div");
+  box.style.cssText = "max-width:460px;text-align:center;line-height:1.5";
+
+  const h = document.createElement("p");
+  h.style.cssText = "font-size:17px;font-weight:600;margin:0 0 12px";
+  h.textContent = "Couldn't reach your sync relay";
+
+  const b = document.createElement("p");
+  b.style.cssText = "margin:0 0 20px";
+  b.textContent =
+    "Your data is safe — it lives on your other device and on the relay. " +
+    "Nothing on this device has been changed. Cibo will finish restoring as " +
+    "soon as it can connect.";
+
+  const row = document.createElement("div");
+  row.style.cssText = "display:flex;gap:10px;justify-content:center";
+
+  const retry = document.createElement("button");
+  retry.style.cssText =
+    "font:inherit;padding:8px 16px;border-radius:6px;border:1px solid #999;background:#fff;cursor:pointer";
+  retry.textContent = "Try again";
+  // A reload is a fresh process, so Evolu's reconnect backoff starts clean —
+  // which is the whole difference for the failure mode that had a working
+  // network and simply wasn't due to retry yet.
+  retry.onclick = () => location.reload();
+
+  const fresh = document.createElement("button");
+  fresh.style.cssText =
+    "font:inherit;padding:8px 16px;border-radius:6px;border:1px solid transparent;background:none;cursor:pointer;color:#666";
+  fresh.textContent = "Start fresh on this device";
+  fresh.onclick = () => {
+    clearRestorePending();
+    location.reload();
+  };
+
+  const note = document.createElement("p");
+  note.style.cssText = "margin:16px 0 0;font-size:13px;color:#777";
+  note.textContent =
+    "Start fresh only if this recovery phrase has no data yet — it sets this " +
+    "device up as a new, empty store.";
+
+  row.append(retry, fresh);
+  box.append(h, b, row, note);
+  wrap.append(box);
+  document.body.appendChild(wrap);
+}
+
 // The version-gated seed append — runs at every launch, applies only newer
 // batches. The app's start date is established AFTER it, so a fresh install's
 // backfill can see batch 1's rows (appStart.ts). A pending restore holds the
@@ -188,21 +270,32 @@ async function awaitRestoreDelivery(): Promise<boolean> {
 const bootSeed = async () => {
   if (isRestorePending()) {
     const delivered = await awaitRestoreDelivery();
-    clearRestorePending();
-    if (delivered) {
-      console.info(`Restore: relay delivery detected (seed_version present; gate ${SEED_VERSION})`);
-    } else {
+    if (!delivered) {
+      // ⚠ The flag is deliberately NOT cleared and the seed deliberately NOT
+      // run: clearing it here is what disarmed the guard in exactly the
+      // situation it exists for. Halt, keep the store empty, let the person
+      // choose (mountRestoreBlocked).
       console.warn(
-        "Restore: nothing arrived from the relay within 90s — proceeding as a fresh store. " +
-          "If the restored identity DOES have data and the relay comes back, seeded rows may double (sync-3's residual).",
+        "Restore: nothing arrived from the relay within 90s — holding. The store stays " +
+          "empty and the pending flag stays set, so the next launch retries. Seeding here " +
+          "is what doubles every row when the relay comes back (sync-3).",
       );
+      mountRestoreBlocked();
+      return null;
     }
+    clearRestorePending();
+    console.info(`Restore: relay delivery detected (seed_version present; gate ${SEED_VERSION})`);
   }
   return runSeed(evolu);
 };
 
 bootSeed().then(
   async (r) => {
+    // null = the restore hold blocked the boot; its own screen is mounted and
+    // the root stays blank. Nothing below may run: the gate must NOT resolve
+    // (a resolved gate renders first-run over an empty store, which is the
+    // face this whole change exists to stop showing).
+    if (r === null) return;
     booted = true;
     console.info(
       `Seed: found version ${r.foundVersion}, ${r.applied ? "applied batch(es)" : "nothing to apply"}`,

@@ -23,15 +23,24 @@ What that means for you, curious visitor:
   setup, and issues may go unanswered. Whatever you do with this app, you do at your own
   risk — back up anything you care about.
 
-## Trying it
+## Installing (one device)
 
-Installers land on the [Releases](../../releases) page. A few things to know if you run it:
+1. Grab the installer for your platform from the [Releases](../../releases) page —
+   `Cibo_x.x.x_x64-setup.exe` on Windows, the `.dmg` on macOS.
+2. Run it. On Windows, SmartScreen may warn about an unrecognized app (it's unsigned) —
+   "More info → Run anyway". On macOS it's unsigned too: **right-click the app → Open** the
+   first time, instead of double-clicking.
+3. Cibo opens to a short first-run setup (a few dates, your location for the daily sun/weather
+   cards, and which starting habits you want active). Finish, and you're in.
+4. Optional, in Settings afterwards:
+   - **Storage** — pick a folder for backups, images, and drop-in themes. I use a
+     cloud-synced folder; any folder works.
+   - **Importers** — the TMDB and YouTube importers need your own free API keys; Steam,
+     AniList, AO3, and Calibre work as-is.
 
-- First launch walks you through a short setup and starts you with a set of habits that fit
-  *my* life — you can make your own.
-- Some importers (TMDB, YouTube) need your own free API keys; the rest work as-is.
-- Sync expects a self-hosted relay. Without one, the app simply stays local — which is fine.
-- Backups and images want a folder (I use a cloud-synced one); the app will ask.
+Good to know: sync expects a self-hosted relay — without one the app simply stays local,
+which is fine for one device. And the starting habits are the set that fits *my* life;
+make your own.
 
 ## Development
 

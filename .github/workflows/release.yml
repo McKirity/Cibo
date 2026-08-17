@@ -1,0 +1,73 @@
+# RELEASE CI (Phase 2 step 5, move 3) — builds + signs BOTH platforms'
+# artifacts and emits latest.json machine-side. Ruled 2026-07-20: CI, never
+# hand-built — latest.json is security-sensitive (a wrong entry bricks or
+# hijacks the updater for every installed copy).
+#
+# Trigger: pushing a tag `v*` builds both platforms and assembles a DRAFT
+# release carrying the installers + updater artifacts + latest.json. The
+# draft is the safety: the updater reads releases/latest/download/latest.json,
+# which only resolves to a PUBLISHED release — so nothing goes live until a
+# human looks at the draft (both platforms present? sizes sane?) and presses
+# Publish. `workflow_dispatch` is the dry-run door: builds everything, uploads
+# nothing, proves CI green without minting a release.
+#
+# Secrets (repo-side, set by the user, never in this file):
+#   TAURI_SIGNING_PRIVATE_KEY          — the updater private key (~/.tauri/cibo.key)
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD — its password
+#
+# Platform notes:
+#   · macos-latest runners are Apple Silicon; the default target matches the
+#     14" MacBook. No Apple Developer signing — the decide-with-data ruling:
+#     ship unsigned (right-click → Open), pay the $99/yr only if the Mac
+#     auto-update round-trip proves janky.
+#   · Node 22 ships npm 10, so the Mac's npm-11 blocked-install-scripts issue
+#     (esbuild et al.) does not apply on runners.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      # tauri-action runs `tauri build` (which runs beforeBuildCommand =
+      # `npm run build`), signs the updater artifacts with the secret key,
+      # and — on a tag build — creates/updates ONE draft release that both
+      # matrix jobs feed, merging their platforms into a single latest.json.
+      # On workflow_dispatch, tagName is empty and it builds without
+      # uploading anything.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: ${{ github.ref_type == 'tag' && format('Cibo {0}', github.ref_name) || '' }}
+          releaseDraft: true
+          prerelease: false

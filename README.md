@@ -28,8 +28,9 @@ What that means for you, curious visitor:
 1. Grab the installer for your platform from the [Releases](../../releases) page —
    `Cibo_x.x.x_x64-setup.exe` on Windows, the `.dmg` on macOS.
 2. Run it. On Windows, SmartScreen may warn about an unrecognized app (it's unsigned) —
-   "More info → Run anyway". On macOS it's unsigned too: **right-click the app → Open** the
-   first time, instead of double-clicking.
+   "More info → Run anyway". On macOS the download gets quarantined and the app is reported
+   as **"damaged"** (it isn't — it's unsigned): drag Cibo to Applications, then run
+   `xattr -cr /Applications/Cibo.app` once in Terminal and open it normally.
 3. Cibo opens to a short first-run setup (a few dates, your location for the daily sun/weather
    cards, and which starting habits you want active). Finish, and you're in.
 4. Optional, in Settings afterwards:

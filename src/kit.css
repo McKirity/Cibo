@@ -476,13 +476,15 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
    and would push the chip across its neighbour in a narrow one (the lesson the
    Subnautica pass paid for twice — `.subadd-in` held 183px in a 54px track).
    Whimsy's countdown rows are exactly such a track. */
-/* 12ch, not the content's exact 11 (`firstrun-date-1`, Phase 2 step 4→5): on
-   macOS the rendered glyphs outran 11ch and the field clipped its own
-   placeholder to "yyyy-mm-" — found on hardware in a screen the preview pass
-   had walked. `ch` measures the font's "0"; macOS resolves the stack and
-   input metrics differently, so an exact-fit width is a bet re-decided per
-   platform. One ch of slack ends the bet. Verify on the Mac walk. */
-.datefield-in { border:none; background:transparent; font-family:var(--font-mono); font-size:var(--size-body); color:var(--text-strong); width:12ch; min-width:0; padding:0; }
+/* 14ch (`firstrun-date-1`, Phase 2 step 4→5) — MEASURED on the Mac, not bet:
+   11ch showed 8 of the placeholder's 10 chars, 12ch showed 9, so each ch buys
+   one character and all 10 need 13ch; +1 for the caret. (The 12ch attempt
+   was a "one ch of slack ends the bet" guess — it lost, and the two failed
+   guesses are what made the line measurable. The instrument-not-predict
+   lesson, again.) macOS renders ~3ch of overhead Windows doesn't; the ch
+   unit measures the mono font's "0" and macOS input metrics disagree with
+   it. Verified on the Mac at the next build it reaches. */
+.datefield-in { border:none; background:transparent; font-family:var(--font-mono); font-size:var(--size-body); color:var(--text-strong); width:14ch; min-width:0; padding:0; }
 .datefield-in:focus { outline:none; }
 .datefield-in::placeholder { color:var(--text-muted); }
 /* the popover anchors to the chip — z 6 = the named z-popover-inline tier */

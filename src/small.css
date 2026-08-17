@@ -805,16 +805,15 @@
   --whimsy-size-subheading: 15px;
   --whimsy-size-heading:    20px;
   --whimsy-size-stat:       24px;
-  --frame-clear-whimsy:      8px;   /* was 12 — "less spacing", at the frame dial rather than per card */
-  /* ⚠ RULING OWED (2026-08-16 audit): this override BREAKS the decoration
-     invariant "slice = the role's clearance dial, scale 1" for any theme
-     shipping frame-whimsy art cut at 12 (SU and UT/DR both do) — under
-     compact their whimsy frames render at 0.667×, the fractional-stroke
-     resample the invariant exists to prevent, and compact is derived, not
-     opt-in. The fork: drop this line (compact whimsy frames keep 12px
-     clearance) vs accept the soft render on the small canvas. Left as-is
-     deliberately — surfaced, not resolved; re-judge on the Mac walk where
-     the resample is actually visible. */
+  /* --frame-clear-whimsy 12→8 REVERTED — RULED 2026-08-16 at the Mac
+     installed-build walk (user: "it looks smaller than I remember. Is there
+     a reason it can't go back to the 12px?" — none was). The override broke
+     the decoration invariant "slice = the role's clearance dial, scale 1"
+     for any theme shipping frame-whimsy art cut at 12 (SU and UT/DR both
+     do), rendering their frames at 0.667× — and compact is derived, not
+     opt-in, so no one chose the squeeze. The whimsy cards keep the base
+     sheet's 12px clearance on every canvas; the density cost was 4px a side
+     on five cards and nobody missed it. */
 }
 
 /* ---- 3 · DERIVED READINGS ----------------------------------------------

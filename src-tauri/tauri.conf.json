@@ -25,9 +25,21 @@
       "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 ws://localhost:4000 ws://10.20.31.20:4000 ws://DESKTOP-R54H30R.local:4000 wss://free.evoluhq.com; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'"
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFEQTk5MTdDMTc3MDlGQTgKUldTb24zQVhmSkdwSFpnMXowQVJ1bmo3ZzR5M2FMRzNNNHN5M2ppMEJJakc5d0xQelZwUzJsV0UK",
+      "endpoints": [
+        "https://github.com/McKirity/Cibo/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "quiet"
+      }
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "resources": ["resources/themes/**/*"],
     "icon": [
       "icons/32x32.png",

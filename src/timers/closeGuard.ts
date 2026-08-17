@@ -22,6 +22,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { discardAllForQuit, hasLiveClocks } from "./timerStore";
 import { getBackupsRoot, runBackup } from "../backup/backup";
 import { flushStagedDeletions } from "../db/fileDeletion";
+import { hasPendingUpdate, installPendingUpdate } from "../shell/updater";
 
 let registered = false;
 let bypass = false;
@@ -72,7 +73,15 @@ const backupThenQuit = (): void => {
   const work = flushStagedDeletions()
     .catch(() => undefined)
     .then(() => runBackup("close").then(() => undefined, () => undefined));
-  void Promise.race([work, cap]).finally(quitNow);
+  // INSTALL-ON-QUIT (step 5): a launch-downloaded update installs here, after
+  // the backup, as the process's last act — on Windows install() hands off to
+  // the installer and may end the process itself, making quitNow a no-op. Its
+  // own cap: a hung installer handoff must not trap the quit either.
+  void Promise.race([work, cap]).finally(() => {
+    const install = installPendingUpdate();
+    const icap = new Promise<void>((res) => window.setTimeout(res, 10_000));
+    void Promise.race([install, icap]).finally(quitNow);
+  });
 };
 
 /** Register the one close listener. Safe to call on every Shell mount. */
@@ -89,8 +98,12 @@ export const armCloseGuard = (): void => {
           return;
         }
         // Clean close: back up first when a root is set; with backups paused
-        // the close passes through untouched (never a gate).
-        if (getBackupsRoot() != null) {
+        // the close passes through untouched (never a gate). A pending update
+        // also earns the intercept — install-on-quit rides the same sequence,
+        // and without it an unset-root user's downloaded update would never
+        // install (backupThenQuit handles a null root fine: runBackup fails
+        // fast into its record and the install still runs).
+        if (getBackupsRoot() != null || hasPendingUpdate()) {
           e.preventDefault();
           backupThenQuit();
         }
@@ -106,7 +119,7 @@ export const armCloseGuard = (): void => {
 /** The warning's Proceed: discard the in-flight values, then backup → exit. */
 export const proceedQuit = (): void => {
   discardAllForQuit(); // nothing was written, so there is nothing to undo
-  if (getBackupsRoot() != null) backupThenQuit();
+  if (getBackupsRoot() != null || hasPendingUpdate()) backupThenQuit();
   else {
     bypass = true;
     quitNow();

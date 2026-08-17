@@ -279,6 +279,10 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_opener::init())
+        // Auto-update (Phase 2 step 5): the plugin only registers here — the
+        // launch check + install-on-quit orchestration is JS-side
+        // (src/shell/updater.ts), matching the backup layer's split.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())

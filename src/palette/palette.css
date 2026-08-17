@@ -21,9 +21,9 @@
      is its known second tenant).
 
    BUILD GLUE (authored, dial-derived): .pal-in · the .pal-row button reset ·
-   .pal-row.off (a verb whose target hasn't landed — one tenant left, Check
-   for updates) · .pal-more · .pal-letter. (.pal-row.static retired
-   2026-07-29 — the tombstone below.)
+   .pal-row.off (a verb whose target hasn't landed — tenantless since
+   2026-08-16, kept for the next) · .pal-more · .pal-letter. (.pal-row.static
+   retired 2026-07-29 — the tombstone below.)
 
    THE `.advs` FACE (Advanced Search — the morph) is AUTHORED BUILD-SIDE by
    standing ruling (no FINAL draws it): the same overlay chassis widened onto
@@ -80,7 +80,9 @@
 .pal-row.sel{background:var(--selected-wash); box-shadow:inset var(--border-heavy) 0 0 var(--accent);}
 /* build glue: a verb whose target hasn't landed (the rail's disabled-Tools
    precedent) — drawn, inert, its GROUP name in the meta (the "later" meta was
-   replaced by the group name 2026-07-29). One tenant: Check for updates. */
+   replaced by the group name 2026-07-29). TENANTLESS since 2026-08-16 —
+   Check for updates went live at step 5's updater wiring; the rule stays for
+   any future dormant verb (deliberate, not an orphan). */
 .pal-row.off{cursor:default; opacity:.55;}
 .pal-row.off:hover{background:transparent;}
 /* .pal-row.static RETIRED 2026-07-29 with the quick-create door itself

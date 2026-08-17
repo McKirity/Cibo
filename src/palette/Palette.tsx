@@ -31,9 +31,10 @@
  * in place: one overlay, two states, no separate screen, no route.
  *
  * A verb whose target hasn't landed renders DISABLED with its GROUP name in
- * the meta — the nav rail's disabled-Tools precedent. ONE left: Check for
- * updates (Phase 2 step 5); the backup pair went live with step 12. A verb
- * hidden by Settings → Palette curation is
+ * the meta — the nav rail's disabled-Tools precedent. NONE left since
+ * 2026-08-16: Check for updates went live at step 5's updater wiring (the
+ * backup pair went with step 12); the mechanism stays for any future verb.
+ * A verb hidden by Settings → Palette curation is
  * ABSENT, never greyed. (The Map row joined 2026-07-30 when the Map landed;
  * the Settings-sections + manual-pages tier joined 2026-08-03 with the manual
  * reader — the last absent teleport group.)
@@ -51,6 +52,7 @@ import { MANUAL_GROUPS } from "../settings/manualContent";
 import { Ico } from "../shell/icons";
 import { showErrorToast, showInfoToast } from "../shell/toast";
 import { getBackupsRoot, revealBackupsFolder, runBackup } from "../backup/backup";
+import { checkUpdatesNow } from "../shell/updater";
 import { openThemesFolder } from "../theme/loader";
 import { publishDoctor, runDoctor } from "../db/doctor";
 import { requestProbeAll } from "../shell/navRequest";
@@ -326,6 +328,9 @@ export function PaletteOverlay({
       if (a.v === "new-habit") return go(() => nav.openHabitCreator());
       // Step 12's pair — same pipeline as the health row / Backups pane.
       if (a.v === "backup") return go(() => void runBackup("manual"));
+      // LIVE 2026-08-16 (step 5) — the last dormant verb. The loud door on a
+      // silent machine: launch checks never toast, this one always answers.
+      if (a.v === "updates") return go(() => void checkUpdatesNow());
       if (a.v === "backups-folder")
         return go(() => {
           if (getBackupsRoot() == null)

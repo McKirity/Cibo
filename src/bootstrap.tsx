@@ -47,6 +47,7 @@ import { FirstRunSetup } from "./firstrun/FirstRunSetup";
 import { mountFatalLaunch } from "./shell/FatalLaunch";
 import { showErrorToast } from "./shell/toast";
 import { launchStaleCheck } from "./backup/backup";
+import { launchUpdateCheck } from "./shell/updater";
 import { runDoctorAtLaunch } from "./db/doctor";
 import { takeRestoreResult } from "./backup/restore";
 
@@ -324,6 +325,9 @@ bootSeed().then(
         showErrorToast(`Restore failed — ${r.detail}. The previous data is still in place.`, "Backups");
     });
     launchStaleCheck();
+    // Auto-update (step 5): silent check + download, deferred past the
+    // stale-check's window; the install waits for the quit (closeGuard).
+    launchUpdateCheck();
     // The Data Doctor's launch pass (step 13) — the DB tier only, feeding the
     // rail glance-dot. Ruled: "evaluated on app launch and re-checked when the
     // surface opens; cheap at personal scale, no background polling." It runs

@@ -51,7 +51,9 @@ export const PALETTE_VERBS: VerbMeta[] = [
   // (a headless per-importer fetch) described machinery the explicit-submit
   // importers never grew, and the library's Import door is the real path.
   // The pinned inventory is NINE since.
-  { id: "updates", title: "Check for updates", aliases: ["update"], live: false, group: "Updates" },
+  // LIVE 2026-08-16 — Phase 2 step 5, the updater wiring. The LAST dormant
+  // verb: the palette's inventory is fully live for the first time.
+  { id: "updates", title: "Check for updates", aliases: ["update"], live: true, group: "Updates" },
   // LIVE 2026-08-04 — the swap's door: Settings → Appearance owns the pick.
   { id: "theme", title: "Switch theme", aliases: ["appearance"], live: true, group: "Appearance" },
   // LIVE since step 12 — reveals the backups root in the file manager.

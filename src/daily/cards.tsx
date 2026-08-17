@@ -130,8 +130,15 @@ const I_STAR = ["M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962
  * ⚠ THE INLINE BASIS IS LOAD-BEARING, not cosmetic. `.sun-field` has zero
  * intrinsic height by construction — every child is absolutely positioned — so
  * without a basis the card collapses to fit-content, the field resolves to 0px,
- * and every percentage in the CSS resolves against nothing. 215 is the sum of
- * its parts: 16 overline + 120 field + 23 reading row + 24 gaps + 32 padding.
+ * and every percentage in the CSS resolves against nothing. 223 is the sum of
+ * its parts: 16 overline + 120 field + 23 reading row + 24 gaps + 40 padding.
+ * ⚠ The padding term is 40 SINCE 2026-08-16: the whimsy-clearance revert took
+ * `--frame-clear-whimsy` back to 12px on every canvas (padding = 12 + 8 per
+ * side), and the basis moved 215 → 223 with it (2026-08-17, the Mac walk —
+ * on a height-squeezed window the un-carried 8px came out of the card's
+ * bottom padding; the desktop 285 below was always budgeted at 12px). A
+ * clearance change MUST re-visit this sum — the basis is a budget, and a term
+ * that moves without it silently shortens the figure.
  * (The number's real owner is the span calculator, not this file — the open
  * --whimsy-span-unit item. Do not tune it here.)
  *
@@ -179,7 +186,7 @@ function SunCardSmall({ sun, lat, lon, dayKey, now }: {
     <div
       className={"card whimsy sun-card" + (night ? " is-night" : "") + (sun.state !== "normal" ? " is-polar" : "")}
       style={{
-        flex: "2.2 0 215px",
+        flex: "2.2 0 223px",
         // A pointer at a dial, resolved by the theme — never a colour value.
         "--sun-warm": rising ? "var(--whimsy-dawn)" : "var(--whimsy-dusk)",
         "--sun-alt": alt.toFixed(4),
@@ -435,8 +442,11 @@ function WeatherCardSmall({
     // drops re-lays the whole sky column out from under the reader. No mark: a
     // reserved empty slot holding the figure's indent reads as a failure to
     // draw something rather than as an absence.
+    // 238, not 230 — the wx budget (small.css § the wx basis) moved +8 with
+    // the 2026-08-16 whimsy-clearance revert, exactly as the sun card's did;
+    // the ruled 15px sun↔wx offset is preserved (223 + 15).
     return (
-      <div className="card whimsy wx-card is-nodata" style={{ flex: "1.2 0 230px" }}>
+      <div className="card whimsy wx-card is-nodata" style={{ flex: "1.2 0 238px" }}>
         <Ovl label="Weather" d={I_WX} />
         <div className="wx-read">
           <span className="whead">{"—"}</span>
@@ -476,7 +486,8 @@ function WeatherCardSmall({
       className={"card whimsy wx-card" + (stale ? " is-stale" : "")}
       style={
         {
-          flex: "1.2 0 230px",
+          flex: "1.2 0 238px", // +8 with the clearance revert — see the is-nodata twin above
+
           "--wx-now": (nowT / 24).toFixed(4),
           // Written ONLY when it differs — the CSS defaults it to --wx-now, so
           // the fresh case stays a one-line definition rather than a repetition.

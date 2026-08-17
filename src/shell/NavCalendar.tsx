@@ -22,6 +22,7 @@
  *    finalize truth; a row exists once a day has bookkeeping of any kind.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
 import { DateOnly } from "../db/schema";
@@ -330,7 +331,12 @@ function JumpPicker({
 }) {
   const [year, setYear] = useState(Number(anchor.slice(0, 4)));
   const ref = useRef<HTMLDivElement>(null);
-  useDismiss(ref, onClose, { parentRoot: true });
+  // `ignore: btn`, not `parentRoot` — the panel is PORTALED to document.body
+  // (below), so its DOM parent no longer contains the trigger; `parentRoot`
+  // against <body> would make the whole page the containment zone and the
+  // panel undismissable (the `pickers-1` fault). The detached-trigger option
+  // exists for exactly this shape.
+  useDismiss(ref, onClose, { ignore: btn });
   const rect = useAnchorRect(btn, true);
   // Above the early return, like every hook in this file — the hook-order crash
   // of 2026-08-04 was exactly one of these sitting below one.
@@ -338,7 +344,16 @@ function JumpPicker({
   if (rect == null) return null;
   const curMonth = Number(anchor.slice(5, 7));
   const curYear = Number(anchor.slice(0, 4));
-  return (
+  // PORTALED OUT OF THE RAIL (2026-08-17, Mac). `position: fixed` was supposed
+  // to escape the rail's `overflow: hidden auto` clip, and on Windows
+  // (Chromium) it does. On macOS WebKit the panel rendered clipped at the
+  // rail's edge — reading as "hidden beneath the main pane" — so the panel now
+  // mounts at document.body, where no rail ancestry (scroller, stacking
+  // context, transform transition) can reach it on any engine. The fixed
+  // coordinates are viewport-relative and unchanged. Theme exposure checked
+  // 2026-08-17: every seat styles `.jumppop`/`.catchpop` at class scope, none
+  // under `.rail`, so no theme rule is stranded by the move.
+  return createPortal(
     <div
       ref={ref}
       className="jumppop"
@@ -386,7 +401,8 @@ function JumpPicker({
           </button>
         ))}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -416,11 +432,13 @@ function CatchUpFlag({
   const [open, setOpen] = useState(false);
   const popRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
-  // `parentRoot` contains against the WRAPPER below, which holds the flag as
-  // well as the panel — without it, a click on the flag while open reads as
-  // "outside the panel", closes it, and the button's own onClick immediately
-  // re-opens: the toggle would look dead. The bits/Menu discipline, cited.
-  useDismiss(popRef, () => setOpen(false), { enabled: open, parentRoot: true });
+  // `ignore: btnRef`, not `parentRoot` — the panel is PORTALED to
+  // document.body (below), so the wrapper no longer contains it and wrapper
+  // containment would close-then-reopen on every flag click (the dead-toggle
+  // fault `parentRoot` existed to prevent). `ignore` is the detached-trigger
+  // form of the same guarantee: the flag's mousedown is left to its own
+  // onClick, which toggles.
+  useDismiss(popRef, () => setOpen(false), { enabled: open, ignore: btnRef });
 
   // The flag dies with the last row — and the popover must die with it, or a
   // day finalized from inside the popover leaves an empty panel hanging.
@@ -456,7 +474,12 @@ function CatchUpFlag({
         <span className="lbl">Days to finalize</span>
         <span className="cnt">{days.length}</span>
       </button>
-      {open && rect != null && (
+      {/* PORTALED OUT OF THE RAIL (2026-08-17, Mac) — same move and reasoning
+          as the Jump panel above: on macOS WebKit the fixed panel rendered
+          clipped at the rail's edge instead of escaping it, so it mounts at
+          document.body where no rail ancestry can clip or re-stack it. The
+          measured-rect coordinates are viewport-relative and unchanged. */}
+      {open && rect != null && createPortal(
         <div
           ref={popRef}
           className="catchpop"
@@ -484,7 +507,8 @@ function CatchUpFlag({
               </span>
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

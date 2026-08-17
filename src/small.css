@@ -300,15 +300,31 @@
    and `.weekdays` stretches to match, spreading those 10px across its seven
    `1fr` rows and walking the labels off the cell rows by row 7. That is the
    very fault being fixed, reappearing on the other axis. The matching
-   padding-bottom keeps both columns' seven rows identical. */
+   padding-bottom keeps both columns' seven rows identical.
+
+   ⚠ THE SCROLLER CARRIES ITS OWN BOTTOM SLACK SINCE 2026-08-17 (Mac,
+   user-ruled: "give every heatmap a tiny bit of height padding to ensure this
+   doesn't happen again"). On macOS WebKit the scroller's resolved height ran
+   a few px short of months + cells + the horizontal bar — Chromium counts the
+   bar into the box, WebKit ended short — and since `overflow-x: auto` forces
+   the OTHER axis's computed `visible` to `auto`, the deficit surfaced as a
+   VERTICAL scrollbar inside the heatmap (entry dashboards, tour of
+   2026-08-17). So: a `--scrollbar-width` of padding under the cells absorbs
+   any engine's miscount, and `overflow-y: hidden` retires the vertical bar
+   outright — with the slack in place it can only ever clip padding, never a
+   cell row. The `.weekdays` payback DOUBLES to keep the two columns' bottom
+   extras equal (pad + bar on one side, 2× pad on the other), which is the
+   same equality the note above established. */
 :root.compact {
   --heat-week-col: 16px;
 }
 :root.compact .heat .cols {
   overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: var(--scrollbar-width);
 }
 :root.compact .heat .weekdays {
-  padding-bottom: var(--scrollbar-width);
+  padding-bottom: calc(var(--scrollbar-width) * 2);
 }
 
 /* ⚠ 16px IS A FLOOR HERE, NOT A WIDTH — user-ruled 2026-08-15, MacBook view
@@ -749,7 +765,15 @@
    has to be at least the sum of its parts (16 overline + 120 field + 23 reading
    row + 24 gaps + 32 padding = 215).
    The exact number is the span calculator's to own, not CSS's — same open item
-   as --whimsy-span-unit in the sibling exhibit. */
+   as --whimsy-span-unit in the sibling exhibit.
+   ⚠ 2026-08-17: THE PADDING TERM IS 40 NOW, NOT 32. The 2026-08-16
+   whimsy-clearance revert took --frame-clear-whimsy back to 12px (padding =
+   12 + --space-4 per side), and the inline bases moved with it — sun
+   215 → 223, weather 230 → 238 (cards.tsx). The mint-page sums below are the
+   pre-revert record and are NOT re-edited; read them at +8. The fault the
+   un-carried term produced was exactly the fragility this block names: on the
+   Mac's height-squeezed window the card sat at its basis and the 8px came out
+   of the bottom padding. */
 
 /* ---- 1 · DIALS ----------------------------------------------------------
    The old --sun-arc-h is re-valued AND misnamed after this change: it is named
@@ -1454,7 +1478,11 @@
    eleven for the stacked pair of small readings (23 on one line, 34 stacked) and
    four for the header. The two cards therefore no longer start level in the
    column, which the shelf calculator has to know — it owns the exact number, not
-   CSS. The interior gap is --space-4, matching the sun card. */
+   CSS. The interior gap is --space-4, matching the sun card.
+   ⚠ 2026-08-17: the "32 padding" term above is 40 since the 2026-08-16
+   whimsy-clearance revert, and the basis is 238 now (cards.tsx) — the ruled
+   15px sun offset holds against the sun's own +8 (223). See the sun block's
+   matching note. */
 :root.compact .daily .wx-card { gap: var(--space-4); --wx-obs: var(--wx-now); }
 
 /* the two header lines sit tighter than the picture below them — section 9 */

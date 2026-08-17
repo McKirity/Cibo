@@ -397,10 +397,34 @@ played it. That part is always yours.
 
 ### Backups
 
-Backups are automatic. **Cibo backs up every time it closes cleanly**, and if it has been more
-than about a week since the last good one — which is what happens if it crashed — it backs up when
-it opens instead. There is no schedule to configure, because opening and closing the app *is* the
-schedule.
+Backups are automatic, and they are the desktop PC's job. **On the PC, Cibo backs up every time
+it closes cleanly**, and if it has been more than about a week since the last good one — which is
+what happens if it crashed — it backs up when it opens instead. There is no schedule to configure,
+because opening and closing the app *is* the schedule.
+
+#### The PC is the anchor
+
+**The desktop PC is the only machine that writes backups, and the only one that restores from
+them.** On the Mac there is no Backups section in Settings and no backup command in the palette —
+deliberately, not because something failed to load.
+
+The reasons are practical. All backups share one folder on the cloud drive and one slot per day,
+so with two machines writing, the last one to close would own the day's slot — a laptop closing on
+a half-synced copy could quietly replace the day's real backup with a thinner one. One writer
+means the day's backup is always the fullest picture there is. And a second device never needed
+backup files anyway: under sync, its way back has always been the recovery phrase, not a file.
+
+Nothing logged on the Mac is left out. Everything it records reaches the PC by sync and is backed
+up there with everything else. The one honest gap: something logged on the Mac while the two
+machines have not talked yet is not in any backup until they do — if a big logging session
+matters to you, let the two sync before shutting everything down.
+
+Recovery, in one line each:
+
+- **The Mac is lost or replaced** — install Cibo, then **Settings › Storage › Restore from a
+  phrase**, exactly like adding a second device. No backup file is involved.
+- **The PC is lost** — the backups on the cloud drive rebuild it, and the Mac then follows the
+  rebuilt PC by sync.
 
 Backups go to `backups/` in your cloud root. One slot per day, so a busy day of opening and closing
 leaves one backup rather than twenty. Daily backups are kept for about three months; the last

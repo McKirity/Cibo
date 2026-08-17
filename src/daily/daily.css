@@ -825,7 +825,12 @@
   .milestone .mh { font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); line-height:var(--line-tight); }
   /* empty form state — the .emptybox BASE is the claimed kit-state-empty block
      (radius-large); this local radius-medium copy was deleted 2026-07-30 (dedup).
-     Only the form's own text tiers remain here. */
+     Only the form's own text tiers remain here — plus a floor (2026-08-16, the
+     stamp-empty audit): the base is now a centered flex column, and the height
+     is what gives a decoration stamp painted at the box's top its clear
+     headroom above the centered text. Raw px like CS's 420 — a drawn-scale
+     floor, no dial composes it. */
+  .emptybox { min-height:280px; }
   .emptybox .eh { font-size:var(--size-subheading); font-weight:var(--weight-medium); margin-bottom:var(--space-2); }
   .emptybox .es { font-size:var(--size-small); color:var(--text-secondary); margin-bottom:var(--space-5); }
   .btn-accent { font-family:var(--font-ui); font-size:var(--size-body); font-weight:var(--weight-medium);

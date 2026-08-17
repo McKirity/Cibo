@@ -136,6 +136,19 @@ const SLOT_BASES = [
 const isKnownSlot = (id: string): boolean =>
   SLOT_BASES.some((base) => id === base || id.startsWith(`${base}-`));
 
+/* Honest-signal rosters (2026-08-16 audit). A slot in the schema whose paint
+   anatomy is still Phase-2 work parses clean, publishes its property, and
+   reports active — while no decoration.css rule consumes it. That is the
+   silent-failure shape the deviceStore lesson warns about: a theme author
+   ships an asset, sees nothing, and has no way to know whether the asset, the
+   manifest, or the app is at fault. These sets exist so the manifest summary
+   SAYS SO. Membership must move in step with decoration.css — each named rule
+   site carries the matching ⚠ comment. */
+const UNWIRED_SLOTS = new Set(["strip-divider", "fill-timer", "stamp-bartip"]);
+/* consume only their `-tint` property; an `asset` on them publishes into a
+   var nothing reads */
+const TINT_ONLY_SLOTS = new Set(["stamp-finalize-day", "stamp-bullet"]);
+
 /**
  * The FRAME roles — the slots whose authoring form is the 9-slice border, and
  * so the only ones that read `slice`/`fill`/`repeat`/`outset`.
@@ -307,6 +320,14 @@ export async function applyDecoration(themeDir: string | null): Promise<void> {
           summary.warnings.push(`slot "${id}": asset "${cfg.asset}" missing — skipped`);
         }
       }
+      if (assetPublished && UNWIRED_SLOTS.has(id))
+        summary.warnings.push(
+          `slot "${id}": published but UNWIRED — no decoration.css rule consumes it yet (its paint anatomy is Phase-2 asset work), so the asset will not render`,
+        );
+      if (assetPublished && TINT_ONLY_SLOTS.has(id))
+        summary.warnings.push(
+          `slot "${id}": consumes TINT only — the asset publishes into a property nothing reads; use "tint" to re-point the mark's colour`,
+        );
 
       if (cfg.scale !== undefined)
         summary.warnings.push(

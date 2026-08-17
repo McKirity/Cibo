@@ -66,7 +66,15 @@
 .csdash .refines{display:flex; flex-direction:column; gap:var(--space-5); margin-top:var(--space-6); padding-top:var(--space-5); border-top:var(--border-hairline) solid var(--divider);}
 .csdash .refine{display:block;}
 .csdash .refine-l{display:block; margin-bottom:var(--space-3); font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-weight:var(--weight-bold); white-space:nowrap;}
-.csdash .refine-opts{display:flex; flex-wrap:nowrap; gap:var(--space-3); min-width:0;}
+/* flex-wrap: wrap since 2026-08-16 (audit) — a BEND of the 2026-07-27 one-line
+   ruling, taken deliberately: "Day set" and "Types" chips carry USER-AUTHORED
+   labels ("Days I took medication", one per flag), so at some flag count one
+   line is impossible in any width, and the alternatives — ellipsing a chip
+   whose label IS its meaning, or painting through the panel border — are both
+   worse. The row still holds one line whenever its content fits (the stacked
+   label above bought it the full builder width), so the scannable-set intent
+   survives; only unbounded content wraps. */
+.csdash .refine-opts{display:flex; flex-wrap:wrap; gap:var(--space-3); min-width:0;}
 /* Roomier than the base chip, not tighter: the one-line rule is paid for by
    the max-content label columns, not by squeezing the pills (2026-07-27). */
 .csdash .refine-opts .opt{padding:var(--space-3) var(--space-4); white-space:nowrap;}

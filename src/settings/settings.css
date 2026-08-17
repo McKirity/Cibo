@@ -40,7 +40,13 @@
 
 /* --- right pane · header + top tabs + body --- */
 .setscreen .pane { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
-.setscreen .phead { display: flex; align-items: center; gap: var(--space-6); flex: 0 0 auto; margin-bottom: var(--space-6); }
+/* padding-bottom is FLOURISH CLEARANCE (2026-08-16 audit): decoration.css
+   claims every .phead for the section-header flourish, painted repeat-x at
+   `left bottom` INSIDE the element — and this was the one .phead tenant with
+   no bottom reservation, so a theme's tick band (SU ships an 8px one) landed
+   on the h2's own line box. The room is designed in, per the frame-clearance
+   model. */
+.setscreen .phead { display: flex; align-items: center; gap: var(--space-6); flex: 0 0 auto; margin-bottom: var(--space-6); padding-bottom: var(--space-4); }
 .setscreen .phead h2 { font-family: var(--font-heading); font-size: var(--size-display); font-weight: var(--weight-bold);
                        line-height: var(--line-tight); letter-spacing: -.01em; margin: 0; }
 .setscreen .ttabs { display: flex; align-items: stretch; gap: var(--space-7); flex: 0 0 auto;

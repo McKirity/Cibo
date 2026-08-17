@@ -285,7 +285,15 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
    `.emptybox gen`, the Library, the daily spine; timers/compare carry scoped
    refinements). Radius resolved on --radius-large (the majority face; daily's
    medium copy was deleted the same pass). Bodies otherwise verbatim. */
-.emptybox{border:var(--border-standard) dashed var(--border); border-radius:var(--radius-large); padding:var(--space-8); text-align:center;}
+/* CENTERED FLEX COLUMN at the BASE since 2026-08-16 (the stamp-empty audit):
+   the box relied on text-align:center, but shell.css's global `.ico` is
+   display:block — a block ignores text-align (the CS empty state's stranded
+   icons were the finding). Flex-centering here also gives a decoration
+   `stamp-empty` (painted center-top by decoration.css) its headroom on every
+   tenant that has height: content centers, the mark keeps the top band. The
+   two scoped tenants that already centered themselves (timers · CS) declare
+   the same thing and are unchanged. */
+.emptybox{border:var(--border-standard) dashed var(--border); border-radius:var(--radius-large); padding:var(--space-8); text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center;}
 .emptybox .eh{font-size:var(--size-subheading); font-weight:var(--weight-medium); margin-bottom:var(--space-2);}
 .emptybox .et{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold); margin-bottom:var(--space-3);}
 .emptybox .es{font-size:var(--size-body); color:var(--text-secondary); margin-bottom:var(--space-6); max-width:56ch; margin-left:auto; margin-right:auto;}
@@ -293,6 +301,11 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
 .emptybox .edoors .btn-accent, .emptybox .edoors .btn-plain{display:inline-flex; align-items:center; gap:var(--space-3);}
 .emptybox.gen .eh{font-family:var(--font-heading); font-size:var(--size-heading); font-weight:var(--weight-bold);}
 .emptybox.gen .es{font-size:var(--size-body); max-width:56ch;}
+/* the .gen faces (the dashboards' "nothing tracked yet") are content-sized
+   blocks mid-page — without a floor, a top-anchored decoration stamp lands on
+   the title (2026-08-16 audit; SU is stamp-empty's first tenant). Raw px like
+   CS's 420 — a drawn-scale floor, no dial composes it. */
+.emptybox.gen{min-height:300px;}
 
 /* ------- kit-tooltip — the hover whisper, two blessed faces -------
    Verbatim from staging (the overlays sheet's chip face; .long = the

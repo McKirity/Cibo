@@ -1372,7 +1372,10 @@ function GrowthCurve({ g, colorVar }: { g: GrowthSpec; colorVar: string }) {
           {/* wave shading + hiatus hatching */}
           <defs>
             <pattern id="ghatch" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-              <line x1="0" y1="0" x2="0" y2="9" stroke="var(--divider)" strokeWidth="2" />
+              {/* --text-muted, not --divider (2026-08-16 audit): the hatch is DATA — a
+    hiatus band with no label and no fill — and a --divider stroke drowns
+    on a theme that re-grounds the chart (the scrollbar-thumb law). */}
+<line x1="0" y1="0" x2="0" y2="9" stroke="var(--text-muted)" strokeWidth="2" />
             </pattern>
           </defs>
           {g.shades.map((s, i) => (

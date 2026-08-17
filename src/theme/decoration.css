@@ -251,6 +251,10 @@
   border-image-repeat: var(--deco-frame-daily-log-repeat, stretch);
   border-image-outset: var(--deco-frame-daily-log-outset, 0);
 }
+/* ⚠ NEVER SHIPPED (2026-08-16 audit): no repeat/size/position, on an element
+   whose height changes between collapsed and expanded — a 2D tile will
+   re-phase on every toggle. It also co-tenants the same element as the
+   daily-log frame above; the first asset decides both anatomies. */
 :root .daily .strip {
   background-image: var(--deco-fill-daily-log, none);
 }
@@ -327,6 +331,9 @@
 }
 
 /* ---- strips (1D bands) --------------------------------------------------- */
+/* ⚠ NEVER SHIPPED (2026-08-16 audit): the titlebar has no height dial and no
+   background-size here — the first asset must match the bar's live height
+   exactly or it tiles/crops vertically. */
 :root .tb {
   background-image: var(--deco-strip-titlebar, none);
   background-repeat: repeat-x;
@@ -343,7 +350,9 @@
   background-position: left bottom;
 }
 /* divider ornament: ONE app-wide role; the app's dividers are borders, not
-   elements — the band attachment anatomy is Phase-2 asset work. Publishes now. */
+   elements — the band attachment anatomy is Phase-2 asset work. Publishes now —
+   ⚠ and ONLY publishes: no rule consumes it (decoration.ts warns a shipping
+   manifest since 2026-08-16). */
 
 /* ============================================================================
    ⚠ UN-CLAIMS — five tenants whose ROLE does not fit them. Written 2026-08-09
@@ -406,31 +415,55 @@
 :root .libscreen .cathead { background-image: none; }
 
 /* ---- data slots ----------------------------------------------------------- */
-/* bar-fill texture — distributions · leaderboards (+ kit-row-progress, step 8) */
+/* bar-fill texture — distributions · leaderboards (+ kit-row-progress, step 8)
+   ⚠ NEVER SHIPPED (2026-08-16 audit): no size/repeat/position here, and the
+   three tenants are three unrelated geometries (a min-6px-wide bar · an
+   absolute row fill · a 66%-wide vertical) — the first asset must be a
+   seamless tile that survives all three, or this rule needs per-tenant
+   anatomy at that step. */
 :root .bfill, :root .lprog, :root .vfill {
   background-image: var(--deco-fill-bar, none);
 }
 /* timer-fill texture: the ring is an SVG stroke — texture needs the Phase-2
-   renderer pass; NO fallback to bar-fill (struck 2026-07-17). Publishes now. */
-/* heatmap cell pattern (alpha-only, composites over the level colour) */
+   renderer pass; NO fallback to bar-fill (struck 2026-07-17). Publishes now —
+   ⚠ and ONLY publishes: no rule consumes it (decoration.ts warns a shipping
+   manifest since 2026-08-16). */
+/* heatmap cell pattern (alpha-only, composites over the level colour)
+   ⚠ NEVER SHIPPED (2026-08-16 audit): one asset, no background-size, THREE
+   cell geometries — .hcell is 1:1 at grid width, the year ncell 1:1 at
+   --heat-cell-size, the quarter ncell 2:1. Intrinsic-size art cannot fit all
+   three; the first asset decides whether this rule needs splitting. */
 :root .hcell, :root .cadash .ncell {
   background-image: var(--deco-pattern-heatcell, none);
 }
 /* cadence headliner stamp (authored-colour, five stage variants) — cross-
-   inherits with the row stamp; painted into the verdict cells' corner room */
-:root .cadash .vc, :root .cadash .wcol {
+   inherits with the row stamp; painted into the verdict cells' corner room.
+   ⚠ NEVER SHIPPED (2026-08-16 audit) — first-tenant hazards, read before
+   authoring: the corner room is ALSO where `.vc .hc` absolutely positions its
+   full-width caption (cadence.css), so the mark lands under text on any cell
+   carrying one; and `:not(.blank)` is LOAD-BEARING — the blank/future cells
+   set `background: none` at a specificity this claim would otherwise tie and
+   beat by load order, stamping dead routes. */
+:root .cadash .vc:not(.blank), :root .cadash .wcol:not(.blank) {
   background-image: var(--deco-stamp-cadence, var(--deco-stamp-row, none));
   background-repeat: no-repeat;
   background-position: right var(--space-3) bottom var(--space-3);
 }
 /* row stamp (alpha, poured with the habit hue via mask at Phase 2) — the
-   cadence habit-row cells; cross-inherit mirror of the headliner stamp */
-:root .cadash .cell {
+   cadence habit-row cells; cross-inherit mirror of the headliner stamp.
+   ⚠ NEVER SHIPPED (2026-08-16 audit) — first-tenant hazards: the target is
+   --cad-cell-size tall (22px on some seats, 8px under :root.compact) with no
+   background-size here, so art authored at stamp-empty's ~72px scale
+   overflows the cell entirely; and `:not(.fut)` is LOAD-BEARING for the same
+   tie as the headliner's `:not(.blank)` above. */
+:root .cadash .cell:not(.fut) {
   background-image: var(--deco-stamp-row, var(--deco-stamp-cadence, none));
   background-repeat: no-repeat;
   background-position: center;
 }
-/* bar-tip glyph (zero/mid/max variants): placement anatomy is Phase-2. */
+/* bar-tip glyph (zero/mid/max variants): placement anatomy is Phase-2.
+   ⚠ Publishes-only — no rule consumes it (decoration.ts warns since
+   2026-08-16), like fill-timer and strip-divider. */
 
 /* ---- stamps & accents ------------------------------------------------------ */
 /* finalize-day mark — tintable, pours --finalize-mark by default; the manifest
@@ -456,7 +489,11 @@
   background-position: center;
 }
 /* finalize button — the one signature-button carve-out (per-state assets
-   permitted: the law-5 exception) */
+   permitted: the law-5 exception).
+   ⚠ NEVER SHIPPED (2026-08-16 audit): no size/repeat/position, on a button
+   that is the full width of the daily form column — intrinsic-size art tiles
+   from left top across an arbitrary width, and the three state assets must
+   agree pixel-for-pixel or the hover flickers. */
 :root .daily .finalize {
   background-image: var(--deco-button-finalize, none);
 }

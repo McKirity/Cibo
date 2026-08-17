@@ -119,9 +119,18 @@
    switched off.
    `--heat-grid` is a LOCAL property, not a roster dial: it defaults to
    `--divider` so nothing changes for a theme that says nothing, and a theme
-   that needs its own lattice pitch sets one value instead of four rules. */
-:root{ --heat-grid: var(--divider); }
-.hcell{aspect-ratio:1/1; border-radius:var(--radius-cell); background:var(--panel-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--heat-grid); cursor:default;}
+   that needs its own lattice pitch sets one value instead of four rules.
+   ⚠ THE UNLIT CELL TAKES ITS OWN INK since 2026-08-16 (the audit sweep of the
+   empty-faces ruling): a level-0 cell has NO fill distinct from the panel —
+   the ring is its whole existence — so the 08-15 fix restored the lattice's
+   coverage while leaving its ink drowning on exactly the theme that reported
+   it. `--heat-grid-empty` defaults to the text tier (the scrollbar-thumb law);
+   the lit levels keep `--heat-grid`, so the lattice BETWEEN data is untouched
+   and both remain one-value theme overrides. The legend swatches that teach
+   "empty" (.ramp .sw0 · .attend-legend .swE) read the same property, so the
+   key cannot drift from the cell it explains. */
+:root{ --heat-grid: var(--divider); --heat-grid-empty: var(--text-muted); }
+.hcell{aspect-ratio:1/1; border-radius:var(--radius-cell); background:var(--panel-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--heat-grid-empty); cursor:default;}
 /* Heat levels read the published ramp complements (--heat-bg-N, derived from
    --heatmap-ramp by src/theme/derived.ts at every theme apply — step 6a; the
    90/62/34/0 transcription is retired). */
@@ -219,7 +228,7 @@
 .catleg{display:none; align-items:center; gap:var(--space-5); flex-wrap:wrap;}
 .catleg .lg{display:inline-flex; align-items:center; gap:var(--space-3); font-size:var(--size-caption); color:var(--text-secondary);}
 .catleg .lg .sw{width:var(--space-6); height:var(--space-6); border-radius:var(--radius-cell);}
-.ramp .sw0{background:var(--panel-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider);}
+.ramp .sw0{background:var(--panel-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--heat-grid-empty);}
 .ramp .sw1{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-1));}
 .ramp .sw2{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-2));}
 .ramp .sw3{background:color-mix(in oklch, var(--heat-hue), var(--window-background) var(--heat-bg-3));}
@@ -556,7 +565,7 @@
    the base; the renderer inlines the live habit slot over it */
 .attend-legend{display:inline-flex; align-items:center; gap:var(--space-3);}
 .attend-legend .sw{width:var(--space-6); height:var(--space-6); border-radius:var(--radius-cell);}
-.attend-legend .swE{background:var(--panel-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--divider); margin-right:calc(-1 * var(--space-1));}
+.attend-legend .swE{background:var(--panel-background); box-shadow:inset 0 0 0 var(--border-hairline) var(--heat-grid-empty); margin-right:calc(-1 * var(--space-1));}
 .attend-legend .swF{background:var(--habit-7); margin:0 calc(-1 * var(--space-1)) 0 var(--space-4);}
 
 /* the days-per-period spark (walking) */

@@ -142,7 +142,7 @@
    it a real size and scroll (src/small.css). `1fr` here IS the previous literal
    — the desktop is byte-unchanged. PRIVATE dial, mint candidate (the
    --triptych-* precedent). Phase 2 step 4, 2026-08-10. */
-:root{ --heat-week-col: 1fr; }
+:root{ --heat-week-col: 1fr; /* @kind other */ }
 .heat{display:grid; grid-template-columns:auto 1fr; gap:var(--space-4);}
 /* `--heat-weeks` is the COLUMN COUNT, published inline by the entry face when
    it trims its window to the entry's own history (dashboard/heatWeeks, 2026-08-15).

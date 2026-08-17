@@ -58,7 +58,7 @@
    NOT a roster dial: the layout law bars a theme from resizing the app's boxes,
    and the column count IS the wall's geometry. `src/small.css` re-values it for
    the small canvas; nothing else may. */
-:root { --wall-cols: 15; }
+:root { --wall-cols: 15; /* @kind other */ }
 
 /* Daily — state 1 (the working day).
  *

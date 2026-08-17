@@ -28,13 +28,16 @@ import {
   BACKUP_EVENT,
   backupRunning,
   getBackupsRoot,
+  isAutoBackupEnabled,
   listSlots,
   readBackupRecord,
   revealBackupsFolder,
   revealSlot,
   runBackup,
+  setAutoBackupEnabled,
   type Slot,
 } from "../backup/backup";
+import { DevMark } from "./SettingsScreen";
 import { CLOUD_ROOT_EVENT } from "./cloudRoot";
 import { syncActiveThisSession } from "../db/sync";
 import { requestRestore } from "../backup/restore";
@@ -52,6 +55,7 @@ export function BackupsPane() {
   const [record, setRecord] = useState(readBackupRecord());
   const [slots, setSlots] = useState<Slot[]>([]);
   const [busy, setBusy] = useState(backupRunning());
+  const [auto, setAuto] = useState(isAutoBackupEnabled());
   const [confirming, setConfirming] = useState<Slot | null>(null);
   /** Restore armed — the app is about to close/restart; this narrates it. */
   const [closing, setClosing] = useState<string | null>(null);
@@ -60,6 +64,7 @@ export function BackupsPane() {
     setRoot(getBackupsRoot());
     setRecord(readBackupRecord());
     setBusy(backupRunning());
+    setAuto(isAutoBackupEnabled());
     void listSlots().then(setSlots, () => setSlots([]));
   };
   useEffect(() => {
@@ -121,6 +126,40 @@ export function BackupsPane() {
             )}
           </span>
         </div>
+        {/* The automatic-backups switch (step 5, user-ruled "just the toggle").
+            Per-device — dev app and an installed build SHARE the device file,
+            which is the switch's reason to exist (a test build's clean close
+            claims today's slot) and why it wears the This-device mark. OFF
+            suppresses close + stale only; Back up now always works. */}
+        <div className="crow">
+          <span className="clabel">
+            Automatic backups
+            <span className="mgtag">on close + the weekly catch-up · Back up now always works</span>
+          </span>
+          <DevMark />
+          <span className="cright">
+            <div className="segctl">
+              <button
+                aria-pressed={auto}
+                onClick={() => {
+                  setAutoBackupEnabled(true);
+                  setAuto(true);
+                }}
+              >
+                On
+              </button>
+              <button
+                aria-pressed={!auto}
+                onClick={() => {
+                  setAutoBackupEnabled(false);
+                  setAuto(false);
+                }}
+              >
+                Off
+              </button>
+            </div>
+          </span>
+        </div>
         <div className="crow two">
           <span className="clabel">Last backup</span>
           <span className="cright">
@@ -130,9 +169,11 @@ export function BackupsPane() {
                 : busy
                   ? "backing up…"
                   : record == null
-                    ? "never"
+                    ? auto
+                      ? "never"
+                      : "never · automatic backups are off"
                     : record.ok
-                      ? `${relTime(record.at)} · verified · on ${record.reason}`
+                      ? `${relTime(record.at)} · verified · on ${record.reason}${auto ? "" : " · automatic backups are off"}`
                       : `failed ${relTime(record.at)} — ${record.error ?? "unknown"}`}
             </span>
             <button className="btn-plain btn-sm" disabled={root == null || busy} onClick={backupNow}>
@@ -176,7 +217,9 @@ export function BackupsPane() {
           <p className="vnote">
             {root == null
               ? "Backups are paused — set the cloud root in Settings → Storage and the first backup writes on the next close."
-              : "No backups here yet — close the app once, or press Back up now."}
+              : auto
+                ? "No backups here yet — close the app once, or press Back up now."
+                : "No backups here yet — automatic backups are off, so only Back up now writes one."}
           </p>
         ) : (
           <div className="mlist">

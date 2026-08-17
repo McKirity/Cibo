@@ -43,6 +43,7 @@ import {
   BACKUP_EVENT,
   backupRunning,
   getBackupsRoot,
+  isAutoBackupEnabled,
   readBackupRecord,
   runBackup,
 } from "../backup/backup";
@@ -244,6 +245,9 @@ function BackupRow() {
     return () => window.removeEventListener(BACKUP_EVENT, h);
   }, []);
   const root = getBackupsRoot();
+  // Read at render, not held in state — the switch's flip emits BACKUP_EVENT,
+  // so the re-render this row already does picks the new value up.
+  const auto = isAutoBackupEnabled();
   const staleMs = 7 * 86_400_000;
   const pip =
     root == null ? "idle" : record == null ? "idle" : !record.ok ? "err" : "ok";
@@ -255,13 +259,20 @@ function BackupRow() {
         "Paused — no cloud root set. Pick one in Settings → Storage."
       : busy
         ? "Backing up…"
-        : record == null
-          ? "No backup yet — the first writes on the next close."
-          : !record.ok
-            ? `Last backup failed — ${record.error ?? "unknown"}`
-            : Date.now() - new Date(record.at).getTime() > staleMs
-              ? `Last good backup ${new Date(record.at).toISOString().slice(0, 10)} — stale; the next launch or close catches up.`
-              : `Last backup ${new Date(record.at).toISOString().slice(0, 10)} · verified · on ${record.reason}`;
+        : !auto
+          ? // The step-5 switch. This branch sits ABOVE the stale wording on
+            // purpose — "the next launch or close catches up" would be a lie
+            // while automatics are off.
+            `Paused — automatic backups are off (turn them on in Settings → Backups); Back up now still works.${
+              record?.ok ? ` Last backup ${new Date(record.at).toISOString().slice(0, 10)}.` : ""
+            }`
+          : record == null
+            ? "No backup yet — the first writes on the next close."
+            : !record.ok
+              ? `Last backup failed — ${record.error ?? "unknown"}`
+              : Date.now() - new Date(record.at).getTime() > staleMs
+                ? `Last good backup ${new Date(record.at).toISOString().slice(0, 10)} — stale; the next launch or close catches up.`
+                : `Last backup ${new Date(record.at).toISOString().slice(0, 10)} · verified · on ${record.reason}`;
   return (
     <Row
       pip={pip}

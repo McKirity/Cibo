@@ -26,6 +26,19 @@
  * The BACKUPS ROOT is `<cloud root>/backups/` — DERIVED from step 14's one
  * cloud-root setting (settings/cloudRoot; the dev-hosted stand-in key is
  * retired). Unset root = backups PAUSE + the health nag — never a gate.
+ *
+ * · THE AUTOMATIC-BACKUPS SWITCH (Phase 2 step 5, user-ruled 2026-08-16 —
+ *   "just the toggle"): `cibo.autoBackup`, per-device like `cibo.sync` and
+ *   the same absent-means-ON shape. OFF suppresses the AUTOMATIC reasons only
+ *   (close + stale) — "Back up now" always runs. Enforced HERE in runBackup,
+ *   not at the callers (the probe-1 callee rule); a suppressed run writes NO
+ *   record and raises NO toast, so the last good record stays the honest
+ *   answer to "when was the last backup". ⚠ The device file is SHARED between
+ *   the dev app and an installed build on the same machine — that is the
+ *   switch's reason to exist (a test build's clean close claims today's slot
+ *   with exports from its own empty store), and also why flipping it off for
+ *   a test pauses the real app's automatic backups too. The Health row and
+ *   the Backups pane both wear the paused face while it is off.
  */
 import { invoke } from "@tauri-apps/api/core";
 import { evolu } from "../db/evolu";
@@ -57,6 +70,20 @@ export type BackupReason = "close" | "manual" | "stale";
 
 const RECORD_KEY = "cibo.backupRecord";
 export const BACKUP_EVENT = "cibo:backup-record";
+
+// ── the automatic-backups switch (step 5) ────────────────────────────────────
+
+const AUTO_KEY = "cibo.autoBackup";
+
+/** Absent = ON (the switch exists to turn automatics off — the sync shape). */
+export const isAutoBackupEnabled = (): boolean => deviceGet(AUTO_KEY) !== "off";
+
+export const setAutoBackupEnabled = (on: boolean): void => {
+  deviceSet(AUTO_KEY, on ? null : "off");
+  // The pane and the health row re-read on this event; reuse it so a flip
+  // repaints every listener without a second channel.
+  emitRecord();
+};
 
 export const readBackupRecord = (): BackupRecord | null => {
   try {
@@ -132,6 +159,19 @@ let running: Promise<BackupRecord> | null = null;
 
 /** The one pipeline — close, Back up now, and the stale-check all run this. */
 export function runBackup(reason: BackupReason): Promise<BackupRecord> {
+  // The automatic-backups switch: OFF suppresses close + stale, never manual.
+  // Deliberately BEFORE the in-flight check, no record written, no toast —
+  // a suppressed run is intended behaviour, not a failure, and the last good
+  // record must stay the honest "when was the last backup" answer.
+  if (reason !== "manual" && !isAutoBackupEnabled()) {
+    return Promise.resolve({
+      at: new Date().toISOString(),
+      slot: todayLocal(),
+      ok: false,
+      reason,
+      error: "automatic backups are off",
+    });
+  }
   if (running != null) return running;
   running = doBackup(reason).finally(() => {
     running = null;
@@ -308,7 +348,9 @@ const STALE_DAYS = 7;
  * cold-open budget belongs to Daily, not to compression.
  */
 export function launchStaleCheck(): void {
-  if (!inTauri() || getBackupsRoot() == null) return;
+  // runBackup would refuse the "stale" reason anyway (the callee holds the
+  // guarantee); this early-out just avoids scheduling a pointless timer.
+  if (!inTauri() || getBackupsRoot() == null || !isAutoBackupEnabled()) return;
   const rec = readBackupRecord();
   const lastGood = rec != null && rec.ok ? new Date(rec.at).getTime() : 0;
   if (Date.now() - lastGood < STALE_DAYS * dayMs) return;

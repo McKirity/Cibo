@@ -293,7 +293,14 @@ pub fn run() {
         .setup(|app| {
             // FIRST: the settings dir must exist before the webview reads it.
             ensure_app_data_dir(app.handle());
-            backup::apply_pending_restore(app.handle());
+            // Windows-gated: the PC is the sole backup point (user-ruled
+            // 2026-08-16, the cradle-kill refinement) — on macOS no backup
+            // code runs at all, restore-marker check included. A marker can
+            // never be set there (the JS doors are absent), so this skips a
+            // check that could only ever answer "no".
+            if cfg!(windows) {
+                backup::apply_pending_restore(app.handle());
+            }
             fit_window_to_screen(app.handle());
             Ok(())
         })

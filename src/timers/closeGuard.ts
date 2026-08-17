@@ -20,8 +20,8 @@
  */
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { discardAllForQuit, hasLiveClocks } from "./timerStore";
-import { getBackupsRoot, runBackup } from "../backup/backup";
-import { flushStagedDeletions } from "../db/fileDeletion";
+import { backupsRunHere, getBackupsRoot, runBackup } from "../backup/backup";
+import { flushStagedDeletions, hasStagedDeletions } from "../db/fileDeletion";
 import { hasPendingUpdate, installPendingUpdate } from "../shell/updater";
 
 let registered = false;
@@ -63,7 +63,13 @@ const quitNow = (): void => {
  */
 const backupThenQuit = (): void => {
   bypass = true;
-  showBackingUp?.();
+  // THE MAC CRADLE-KILL (PC-only backups, refined 2026-08-16): on macOS the
+  // backup machinery is never ENTERED — backupsRunHere() short-circuits before
+  // getBackupsRoot, so the close sequence's backup half doesn't exist there,
+  // not merely refuse. The sequence's other two jobs (staged deletions ·
+  // install-on-quit) are not backup work and run everywhere.
+  const doBackup = backupsRunHere() && getBackupsRoot() != null;
+  if (doBackup) showBackingUp?.();
   const cap = new Promise<void>((res) => window.setTimeout(res, 45_000));
   // Staged file deletions commit BEFORE the backup: a quit inside someone's
   // undo window would otherwise drop them (the toast dies with the webview,
@@ -72,7 +78,7 @@ const backupThenQuit = (): void => {
   // (db/fileDeletion.ts, the completion-audit dock).
   const work = flushStagedDeletions()
     .catch(() => undefined)
-    .then(() => runBackup("close").then(() => undefined, () => undefined));
+    .then(() => (doBackup ? runBackup("close").then(() => undefined, () => undefined) : undefined));
   // INSTALL-ON-QUIT (step 5): a launch-downloaded update installs here, after
   // the backup, as the process's last act — on Windows install() hands off to
   // the installer and may end the process itself, making quitNow a no-op. Its
@@ -97,13 +103,14 @@ export const armCloseGuard = (): void => {
           showWarning();
           return;
         }
-        // Clean close: back up first when a root is set; with backups paused
-        // the close passes through untouched (never a gate). A pending update
-        // also earns the intercept — install-on-quit rides the same sequence,
-        // and without it an unset-root user's downloaded update would never
-        // install (backupThenQuit handles a null root fine: runBackup fails
-        // fast into its record and the install still runs).
-        if (getBackupsRoot() != null || hasPendingUpdate()) {
+        // Clean close: intercept when the sequence has WORK — a backup (PC
+        // with a root set; the Mac's clause short-circuits at backupsRunHere
+        // and never consults the backup module — the cradle-kill), a pending
+        // update (install-on-quit), or staged deletions (their flush must not
+        // depend on backup state — previously they silently dropped on an
+        // unset root, fixed here as a rider). No work = the close passes
+        // through untouched (never a gate).
+        if ((backupsRunHere() && getBackupsRoot() != null) || hasPendingUpdate() || hasStagedDeletions()) {
           e.preventDefault();
           backupThenQuit();
         }
@@ -119,7 +126,8 @@ export const armCloseGuard = (): void => {
 /** The warning's Proceed: discard the in-flight values, then backup → exit. */
 export const proceedQuit = (): void => {
   discardAllForQuit(); // nothing was written, so there is nothing to undo
-  if (getBackupsRoot() != null || hasPendingUpdate()) backupThenQuit();
+  if ((backupsRunHere() && getBackupsRoot() != null) || hasPendingUpdate() || hasStagedDeletions())
+    backupThenQuit();
   else {
     bypass = true;
     quitNow();

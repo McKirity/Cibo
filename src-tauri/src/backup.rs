@@ -27,12 +27,16 @@ const ZSTD_LEVEL: i32 = 3; // speed matters — this runs inside the close seque
 
 // ── paths ────────────────────────────────────────────────────────────────────
 
-/// Evolu's OPFS SAHPool directory. Windows/WebView2 layout; the MacBook path
-/// lands with Phase 2's fidelity pass, and until then this is a legible error
-/// rather than a wrong guess.
+/// Evolu's OPFS SAHPool directory. Windows/WebView2 layout — PERMANENTLY:
+/// the PC is the sole backup point (user-ruled 2026-08-16, Phase 2 step 5).
+/// macOS never backs up and never restores from a backup file — its restore
+/// is the recovery phrase + the relay, and its store path (salted-hash origin
+/// dirs, dev ≠ bundled origin — `macstore-1`'s investigation) is deliberately
+/// never resolved. The JS layer (`backupsRunHere`) keeps every door off the
+/// Mac's surfaces; this error is the structural backstop, not a promise.
 fn store_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     if !cfg!(windows) {
-        return Err("the store path is Windows-only until Phase 2's MacBook pass".into());
+        return Err("backups run on the desktop PC (macOS never resolves a store path)".into());
     }
     let base = app
         .path()

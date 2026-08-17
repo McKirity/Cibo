@@ -27,6 +27,19 @@
  * cloud-root setting (settings/cloudRoot; the dev-hosted stand-in key is
  * retired). Unset root = backups PAUSE + the health nag — never a gate.
  *
+ * · BACKUPS RUN ON THE PC ALONE (Phase 2 step 5, user-ruled 2026-08-16 —
+ *   "we continue with pc being the sole backup"): macOS never backs up and
+ *   never restores from a backup file. The Mac's restore path is the recovery
+ *   phrase + the relay (Settings → Storage), same as any second device; the
+ *   PC's backup contains everything the Mac wrote, since sync converges. This
+ *   RESOLVES `macstore-1` by architecture (the salted-origin store locator is
+ *   never built), DISSOLVES `slotcollide-1` (one writer, no slot collisions),
+ *   and closes `macdebris-1` (nothing attempts a Mac backup). The Mac's
+ *   surfaces wear an honest "backups run on the desktop PC" face — the pane
+ *   still LISTS slots (readable via the cloud folder; Show files works) but
+ *   offers no Back up now, no restore, no automatic toggle. `backupsRunHere`
+ *   below is the one platform test every surface reads.
+ *
  * · THE AUTOMATIC-BACKUPS SWITCH (Phase 2 step 5, user-ruled 2026-08-16 —
  *   "just the toggle"): `cibo.autoBackup`, per-device like `cibo.sync` and
  *   the same absent-means-ON shape. OFF suppresses the AUTOMATIC reasons only
@@ -70,6 +83,16 @@ export type BackupReason = "close" | "manual" | "stale";
 
 const RECORD_KEY = "cibo.backupRecord";
 export const BACKUP_EVENT = "cibo:backup-record";
+
+// ── the platform rule (step 5): the PC is the sole backup point ──────────────
+
+/**
+ * TRUE where backups run — everywhere but macOS. The one platform test every
+ * backup surface reads (pane · health row · palette verb · close guard), and
+ * runBackup itself enforces it (the callee rule), so no caller can forget.
+ * The firstRun.ts UA test is the precedent for the detection.
+ */
+export const backupsRunHere = (): boolean => !/Mac/i.test(navigator.userAgent);
 
 // ── the automatic-backups switch (step 5) ────────────────────────────────────
 
@@ -159,6 +182,18 @@ let running: Promise<BackupRecord> | null = null;
 
 /** The one pipeline — close, Back up now, and the stale-check all run this. */
 export function runBackup(reason: BackupReason): Promise<BackupRecord> {
+  // The platform rule: macOS never backs up, whatever the reason — its
+  // surfaces say so instead of offering the doors, and this refusal is the
+  // structural backstop behind them. No record, no toast: not a failure.
+  if (!backupsRunHere()) {
+    return Promise.resolve({
+      at: new Date().toISOString(),
+      slot: todayLocal(),
+      ok: false,
+      reason,
+      error: "backups run on the desktop PC",
+    });
+  }
   // The automatic-backups switch: OFF suppresses close + stale, never manual.
   // Deliberately BEFORE the in-flight check, no record written, no toast —
   // a suppressed run is intended behaviour, not a failure, and the last good
@@ -350,7 +385,7 @@ const STALE_DAYS = 7;
 export function launchStaleCheck(): void {
   // runBackup would refuse the "stale" reason anyway (the callee holds the
   // guarantee); this early-out just avoids scheduling a pointless timer.
-  if (!inTauri() || getBackupsRoot() == null || !isAutoBackupEnabled()) return;
+  if (!backupsRunHere() || !inTauri() || getBackupsRoot() == null || !isAutoBackupEnabled()) return;
   const rec = readBackupRecord();
   const lastGood = rec != null && rec.ok ? new Date(rec.at).getTime() : 0;
   if (Date.now() - lastGood < STALE_DAYS * dayMs) return;

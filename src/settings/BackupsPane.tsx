@@ -13,6 +13,14 @@
  * · Unset root = backups PAUSE, never a gate. The folder DERIVES from step
  *   14's one cloud root (`<cloud root>/backups`); Settings → Storage owns the
  *   pick — the stand-in picker this pane carried is retired.
+ * · THE PC IS THE SOLE BACKUP POINT (user-ruled 2026-08-16, Phase 2 step 5;
+ *   refined the same night — "no actual door"): on macOS this pane is never
+ *   REACHED — the Backups section is absent from Settings and the palette
+ *   (SettingsScreen.sectionsHere), and the guard below is the belt-and-braces
+ *   for any stray route. The Mac restores by recovery phrase in Settings →
+ *   Storage. The pane itself stays PC-shaped and whole — restoring Mac
+ *   backups someday means writing the door back, not rebuilding this.
+ *   [[Backups & Export]] § Amended 2026-08-16 owns the ruling.
  */
 import { useEffect, useState } from "react";
 import { useQuery } from "@evolu/react";
@@ -27,6 +35,7 @@ import {
 import {
   BACKUP_EVENT,
   backupRunning,
+  backupsRunHere,
   getBackupsRoot,
   isAutoBackupEnabled,
   listSlots,
@@ -77,6 +86,11 @@ export function BackupsPane() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The no-door guard — BELOW every hook on purpose (the NavCalendar
+  // hook-order lesson: an early return above a hook is a crash, and this
+  // value is constant per session so the order never actually flips).
+  if (!backupsRunHere()) return null;
 
   const backupNow = () => {
     setBusy(true);

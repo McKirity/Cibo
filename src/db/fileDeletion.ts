@@ -71,6 +71,14 @@ export function stageFileDeletions(refs: readonly string[], ms = UNDO_WINDOW_MS)
   return token;
 }
 
+/**
+ * Anything staged and not yet committed? The close guard's own reason to
+ * intercept a close — independent of backups on purpose (the Mac cradle-kill,
+ * 2026-08-16: the close path must not consult backup code to decide whether
+ * the DELETION flush is owed).
+ */
+export const hasStagedDeletions = (): boolean => staged.size > 0;
+
 /** The undo pressed inside the window: the files live on with the rows. */
 export function cancelStagedDeletion(token: number): void {
   const s = staged.get(token);

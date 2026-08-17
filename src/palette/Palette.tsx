@@ -47,11 +47,11 @@ import { useOverlayEsc } from "../shell/overlayHooks";
 import { rankPalette, type PalIndexItem, type RankedGroup } from "./paletteSpec";
 import { PALETTE_VERBS, type VerbId, type VerbMeta } from "./verbs";
 import { verbHidden } from "../settings/curation";
-import { SECTIONS } from "../settings/SettingsScreen";
+import { SECTIONS, sectionsHere } from "../settings/SettingsScreen";
 import { MANUAL_GROUPS } from "../settings/manualContent";
 import { Ico } from "../shell/icons";
 import { showErrorToast, showInfoToast } from "../shell/toast";
-import { getBackupsRoot, revealBackupsFolder, runBackup } from "../backup/backup";
+import { backupsRunHere, getBackupsRoot, revealBackupsFolder, runBackup } from "../backup/backup";
 import { checkUpdatesNow } from "../shell/updater";
 import { openThemesFolder } from "../theme/loader";
 import { publishDoctor, runDoctor } from "../db/doctor";
@@ -255,6 +255,10 @@ export function PaletteOverlay({
       },
     );
     for (const v of VERBS) {
+      // No backup doors on the Mac (PC-only backups, user-ruled 2026-08-16 —
+      // "no actual door"): both verbs are ABSENT there, like a curated-off
+      // verb, never greyed. The machinery behind them stays whole.
+      if (!backupsRunHere() && (v.id === "backup" || v.id === "backups-folder")) continue;
       items.push({
         group: "actions",
         title: v.title,
@@ -276,7 +280,8 @@ export function PaletteOverlay({
     }
     // The Settings & manual tier — the last absent teleport group, joined
     // 2026-08-03 when the manual reader landed ("every article is a place").
-    for (const s of SECTIONS) {
+    // sectionsHere, not SECTIONS: the Mac lists no Backups section (no door).
+    for (const s of sectionsHere()) {
       items.push({
         group: "settings",
         title: s.name,
@@ -327,6 +332,8 @@ export function PaletteOverlay({
       // Habits only, plus a palette action") — live since step 10 slice 3.
       if (a.v === "new-habit") return go(() => nav.openHabitCreator());
       // Step 12's pair — same pipeline as the health row / Backups pane.
+      // (On the Mac neither verb is listed at all — the no-door ruling — and
+      // runBackup refuses every reason there regardless, the callee rule.)
       if (a.v === "backup") return go(() => void runBackup("manual"));
       // LIVE 2026-08-16 (step 5) — the last dormant verb. The loud door on a
       // silent machine: launch checks never toast, this one always answers.

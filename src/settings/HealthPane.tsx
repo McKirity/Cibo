@@ -42,6 +42,7 @@ import type { ImporterSource } from "../importers/types";
 import {
   BACKUP_EVENT,
   backupRunning,
+  backupsRunHere,
   getBackupsRoot,
   isAutoBackupEnabled,
   readBackupRecord,
@@ -148,12 +149,16 @@ function SystemTab() {
 
   return (
     <div className="hscroll">
-      <div className="hgroup" style={{ marginTop: 0 }}>
-        <p className="hglbl">Backups</p>
-        <div className="hlist">
-          <BackupRow />
+      {/* No door on the Mac (PC-only backups, user-ruled 2026-08-16 — "no
+          actual door"): the whole group is absent there, not disabled. */}
+      {backupsRunHere() && (
+        <div className="hgroup" style={{ marginTop: 0 }}>
+          <p className="hglbl">Backups</p>
+          <div className="hlist">
+            <BackupRow />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="hgroup">
         <p className="hglbl">Importers</p>

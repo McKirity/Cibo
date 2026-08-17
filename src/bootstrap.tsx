@@ -46,7 +46,7 @@ import { isFirstRunPending } from "./firstrun/firstRun";
 import { FirstRunSetup } from "./firstrun/FirstRunSetup";
 import { mountFatalLaunch } from "./shell/FatalLaunch";
 import { showErrorToast } from "./shell/toast";
-import { launchStaleCheck } from "./backup/backup";
+import { backupsRunHere, launchStaleCheck } from "./backup/backup";
 import { launchUpdateCheck } from "./shell/updater";
 import { runDoctorAtLaunch } from "./db/doctor";
 import { takeRestoreResult } from "./backup/restore";
@@ -320,11 +320,15 @@ bootSeed().then(
     // Backups (step 12): the launch half — a failed restore surfaces (tier 3;
     // a SUCCESSFUL restore needs no toast: the restored data is the message),
     // then the ~7-day stale-check (crashes never fire the close hook).
-    void takeRestoreResult().then((r) => {
-      if (r != null && !r.ok)
-        showErrorToast(`Restore failed — ${r.detail}. The previous data is still in place.`, "Backups");
-    });
-    launchStaleCheck();
+    // THE MAC CRADLE-KILL (PC-only backups, 2026-08-16): on macOS neither
+    // call is made — no backup machinery runs there at all, ever.
+    if (backupsRunHere()) {
+      void takeRestoreResult().then((r) => {
+        if (r != null && !r.ok)
+          showErrorToast(`Restore failed — ${r.detail}. The previous data is still in place.`, "Backups");
+      });
+      launchStaleCheck();
+    }
     // Auto-update (step 5): silent check + download, deferred past the
     // stale-check's window; the install waits for the quit (closeGuard).
     launchUpdateCheck();

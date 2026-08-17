@@ -82,6 +82,7 @@ import { globalLaddersQuery, laddersFrom, writeGlobalLadders } from "./ladderSto
 import { iconStats, LUCIDE_VERSION } from "../shell/habitIcons";
 import { getLucideSeen } from "./local";
 import { hasErrors, subscribeErrors } from "./errorLog";
+import { backupsRunHere } from "../backup/backup";
 import type { SettingsSection } from "../shell/views";
 import "./settings.css";
 
@@ -102,6 +103,17 @@ export const SECTIONS: { key: SettingsSection; name: string; icon: string[] }[] 
   { key: "developer", name: "Developer", icon: ["m16 18 6-6-6-6", "m8 6-6 6 6 6"] },
   { key: "help", name: "Help", icon: ["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z", "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3", "M12 17h.01"] },
 ];
+
+/**
+ * The sections THIS device offers. The PC is the sole backup point (user-ruled
+ * 2026-08-16, refined the same night: "just make it so that there's no actual
+ * door") — on macOS the Backups section simply isn't listed, here or in the
+ * palette's teleport tier. THE MACHINERY STAYS WHOLE (pane · runBackup · the
+ * platform gate): restoring Mac backups someday is a matter of writing the
+ * door back in, i.e. deleting this filter.
+ */
+export const sectionsHere = (): typeof SECTIONS =>
+  backupsRunHere() ? SECTIONS : SECTIONS.filter((s) => s.key !== "backups");
 
 export function SettingsScreen({
   section,
@@ -131,7 +143,7 @@ export function SettingsScreen({
       <div className="setgrid">
         <div className="slist">
           <p className="overline">Settings</p>
-          {SECTIONS.map((s) => (
+          {sectionsHere().map((s) => (
             <button
               key={s.key}
               className={`snav${s.key === section ? " active" : ""}`}

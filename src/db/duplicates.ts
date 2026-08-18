@@ -17,9 +17,7 @@
  * carries a `cause`, which is the actual finding; the list of rows is just
  * evidence.
  */
-import { evolu } from "./evolu";
-import { NonEmptyString100 } from "@evolu/common";
-import type { EntryId, HabitId } from "./schema";
+import type { EntryId } from "./schema";
 
 /** Fold a title to its comparison key — the ENGINE'S OWN key, deliberately:
  *  a detector that normalized differently from the importer would report
@@ -114,9 +112,10 @@ export interface DupEntryRow {
 }
 
 /**
- * THE PURE CORE (split out 2026-08-04). `findDuplicates` below is the
- * query-shell; this is the arithmetic, so a caller that ALREADY holds the rows
- * can scan without re-fetching them. The Data Doctor is exactly that caller:
+ * THE PURE CORE (split out 2026-08-04; its query-shell `findDuplicates` was
+ * deleted caller-less 2026-08-17 — the tombstone at the foot). This is the
+ * arithmetic, so a caller that ALREADY holds the rows scans without
+ * re-fetching them. The Data Doctor is exactly that caller:
  * its `snapshot()` holds every entry and session, and the module's own rule is
  * "one load per pass rather than a query per check" — routing its wrap through
  * the shell was issuing three fresh round-trips PER PROJECT HABIT over data it
@@ -175,51 +174,11 @@ export const duplicateReportFrom = (
   return { habitKey, scanned: entries.length, groups };
 };
 
-/** The QUERY SHELL — resolves a habit key, loads its rows, runs the core. */
-export const findDuplicates = async (habitKey: string): Promise<DuplicateReport> => {
-  const habitRows = await evolu.loadQuery(
-    evolu.createQuery((db) =>
-      db
-        .selectFrom("habits")
-        .select(["id"])
-        .where("key", "=", NonEmptyString100.orThrow(habitKey))
-        .where("isDeleted", "is not", 1),
-    ),
-  );
-  const habitId = habitRows[0]?.id as HabitId | undefined;
-  if (habitId == null) throw new Error(`no habit with key "${habitKey}"`);
-
-  const entries = await evolu.loadQuery(
-    evolu.createQuery((db) =>
-      db
-        .selectFrom("entries")
-        .select(["id", "title", "source", "external_id", "cover"])
-        .where("habit_fk", "=", habitId)
-        .where("isDeleted", "is not", 1),
-    ),
-  );
-
-  const sessions = await evolu.loadQuery(
-    evolu.createQuery((db) =>
-      db
-        .selectFrom("sessions")
-        .select(["entry_fk"])
-        .where("habit_fk", "=", habitId)
-        .where("isDeleted", "is not", 1),
-    ),
-  );
-  return duplicateReportFrom(
-    habitKey,
-    entries.map((e) => ({
-      id: String(e.id),
-      title: e.title as string | null,
-      source: e.source as string | null,
-      externalId: e.external_id as string | null,
-      cover: e.cover as string | null,
-    })),
-    sessions.map((s) => s.entry_fk as string | null),
-  );
-};
+/* `findDuplicates` — the per-habit QUERY SHELL over the core above — was
+   DELETED 2026-08-17 (fourth audit, user-ruled). Caller-less since 2026-08-04,
+   when the doctor's `entry-dedupe` moved onto `duplicateReportFrom` over its
+   own snapshot. The ruled future entry-merge Settings door would read the same
+   snapshot path; a fresh shell is a few lines against this file's core. */
 
 /** One-line human summary of a cause — the diagnosis, not the row dump. */
 export const causeNote = (c: DuplicateCause): string =>
@@ -228,8 +187,11 @@ export const causeNote = (c: DuplicateCause): string =>
       "same (source, id) on both — the importer's hard dedup was bypassed; a real bug",
     "adoption-missed":
       "one manual + one imported — the import should have ADOPTED the manual row instead of creating one",
+    // The old wording told the user to "run the cover backfill" — a dev tool
+    // deleted 2026-08-05; a diagnosis must never prescribe a tool that does
+    // not exist (fourth audit, 2026-08-17).
     "seed-artifact":
-      "a SEEDED row's fake id (steam-6 etc.) beside a real import — the importer worked correctly; run the cover backfill to rewrite seed ids to real ones, then remove the empty copy",
+      "a SEEDED row's fake id (steam-6 etc.) beside a real import — the importer worked correctly; the seeded row is the fiction, so delete the copy without real history",
     "distinct-products":
       "different external ids — probably genuinely separate store products sharing a title (an edition or remaster)",
     "manual-twins": "both hand-created — no importer involved",

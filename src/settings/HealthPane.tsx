@@ -26,8 +26,12 @@
  *  · Entry duplicates — LIVE. Step 13's `entry-dedupe` check, built early at
  *    step 8 and user-ruled to get a real Settings door: this is that door.
  *  · Backups — LIVE since step 12.
- *  · Sync — DORMANT by ruling: "drawn quiet, never omitted — wakes when the
- *    Mac joins".
+ *  · Sync — LIVE since 2026-08-09 (Phase 2 step 3 Track B; the Mac joined
+ *    2026-08-14). The row reads the per-device switch + this session's actual
+ *    transport (db/sync.ts) — it sat hardcoded on its dormant wording for a
+ *    week after the courier went live (found at the fourth audit, 2026-08-17:
+ *    the health home misreporting the subsystem that carries every other
+ *    device's state).
  *  · The Data half — LIVE since step 13: all TEN ruled checks over
  *    `src/db/doctor.ts`, with per-finding mute and the restorable Ignored list.
  */
@@ -38,6 +42,7 @@ import { Ico, ICONS } from "../shell/icons";
 import { importerServices } from "../importers/sources";
 import { threeWayProbe } from "../importers/probes";
 import { consumeProbeAll, PROBE_ALL_EVENT } from "../shell/navRequest";
+import { isSyncEnabled, RELAY_URL, syncActiveThisSession } from "../db/sync";
 import type { ImporterSource } from "../importers/types";
 import {
   BACKUP_EVENT,
@@ -172,11 +177,24 @@ function SystemTab() {
       <div className="hgroup">
         <p className="hglbl">Sync</p>
         <div className="hlist">
+          {/* Display contract only — the switch and the restore door live in
+              Settings → Storage; this row just says what is true right now.
+              A flip takes effect at the next launch (db/sync.ts), so the
+              stored switch and this session's transport can disagree, and
+              the row names that state rather than papering over it. */}
           <Row
-            dormant
-            pip="idle"
+            dormant={!syncActiveThisSession && !isSyncEnabled()}
+            pip={syncActiveThisSession ? "ok" : "idle"}
             label="Sync"
-            state="Off — this is the only device. It wakes when a second one joins."
+            state={
+              syncActiveThisSession
+                ? isSyncEnabled()
+                  ? `On — syncing through the relay at ${RELAY_URL}.`
+                  : "On this session — turning off at the next launch."
+                : isSyncEnabled()
+                  ? "Turning on at the next launch."
+                  : "Off — turn it on in Settings → Storage to sync with another device."
+            }
           />
         </div>
       </div>

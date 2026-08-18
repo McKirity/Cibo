@@ -51,7 +51,7 @@ const publish = (rows: readonly { key: unknown; value: unknown }[]): void => {
   }
 };
 
-/** Launch wiring (main.tsx) — publish now and follow the store. */
+/** Launch wiring (bootstrap.tsx) — publish now and follow the store. */
 export function initCustomColours(): void {
   const pull = () => {
     evolu.loadQuery(customColoursQuery).then(publish, (e) => {

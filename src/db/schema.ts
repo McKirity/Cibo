@@ -190,6 +190,22 @@ export const [MilestoneLaddersJson, milestoneLaddersToJson, milestoneLaddersFrom
   json(MilestoneLadders, "MilestoneLadders");
 export type MilestoneLaddersJson = typeof MilestoneLaddersJson.Type;
 
+/**
+ * Never-throwing decode of a habit's `milestone_ladders` cell — null for null
+ * and for any malformed JSON. The `parseDerivedRules` stanza for the sibling
+ * column: two panes had each grown their own copy of exactly this
+ * (ManagePane's `milestoneLaddersFromJson2` · useMilestoneDay's `parseLadders`
+ * — fourth audit dedup, 2026-08-17).
+ */
+export function parseMilestoneLadders(raw: unknown): MilestoneLadders | null {
+  if (raw == null) return null;
+  try {
+    return milestoneLaddersFromJson(raw as never) as unknown as MilestoneLadders;
+  } catch {
+    return null;
+  }
+}
+
 // ── The eight tables ─────────────────────────────────────────────────────────
 
 export const Schema = {

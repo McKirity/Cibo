@@ -35,7 +35,7 @@ import { hasIcon } from "../shell/habitIcons";
 import { stringListFromJson } from "./schema";
 import { getCloudRoot, underRoot } from "../settings/cloudRoot";
 
-import { pad2 } from "../metrics/clock";
+import { todayLocal } from "../metrics/clock";
 // ── vocabulary ───────────────────────────────────────────────────────────────
 
 export type Severity = "error" | "warning" | "info";
@@ -315,11 +315,6 @@ async function snapshot(): Promise<Snapshot> {
 
 // ── the checks ───────────────────────────────────────────────────────────────
 
-const todayKey = (): string => {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-};
-
 const dayOf = (dt: string): string => dt.slice(0, 10);
 
 /** How many midnights a range session crosses — the habit's validity rule's unit. */
@@ -482,7 +477,7 @@ export function overMaxSpan(snap: Snapshot): Finding[] {
  * and offering a door that bounces would be worse than saying so.
  */
 export function futureDated(snap: Snapshot): Finding[] {
-  const today = todayKey();
+  const today = todayLocal();
   const out: Finding[] = [];
   for (const s of snap.sessions) {
     if (s.day <= today) continue;

@@ -24,17 +24,12 @@
 import { NonEmptyString100, NonEmptyString1000, type Evolu } from "@evolu/common";
 import { Schema } from "./schema";
 
-import { pad2 } from "../metrics/clock";
+import { todayLocal } from "../metrics/clock";
 // Taken as a parameter, never the singleton, so the mock harness can drive it
 // (the derivedKeyboard.ts precedent).
 type CiboEvolu = Evolu<typeof Schema>;
 
 const APP_START_KEY = "app_started";
-
-/** Local calendar date of a timestamp — the store speaks local wall-clock. */
-const toDateOnly = (d: Date): string => {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-};
 
 /**
  * The pure half: given the stored row (or null) and the store's oldest known
@@ -91,7 +86,7 @@ export const ensureAppStartDate = async (
   );
   const oldestCreatedAt = oldest[0]?.first != null ? String(oldest[0].first) : null;
 
-  const { date, write } = resolveAppStart(stored, oldestCreatedAt, toDateOnly(new Date()));
+  const { date, write } = resolveAppStart(stored, oldestCreatedAt, todayLocal());
   if (!write) return date;
 
   // Evolu mutations fail SILENTLY — check the Result (the 2026-07-23 lesson).

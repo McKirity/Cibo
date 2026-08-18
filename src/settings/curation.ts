@@ -35,7 +35,7 @@ const parse = (raw: string | null): Set<string> =>
 
 let cache = new Set<string>();
 
-/** Launch wiring (main.tsx, beside initSyncedSettings). */
+/** Launch wiring (bootstrap.tsx, beside initSyncedSettings). */
 export function initCuration(): void {
   const pull = () => {
     evolu.loadQuery(paletteOffQuery).then(

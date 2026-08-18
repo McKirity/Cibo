@@ -95,7 +95,7 @@ const entryCountQuery = evolu.createQuery((db) =>
 );
 
 /**
- * The app's own start date — written once at launch (main.tsx) and never
+ * The app's own start date — written once at launch (bootstrap.tsx) and never
  * changed while the app runs, so ONE module-level read serves every Daily
  * mount instead of re-running the ensure round-trip per navigation
  * (2026-07-30 dedup).

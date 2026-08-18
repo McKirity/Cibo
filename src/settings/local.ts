@@ -20,14 +20,15 @@
  * UI SCALE is born here — the last of the three cross-device levers with no
  * implementation ([[Cross-device]]; the MacBook preview note called it out).
  * Mechanism: the webview zoom factor (Tauri v2 `setZoom`), whole-app by
- * construction — content, not window chrome. The macOS 0.9 FIRST-RUN default
- * is step 15's write (platform-keyed); here the absent-key default is 1.0.
+ * construction — content, not window chrome. The macOS FIRST-RUN default —
+ * 85 since the 2026-08-10 re-rule — is firstRun.ts's write (platform-keyed);
+ * here the absent-key default is 1.0.
  */
 import { withAppWindow } from "../shell/safeWindow";
 import { LUCIDE_VERSION } from "../shell/habitIcons";
 import { deviceGet as lsGet, deviceSet as lsSet, inTauri } from "./deviceStore";
 
-import { pad2 } from "../metrics/clock";
+import { todayLocal } from "../metrics/clock";
 // The ruled interval floor has ONE owner (timerCore) — the settings clamp reads
 // it rather than re-typing a 2 the machine would not know had changed.
 import { MIN_INTERVALS } from "../timers/timerCore";
@@ -386,11 +387,6 @@ export interface LucideSeen {
   since: string;
 }
 
-const localDate = (): string => {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-};
-
 /** Reconcile at launch; returns what the Icons tab should show. */
 export function noteLucideVersion(version: string): LucideSeen {
   let stored: LucideSeen | null = null;
@@ -405,7 +401,7 @@ export function noteLucideVersion(version: string): LucideSeen {
     /* a malformed row re-stamps rather than throwing */
   }
   if (stored != null && stored.version === version) return stored;
-  const next: LucideSeen = { version, since: localDate() };
+  const next: LucideSeen = { version, since: todayLocal() };
   lsSet(LUCIDE_SEEN_KEY, JSON.stringify(next));
   return next;
 }
@@ -425,7 +421,7 @@ export const getLucideSeen = (): LucideSeen | null => {
 
 // ── launch wiring ────────────────────────────────────────────────────────────
 
-/** main.tsx, beside initCompact — apply every persisted per-device lever. */
+/** bootstrap.tsx, beside initCompact — apply every persisted per-device lever. */
 export function initLocalSettings(): void {
   // Stamp the icon set's install date before any surface asks for it.
   noteLucideVersion(LUCIDE_VERSION);

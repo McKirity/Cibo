@@ -24,6 +24,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useQuery } from "@evolu/react";
 import { evolu } from "../db/evolu";
+import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { syncDerivedKeyboardForDay, WRITING_KEY } from "../db/derivedKeyboard";
 import { showErrorToast, showUndoToast } from "../shell/toast";
 import { useMilestoneDay } from "./useMilestoneDay";
@@ -761,13 +762,18 @@ function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
   return (
     <details className="strip" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>
-        {/* The FINAL draws a lucide glyph per habit, but `habits.icon` is null on
-            every seeded habit and [[Iconography]] rules the fallback: lucide as
-            DATA, lettermark when the column is empty. The rail already reads the
-            same way, so the two agree. A lucide name→path registry lands with
-            the habit creator's icon picker (step 10). */}
+        {/* The FINAL draws a lucide glyph per habit, and the strip does too
+            since 2026-08-17 (user-ruled at the fourth audit). It could not at
+            build time — `habits.icon` was null on every seeded habit and the
+            lucide registry did not exist — so it shipped lettermark-only and
+            the premise went stale when batch 7 planted the icons (2026-07-27)
+            and habitIcons landed (2026-08-02). daily.css's `.strip .swatch
+            .ico` rule had been waiting since the harvest: an orphaned rule
+            claimed from a FINAL is an untranslated feature, not dead code.
+            Lettermark stays the ruled fallback for icon-less habits — the
+            rail's exact rule, so the two surfaces agree. */}
         <span className="swatch" style={{ background: `var(--${habit.colour_slot})` }}>
-          {lettermark(habit.name)}
+          {hasIcon(habit.icon) ? <HabitIcon icon={habit.icon} /> : lettermark(habit.name)}
         </span>
         <span className="hname">{habit.name}</span>
         <span className="kind">{spec.eyebrow}</span>

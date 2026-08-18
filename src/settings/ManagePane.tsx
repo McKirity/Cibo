@@ -26,7 +26,7 @@
  */
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@evolu/react";
-import { NonEmptyString100 } from "@evolu/common";
+import { FiniteNumber, NonEmptyString100 } from "@evolu/common";
 import { evolu } from "../db/evolu";
 import { Ico, ICONS } from "../shell/icons";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
@@ -37,19 +37,13 @@ import { deviceSet } from "./deviceStore";
 import { clearCustomColour } from "./customColours";
 import { libraryViewKey } from "../library/Library";
 import { cloudSub, underRoot } from "./cloudRoot";
-import { milestoneLaddersFromJson, parseDerivedRules, type EntryAttribute } from "../db/schema";
+import { parseDerivedRules, parseMilestoneLadders, type EntryAttribute } from "../db/schema";
 import type { LadderOverrides } from "../daily/milestones";
 
-/** Never-throwing decode of a habit's ladder overrides (the parseDerivedRules
- *  stanza, which the schema does not ship for this column). */
-const milestoneLaddersFromJson2 = (raw: unknown): LadderOverrides => {
-  if (raw == null) return {};
-  try {
-    return milestoneLaddersFromJson(raw as never) as unknown as LadderOverrides;
-  } catch {
-    return {};
-  }
-};
+/** The schema's never-throwing decode, mapped to this pane's empty default
+ *  (the editor treats "no overrides" and "unreadable" the same way). */
+const laddersOf = (raw: unknown): LadderOverrides =>
+  (parseMilestoneLadders(raw) as unknown as LadderOverrides | null) ?? {};
 import { ColourPicker, IconPicker } from "./pickers";
 import { KeepsakeEditor } from "./KeepsakeEditor";
 import { HabitCreator, type EditTarget } from "./HabitCreator";
@@ -325,7 +319,7 @@ export function ManagePane({
     const res = evolu.insert("vocab_options", {
       definition_fk: defId as never,
       value: NonEmptyString100.orThrow(v),
-      sort_order: (maxSort + 1) as never,
+      sort_order: FiniteNumber.orThrow(maxSort + 1),
     });
     if (!res.ok) {
       console.error("manage: vocab add rejected", res.error);
@@ -375,7 +369,7 @@ export function ManagePane({
       entryAttrs: attrs,
       derivedRules: parseDerivedRules(h.derived_rules),
       waveGapDays: (h.wave_gap_days as number | null) ?? null,
-      ladders: milestoneLaddersFromJson2(h.milestone_ladders),
+      ladders: laddersOf(h.milestone_ladders),
       hasSessions: sessions.length > 0,
     });
   };

@@ -63,7 +63,7 @@ export const globalLadders = (rows: readonly { value: unknown }[]): Record<Ladde
 };
 
 /**
- * Launch wiring (main.tsx): push the stored global into milestones.ts's cache
+ * Launch wiring (bootstrap.tsx): push the stored global into milestones.ts's cache
  * and keep it following the store, so the derivation reads one value.
  */
 export function initGlobalLadders(): void {

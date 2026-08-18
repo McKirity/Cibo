@@ -20,7 +20,7 @@
 import { useEffect, useState } from "react";
 import { evolu } from "../db/evolu";
 import { waveGapDefault } from "../settings/store";
-import { milestoneLaddersFromJson, parseDerivedRules } from "../db/schema";
+import { parseDerivedRules, parseMilestoneLadders } from "../db/schema";
 import {
   deriveMilestoneDay,
   swapDefKeys,
@@ -85,14 +85,9 @@ const finalizedDaysQuery = evolu.createQuery((db) =>
     .where("isDeleted", "is not", 1),
 );
 
-const parseLadders = (raw: string | null): LadderOverrides | null => {
-  if (raw == null) return null;
-  try {
-    return milestoneLaddersFromJson(raw as never) as unknown as LadderOverrides;
-  } catch {
-    return null;
-  }
-};
+/** The schema's never-throwing decode; null keeps "no overrides = inherit". */
+const parseLadders = (raw: string | null): LadderOverrides | null =>
+  parseMilestoneLadders(raw) as unknown as LadderOverrides | null;
 
 /**
  * `revision` is any cheap string that changes when the day's rows change — the

@@ -30,7 +30,8 @@
  * lived-in shape; added dates → `events`; coordinates → `lat`/`lon` — all
  * MERGED over any existing config, appended never wiped, so the dev store's
  * one showing is safe) · the habit selection, written BOTH WAYS · the macOS
- * 90% scale default · the `first_run_complete` flag.
+ * 85% scale default (re-ruled from 90, 2026-08-10) · the `first_run_complete`
+ * flag.
  *
  * THE SELECTION IS THE LIFECYCLE, user-ruled 2026-08-10 (Phase 2 step 4),
  * SUPERSEDING step 15's "activation only — unchecking never archives": ticked

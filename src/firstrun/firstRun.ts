@@ -8,14 +8,15 @@
  * a test run; user-ruled 2026-08-06: the flag alone gates, so the existing
  * dev store sees the screen exactly once, which doubles as its live pass).
  *
- * The macOS UI-scale first-run default rides here too ([[Sync & Per-Device
- * Settings]]'s platform-keyed 0.9 — a plain fit argument since 2026-07-26):
- * written only when no scale was ever set, so it can never clobber a chosen
- * value. Windows stays at the 100 default — nothing to write.
+ * The macOS UI-scale first-run default rides here too — platform-keyed **85**
+ * since the 2026-08-10 re-rule (0.9 before; `maybeApplyMacScaleDefault` below
+ * carries the full history): written only when no scale was ever set, so it
+ * can never clobber a chosen value. Windows stays at the 100 default —
+ * nothing to write.
  */
 import { NonEmptyString100, NonEmptyString1000 } from "@evolu/common";
 import { evolu } from "../db/evolu";
-import { pad2 } from "../metrics/clock";
+import { todayLocal } from "../metrics/clock";
 import { deviceGet } from "../settings/deviceStore";
 import { UI_SCALE_KEY, setUiScale } from "../settings/local";
 
@@ -42,11 +43,9 @@ export const isFirstRunPending = async (): Promise<boolean> => {
 
 /** The value is the ISO day it completed — a free "set up on" fact. */
 export const markFirstRunComplete = (): boolean => {
-  const d = new Date();
-  const today = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
   const res = evolu.insert("app_meta", {
     key: NonEmptyString100.orThrow(FIRST_RUN_KEY),
-    value: NonEmptyString1000.orThrow(today),
+    value: NonEmptyString1000.orThrow(todayLocal()),
   });
   // A failed write means the screen shows again next launch — harmless, and
   // logged (Evolu mutations fail silently; the 2026-07-23 lesson).

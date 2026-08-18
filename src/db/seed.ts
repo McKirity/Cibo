@@ -898,7 +898,7 @@ export async function ensureSleepMedLabel(evolu: CiboEvolu, why: string): Promis
  * only), so it does not need one-shot semantics: any launch that finds a
  * canonical habit icon-less re-plants it, and a lost transaction heals at the
  * next launch BY CONSTRUCTION. Aligned with [[Iconography]]'s own ruling — a
- * blank icon is never deliberate, "only forgotten". Called from main.tsx
+ * blank icon is never deliberate, "only forgotten". Called from bootstrap.tsx
  * after runSeed; never throws (a failed launch-fill just tries again next
  * launch, and the log says what happened).
  */

@@ -392,7 +392,7 @@ export function Shell() {
   );
 
   // (The reduce-effects launch re-apply moved to settings/local.ts's
-  // initLocalSettings, main.tsx — the DEV gate died with the real control.)
+  // initLocalSettings, bootstrap.tsx — the DEV gate died with the real control.)
 
   // The day-cutoff home shift, launch half: the initial view is built before
   // the settings cache can load, so a pre-cutoff launch lands on today and is

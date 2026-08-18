@@ -52,7 +52,7 @@
  */
 import { useMemo, useState } from "react";
 import { useQuery } from "@evolu/react";
-import { NonEmptyString100, NonEmptyString1000 } from "@evolu/common";
+import { FiniteNumber, NonEmptyString100, NonEmptyString1000 } from "@evolu/common";
 import { evolu } from "../db/evolu";
 import { stringListFromJson, stringListToJson } from "../db/schema";
 import { entryMediumColumn } from "../db/entryMedium";
@@ -186,7 +186,7 @@ export function VocabularyPane() {
     const res = evolu.insert("vocab_options", {
       definition_fk: (defId ?? null) as never,
       value: NonEmptyString100.orThrow(v),
-      sort_order: (maxSort + 1) as never,
+      sort_order: FiniteNumber.orThrow(maxSort + 1),
     });
     if (!res.ok) {
       console.error("vocab: insert rejected", res.error);

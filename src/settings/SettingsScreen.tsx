@@ -593,7 +593,9 @@ function TrackingPane() {
   );
 }
 
-// ── Appearance — the seven per-device levers ─────────────────────────────────
+// ── Appearance — the per-device levers (theme · UI scale · reduce effects ·
+//    force-opaque, plus the themes-folder door; "seven" was the slice-1 count,
+//    before compact's row was struck and the two banner controls retired) ─────
 
 function AppearancePane() {
   const [themes, setThemes] = useState<ThemeEntry[]>([]);

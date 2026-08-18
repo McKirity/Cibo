@@ -5,8 +5,8 @@
  *  - `transports` is the sync courier. The local-only era (`transports: []`,
  *    Build steps 0–15) ended 2026-08-09 at Phase 2 step 3 Track B: the
  *    transport now follows the per-device sync switch (src/db/sync.ts —
- *    default ON, Evolu's free relay, flips take effect at the next launch).
- *    The switch lives in Settings → Storage.
+ *    default ON, the SELF-HOSTED relay on the desktop PC; flips take effect
+ *    at the next launch). The switch lives in Settings → Storage.
  *
  * Never set COOP/COEP headers — SAHPool needs no cross-origin isolation, and
  * COEP silently breaks Tauri IPC.

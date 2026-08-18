@@ -18,6 +18,8 @@
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { Ico, ICONS } from "../shell/icons";
+import { checkUpdatesNow } from "../shell/updater";
+import { RELAY_URL } from "../db/sync";
 import {
   ArticleBody,
   MANUAL_ARTICLE_EVENT,
@@ -51,8 +53,14 @@ const HOTKEYS: { action: string; keys: string; note?: string }[] = [
  * EXTERNAL-LINKS TRANSPARENCY ([[Settings & Configuration]] § About). The app
  * is local-first and talks to very little; this says exactly what, and why,
  * because "trust me" is not a claim a personal app should have to make. The
- * roster is the Tauri capability allowlist — nothing can be reached that is
- * not on it, so this list is complete BY CONSTRUCTION rather than by promise.
+ * roster below is the Tauri capability allowlist — nothing can be reached that
+ * is not on it — PLUS the two connections that live outside that allowlist and
+ * were MISSING from this list for a week after they went live (found at the
+ * fourth audit, 2026-08-17 — a completeness claim is the first casualty of a
+ * feature the list's author didn't hear about): the sync relay (a webview
+ * WebSocket, pinned by the CSP's connect-src, appended dynamically below
+ * because its address is per-device) and the update check (Rust-side, endpoint
+ * in tauri.conf.json's plugins.updater).
  */
 const HOSTS: { host: string; why: string }[] = [
   { host: "api.open-meteo.com", why: "the day's weather, for the sky card" },
@@ -67,6 +75,7 @@ const HOSTS: { host: string; why: string }[] = [
   { host: "yt3.ggpht.com · yt3.googleusercontent.com", why: "YouTube channel avatars" },
   { host: "archiveofourown.org", why: "fanfiction details" },
   { host: "www.gstatic.com", why: "one empty request, to tell 'you are offline' from 'they are down'" },
+  { host: "github.com", why: "checking for and downloading app updates — Cibo's own release page" },
 ];
 
 export function HelpPane() {
@@ -252,6 +261,17 @@ function HotkeysTab() {
 }
 
 function AboutTab() {
+  /* LIVE since the fourth audit (2026-08-17). The updater shipped at step 5
+     (2026-08-16) but this row kept its pre-release dead-button face — the
+     stale-surface family's third member, beside the Health pane's dormant
+     Sync row. Same call as the palette's "Check for updates" verb; the toasts
+     are the verb's own (shell/updater owns them — the probe-1 callee rule),
+     so this button only guards double-press. */
+  const [checking, setChecking] = useState(false);
+  const check = () => {
+    setChecking(true);
+    void checkUpdatesNow().finally(() => setChecking(false));
+  };
   return (
     <div className="hscroll">
       <div className="ctrlstack">
@@ -264,27 +284,24 @@ function AboutTab() {
           </span>
         </div>
         <div className="crow two">
-          <span className="clabel">
-            Updates
-            <span className="mgtag">not wired up yet</span>
-          </span>
+          <span className="clabel">Updates</span>
           <span className="cright">
-            <button className="btn-plain" aria-disabled="true">
+            <button className="btn-plain" disabled={checking} onClick={check}>
               <Ico d={["M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", "M21 3v5h-5", "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", "M8 16H3v5"]} />
-              Check for updates
+              {checking ? "Checking…" : "Check for updates"}
             </button>
           </span>
         </div>
       </div>
       <p className="vnote">
-        Updates install themselves when you quit, once that is switched on before release. This
-        button is the manual path for when you don't want to wait.
+        Cibo checks quietly at launch, downloads in the background, and installs the update when
+        you quit. This button is the manual path for when you don't want to wait.
       </p>
 
       <div className="hgroup">
         <p className="hglbl">
           What this app talks to
-          <span className="runline">{HOSTS.length} addresses</span>
+          <span className="runline">{HOSTS.length + 1} addresses</span>
         </p>
         <div className="vlist">
           {HOSTS.map((h) => (
@@ -293,11 +310,23 @@ function AboutTab() {
               <span className="vwhy">{h.why}</span>
             </span>
           ))}
+          {/* Appended, not in HOSTS: the relay's address is per-device
+              (db/sync.ts — localhost on the PC, the PC's LAN address on the
+              Mac), so a static roster row would print the wrong machine's. */}
+          <span className="vrow wide" key="relay">
+            <span className="vval mono">{RELAY_URL}</span>
+            <span className="vwhy">
+              your own sync relay — carries the database between your devices, end-to-end
+              encrypted, while sync is on
+            </span>
+          </span>
         </div>
         <p className="vnote foot">
           Nothing else can be reached — the list is enforced by the app itself, not just
-          intended. Your habits, entries and sessions are never sent anywhere: everything above
-          is fetching public details about a game, a book, a film, or the weather.
+          intended. Your habits, entries and sessions are never sent to any service: everything
+          above is fetching public details about a game, a book, a film, or the weather, and the
+          one place your data travels is the sync relay — a machine you own, reading only
+          ciphertext.
         </p>
       </div>
     </div>

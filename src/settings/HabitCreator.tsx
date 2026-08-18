@@ -21,7 +21,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@evolu/react";
-import { booleanToSqliteBoolean, NonEmptyString100, NonNegativeInt } from "@evolu/common";
+import { booleanToSqliteBoolean, FiniteNumber, NonEmptyString100, NonNegativeInt, PositiveInt } from "@evolu/common";
 import { evolu } from "../db/evolu";
 import {
   derivedRulesToJson,
@@ -338,7 +338,9 @@ export function HabitCreator({
         range_max_midnights: isRange ? NonNegativeInt.orThrow(draft.maxMidnights) : null,
         entry_attributes: attrs.length > 0 ? entryAttributesToJson(attrs) : null,
         derived_rules: rules.length > 0 ? derivedRulesToJson(rules) : null,
-        wave_gap_days: draft.waveGapDays != null ? (draft.waveGapDays as never) : null,
+        // The brand's own constructor, not `as never` — a value write uses its
+        // constructor (schema-7's law; the UI clamps 2–365, so orThrow is safe).
+        wave_gap_days: draft.waveGapDays != null ? PositiveInt.orThrow(draft.waveGapDays) : null,
         milestone_ladders:
           Object.keys(draft.ladders).length > 0
             ? milestoneLaddersToJson(draft.ladders as unknown as MilestoneLadders)
@@ -395,7 +397,7 @@ export function HabitCreator({
           // Created habits arrive LIVE — "land on the new habit's dashboard,
           // it's loggable immediately". Only seeds arrive archived.
           archived: booleanToSqliteBoolean(false),
-          sort_order: nextSortOrder(draft.kind, existing) as never,
+          sort_order: FiniteNumber.orThrow(nextSortOrder(draft.kind, existing)),
         } as never);
         if (!res.ok) {
           console.error("creator: habit insert rejected", res.error);
@@ -443,7 +445,7 @@ export function HabitCreator({
           const vr = evolu.insert("vocab_options", {
             definition_fk: defId as never,
             value: s100(value),
-            sort_order: (i + 1) as never,
+            sort_order: FiniteNumber.orThrow(i + 1),
           });
           if (!vr.ok) console.error("creator: vocab insert rejected", vr.error);
         });

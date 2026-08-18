@@ -15,7 +15,7 @@
  *    assembly hooks (useCadenceData · useEntryData · useMilestoneDay) whose
  *    spec layers are pure and take inputs, not subscriptions, plus the backup
  *    pipeline's retention read (backup/backup.ts). The cache is subscribed once at
- *    launch (`initSyncedSettings`, main.tsx). Staleness window: a dashboard
+ *    launch (`initSyncedSettings`, bootstrap.tsx). Staleness window: a dashboard
  *    reads the cache at MOUNT, and every navigation re-mounts (the shell keys
  *    per view), so a changed setting is live from the next navigation (the
  *    freshness doctrine the per-device file also follows).
@@ -143,7 +143,7 @@ const readIntoCache = (rows: readonly { key: unknown; value: unknown }[]): void 
   setWeekStartDow(weekStart() === "sunday" ? 0 : 1);
 };
 
-/** Launch wiring (main.tsx): prime the cache and keep it following the store. */
+/** Launch wiring (bootstrap.tsx): prime the cache and keep it following the store. */
 export function initSyncedSettings(): void {
   const pull = () => {
     evolu.loadQuery(syncedSettingsQuery).then(readIntoCache, (e) => {

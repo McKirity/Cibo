@@ -34,11 +34,12 @@
  *   PC's backup contains everything the Mac wrote, since sync converges. This
  *   RESOLVES `macstore-1` by architecture (the salted-origin store locator is
  *   never built), DISSOLVES `slotcollide-1` (one writer, no slot collisions),
- *   and closes `macdebris-1` (nothing attempts a Mac backup). The Mac's
- *   surfaces wear an honest "backups run on the desktop PC" face — the pane
- *   still LISTS slots (readable via the cloud folder; Show files works) but
- *   offers no Back up now, no restore, no automatic toggle. `backupsRunHere`
- *   below is the one platform test every surface reads.
+ *   and closes `macdebris-1` (nothing attempts a Mac backup). Refined the
+ *   same night ("no actual door"): on macOS the Backups SECTION is absent
+ *   from Settings and the palette entirely (SettingsScreen.sectionsHere +
+ *   the verb filter) — the pane-as-reader face this header first described
+ *   was superseded before it ever shipped. `backupsRunHere` below is the one
+ *   platform test every surface reads, and runBackup enforces it itself.
  *
  * · THE AUTOMATIC-BACKUPS SWITCH (Phase 2 step 5, user-ruled 2026-08-16 —
  *   "just the toggle"): `cibo.autoBackup`, per-device like `cibo.sync` and

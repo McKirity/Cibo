@@ -23,7 +23,7 @@
 import { NonEmptyString100, NonEmptyString1000 } from "@evolu/common";
 import { evolu } from "./evolu";
 
-import { pad2 } from "../metrics/clock";
+import { todayLocal } from "../metrics/clock";
 const PREFIX = "dd_mute:";
 /** `app_meta.key` is NonEmptyString100; leave room for the prefix. */
 const KEY_MAX = 92;
@@ -76,15 +76,10 @@ export const decodeMutes = (rows: readonly { id: unknown; key: unknown; value: u
 export const loadMutes = async (): Promise<Set<string>> =>
   new Set(decodeMutes(await evolu.loadQuery(mutesQuery)).map((m) => m.key));
 
-const today = (): string => {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-};
-
 export function muteFinding(key: string): boolean {
   const res = evolu.insert("app_meta", {
     key: NonEmptyString100.orThrow(`${PREFIX}${key}`),
-    value: NonEmptyString1000.orThrow(today()),
+    value: NonEmptyString1000.orThrow(todayLocal()),
   });
   if (!res.ok) console.error("doctor: mute failed", res.error);
   return res.ok;

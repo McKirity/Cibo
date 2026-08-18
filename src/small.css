@@ -10,9 +10,10 @@
    first cut (a type step + outer-spacing squeeze) tested WORSE than the
    plain base at the Mac's 90% zoom (user: "everything looks best with
    compact off"), so `.compact` now means THIS LAYER — layout, not density.
-   The switch machinery is unchanged (theme/compact.ts: the tri-state in
-   Settings → Appearance; auto keys off TRUE window width < 1600 — the
-   zoom-corrected width, per the 2026-08-09 fix).
+   The switch is theme/compact.ts, and since 2026-08-13 it is DERIVED ONLY
+   (user-ruled: the tri-state and its Settings row are struck) — the class
+   follows TRUE window width < 1600, the zoom-corrected width, and cannot
+   be set.
 
    THE TARGET: 1512×982 logical at 90% zoom = a ~1680×1091 CSS canvas,
    ~1300px of content beside the rail. Compose for that; the desktop never

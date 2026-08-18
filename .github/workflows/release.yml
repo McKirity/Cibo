@@ -61,12 +61,23 @@ jobs:
       # matrix jobs feed, merging their platforms into a single latest.json.
       # On workflow_dispatch, tagName is empty and it builds without
       # uploading anything.
+      #
+      # THE PROD IDENTITY FLIP (the dev split, 2026-08-17): tauri.conf.json
+      # carries the DEV identity (productName "Cibo Dev", identifier
+      # io.github.mckirity.cibo.dev) so that a bare `tauri dev` or local
+      # `tauri build` can never touch the installed app's data. The real
+      # identity ships ONLY through this override — tauri.prod.conf.json
+      # merges productName "Cibo" + identifier io.github.mckirity.cibo back
+      # on top. If this arg were ever lost, the draft review would show it
+      # loudly: every installer would be named "Cibo Dev". Never publish a
+      # draft carrying that name.
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
+          args: --config src-tauri/tauri.prod.conf.json
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: ${{ github.ref_type == 'tag' && format('Cibo {0}', github.ref_name) || '' }}
           releaseDraft: true

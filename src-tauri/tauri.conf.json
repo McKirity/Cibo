@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Cibo",
+  "productName": "Cibo Dev",
   "version": "0.9.0",
-  "identifier": "io.github.mckirity.cibo",
+  "identifier": "io.github.mckirity.cibo.dev",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",

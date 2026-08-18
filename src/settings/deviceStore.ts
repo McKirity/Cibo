@@ -2,7 +2,10 @@
  * THE PER-DEVICE SETTINGS FILE — the real store [[Sync & Per-Device Settings]]
  * designed, replacing the localStorage stand-in era (2026-08-04).
  *
- * TWO FILES in the app's local data dir (%LOCALAPPDATA%/io.github.mckirity.cibo/):
+ * TWO FILES in the app's local data dir (%LOCALAPPDATA%/<bundle id>/ — the
+ * installed app's id is io.github.mckirity.cibo; dev builds run as
+ * io.github.mckirity.cibo.dev since the 2026-08-17 dev split, so dev has its
+ * own copy of BOTH files and can never touch the installed app's):
  *
  *   settings.json        — every per-device lever and machine fact, flat
  *                          string values keyed exactly as the localStorage era

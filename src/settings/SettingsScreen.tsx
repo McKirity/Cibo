@@ -38,7 +38,9 @@ import {
 } from "./store";
 import {
   clampUiScale,
+  currentZoomFactor,
   getForceOpaque,
+  getPhysParity,
   getScreenMode,
   getParityZoom,
   getPomoBreak,
@@ -48,6 +50,7 @@ import {
   getSignalStyle,
   getUiScale,
   setForceOpaque,
+  setPhysParity,
   setScreenMode,
   setParityZoom,
   setPomoBreak,
@@ -876,6 +879,27 @@ function TimersPane() {
 function DeveloperPane() {
   const [screen, setScreen] = useState<ScreenMode>(getScreenMode());
   const [parity, setParity] = useState(getParityZoom());
+  const [phys, setPhys] = useState(getPhysParity());
+  /* DIAGNOSTICS (2026-08-17, the parity hunt) — the standing rule invoked:
+     when a layout prediction is wrong twice, INSTRUMENT it. Two predictions
+     about the preview-vs-Mac "roominess" missed (the height term, then the
+     UI-scale composition), so this row states every term of the composition
+     on whatever machine it renders on; comparing the two rows IS the
+     diagnosis. Reads at render + follows the window. */
+  const [, bumpDiag] = useState(0);
+  useEffect(() => {
+    const h = () => bumpDiag((n) => n + 1);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  const zoomPct = Math.round(currentZoomFactor() * 100);
+  const cssW = window.innerWidth;
+  const cssH = window.innerHeight;
+  const logW = Math.round(cssW * currentZoomFactor());
+  const logH = Math.round(cssH * currentZoomFactor());
+  const diag =
+    `window ${logW}×${logH} logical · zoom ${getUiScale()}·${getParityZoom()}·${getPhysParity()}` +
+    ` → ${zoomPct}% · canvas ${cssW}×${cssH} css · dpr ${window.devicePixelRatio}`;
   const [seedStatus, setSeedStatus] = useState("");
   const [seedBusy, setSeedBusy] = useState(false);
   const runSeed = (clear: boolean) => {
@@ -1002,6 +1026,40 @@ function DeveloperPane() {
                   setParity(v);
                 }}
               />
+            </span>
+          </div>
+          {/* PHYSICAL SIZE — the hold-up calibration (2026-08-17). The preview
+              matched the Mac in pixels, never in inches; this shrinks the
+              window and the zoom together so the CSS canvas is untouched and
+              only the physical size moves. Calibrate ONCE per monitor: hold
+              the MacBook against the screen and step until the widths line
+              up. Live while the preview is on. 100 = uncalibrated (the old
+              behaviour); ~86 predicted for a 27" 1440p-logical panel.
+              A STEPPER, not a slider (user-ruled at the build): each press
+              moves 2% — ~30px of window per click, a visible, countable jump
+              the hold-up test can track. Full record: settings/local.ts
+              § PHYSICAL PARITY. */}
+          <div className="crow">
+            <span className="clabel">Physical size</span>
+            <DevMark />
+            <span className="cright">
+              <Stepper
+                value={`${phys}%`}
+                onStep={(d) => {
+                  const next = Math.min(100, Math.max(60, phys + d * 2));
+                  setPhysParity(next);
+                  setPhys(next);
+                }}
+              />
+            </span>
+          </div>
+          <div className="crow">
+            <span className="clabel">Diagnostics</span>
+            <DevMark />
+            <span className="cright">
+              <span className="field" style={{ fontFamily: "var(--font-mono)", fontSize: "var(--size-caption)" }}>
+                {diag}
+              </span>
             </span>
           </div>
           <div className="crow">

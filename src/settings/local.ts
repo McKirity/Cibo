@@ -120,7 +120,14 @@ export const getMacBookPreview = (): boolean => getScreenMode() === "macbook";
  * Browser dev never applies a zoom, so it reports 1.
  */
 export const currentZoomFactor = (): number =>
-  !inTauri() ? 1 : (getUiScale() / 100) * (getMacBookPreview() ? getParityZoom() / 100 : 1);
+  !inTauri()
+    ? 1
+    : (getUiScale() / 100) *
+      // Physical parity rides ONLY the preview (defined below with the
+      // geometry it scales): the window shrinks by k and the zoom by k, so
+      // the CSS canvas is invariant and only the inches move. On the real
+      // Mac and any uncalibrated machine it reads 100 and changes nothing.
+      (getMacBookPreview() ? (getParityZoom() / 100) * (getPhysParity() / 100) : 1);
 
 /** Applies the composed zoom: UI scale, × parity while the preview is on. */
 export const applyZoom = async (): Promise<void> => {
@@ -145,14 +152,86 @@ export const setParityZoom = (pct: number): void => {
 
 /**
  * The screen preset's write half — the ruled Settings → Developer anatomy
- * (snap to 1512×982 logical · REMEMBER and restore the prior size · parity
- * zoom composes in MacBook mode). Geometry half was born as a dev button
- * 2026-08-01; this is its real home. Reading it is for LAYOUT, not legibility
- * — Phase 2 owns real-hardware tuning.
+ * (snap to the Mac's real window — 1512×900, × the physical-parity factor
+ * below · REMEMBER and restore the prior size · parity zoom composes in
+ * MacBook mode). Geometry half was born as a dev button 2026-08-01; this is
+ * its real home. Reading it is for LAYOUT, not legibility — real-hardware
+ * looks still own that.
  */
 const MB_PRIOR_KEY = "cibo.dev.macbookPriorSize";
 const MB_W = 1512;
-const MB_H = 982;
+/**
+ * 865, NOT 982 — AND NOT 900 EITHER (corrected twice 2026-08-17). 982 is the
+ * Mac's whole SCREEN; the real window loses the menu bar and the visible Dock
+ * (`fit_window_to_screen` shrinks to the WORK AREA). The 08-17 walk's "≈900"
+ * estimate was still ~35pt tall: measured off the side-by-side screenshots at
+ * the physical-parity calibration (menu bar ≈33pt on the notched 14", visible
+ * Dock ≈85pt), the window stands at ~1512×865 — and the first hold-up test
+ * with 900 baked in read as "the interior is still roomier than the MacBook",
+ * which is exactly what ~41 phantom CSS px of height looks like. Re-measure
+ * if the Mac's Dock size or hiding ever changes; the check is the hold-up
+ * test's height half (the preview should clip the rail's Tools cards the same
+ * amount the Mac does).
+ */
+const MB_H = 865;
+
+/**
+ * PHYSICAL PARITY — the calibration the hold-up test revealed (user, at this
+ * sitting: *"it's actually still too tall and too wide, which I verified by
+ * literally holding up the actual macbook against the pc screen"*).
+ *
+ * The preview matched the Mac in PIXELS, never in INCHES: the PC's panels run
+ * ~109 logical px/inch where the MacBook runs ~127 logical pt/inch, so a
+ * "1512-wide" preview window stood ~17% physically larger in both axes —
+ * quietly making cramped things look fine.
+ *
+ * The factor shrinks the WINDOW and raises the zoom-out by the same amount,
+ * so the CSS canvas the app lays out against is UNTOUCHED (the k cancels:
+ * innerWidth = 1512k ÷ (0.85k·ui) = the same 1779 at ui 100) — compact still
+ * engages, every in-app measurement is identical; only the inches change.
+ *
+ * HAND-CALIBRATED, deliberately, not computed from monitor specs: the hold-up
+ * test IS the instrument — nudge the Developer slider until the preview
+ * window physically matches the MacBook held against the screen. ~86 is the
+ * predicted landing for a 27" 2560×1440-logical panel. Per-device (each
+ * monitor's PPI differs); default 100 = exactly the pre-calibration
+ * behaviour, so the real Mac and any uncalibrated machine are unaffected.
+ *
+ * What it CANNOT give: crispness. The Retina panel renders small text sharper
+ * than the PC can at the same physical size, so the calibrated preview judges
+ * fit and cramping; legibility still takes the one final Mac look.
+ */
+export const PHYS_PARITY_KEY = "cibo.dev.physParity";
+export const clampPhysParity = (pct: number): number =>
+  !Number.isFinite(pct) ? 100 : Math.min(100, Math.max(60, Math.round(pct)));
+export const getPhysParity = (): number =>
+  clampPhysParity(Number(lsGet(PHYS_PARITY_KEY) ?? 100));
+
+/** The preview window's size at the current calibration. */
+const mbSize = (): { w: number; h: number } => {
+  const k = getPhysParity() / 100;
+  return { w: Math.round(MB_W * k), h: Math.round(MB_H * k) };
+};
+
+/**
+ * The calibration dial's setter — LIVE while the preview is on, because the
+ * hold-up test needs the window to track the slider in real time. Store
+ * first, then geometry, then zoom: both readers derive from the stored value.
+ */
+export const setPhysParity = (pct: number): void => {
+  lsSet(PHYS_PARITY_KEY, String(clampPhysParity(pct)));
+  if (!inTauri() || !getMacBookPreview()) return;
+  void (async () => {
+    try {
+      const { LogicalSize } = await import("@tauri-apps/api/dpi");
+      const { w, h } = mbSize();
+      await withAppWindow((win) => win.setSize(new LogicalSize(w, h)), "physical parity resize");
+    } catch (e) {
+      console.error("settings: physical parity resize failed", e);
+    }
+    void applyZoom();
+  })();
+};
 
 export const setScreenMode = async (mode: ScreenMode): Promise<void> => {
   const on = mode === "macbook";
@@ -170,7 +249,8 @@ export const setScreenMode = async (mode: ScreenMode): Promise<void> => {
         const scale = await win.scaleFactor();
         const size = (await win.innerSize()).toLogical(scale);
         lsSet(MB_PRIOR_KEY, `${Math.round(size.width)}x${Math.round(size.height)}`);
-        await win.setSize(new LogicalSize(MB_W, MB_H));
+        const { w, h } = mbSize();
+        await win.setSize(new LogicalSize(w, h));
       }, "MacBook preview resize");
     } else {
       const prior = lsGet(MB_PRIOR_KEY);
@@ -246,13 +326,14 @@ const adoptScreenModeForCanvas = (): void => {
 const restoreMacBookGeometry = async (): Promise<void> => {
   if (!inTauri() || !getMacBookPreview()) return;
   // Already on the small canvas — real small hardware, sized to the screen's
-  // work area by the Rust launch fit. The preview's 1512×982 is a SIMULATION
-  // for a big screen; forcing it here would make the window taller than the
+  // work area by the Rust launch fit. The preview's snap is a SIMULATION for
+  // a big screen; forcing it here would make the window taller than the
   // display can show, which is the defect the fit was written to end.
   if (trueWindowWidth() < SMALL_CANVAS_BELOW) return;
   const { LogicalSize } = await import("@tauri-apps/api/dpi");
+  const { w, h } = mbSize();
   await withAppWindow(
-    (win) => win.setSize(new LogicalSize(MB_W, MB_H)),
+    (win) => win.setSize(new LogicalSize(w, h)),
     "MacBook preview restore at launch",
   );
 };

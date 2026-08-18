@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- orb body: black centre and ring, then gently rippled blue bands -->
+    <radialGradient id="body" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#070B14"/>
+      <stop offset="34%"  stop-color="#070B14"/>
+      <stop offset="42%"  stop-color="#1A3070"/>
+      <stop offset="50%"  stop-color="#2C58B6"/>
+      <stop offset="65%"  stop-color="#3363C8"/>
+      <stop offset="78%"  stop-color="#2C58B6"/>
+      <stop offset="85%"  stop-color="#16296A"/>
+      <stop offset="91%"  stop-color="#070B14"/>
+      <stop offset="100%" stop-color="#070B14"/>
+    </radialGradient>
+    <!-- red core -->
+    <radialGradient id="core" cx="50%" cy="47%" r="53%">
+      <stop offset="0%"   stop-color="#FFF6EE"/>
+      <stop offset="12%"  stop-color="#FBD3B4"/>
+      <stop offset="30%"  stop-color="#EE6A45"/>
+      <stop offset="58%"  stop-color="#D02F1B"/>
+      <stop offset="84%"  stop-color="#A31D0D"/>
+      <stop offset="100%" stop-color="#701109"/>
+    </radialGradient>
+    <!-- a whisper of organic edge, nothing more -->
+    <filter id="soft" x="-8%" y="-8%" width="116%" height="116%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="12"/>
+    </filter>
+  </defs>
+
+  <!-- orb -->
+  <circle cx="512" cy="512" r="466" fill="url(#body)" filter="url(#soft)"/>
+
+  <!-- red core -->
+  <circle cx="512" cy="512" r="132" fill="url(#core)" filter="url(#soft)"/>
+</svg>

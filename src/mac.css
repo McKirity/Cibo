@@ -1,0 +1,232 @@
+/* == MAC — the macOS compensation layer (born 2026-08-18) ===================
+   USER-RULED at its birth: *"It looks fine on PC, don't do anything that will
+   mess with it. Change whatever you need on mac."* Every rule here is
+   `:root.mac`-prefixed (theme/platform.ts sets the class), so the PC never
+   sees any of it — **including the PC's own MacBook preview**, which enters
+   `.compact` but never `.mac`. That separation is the point of the file.
+
+   WHAT BELONGS HERE, AND NOTHING ELSE: differences caused by the ENGINE and
+   the TYPEFACE — WebKit + SF Pro against WebView2 + Segoe UI. Not canvas size
+   (that is `small.css`, which both platforms enter), and never taste.
+
+   THE MEASURED CONSTANT, taken 2026-08-18 off a true A/B — the same screen,
+   same data, same 1779px canvas, photographed on both machines and normalised
+   to CSS pixels:
+
+     UI-font text runs  ~+6%  wider on macOS   (266px against 252px)
+     mono figures run  ~+11%  wider on macOS   (163px against 147px)
+     an <input>'s usable width loses ~3ch      (kit.css § .datefield-in,
+                                                measured on hardware, b8fc79f)
+
+   So any box whose content sits within ~15% of its declared width fits on
+   Windows and clips here. That is one defect family, not a series of
+   coincidences, and this file is where its members are repaid.
+
+   ⚠ THE COST, RECORDED: every rule here is one more way the PC's MacBook
+   preview STOPS predicting this machine. That is already true of anything
+   text-shaped (it is why the work moved to the Mac at all), but a reader
+   comparing the two should know the divergence is now partly deliberate.
+
+   ⚠ PRIOR ART LIVES ELSEWHERE, deliberately un-churned: `small.css`'s heatmap
+   scroller block (2026-08-17) is a macOS-WebKit fix wearing a `:root.compact`
+   prefix. It works, it shipped, and moving it would be churn — but it means
+   "where do Mac fixes live" has two answers historically and one going
+   forward. New ones come here.
+   ========================================================================= */
+
+/* ---- THE SLEEP STRIP'S TIME FIELD (`sleep-time-1`, user-reported: *"the
+   datetime typefields in sleep in the daily form are too short and the time
+   gets cut off"*).
+
+   `daily.css:969` declares `width: 5ch` for a field holding `HH:MM` — five
+   characters in five characters of box, an exact fit with no slack at all.
+   Windows wins that bet; macOS loses it twice over, once on the ~11% mono
+   widening and once on the ~3ch an input's own furniture takes here. Usable
+   width on this machine is therefore about **two characters** of the five.
+
+   THE ARITHMETIC IS THE DATE CHIP'S, WHICH WAS MEASURED RATHER THAN GUESSED
+   (kit.css § .datefield-in): content + 3ch of macOS input overhead + 1ch for
+   the caret. Five content characters → 9ch.
+
+   ⚠ THE 3ch WAS MEASURED AT `--size-body`; this field runs at `--size-small`,
+   so the transfer is an inference, not a measurement. It is written down so
+   the next look can correct it rather than re-derive it — and the check is
+   simply whether `23:45` reads whole with the field neither clipped nor
+   swimming in space.
+
+   Specificity: the base rule is nested under `.daily` (0,4,0); the `:root.mac`
+   prefix here makes 0,5,0, so this wins without `!important` and without
+   caring where the two sheets land in bundle order. */
+:root.mac .dt .dpart .timein { width: 9ch; }
+
+/* ---- THE TIME PICKER'S COLUMNS (`sleep-time-1b`, user-reported twice: first
+   *"the numbers are not centered in the blue squares"*, then — after a fix that
+   only half-worked — *"they still aren't fully centered... still getting
+   slightly cut off at the right edge."*).
+
+   TWO FAULTS, and the first pass only found one.
+
+   ① THE MINUTE COLUMN WAS 7px NARROWER THAN THE HOUR COLUMN. `.timepop .tcol`
+   declares `width: calc(2ch + space-4*2 + scrollbar-width)`; `.tcol + .tcol`
+   then adds `padding-left: space-3` and a 1px divider border, and under the
+   app-wide `box-sizing: border-box` **those come out of that width instead of
+   adding to it** — exactly `--space-3` (6) + `--border-hairline` (1). Measured:
+   hour cells 31.8 CSS, minute cells 24.7.
+
+   ② AND 2ch DOES NOT HOLD TWO DIGITS HERE. With ① repaired both columns drew
+   31.8 CSS — content box 15.8 after the cells' 8px padding — against **15.9 CSS
+   of rendered ink**. Zero slack, so the digits sat hard against the right edge
+   and the last sliver clipped. The measurement said 1.5px and I called it
+   noise; the user's eye called it correctly. ⚠ THE LESSON, AGAIN AND SHARPER:
+   when a measurement lands at the edge of what the method resolves, that is not
+   permission to dismiss it — it is the point at which the eye outranks the
+   instrument.
+
+   ⚠ `ch` IS THE UNRELIABLE PART, and it is worth knowing why: it measures the
+   font's "0" advance, and 2ch resolving to 15.8 CSS at `--size-small` (15px)
+   means a ratio of 0.527em — narrower than any of the stack's real monospace
+   faces (SF Mono and Menlo are 0.6em, Consolas 0.55). Whatever the cascade is
+   actually resolving to, `ch` here under-measures what gets drawn. So this fix
+   does not tune the number to fit — it buys a whole character of slack, which
+   is the same shape as `.datefield-in`'s and for the same reason.
+
+   3ch gives a 23.7 CSS content box for 15.9 CSS of digits: ~4px each side.
+
+   ③ AND THE GUTTER IS RECLAIMED (user-ruled, second thought: *"can the
+   scrollbar not be removed and we just scroll without it?"*). The columns
+   reserved `--scrollbar-width` (10px) purely to keep a bar from stealing width
+   from cells sized to fit — but with the bar gone there is nothing to reserve
+   for, so the term comes out of the calc and the popover loses ~20px of width
+   it never needed. **Cell size is unchanged**: 3ch + padding either way; only
+   the reserved gutter goes. The columns still scroll — wheel and trackpad are
+   untouched, and the scroll-to-selection on focus still fires.
+
+   ⚠ `::-webkit-scrollbar` ONLY, NEVER `scrollbar-width: none`. kit.css §
+   Scrollbars states the app-wide law: the standard properties
+   `scrollbar-width`/`scrollbar-color` SILENTLY override the WebKit
+   pseudo-elements the whole app's overlay-minimal scrollbars are built from, so
+   no rule anywhere may set that pair. `display: none` on the pseudo-element is
+   the sanctioned spelling.
+
+   ⚠ WHAT IT COSTS: these two columns lose the hover-revealed thumb, so nothing
+   signals "there is more above and below" except the clipped row at the edge.
+   Judged acceptable HERE and not generalisable — a 7-of-24 list whose rows are
+   visibly cut is self-evidently scrollable, which is not true of most panes.
+
+   ⚠ FAULT ① IS A BASE-SHEET DEFECT AND THE PC HAS IT — nothing in that
+   arithmetic turns on font metrics, so Consolas lands on the same 7px. Both
+   repairs live here only because the standing ruling is that the PC is not to
+   be touched (2026-08-18). `daily.css` is the right home the day it lifts. */
+:root.mac .timepop .tcol {
+  width: calc(3ch + var(--space-4) * 2);
+}
+:root.mac .timepop .tcol + .tcol {
+  width: calc(3ch + var(--space-4) * 2 + var(--space-3) + var(--border-hairline));
+}
+/* the bar itself — pseudo-element only, per the law quoted above */
+:root.mac .timepop .tcol::-webkit-scrollbar { display: none; }
+
+/* ---- THE RAIL CALENDAR IS SQUASHED (`cramped-1`, user: *"it's mostly
+   something I see in the calendar. It is very cramped in there"*).
+
+   MEASURED, Mac against the PC reference at identical CSS scale:
+
+     column pitch     44.2 CSS  ·  PC 43.8   → IDENTICAL (the rail is 380 both)
+     week-row pitch   38.1 CSS  ·  PC 43.9   → 13% shorter
+     day cell        34 × 34    ·  PC 42 × 42 → 19% smaller, both square
+     number type     10.0 CSS   ·  PC 10.2   → THE SAME
+
+   Nothing is scaled and no text is smaller — the CELLS are crushed. And `34` is
+   not a coincidence: it is `--cal-cell-min-h` exactly, so the Mac's calendar sits
+   pinned to its own floor while the columns stay full width, which is why square
+   cells float in 44px columns with air either side.
+
+   ⚠ FIRST HYPOTHESIS, TESTED AND WRONG — recorded because it is the more
+   obvious one and the next reader will think of it too: that `.rail` is a flex
+   column whose children shrink before a scroll container scrolls, so the
+   calendar absorbed the Mac's 93px shortfall. `flex-shrink: 0` on the
+   calendar's section changed NOTHING. The rail is not the squeezer.
+
+   THE ACTUAL CAUSE IS AN ENGINE DIFFERENCE IN GRID SIZING. `.rail .cal` sets
+   `align-items: stretch`, so a `.d` is stretched to its ROW, and the row is an
+   implicit `auto` track. Resolving that against `aspect-ratio: 1/1` is
+   circular — the height wants to come from the width, the width from the track
+   — and the two engines break the loop in opposite directions: Blink derives
+   the height from the column width (42), WebKit falls back to the item's
+   `min-height` (34) and then `aspect-ratio` pulls the WIDTH down to match it.
+   Same CSS, same canvas, 19% apart.
+
+   `align-self: start` takes the cell out of the stretch, so its height is
+   derived from its own width and the aspect ratio governs as drawn. Verified:
+   cells 40.1 × 40.1, week-row pitch 44.2/43.9 against the PC's 43.9.
+
+   ⚠ THE COST, AND IT IS THE RULED TRADE: the calendar reclaims ~35 CSS px, so
+   the Tools cards are pushed further below the fold. [[Nav Rail]] § Amended
+   2026-08-09 already settled that — *"let the rail scroll and anchor settings to
+   the bottom … no point agonizing over it"* — and Settings stays anchored.
+
+   ⚠ Not strictly a macOS BUG so much as a macOS RESOLUTION of ambiguous CSS.
+   The durable fix is to stop asking two engines to resolve a circular sizing
+   constraint at all; `shell.css` is the right home the day the don't-touch-the-PC
+   ruling lifts, where `align-self: start` would be a no-op for Blink. */
+:root.mac .rail .cal .d { align-self: start; }
+
+/* ---- THE COUNTDOWN CARD'S META COLUMN (probe finding, 2026-08-18: `.cdrow
+   .cdmeta .nm` — 51px of text in a 15px box, 36px cut off).
+
+   RENDERED: `364 days` / `B..` / `Aug 17, 2027` / `1d` `since` `the` `last` —
+   the name amputated to two characters and a dot, and the since-line stacking
+   ONE WORD PER LINE down a column a few characters wide.
+
+   THE CAUSE IS A SMALL-CANVAS RULING MEETING A NARROWER CARD THAN IT ASSUMED.
+   `daily.css` lays `.cdmeta` out as a COLUMN (name over date over since);
+   `small.css:2508` re-lays it as a ROW with `flex: 1 0 100%`. On the shelf card
+   that ruling was written against, three items fit a line. In the bottom whimsy
+   row the card is ~150 CSS px wide, so the row cannot seat them: `.nm` is the
+   only child that may shrink (it carries `min-width: 0` and an ellipsis), so it
+   absorbs the entire deficit and the un-shrinkable since-line wraps per word.
+
+   Back to the column the base sheet already draws. The card has vertical room
+   to spare — its own screenshot shows half the interior empty — so the axis
+   that was traded away costs nothing here.
+
+   ⚠ NOT A macOS DEFECT. This is the COMPACT canvas meeting a narrow card, so it
+   is equally true in the PC's MacBook preview; `small.css` is the correct home
+   and this lives here only under the standing don't-touch-the-PC ruling. */
+:root.mac .daily .cd .cdmeta {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+/* ---- DISTRIBUTION CHART LABELS (probe finding, 2026-08-18: `.dchart .vlabs
+   span` — 111px of text in a 55px box, and an 88px sibling in another).
+
+   RENDERED, on Keyboard's board distribution: `Tofu6… · Neo6… · Neo6… ·
+   Mode65 · Dashi… · Neo6… · Pavlov… · QK65 …`. **THREE BARS READ "Neo6…"** —
+   the truncation has eaten the exact characters that tell the values apart,
+   which is the one thing a distribution chart exists to show. A label that
+   cannot distinguish its bar from its neighbour is not a shortened label, it is
+   a broken one.
+
+   `dashboard.css:419` gives each `span` `flex: 1` in a row of eight, so ~55 CSS
+   px each, with `white-space: nowrap` + ellipsis. Two lines of 55px hold most
+   of these names; the clamp keeps a pathological one from growing the row
+   without bound.
+
+   ⚠ Ellipsis is normally a DECISION and the probe is tuned to respect it (it
+   ignores anything losing under 60%). These crossed that line: half the string
+   and more, on the axis where identity lives.
+
+   ⚠ Not macOS-specific — a 55px box holds ~5 characters under either engine, so
+   the PC truncates too, just one character later. Here under the standing
+   don't-touch-the-PC ruling; `dashboard.css` is the honest home. */
+:root.mac .dchart .vlabs span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  line-height: 1.15;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}

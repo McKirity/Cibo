@@ -41,6 +41,7 @@ import { DangerConfirm } from "./DangerConfirm";
 import type { CadenceScale } from "../metrics/cadence";
 import { useHistory } from "./useHistory";
 import { HabitIcon, hasIcon } from "./habitIcons";
+import { useFitText } from "./fitText";
 import { Ico, ICONS } from "./icons";
 import { Titlebar } from "./Titlebar";
 import { NavCalendar } from "./NavCalendar";
@@ -765,6 +766,13 @@ function HabitButton({
   active: boolean;
   onClick: () => void;
 }) {
+  // FIT-TO-WIDTH on the name (user-ruled 2026-08-18: *"if the name was too big
+  // for the card, then the font simply shrank until it fit"*). A no-op wherever
+  // the name already fits — on Windows every one does, so nothing changes there;
+  // on macOS the ~6% wider glyphs made the longest name overrun its slot and
+  // spend the card's decoration clearance. See shell/fitText.ts.
+  const nameRef = useFitText<HTMLSpanElement>(name);
+
   // Icon-in-swatch = the drawn frame face (seed batch 7 planted the names);
   // the lettermark stays the ruled fallback for icon-less habits.
   //
@@ -781,7 +789,9 @@ function HabitButton({
       <span className="swatch" style={{ ["--habit-hue" as string]: `var(--${colour})` }}>
         {hasIcon(icon) ? <HabitIcon icon={icon} /> : name[0]?.toUpperCase()}
       </span>
-      <span className="name">{name}</span>
+      <span className="name" ref={nameRef}>
+        {name}
+      </span>
     </button>
   );
 }

@@ -975,7 +975,11 @@ button.doorlink:hover {
    rail's two-level hierarchy now rides size and colour alone. If the rail ever
    reads as one shouting register, THE OVERLINE IS THE HALF TO MOVE. */
 .entry .name {
-  font-size: var(--size-small);
+  /* `--fit` is published per label by shell/fitText.ts — 1 unless the name
+     would overrun its slot, in which case just enough less to fit. The ramp
+     stays the DIAL's; this only ever multiplies it, so no raw px enters here
+     and a theme's own type scale is still what is being fitted. */
+  font-size: calc(var(--size-small) * var(--fit, 1));
   font-weight: var(--weight-bold);
   text-transform: uppercase;
   letter-spacing: .05em;

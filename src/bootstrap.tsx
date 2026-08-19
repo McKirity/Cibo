@@ -20,6 +20,7 @@ import "./kit.css";
 import { initTheme } from "./theme/loader";
 import { applyDerivedDials } from "./theme/derived";
 import { initCompact } from "./theme/compact";
+import { initPlatform } from "./theme/platform";
 import { initDecoration } from "./theme/decoration";
 import { initScrollReveal } from "./shell/scrollReveal";
 import { initLocalSettings } from "./settings/local";
@@ -37,6 +38,11 @@ import "./theme/decoration.css";
 // every rule is `:root.compact`-prefixed so bundle order can never decide a
 // tie against a base sheet. See its header for the base-sheet model.
 import "./small.css";
+// AFTER small.css: the macOS compensation layer (engine + typeface, never
+// canvas). Last so a `:root.mac` rule can settle a tie against a `:root.compact`
+// one on order as well as specificity — the two layers answer different
+// questions and can legitimately touch the same property.
+import "./mac.css";
 import { evolu } from "./db/evolu";
 import { clearRestorePending, isRestorePending } from "./db/sync";
 import { ensureHabitIcons, ensureSleepMedLabel, runSeed, SEED_VERSION } from "./db/seed";
@@ -68,6 +74,9 @@ applyDerivedDials();
 // stays logged, never a gate.
 // Compact — the density lever's root class; auto keys off window width.
 initCompact();
+// The platform root class — `.mac`, the hook src/mac.css hangs off. Set before
+// first paint like the rest; it never changes within a run.
+initPlatform();
 // Decoration — reads the theme's decoration/manifest.json (inert while the
 // bundled pair is art-free; job 2 of the 2026-07-20 split).
 initDecoration();

@@ -27,6 +27,9 @@ dist-ssr
 # the planning vault, the living context doc, Claude Code settings, Obsidian config
 project-management/
 CLAUDE.md
+documentation.md
+reference-pc/
+probe-tools/
 .claude/
 .obsidian/
 
@@ -38,3 +41,6 @@ src-tauri/target/
 .tauri/
 .env
 .env.*
+
+# the layout probe's reports (dev tooling)
+.probe/

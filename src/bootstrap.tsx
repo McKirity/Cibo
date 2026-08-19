@@ -97,6 +97,14 @@ initCustomColours();
 initCuration();
 initGlobalLadders();
 
+// THE LAYOUT PROBE (dev only) — Ctrl/Cmd+Shift+L measures the rendered boxes of
+// whatever is on screen and writes a report to .probe/latest.json. Dynamically
+// imported behind the DEV flag so it is verifiably absent from a production
+// bundle (the seedRich shape).
+if (import.meta.env.DEV) {
+  void import("./dev/layoutProbe").then((m) => m.installProbe());
+}
+
 let booted = false;
 /** Sync error types already announced — a relay retry loop must not toast per attempt. */
 const syncErrorsShown = new Set<string>();

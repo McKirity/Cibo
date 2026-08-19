@@ -1,9 +1,52 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
+
+/**
+ * THE PROBE SINK — the dev-only channel out of the webview (2026-08-18).
+ *
+ * `src/dev/layoutProbe.ts` measures the rendered boxes and POSTs its report
+ * here; this writes it to `.probe/latest.json` (gitignored) where a person — or
+ * Claude, working the Mac — can read it.
+ *
+ * ⚠ WHY A VITE MIDDLEWARE AND NOT A TAURI FS WRITE. In dev the app IS
+ * `localhost:1420`, so the app's own CSP (`connect-src 'self'`) already permits
+ * the POST: no capability entry, no CSP edit, no Rust rebuild. Writing the file
+ * from the webview instead would have needed all three — and the standing
+ * capability lesson is that a missing permission fails SILENTLY, which is the
+ * worst possible property for a diagnostic tool.
+ *
+ * `apply: "serve"` keeps it out of every production build by construction.
+ */
+function probeSink() {
+  return {
+    name: "cibo-probe-sink",
+    apply: "serve" as const,
+    configureServer(server: { middlewares: { use: (path: string, fn: unknown) => void } }) {
+      server.middlewares.use("/__probe", (req: any, res: any, next: () => void) => {
+        if (req.method !== "POST") return next();
+        let body = "";
+        req.on("data", (c: Buffer) => (body += c));
+        req.on("end", () => {
+          try {
+            const dir = new URL("./.probe/", import.meta.url);
+            mkdirSync(dir, { recursive: true });
+            writeFileSync(new URL("latest.json", dir), body);
+            const n = JSON.parse(body)?.findings?.length ?? "?";
+            console.log(`[probe] ${n} findings written to .probe/latest.json`);
+          } catch (e) {
+            console.warn("[probe] could not write the report:", e);
+          }
+          res.statusCode = 204;
+          res.end();
+        });
+      });
+    },
+  };
+}
 
 /**
  * The PINNED lucide version, read from package.json at build time and injected
@@ -35,7 +78,7 @@ const buildDate = new Date().toISOString().slice(0, 10);
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react()],
+  plugins: [react(), probeSink()],
 
   define: {
     __LUCIDE_VERSION__: JSON.stringify(lucideVersion),

@@ -866,6 +866,9 @@
                       padding:var(--space-4) var(--space-5); border-top:var(--border-hairline) solid var(--divider);
                       color:var(--accent); font-size:var(--size-small); font-weight:var(--weight-medium); cursor:pointer; }
   .pkdrop .pk-new:hover { background:var(--hover-wash); }
+  /* the keyboard cursor parked on the create/new-value row — the same face
+     .pk-row.on wears (arrow-reachable since 2026-08-18) */
+  .pkdrop .pk-new.on { background:var(--hover-wash); }
   /* The vocab quick-add's inline input (the ruled "+ new value" affordance —
      Phase-2 completion audit, finding detailed-design-3). */
   .pkdrop .pk-newin { flex:1; min-width:0; background:var(--inset-background);
@@ -914,22 +917,30 @@
   /* ~7 rows visible, so the list reads as scrollable without becoming a wall.
      The scroll position is set from the selection when the field takes focus.
 
-     ⚠ THE WIDTH IS DECLARED, AND THAT IS WHAT KILLS THE HORIZONTAL SCROLLBAR
-     (2026-08-15). Left to `auto` the column shrink-wrapped its cells, and then
-     the VERTICAL scrollbar took its 10px gutter out of that same content box —
-     so cells sized to fit no longer fitted, by exactly the gutter, and each
-     column grew a horizontal scrollbar for ten pixels of overflow. (Setting
-     `overflow-y` also forces the other axis from `visible` to `auto`, which is
-     why a bar appeared rather than the overflow simply showing.)
-     Two mono characters plus the cell's padding plus the gutter is the whole
-     width; the mono face is declared here so `ch` measures the glyph the cells
-     actually draw. `overflow-x: hidden` is the belt — nothing here is ever
-     wider than two characters, so there is genuinely nothing to scroll to. */
+     ⚠ THE WIDTH IS DECLARED (2026-08-15): left to `auto` the column
+     shrink-wrapped its cells and the scrollbar gutter then stole its width
+     from that same content box. Two mono characters plus the cell's padding is
+     the whole width; the mono face is declared here so `ch` measures the glyph
+     the cells actually draw. `overflow-x: hidden` is the belt — nothing here
+     is ever wider than two characters.
+
+     NO SCROLLBAR, user-ruled 2026-08-18 ("remove the scrollbar from the
+     dropdown menu and have it scroll without it") — the columns scroll bare,
+     a per-surface exception to the app-wide overlay-minimal recipe, hidden via
+     the WebKit pseudo per the kit.css § Scrollbars law (`scrollbar-width` is
+     still barred app-wide). The `--scrollbar-width` term left the width calcs
+     with the gutter. */
   .timepop .tcol { font-family:var(--font-mono); font-size:var(--size-small);
-    width:calc(2ch + var(--space-4) * 2 + var(--scrollbar-width));
+    width:calc(2ch + var(--space-4) * 2);
     max-height:calc(var(--step-btn-size) * 7); overflow-y:auto; overflow-x:hidden;
     display:flex; flex-direction:column; gap:1px; }
-  .timepop .tcol + .tcol { border-left:var(--border-hairline) solid var(--divider); padding-left:var(--space-3); }
+  .timepop .tcol::-webkit-scrollbar { display:none; }
+  /* Border-box: the divider's border + padding come OUT of the declared width,
+     which left the minute cells 7px too narrow for 2ch + their padding — the
+     digits overflowed rightward (measured 8px left / 1px right in the sel box).
+     The second column re-declares the width with those two terms added back. */
+  .timepop .tcol + .tcol { border-left:var(--border-hairline) solid var(--divider); padding-left:var(--space-3);
+    width:calc(2ch + var(--space-4) * 2 + var(--space-3) + var(--border-hairline)); }
   .timepop .tcell { flex:0 0 auto; padding:var(--space-2) var(--space-4); border-radius:var(--radius-small); font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-secondary); cursor:pointer; white-space:nowrap; text-align:center; }
   .timepop .tcell:hover { background:var(--hover-wash); color:var(--text-strong); }
   .timepop .tcell.sel { background:var(--accent); color:var(--text-on-filled); }

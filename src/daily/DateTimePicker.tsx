@@ -28,9 +28,20 @@
  * nor is helped by it.
  */
 import { useRef, useState } from "react";
-import { monthGridCells, weekDayLetters } from "../metrics/dates";
+import { dayFromIndex, dayIndex, monthGridCells, weekDayLetters } from "../metrics/dates";
 import { MONTHS_LONG } from "../metrics/format";
 import { pad2 as pad, todayLocal } from "../metrics/clock";
+
+/** One keyboard step across the calendar: ±days, or ±months with the day-of-month
+ *  kept (clamped to the target month's last day, so Jan 31 + 1 month = Feb 28/29). */
+const stepKbd = (from: string, days: number, months: number): string => {
+  if (days !== 0) return dayFromIndex(dayIndex(from) + days);
+  const y = Number(from.slice(0, 4));
+  const m = Number(from.slice(5, 7)) - 1 + months;
+  const last = new Date(y, m + 1, 0).getDate();
+  const dt = new Date(y, m, Math.min(Number(from.slice(8, 10)), last));
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+};
 
 /* Header letters follow the configured week start (dates.weekDayLetters). */
 
@@ -102,6 +113,10 @@ export function DateTimePicker({
   // jump to the end of the document after any pick.
   const [shutDate, setShutDate] = useState(false);
   const [shutTime, setShutTime] = useState(false);
+  // The calendar's KEYBOARD cursor (keyboard-centric logging, user-asked
+  // 2026-08-18) — a date, not a cell index, so it survives the view following
+  // it across month boundaries. Wears the pickers' `.on` cursor face.
+  const [kcur, setKcur] = useState<string | null>(null);
 
   const today = todayLocal();
   const anchor = date !== "" ? date : today;
@@ -153,10 +168,45 @@ export function DateTimePicker({
         className={`dpart date${shutDate ? " shut" : ""}`}
         tabIndex={0}
         onMouseDown={() => setShutDate(false)}
-        onFocus={() => setShutDate(false)}
+        onFocus={() => {
+          setShutDate(false);
+          setKcur((k) => k ?? (date !== "" ? date : today));
+        }}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault();
+            setShutDate(true);
+            return;
+          }
+          // Arrows walk days, PageUp/Down walk months, Enter picks the cursor
+          // day. A shut panel reopens on the first press without moving — the
+          // entry picker's exact idiom. The future stays a dead route here as
+          // everywhere: the cursor clamps to today.
+          const days =
+            e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : e.key === "ArrowUp" ? -7 : e.key === "ArrowDown" ? 7 : 0;
+          const months = e.key === "PageUp" ? -1 : e.key === "PageDown" ? 1 : 0;
+          if (days !== 0 || months !== 0) {
+            e.preventDefault();
+            if (shutDate) {
+              setShutDate(false);
+              return;
+            }
+            const from = kcur ?? (date !== "" ? date : today);
+            let next = stepKbd(from, days, months);
+            if (next > today) next = today;
+            setKcur(next);
+            setCursor({ y: Number(next.slice(0, 4)), m: Number(next.slice(5, 7)) - 1 });
+            return;
+          }
+          if (e.key === "Enter") {
+            e.preventDefault();
+            if (shutDate) {
+              setShutDate(false);
+              return;
+            }
+            const pick = kcur ?? (date !== "" ? date : today);
+            if (pick > today) return;
+            onChange(pick, time);
             setShutDate(true);
           }
         }}
@@ -200,6 +250,9 @@ export function DateTimePicker({
                 dead ? "dead" : "",
                 c.day === today ? "today" : "",
                 c.day === date ? "sel" : "",
+                // the keyboard cursor — in-month only, or the same date would
+                // light twice via an adjacent month's leading/trailing cells
+                !c.out && c.day === kcur ? "on" : "",
               ]
                 .filter(Boolean)
                 .join(" ");
@@ -216,6 +269,7 @@ export function DateTimePicker({
                     if (dead || c.out) return;
                     // The date, and ONLY the date — picking a day says nothing
                     // about what time of day it was.
+                    setKcur(c.day);
                     onChange(c.day, time);
                     setShutDate(true);
                   }}

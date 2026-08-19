@@ -40,6 +40,7 @@ import "./small.css";
 import { evolu } from "./db/evolu";
 import { clearRestorePending, isRestorePending } from "./db/sync";
 import { ensureHabitIcons, ensureSleepMedLabel, runSeed, SEED_VERSION } from "./db/seed";
+import { ensureUniqueDayRows } from "./db/dayLedger";
 import { ensureAppStartDate } from "./db/appStart";
 import { initWhimsyConfig } from "./daily/whimsyConfig";
 import { isFirstRunPending } from "./firstrun/firstRun";
@@ -317,6 +318,11 @@ bootSeed().then(
     // donut header AND its subtitle, so a rename that latches without landing
     // shows as "Nights I med" — visibly wrong, but only on one panel.
     void ensureSleepMedLabel(evolu, "launch");
+    // The third reconciler (2026-08-18): two devices touching the same
+    // un-rowed day before sync converges twin its ledger row, and a twinned
+    // day can never leave the catch-up queue (finalizeDay seals one row).
+    // Cross-device twins cannot be prevented, only healed post-merge.
+    void ensureUniqueDayRows(evolu);
     // Backups (step 12): the launch half — a failed restore surfaces (tier 3;
     // a SUCCESSFUL restore needs no toast: the restored data is the message),
     // then the ~7-day stale-check (crashes never fire the close hook).

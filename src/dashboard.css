@@ -576,8 +576,25 @@
 .dayspark .col .n{font-family:var(--font-mono); font-size:var(--size-body); font-weight:var(--weight-bold); color:var(--text-strong);}
 
 /* the categorical split panel + heatmap value filter (keyboard) */
-.board-split{display:grid; grid-template-columns:1fr 1fr; gap:var(--space-7); align-items:start;}
-.board-split > .dcol{min-width:0;}
+/* .board-split RETIRED 2026-08-18 (orphaned by ruling): the simple template's
+   two always-visible dist panels collapsed into ONE toggled panel — Days ⇄
+   <measure>, both hbars — and this grid's sole tenant went with them. */
+/* The toggled panel's bars flow down TWO balanced columns (the same ruling:
+   "split the bars into two columns" — vertical bars truncated their labels).
+   Multicol, not grid: balance fills the left column first, so rank order
+   reads down-then-across like the statgrid. Block context, so the flex gap
+   dies with it — the rows carry their own margin, and `height` relaxes to a
+   min (a balanced column is half as tall as the one-column stack was). */
+.hbars.twocol{display:block; height:auto; column-count:2; column-gap:var(--space-8);}
+.hbars.twocol .brow{break-inside:avoid; margin-bottom:var(--space-6);}
+.hbars.twocol .brow:last-child{margin-bottom:0;}
+/* CONTENT-SIZED, no chart-height floor (user-ruled 2026-08-18: "make sure the
+   panel flexes with the actual amount of content"). Scoped by :has so every
+   OTHER dist panel keeps the floor — there the toggle swaps between shapes of
+   different natural heights and the floor is what stops the panel jumping.
+   Here both metrics rank the same value set, so the height is stable by
+   construction. */
+.dchart:has(> .hbars.twocol){min-height:0;}
 .board-select{font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium); text-transform:none; letter-spacing:0; color:var(--text-strong); background:var(--panel-background); border:var(--border-hairline) solid var(--border); border-radius:var(--radius-small); padding:var(--space-2) var(--space-5); cursor:pointer; transition:background var(--motion-fast) var(--ease-standard);}
 .board-select:hover{background:var(--hover-wash);}
 .hsel{display:inline-flex; align-items:center; gap:var(--space-3); font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-weight:var(--weight-bold);}

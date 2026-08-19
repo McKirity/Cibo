@@ -1011,6 +1011,21 @@ function BoardOnly({
     setWords(stored == null ? "" : String(stored));
   }, [stored]);
 
+  // Typing in the count IS the override (the one-field ruling above); a blank
+  // or non-number reverts to the stored value, same as every measure field.
+  const commitWords = () => {
+    if (bout?.count == null) return;
+    const v = Number(words);
+    if (words.trim() === "" || !Number.isFinite(v)) {
+      setWords(String(bout.count.value ?? 0));
+      return;
+    }
+    if (v === (bout.count.value ?? 0)) return;
+    setDetached(true);
+    const id = bout.count.id;
+    queue("override", () => overrideDerived(id, v));
+  };
+
   if (def == null) return null;
   return (
     <>
@@ -1050,19 +1065,14 @@ function BoardOnly({
             inputMode="numeric"
             value={words}
             onChange={(e) => setWords(e.target.value)}
-            onBlur={() => {
-              const v = Number(words);
-              if (words.trim() === "" || !Number.isFinite(v)) {
-                setWords(String(bout.count?.value ?? 0));
-                return;
-              }
-              if (v === (bout.count?.value ?? 0)) return;
-              setDetached(true);
-              const id = bout.count!.id;
-              queue("override", () => overrideDerived(id, v));
-            }}
+            onBlur={commitWords}
             onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
+              // Enter commits IN PLACE — blurring parked focus on <body> and
+              // broke Shift+Tab (the MeasureField note, 2026-08-18).
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitWords();
+              }
             }}
           />
           <span className="unit">{bout.countDerived ? "follows Writing" : "overridden"}</span>
@@ -1488,7 +1498,10 @@ function EntryRow({
             setShut(false);
           }}
           onKeyDown={(e) => {
-            const last = matches.length - 1;
+            // The quick-create row rides at the end of the arrow path when it
+            // is showing (cursor === matches.length) — Enter there already fell
+            // through to create; this makes the highlight able to SAY so.
+            const last = matches.length - 1 + (q !== "" && !exact ? 1 : 0);
             if (e.key === "ArrowDown") {
               e.preventDefault();
               setShut(false);
@@ -1537,7 +1550,7 @@ function EntryRow({
           {matches.length === 0 && <div className="pk-none">No titles match “{query}”.</div>}
           {q !== "" && !exact && (
             <div
-              className="pk-new"
+              className={`pk-new${cursor === matches.length ? " on" : ""}`}
               onMouseDown={(ev) => {
                 ev.preventDefault();
                 ev.stopPropagation();
@@ -1656,6 +1669,13 @@ function VocabSelect({
   const at = Math.max(0, def.vocab.indexOf(value));
   const [cursor, setCursor] = useState(at);
   const [shut, setShut] = useState(false);
+  // "New value" rides at the end of the arrow path (keyboard-centric logging,
+  // 2026-08-18): cursor === def.vocab.length is that row, Enter opens the
+  // inline add. The wrapper ref is where focus RETURNS when the add closes —
+  // the autoFocus input unmounting would otherwise drop focus on <body> and
+  // break Shift+Tab.
+  const rootRef = useRef<HTMLSpanElement>(null);
+  const newIdx = def.vocab.length;
   // The ruled quick-add ("+ New value" inside the picklist — logging never
   // dead-ends on a missing value). The row flips to an inline input; commit
   // reuses an existing value case-insensitively (canonical casing wins) or
@@ -1672,6 +1692,7 @@ function VocabSelect({
     const picked = quickAddVocabValue(def.id as never, def.vocab, newVal);
     setAdding(false);
     setNewVal("");
+    rootRef.current?.focus();
     if (picked != null) {
       onPick(picked);
       setShut(true);
@@ -1679,6 +1700,7 @@ function VocabSelect({
   };
   return (
     <span
+      ref={rootRef}
       className={`inp sel pk-live${shut ? " shut" : ""}`}
       tabIndex={0}
       role="listbox"
@@ -1688,17 +1710,26 @@ function VocabSelect({
         setShut(false);
       }}
       onKeyDown={(e) => {
-        const last = def.vocab.length - 1;
         if (e.key === "ArrowDown") {
           e.preventDefault();
           setShut(false);
-          setCursor((c) => (shut ? c : Math.min(last, c + 1)));
+          setCursor((c) => (shut ? c : Math.min(newIdx, c + 1)));
         } else if (e.key === "ArrowUp") {
           e.preventDefault();
           setShut(false);
           setCursor((c) => Math.max(0, c - 1));
         } else if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
+          // A shut panel reopens rather than acting blind — opening the inline
+          // add inside a display:none panel would autoFocus nothing.
+          if (shut) {
+            setShut(false);
+            return;
+          }
+          if (cursor === newIdx) {
+            setAdding(true);
+            return;
+          }
           const hit = def.vocab[cursor];
           if (hit != null) {
             onPick(hit);
@@ -1734,7 +1765,7 @@ function VocabSelect({
         {def.vocab.length === 0 && !adding && <div className="pk-none">No values yet.</div>}
         {!adding ? (
           <div
-            className="pk-new"
+            className={`pk-new${cursor === newIdx ? " on" : ""}`}
             onMouseDown={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -1762,6 +1793,7 @@ function VocabSelect({
                   e.preventDefault();
                   setAdding(false);
                   setNewVal("");
+                  rootRef.current?.focus();
                 }
               }}
               onBlur={() => {
@@ -1851,6 +1883,20 @@ function MeasureField({
   const hint =
     kind === "time" && shown !== "" && Number.isFinite(asNumber) ? minutesHint(asNumber) : unit;
 
+  // A field commits as you leave it (ruling 1). A cleared field REVERTS to the
+  // stored value: removal is the `remove` control's job, so a stray keystroke
+  // can never delete a session.
+  const commitNow = () => {
+    if (shown.trim() === "") {
+      if (!controlled) setText(value == null ? "" : String(value));
+      return;
+    }
+    const v = Number(shown);
+    if (!Number.isFinite(v)) return;
+    if (!controlled && v === value) return;
+    onCommit(v);
+  };
+
   return (
     <>
       <input
@@ -1859,21 +1905,15 @@ function MeasureField({
         placeholder="0"
         value={shown}
         onChange={(e) => (controlled ? onDraftChange?.(e.target.value) : setText(e.target.value))}
-        onBlur={() => {
-          // A field commits as you leave it (ruling 1). A cleared field REVERTS
-          // to the stored value: removal is the `remove` control's job, so a
-          // stray keystroke can never delete a session.
-          if (shown.trim() === "") {
-            if (!controlled) setText(value == null ? "" : String(value));
-            return;
-          }
-          const v = Number(shown);
-          if (!Number.isFinite(v)) return;
-          if (!controlled && v === value) return;
-          onCommit(v);
-        }}
+        onBlur={commitNow}
         onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
+          // Enter commits IN PLACE — it used to blur, which parked focus on
+          // <body> and left Tab/Shift+Tab with no position to move from
+          // (the tab-back complaint, 2026-08-18).
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commitNow();
+          }
         }}
       />
       <span className="unit">{hint}</span>

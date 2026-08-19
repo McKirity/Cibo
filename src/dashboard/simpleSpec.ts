@@ -703,8 +703,15 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
     });
   }
 
-  // ── Distribution (categorical): TWO always-visible panels — Days hbars +
-  //    <measure> vbars, orientation distinguishing the amounts (as drawn) ──
+  // ── Distribution (categorical): ONE panel, Days ⇄ <measure> under a metric
+  //    toggle, BOTH ranked horizontal bars flowing down two columns.
+  //    User-ruled 2026-08-18 ("put days and words under a toggle and just go
+  //    with horizontal bars… split the bars into two columns", then widened:
+  //    "make this the standard for simple habits in general") — SUPERSEDING
+  //    the drawn keyboard-stats face (two always-visible panels, vbars for
+  //    the amount) for the SIMPLE template only: vertical bars truncate the
+  //    value labels. The per-metric shape family (creationSpec) is otherwise
+  //    untouched — creation/consumption keep their drawn shapes. ──
   let dist: SimpleModel["dist"] = null;
   if (catDef) {
     const rows = [...aggScoped.entries()].map(([name, a]) => ({
@@ -717,8 +724,9 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
     if (rows.length >= 2) {
       const daysRanked = [...rows].sort((a, b) => b.days - a.days);
       const daysMax = daysRanked[0]?.days || 1;
-      const hbars: ShapeChart = {
+      const daysBars: ShapeChart = {
         kind: "hbars",
+        twoCol: true,
         rows: daysRanked.map((r) => ({
           label: r.name,
           value: groupInt(r.days),
@@ -729,9 +737,10 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
       };
       const amtRanked = [...rows].sort((a, b) => b.amount - a.amount);
       const amtMax = amtRanked[0]?.amount || 1;
-      const vbars: ShapeChart = {
-        kind: "vbars",
-        cols: amtRanked.map((r) => ({
+      const amtBars: ShapeChart = {
+        kind: "hbars",
+        twoCol: true,
+        rows: amtRanked.map((r) => ({
           label: r.name,
           value: isCount ? kFmt(r.amount) : hoursWhole(r.amount),
           pct: (r.amount / amtMax) * 100,
@@ -739,13 +748,18 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
           tip: `${r.name} · ${isCount ? `${groupInt(r.amount)} ${primary.noun}` : hoursWhole(r.amount)}${r.retired ? " (retired)" : ""}`,
         })),
       };
+      const amtKey = isCount ? ("count" as const) : ("time" as const);
+      // title "" — the outer panel head already reads "By <medium>"; the
+      // inner head carries only the toggle (DistPanel skips an empty title).
       const panels: DistPanelSpec[] = [
-        { title: "Days", tabs: null, initial: "days", charts: { days: hbars } },
         {
-          title: isCount ? unitCap : "Time",
-          tabs: null,
-          initial: isCount ? "count" : "time",
-          charts: isCount ? { count: vbars } : { time: vbars },
+          title: "",
+          tabs: [
+            { key: "days", label: "Days" },
+            { key: amtKey, label: isCount ? unitCap : "Time" },
+          ],
+          initial: "days",
+          charts: { days: daysBars, [amtKey]: amtBars },
         },
       ];
       dist = { title: `By ${catDef.label.toLowerCase()}`, panels };

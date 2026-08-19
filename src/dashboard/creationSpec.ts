@@ -134,7 +134,9 @@ export interface DistShapeRow {
  *  bars · Time = donut (legal: session categoricals are required-one-of
  *  single-valued, so hours partition) · rate = lollipop (rates don't sum). */
 export type ShapeChart =
-  | { kind: "hbars"; rows: DistShapeRow[] }
+  /** `twoCol`: the rows flow down two balanced columns (user-ruled 2026-08-18
+   *  for the simple categorical split — sole tenant; default stays one). */
+  | { kind: "hbars"; rows: DistShapeRow[]; twoCol?: boolean }
   | { kind: "vbars"; cols: DistShapeRow[] }
   | {
       kind: "donut";

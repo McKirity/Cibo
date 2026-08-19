@@ -453,6 +453,10 @@ kbd{font-family:var(--font-mono); font-size:var(--size-caption); color:var(--tex
 .calpop .cdow { font-size:var(--size-caption); text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); text-align:center; padding-bottom:var(--space-2); }
 .calpop .cd { aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:var(--size-small); color:var(--text-strong); border-radius:var(--radius-small); cursor:pointer; }
 .calpop .cd:hover { background:var(--hover-wash); }
+/* the keyboard cursor (arrows walk the grid, Enter picks — 2026-08-18); the
+   hover face, per the pkdrop rows' `.on` idiom. Declared before .sel so a
+   cursor sitting on the picked day keeps the accent fill. */
+.calpop .cd.on { background:var(--hover-wash); }
 .calpop .cd.dead { color:color-mix(in oklch, var(--text-muted), var(--raised-background) var(--fade)); cursor:not-allowed; }
 .calpop .cd.dead:hover { background:transparent; }
 .calpop .cd.out { color:color-mix(in oklch, var(--text-muted), var(--raised-background) var(--fade)); cursor:default; }

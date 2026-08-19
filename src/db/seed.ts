@@ -50,7 +50,7 @@ type CiboEvolu = Evolu<typeof Schema>;
  * is per-batch. Gate semantics are unchanged: resolve ⇔ worker commit,
  * reject ⇔ rejected Result, and a reject propagates out of the batch.
  */
-const verifiedUpdate = (
+export const verifiedUpdate = (
   issue: (opts: { onComplete: () => void }) => { ok: boolean; error?: unknown },
   label: string,
 ): Promise<void> =>

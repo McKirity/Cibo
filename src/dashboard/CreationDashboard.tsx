@@ -214,7 +214,10 @@ export function DistPanel({ panel }: { panel: DistPanelSpec }) {
   return (
     <div className="dpanel">
       <div className="chead">
-        <span className="ct">{panel.title}</span>
+        {/* An empty title is legal since 2026-08-18 (the simple categorical
+            split's single toggled panel — the OUTER panel head already names
+            the zone, so the inner head carries only the metric toggle). */}
+        {panel.title !== "" && <span className="ct">{panel.title}</span>}
         {panel.tabs && (
           <div className="mtoggle">
             {panel.tabs.map((t) => (
@@ -233,7 +236,7 @@ export function DistPanel({ panel }: { panel: DistPanelSpec }) {
 function Shape({ chart }: { chart: ShapeChart }) {
   if (chart.kind === "hbars") {
     return (
-      <div className="hbars">
+      <div className={`hbars${chart.twoCol ? " twocol" : ""}`}>
         {chart.rows.map((r) => (
           <div className="brow" key={r.label} title={r.tip}>
             <span className="blabel">{r.label}</span>

@@ -119,13 +119,13 @@ export function SimpleDashboard({ habitKey }: { habitKey: string }) {
                 ))}
               </Panel>
             )}
+            {/* ONE toggled panel since 2026-08-18 (the .board-split two-panel
+                grid retired with the ruling — see the spec's dist block). */}
             {m.dist && (
               <Panel title={m.dist.title}>
-                <div className="board-split">
-                  {m.dist.panels.map((p) => (
-                    <DistPanel key={p.title} panel={p} />
-                  ))}
-                </div>
+                {m.dist.panels.map((p, i) => (
+                  <DistPanel key={i} panel={p} />
+                ))}
               </Panel>
             )}
             {m.trend && <CreationTrend trend={m.trend} color={color} />}

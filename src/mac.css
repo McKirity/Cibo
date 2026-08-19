@@ -60,71 +60,40 @@
 :root.mac .dt .dpart .timein { width: 9ch; }
 
 /* ---- THE TIME PICKER'S COLUMNS (`sleep-time-1b`, user-reported twice: first
-   *"the numbers are not centered in the blue squares"*, then — after a fix that
-   only half-worked — *"they still aren't fully centered... still getting
-   slightly cut off at the right edge."*).
+   *"the numbers are not centered in the blue squares"*, then *"they still
+   aren't fully centered... still getting slightly cut off at the right edge."*)
 
-   TWO FAULTS, and the first pass only found one.
+   ⚠ MOSTLY SUPERSEDED BY THE PC'S OWN FIX (`988c271`, 2026-08-18 — *"the sleep
+   time picker centers its digits and scrolls bare, wheel-style"*). That commit
+   reached the same two conclusions in the BASE sheet: the scrollbar hidden and
+   its reserved gutter dropped from the width, and `.tcol + .tcol`'s
+   `padding-left` + divider ADDED to the declared width rather than eaten out of
+   it under `box-sizing: border-box`. Both of my rules for those were deleted
+   here rather than left to shadow an identical base rule — two owners for one
+   behaviour is how drift starts.
 
-   ① THE MINUTE COLUMN WAS 7px NARROWER THAN THE HOUR COLUMN. `.timepop .tcol`
-   declares `width: calc(2ch + space-4*2 + scrollbar-width)`; `.tcol + .tcol`
-   then adds `padding-left: space-3` and a 1px divider border, and under the
-   app-wide `box-sizing: border-box` **those come out of that width instead of
-   adding to it** — exactly `--space-3` (6) + `--border-hairline` (1). Measured:
-   hour cells 31.8 CSS, minute cells 24.7.
+   WHAT SURVIVES IS THE ONE TERM THAT IS GENUINELY PER-PLATFORM: the base keeps
+   `2ch`, which holds two digits on Windows and does NOT here. Measured: a 15.8
+   CSS px content box against **15.9 CSS px of rendered ink** — zero slack, so
+   the digits sat hard against the right edge and the last sliver clipped.
 
-   ② AND 2ch DOES NOT HOLD TWO DIGITS HERE. With ① repaired both columns drew
-   31.8 CSS — content box 15.8 after the cells' 8px padding — against **15.9 CSS
-   of rendered ink**. Zero slack, so the digits sat hard against the right edge
-   and the last sliver clipped. The measurement said 1.5px and I called it
-   noise; the user's eye called it correctly. ⚠ THE LESSON, AGAIN AND SHARPER:
-   when a measurement lands at the edge of what the method resolves, that is not
-   permission to dismiss it — it is the point at which the eye outranks the
-   instrument.
+   ⚠ `ch` IS THE UNRELIABLE TERM. 2ch resolving to 15.8 CSS at `--size-small`
+   (15px) is a 0.527em ratio — narrower than any real monospace face in the
+   stack (SF Mono and Menlo 0.6em, Consolas 0.55). Whatever the cascade resolves
+   to here, `ch` under-measures what is drawn. So this buys a whole character of
+   slack rather than tuning to fit — the same shape as `.datefield-in`'s 14ch,
+   and for the same reason. Verified: both columns then measure identically,
+   ~12 CSS px of air each side, residual off-centre 0.29 CSS px.
 
-   ⚠ `ch` IS THE UNRELIABLE PART, and it is worth knowing why: it measures the
-   font's "0" advance, and 2ch resolving to 15.8 CSS at `--size-small` (15px)
-   means a ratio of 0.527em — narrower than any of the stack's real monospace
-   faces (SF Mono and Menlo are 0.6em, Consolas 0.55). Whatever the cascade is
-   actually resolving to, `ch` here under-measures what gets drawn. So this fix
-   does not tune the number to fit — it buys a whole character of slack, which
-   is the same shape as `.datefield-in`'s and for the same reason.
-
-   3ch gives a 23.7 CSS content box for 15.9 CSS of digits: ~4px each side.
-
-   ③ AND THE GUTTER IS RECLAIMED (user-ruled, second thought: *"can the
-   scrollbar not be removed and we just scroll without it?"*). The columns
-   reserved `--scrollbar-width` (10px) purely to keep a bar from stealing width
-   from cells sized to fit — but with the bar gone there is nothing to reserve
-   for, so the term comes out of the calc and the popover loses ~20px of width
-   it never needed. **Cell size is unchanged**: 3ch + padding either way; only
-   the reserved gutter goes. The columns still scroll — wheel and trackpad are
-   untouched, and the scroll-to-selection on focus still fires.
-
-   ⚠ `::-webkit-scrollbar` ONLY, NEVER `scrollbar-width: none`. kit.css §
-   Scrollbars states the app-wide law: the standard properties
-   `scrollbar-width`/`scrollbar-color` SILENTLY override the WebKit
-   pseudo-elements the whole app's overlay-minimal scrollbars are built from, so
-   no rule anywhere may set that pair. `display: none` on the pseudo-element is
-   the sanctioned spelling.
-
-   ⚠ WHAT IT COSTS: these two columns lose the hover-revealed thumb, so nothing
-   signals "there is more above and below" except the clipped row at the edge.
-   Judged acceptable HERE and not generalisable — a 7-of-24 list whose rows are
-   visibly cut is self-evidently scrollable, which is not true of most panes.
-
-   ⚠ FAULT ① IS A BASE-SHEET DEFECT AND THE PC HAS IT — nothing in that
-   arithmetic turns on font metrics, so Consolas lands on the same 7px. Both
-   repairs live here only because the standing ruling is that the PC is not to
-   be touched (2026-08-18). `daily.css` is the right home the day it lifts. */
+   The second rule re-states the base's border-box compensation because it is
+   overriding the same `width` — the arithmetic is theirs, only the `3ch` is
+   mine. */
 :root.mac .timepop .tcol {
   width: calc(3ch + var(--space-4) * 2);
 }
 :root.mac .timepop .tcol + .tcol {
   width: calc(3ch + var(--space-4) * 2 + var(--space-3) + var(--border-hairline));
 }
-/* the bar itself — pseudo-element only, per the law quoted above */
-:root.mac .timepop .tcol::-webkit-scrollbar { display: none; }
 
 /* ---- THE RAIL CALENDAR IS SQUASHED (`cramped-1`, user: *"it's mostly
    something I see in the calendar. It is very cramped in there"*).
@@ -199,34 +168,21 @@
   gap: 2px;
 }
 
-/* ---- DISTRIBUTION CHART LABELS (probe finding, 2026-08-18: `.dchart .vlabs
-   span` — 111px of text in a 55px box, and an 88px sibling in another).
+/* ---- (DISTRIBUTION CHART LABELS — RULE DELETED 2026-08-18.)
 
-   RENDERED, on Keyboard's board distribution: `Tofu6… · Neo6… · Neo6… ·
-   Mode65 · Dashi… · Neo6… · Pavlov… · QK65 …`. **THREE BARS READ "Neo6…"** —
-   the truncation has eaten the exact characters that tell the values apart,
-   which is the one thing a distribution chart exists to show. A label that
-   cannot distinguish its bar from its neighbour is not a shortened label, it is
-   a broken one.
+   A `:root.mac` rule here wrapped `.dchart .vlabs span` to two lines, because
+   Keyboard's board distribution rendered THREE bars all reading "Neo6..." — the
+   truncation having eaten the characters that tell the values apart.
 
-   `dashboard.css:419` gives each `span` `flex: 1` in a row of eight, so ~55 CSS
-   px each, with `white-space: nowrap` + ellipsis. Two lines of 55px hold most
-   of these names; the clamp keeps a pathological one from growing the row
-   without bound.
+   ⚠ THE PC ANSWERED THE SAME DEFECT DIFFERENTLY, AND THE PC WINS (user-ruled:
+   *"follow PC on the keyboard fix"*). `988c271` retired the vertical bars for
+   ONE toggled panel of two-column horizontal bars, content-sized — for exactly
+   this reason, in its own words: *"vertical bars truncated their labels"*. A
+   horizontal bar's label has the width of the panel rather than a 55px column,
+   so the truncation cannot occur and there is nothing left to repair per
+   platform.
 
-   ⚠ Ellipsis is normally a DECISION and the probe is tuned to respect it (it
-   ignores anything losing under 60%). These crossed that line: half the string
-   and more, on the axis where identity lives.
-
-   ⚠ Not macOS-specific — a 55px box holds ~5 characters under either engine, so
-   the PC truncates too, just one character later. Here under the standing
-   don't-touch-the-PC ruling; `dashboard.css` is the honest home. */
-:root.mac .dchart .vlabs span {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  text-overflow: clip;
-  line-height: 1.15;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
+   Tombstoned rather than deleted silently: `.vlabs` still has a tenant on the
+   CREATION dashboard, so a reader who finds truncated labels there should know
+   this rule existed, why it went, and that the ruled shape for this defect is
+   the PC's — RE-COMPOSE THE CHART, do not wrap the label. */

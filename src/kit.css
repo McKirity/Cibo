@@ -137,9 +137,11 @@
       gutter carry a ~6px bar without changing the gutter.
    e. The while-scrolling reveal is the `.scrolling` class (shell/scrollReveal.ts).
       reduce-effects sheds the FADE, never the reveal.
-   ONE EXCEPTION, by the 2026-07-24 ruling: the wave band's scrollbar is CHROME
-   and always visible — dashboard/entry.css out-specifies this block and keeps
-   its own painted track. */
+   TWO EXCEPTIONS, ruled in opposite directions: the wave band's scrollbar is
+   CHROME and always visible (2026-07-24 — dashboard/entry.css out-specifies
+   this block and keeps its own painted track), and the sleep time picker's
+   columns scroll BARE (2026-08-18, "have it scroll without it" — daily.css
+   hides the pseudo by tenant; the scrollbar-width bar above still binds). */
 ::-webkit-scrollbar{width:var(--scrollbar-width); height:var(--scrollbar-width);}
 ::-webkit-scrollbar-track,
 ::-webkit-scrollbar-corner{background:transparent;}

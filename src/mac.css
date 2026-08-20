@@ -186,3 +186,98 @@
    CREATION dashboard, so a reader who finds truncated labels there should know
    this rule existed, why it went, and that the ruled shape for this defect is
    the PC's — RE-COMPOSE THE CHART, do not wrap the label. */
+
+/* ---- THE `ch`-SIZED FIELD FAMILY (the 2026-08-19 sweep: `whimsy-loc-1` ·
+   `ladder-num-1` · `hexfield-1`).
+
+   ONE DEFECT, FOUND FIVE TIMES, AND THE PROBE MEASURED IT RATHER THAN GUESSED:
+
+     .keyin.num   declared 8ch → a 45.0px content box holding 9.28px characters
+                  = 4.8 characters. `-121.4944` rendered `-121.`; the Words
+                  milestone ladder rendered `200000` as `20000`.
+     .hxin        declared 9ch → 52.0px against 60.6px of `#RRGGBB`
+                  = 6 characters, so the field spelled its own placeholder
+                  `#RRGGB` and taught a six-digit hex.
+
+   ⚠ THE ARITHMETIC HAS TWO TERMS AND ONLY THE SECOND IS THIS FILE'S BUSINESS.
+
+   ① BORDER-BOX EATS THE PADDING. kit.css sets `* { box-sizing: border-box }`,
+      so a bare `width: 8ch` is the OUTER width: the two `--space-4` paddings and
+      the two hairlines are subtracted from the eight characters instead of
+      added around them. ~2.3 characters, gone on EVERY platform.
+      **This half is a PC-side defect and the app has already fixed it once** —
+      palette.css § `.advs-num` (2026-08-11, user-ruled), which also ruled the
+      home: *"NOT a small-canvas rule: it has been wrong at every canvas size
+      since the screen shipped, so it lands in the BASE sheet."* Repaying it here
+      would put the fix in the wrong sheet AND leave Windows still clipping, so
+      it is handed to the PC intact rather than half-done from this side.
+
+   ② `ch` UNDER-MEASURES WHAT WEBKIT DRAWS. Measured this machine, at
+      `--size-small` (15px) in the mono stack: **1ch resolves to 7.9px while a
+      digit actually draws 9.28px** — ~18% narrower than the ink. mac.css's
+      header suspected this from the timepop's `2ch`; the layout probe finally
+      put a number on it. Every `ch`-sized box here therefore holds ~85% of the
+      characters it names, BEFORE ① takes its share. That is engine + typeface,
+      which is exactly what this file is for.
+
+   THE VALUES BELOW REPAY BOTH TERMS, because a Mac-only sheet cannot repay one
+   without the other and still fit the text. When the PC lands ① in the base
+   sheet these should be RE-DERIVED, not merely reduced — the honest number is
+   whatever holds the content, and it is written here so the next reader can
+   redo it rather than re-measure it:
+
+     .keyin.num  9 characters of ink (9 × 9.28 = 83.5px) + 16px padding + 2px
+                 border = 101.5px ÷ 7.9 = 12.85ch → 13ch.
+                 NINE is the worst real case: `-180.0000` (longitude) and a
+                 six-digit ladder threshold both fit inside it.
+     .hxin       7 characters at `--size-caption` (7 × 8.66 = 60.6px) + 12px
+                 padding + 2px border = 74.6px ÷ 7.37 = 10.1ch → 11ch, the extra
+                 character buying the caret its column (the `.datefield-in`
+                 practice: buy a whole character, never tune to the edge). */
+:root.mac .setscreen .keyin.num,
+:root.mac .hc .keyin.num { width: 13ch; }
+:root.mac .setscreen .pk-custom .hxin,
+:root.mac .hc .pk-custom .hxin { width: 11ch; }
+
+/* ---- THE BULK PICKER'S RATING COLUMN (`stars-1`, 2026-08-19).
+
+   A FIVE-STAR RATING RENDERED `★★★★…` — as FOUR — in all three libraries'
+   pickers. The star run needs 76px and the track is 74px.
+
+   ⚠ THE TWO PIXELS COST A WHOLE STAR, and that is the part worth remembering:
+   `text-overflow: ellipsis` must reserve room for the ellipsis itself, so a
+   2px shortfall does not shave 2px off the run — it drops an entire 15px glyph
+   and puts "…" in its place. A rounding-error overflow became a wrong number.
+
+   ⚠ AND IT IS A WRONG NUMBER, not a shortened label. The corpus law is
+   *"whole-star ratings app-wide — ★★★★, never '★ 4'"*: the stars ARE the value,
+   so a missing star reads as a different rating. (The layout probe suppressed
+   this at first for exactly the wrong reason — a designed ellipsis below its
+   severity ratio — and gained its eighth calibration here.)
+
+   ⚠ RESTATING THE WHOLE TEMPLATE IS A DRIFT HAZARD, taken knowingly and with
+   the same shape as this file's `.timepop .tcol` block: CSS cannot widen ONE
+   track of a `grid-template-columns` without repeating all of them. Only the
+   RATING track (the 74px, fifth in both variants) is mine — every other value
+   is copied verbatim from library.css § .plgrid. **If that template changes,
+   this must be re-copied.** 80px rather than 76px so the run is not sitting on
+   its own floor again. */
+:root.mac .plgrid {
+  grid-template-columns: 22px 24px minmax(0, 1fr) 104px 80px 82px 92px minmax(0, 1.1fr) 34px; }
+:root.mac .listwrap.notype .plgrid {
+  grid-template-columns: 22px 24px minmax(0, 1fr) 104px 80px 82px minmax(0, 1.1fr) 34px; }
+
+/* ---- THE ENTRY CREATOR'S CREATORS FIELD (`eccreators-1`, 2026-08-19).
+
+   The placeholder "People or studios, comma-separated…" needs 280.6px and its
+   content box is 274px, so the trailing ellipsis was cut — while every other
+   placeholder on the same modal ("Name this entry…", "Series title…") keeps
+   theirs.
+
+   ⚠ THE FIRST FINDING FROM THE *UI-FONT* HALF OF THIS FILE'S CONSTANT. Every
+   other repayment here has been mono (`ch`, digits, times); this is the ~+6%
+   that SF Pro runs over Segoe UI on ordinary interface text, and 300px was
+   authored with just under that much slack. 320px restores the ellipsis with
+   room to spare; the field is `min-width` inside a flex row, so the extra is
+   only ever taken when the row can afford it. */
+:root.mac .ec-input.wide { min-width: 320px; }

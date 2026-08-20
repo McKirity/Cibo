@@ -18,6 +18,7 @@
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { Ico, ICONS } from "../shell/icons";
+import { isMacOS } from "../theme/platform";
 import { checkUpdatesNow } from "../shell/updater";
 import { RELAY_URL } from "../db/sync";
 import {
@@ -42,10 +43,26 @@ type Tab = "manual" | "hotkeys" | "about";
  * listed one third of it would be the kind of half-truth this table exists to
  * prevent. Still ONE hotkey, not three.
  */
+/**
+ * ⚠ THE KEY NAMES ARE PLATFORM-SPOKEN (`hotkeylabel-1`, 2026-08-19, the Mac
+ * visual sweep). They were four hardcoded Windows strings, so this page — the
+ * one place a confused person goes to be told which keys to press — told a Mac
+ * user to press "Ctrl K" and "Alt ←".
+ *
+ * ⚠ NOTHING WAS BROKEN, WHICH IS WHY IT SURVIVED: Shell.tsx tests
+ * `e.ctrlKey || e.metaKey`, so Ctrl genuinely works here too and the page was
+ * never *wrong*, only foreign. It is a naming defect, not a function one — and
+ * the ruled name has always been both ("**Ctrl/Cmd+E**"), so this spells the
+ * half that belongs to the machine it is being read on.
+ *
+ * The SET is untouched — still the ruled four, still fixed.
+ */
+const MOD = isMacOS() ? "⌘" : "Ctrl ";
+const ALT = isMacOS() ? "⌥" : "Alt ";
 const HOTKEYS: { action: string; keys: string; note?: string }[] = [
-  { action: "Command palette", keys: "Ctrl K" },
-  { action: "Back / Forward", keys: "Alt ← · Alt →", note: "also the mouse side buttons, and the titlebar arrows" },
-  { action: "Today's Daily", keys: "Ctrl E" },
+  { action: "Command palette", keys: `${MOD}K` },
+  { action: "Back / Forward", keys: `${ALT}← · ${ALT}→`, note: "also the mouse side buttons, and the titlebar arrows" },
+  { action: "Today's Daily", keys: `${MOD}E` },
   { action: "Close overlay", keys: "Esc", note: "the top overlay only" },
 ];
 
@@ -220,7 +237,7 @@ function ManualTab({ articleId, onOpen }: { articleId: string; onOpen: (id: stri
         </nav>
         <p className="mtoc-note">
           Every article is a place — the palette teleports straight to any of these pages
-          (<strong>Ctrl K</strong> → type a title).
+          (<strong>{MOD}K</strong> → type a title).
         </p>
       </aside>
       {/* keyed so switching articles remounts the reader at the top */}

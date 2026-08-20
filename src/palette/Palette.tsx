@@ -518,6 +518,19 @@ export function PaletteOverlay({
       // (hide, never disable) stays step 10.
       const restVerbs = [...VERBS]
         .filter((v) => v.id !== "advanced")
+        // ⚠ THE BACKUP FILTER BELONGS HERE TOO, AND DID NOT (found 2026-08-19,
+        // the Mac visual sweep). The guard at the search index above has been
+        // right since 2026-08-16, so typing "back" correctly returns nothing —
+        // but STATE 1 is a second, independent list, and it was still offering
+        // "Back up now" and "Open backups folder" on macOS. That is the state
+        // you see the instant you press the hotkey, i.e. the one a person
+        // actually meets, against a ruling whose words were *"no actual door"*.
+        // The door was also inert: runBackup refuses on macOS by the callee
+        // rule and writes no record and no toast, so clicking it did nothing at
+        // all, silently.
+        // ⚠ Two lists, one behaviour — the drift this codebase keeps naming.
+        // Both now read the same test; a third list must read it as well.
+        .filter((v) => backupsRunHere() || (v.id !== "backup" && v.id !== "backups-folder"))
         .sort((a, b) => a.title.localeCompare(b.title));
       const lifted = lastVerb != null ? restVerbs.find((v) => v.id === lastVerb && v.live) : undefined;
       const ordered = lifted != null ? [lifted, ...restVerbs.filter((v) => v !== lifted)] : restVerbs;

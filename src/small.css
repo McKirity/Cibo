@@ -2494,7 +2494,16 @@
    right-aligned stack into a left-aligned baseline pair, so the card reads
    number-then-what-it-is, top to bottom. `.nm` gives up nowrap with it: on a
    full-width line a long event name should take a second line, not push a date
-   out of the card. */
+   out of the card.
+
+   ⚠ Amended 2026-08-19 (pv-daily — the preview config's first-ever probe pass):
+   the "baseline pair" above assumed TWO members, and `.cdsince` made it three.
+   Three runs on one ~150px line squeezed the NAME to 20px ("B…" for
+   "Birthday") while the date drew whole — the identity lost to the metadata.
+   The meta row now WRAPS: name + date share the first line and the since note
+   takes its own beneath, which is what the 2K ruling already says about it
+   (cards.tsx: "on its own line, not appended to the date, which pushed the row
+   past the card"). Row gap 2px = the base meta column's own rhythm. */
 /* THE COUNTDOWN RHYTHM IS A DIAL NOW. `.cd .cdrow + .cdrow` took --space-6 straight
    off the scale, so this card's internal rhythm could not be tuned without moving
    every 16px space in the app. Minted as a name for a number that already existed,
@@ -2505,7 +2514,7 @@
 
 :root.compact .daily .cd .cdrow { flex-wrap: wrap; row-gap: var(--space-2); }
 
-:root.compact .daily .cd .cdmeta { flex: 1 0 100%; margin-left: 0; flex-direction: row; align-items: baseline; gap: var(--space-4); text-align: left; }
+:root.compact .daily .cd .cdmeta { flex: 1 0 100%; margin-left: 0; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-4); text-align: left; }
 
 :root.compact .daily .cd .cdmeta .nm { white-space: normal; }
 

@@ -398,13 +398,25 @@
    micro-geometry band); flagged as 6a dial candidates, not silently dialed. */
 .listwrap { flex: 1 1 auto; min-height: 0; overflow: auto; border: var(--border-hairline) solid var(--divider);
   border-radius: var(--radius-medium); background: var(--panel-background); }
+/* the RATING track: 74px was the exhibit's authored width, and it holds the
+   Default's star run (63.9px) but not every theme's — UT/DR's 18px caption
+   draws ★×5 at 82.2px and the fifth star clipped half-off (utdr-stars-1,
+   2026-08-19; "whole-star ratings app-wide — ★★★★, never '★ 4'" makes that a
+   wrong VALUE, not a shortened label). The run scales with --size-caption at
+   ~4.57px per caption-px on Windows (the ★ resolves from the same symbol font
+   under every theme measured), so the track follows the dial, with the
+   exhibit's 74px kept as the floor — the Default renders byte-identical. The
+   function resolves the same on every row, so cross-row column alignment
+   holds. ⚠ mac.css widens this same track as a stopgap (SF Pro's ★ is wider,
+   ~5.43px per caption-px); this base change re-derives that rule's premise —
+   the Mac's override should become factor-based too, not stay a fixed px. */
 .plgrid { display: grid;
-  grid-template-columns: 22px 24px minmax(0, 1fr) 104px 74px 82px 92px minmax(0, 1.1fr) 34px;
+  grid-template-columns: 22px 24px minmax(0, 1fr) 104px max(74px, calc(var(--size-caption) * 4.7)) 82px 92px minmax(0, 1.1fr) 34px;
   align-items: center; gap: var(--space-5); }
 /* no declared type (Gaming): the Type COLUMN drops entirely — user-ruled
    2026-07-27 (type absent, never dashed, anywhere in a typeless library) */
 .listwrap.notype .plgrid {
-  grid-template-columns: 22px 24px minmax(0, 1fr) 104px 74px 82px minmax(0, 1.1fr) 34px; }
+  grid-template-columns: 22px 24px minmax(0, 1fr) 104px max(74px, calc(var(--size-caption) * 4.7)) 82px minmax(0, 1.1fr) 34px; }
 .plhead { padding: 0 var(--space-5); background: var(--inset-background);
   border-bottom: var(--border-hairline) solid var(--divider);
   position: sticky; top: 0; z-index: 2; }

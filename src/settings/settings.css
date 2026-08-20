@@ -272,7 +272,23 @@
                     border-radius: var(--radius-small); padding: var(--space-3) var(--space-4); outline: none;
                     min-width: 18rem; }
 .setscreen .keyin:focus { border-color: var(--accent); box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring); }
-.setscreen .keyin.num { min-width: 0; width: 8ch; text-align: right; }
+/* THE WIDTH ADDS ITS OWN CHROME BACK (2026-08-19, `whimsy-loc-1`/`ladder-num-1`
+   measured on Windows — the .advs-num rule, palette.css 2026-08-11, third
+   tenant). Under kit.css's `* { box-sizing: border-box }` a bare `width: 8ch`
+   is the OUTER width: the two --space-4 paddings and two hairlines came out of
+   the eight characters, leaving ~49px ≈ 5.9 digits at --size-small mono. On
+   this pane's own data that rendered `-121.4944` as `-121.4` and `38.58157` as
+   `38.581`, no ellipsis, no cue; the Words ladder's 200000 sat at zero slack,
+   readable only by its last glyph's side bearing. TEN characters of content:
+   nine is the worst real case (`-180.0000`; a six-digit ladder threshold sits
+   inside it), plus one for the caret column — the .datefield-in practice, buy
+   a whole character, never tune to the edge. NOT a small-canvas rule: wrong at
+   every canvas size since the pane shipped, so it lands in the BASE sheet
+   (the `cal-hit-1` rule). ⚠ mac.css § .keyin.num repays this term AND the
+   WebKit ch-under-measure together as a stopgap — re-derive it there now that
+   the base carries this half. */
+.setscreen .keyin.num { min-width: 0; text-align: right;
+                        width: calc(10ch + var(--space-4) * 2 + var(--border-hairline) * 2); }
 .setscreen .keyin.wide { min-width: 28rem; }
 /* the read-only value chip — a masked API key, a picked path, a backup slot id,
    a hotkey, the version line. CLAIMED 2026-08-04: only the `.none` modifier
@@ -319,7 +335,10 @@
 .hc .keyin { font-family: var(--font-mono); font-size: var(--size-small); color: var(--text-strong);
              background: var(--inset-background); border: var(--border-hairline) solid var(--border);
              border-radius: var(--radius-small); padding: var(--space-3) var(--space-4); outline: none; }
-.hc .keyin.num { width: 8ch; text-align: right; }
+/* same chrome-added width as .setscreen .keyin.num above — one arithmetic,
+   two scopes (the creator's ladder override editor holds the same numbers) */
+.hc .keyin.num { text-align: right;
+                 width: calc(10ch + var(--space-4) * 2 + var(--border-hairline) * 2); }
 .hc .keyin.wide { width: 100%; }
 .hc .keyin:focus { border-color: var(--accent); box-shadow: 0 0 0 var(--focus-ring-weight) var(--focus-ring); }
 .hc .vnote { font-size: var(--size-small); color: var(--text-secondary); line-height: var(--line-normal); margin: 0; }

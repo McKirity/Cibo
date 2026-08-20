@@ -66,6 +66,40 @@ export const fmtRange = (from: string, to: string): string => {
 export const stars = (n: number): string => "★".repeat(n);
 
 /**
+ * COUNT + NOUN, agreeing in number: `plural(1, "entry", "entries")` → "1 entry".
+ *
+ * Born 2026-08-19 because the app had no such helper and five count-carrying
+ * strings said "1 entries" · "1 sessions" · "1 cover images" · "1 files". Every
+ * one of them is a DANGER CONFIRM or its button — the surfaces where a number is
+ * the whole point — and a confirm that miscounts the thing it is about to delete
+ * undermines the one sentence the user is being asked to trust.
+ *
+ * ⚠ IT WAS NEVER A DISAGREEMENT ABOUT STYLE, ONLY A MISSING PLACE TO PUT IT:
+ * `FirstRunSetup` already hand-rolled the ternary correctly, and `BulkEditModal`
+ * pluralised "entry/entries" correctly THREE times in the very sentence where it
+ * left "sessions" and "image files" plural. The authors knew; there was nothing
+ * shared to reach for, so each site paid for it separately and most did not.
+ *
+ * The plural form is REQUIRED rather than derived by appending "s" — English
+ * does not honour that (entry/entries), and a helper that is right for four
+ * nouns and wrong for the fifth is worse than none.
+ */
+export const nounFor = (n: number, one: string, many: string): string =>
+  n === 1 ? one : many;
+
+/**
+ * The whole phrase, when the count is not marked up separately.
+ *
+ * ⚠ BOTH EXPORTS EARN THEIR KEEP — the split is not ceremony. Half the tenants
+ * bold the NUMBER and leave the noun plain (`<strong>{n}</strong> entries`), so
+ * they can only take the noun; the rest want the phrase whole. One helper would
+ * have forced the bolded sites back to a hand-rolled ternary, which is exactly
+ * the state this replaces.
+ */
+export const plural = (n: number, one: string, many: string): string =>
+  `${n} ${nounFor(n, one, many)}`;
+
+/**
  * ELAPSED label (user-ruled 2026-07-29 for the palette's visit ledger: "show
  * how many minutes/hours/days ago when I opened it" — precise, never a bucket
  * word). Born in palette/recents; MOVED HERE 2026-08-04 when the Backups pane

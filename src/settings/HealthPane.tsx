@@ -73,6 +73,7 @@ import {
   muteFinding,
   unmuteFinding,
 } from "../db/doctorMutes";
+import { plural } from "../metrics/format";
 
 const PIP_OK = ["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z", "m8.5 12.5 2.5 2.5 4.5-5"];
 const PIP_ERR = ["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z", "M12 7v6", "M12 17h.01"];
@@ -515,7 +516,7 @@ function DataTab({ onOpenDay, onOpenEntry, onOpenHabits }: HealthNav) {
           showInfoToast(`Deleted ${done} orphaned image${done === 1 ? "" : "s"}.`);
         else
           showErrorToast(
-            `Deleted ${done} of ${action.paths.length} files — ${failed.length} could not be removed.`,
+            `Deleted ${done} of ${plural(action.paths.length, "file", "files")} — ${failed.length} could not be removed.`,
             "Data checks",
           );
       } else {
@@ -725,13 +726,14 @@ function DataTab({ onOpenDay, onOpenEntry, onOpenHabits }: HealthNav) {
           title="Delete orphaned image files?"
           body={
             <>
-              This permanently deletes <strong>{confirmBulk.paths.length} image files</strong> that
-              no entry references. Files still in use are not touched, and any finding you have
-              ignored is excluded. This cannot be undone — importers can re-download covers, but a
+              This permanently deletes{" "}
+              <strong>{plural(confirmBulk.paths.length, "image file", "image files")}</strong> that no
+              entry references. Files still in use are not touched, and any finding you have ignored
+              is excluded. This cannot be undone — importers can re-download covers, but a
               picture you added by hand would be gone.
             </>
           }
-          confirmLabel={`Delete ${confirmBulk.paths.length} files`}
+          confirmLabel={`Delete ${plural(confirmBulk.paths.length, "file", "files")}`}
           onCancel={() => setConfirmBulk(null)}
           onConfirm={() => {
             const paths = confirmBulk.paths;

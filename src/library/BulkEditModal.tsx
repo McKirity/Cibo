@@ -36,7 +36,7 @@ import {
   sortPickerRows,
 } from "./librarySpec";
 import { isFilterActive } from "./librarySpec";
-import { stars } from "../metrics/format";
+import { stars, plural } from "../metrics/format";
 import { useLibraryData, type LibraryData } from "./useLibraryData";
 import { useOverlayEsc } from "../shell/overlayHooks";
 import { CoverArt, Ico, ICON, Menu, PrioGlyph, StatusPill, type MenuItem } from "./bits";
@@ -486,7 +486,7 @@ export function BulkEditModal({
               <p className="dzh">Danger zone</p>
               <button className="btn-danger" disabled={n === 0} onClick={() => setConfirmOpen(true)}>
                 <Ico d={ICON.trash} size={14} />
-                Delete {n} entries…
+                Delete {plural(n, "entry", "entries")}…
               </button>
             </div>
           </div>
@@ -496,15 +496,16 @@ export function BulkEditModal({
         {confirmOpen && (
           <DangerConfirm
             stacked
-            title={`Delete ${radius.entries} ${radius.entries === 1 ? "entry" : "entries"}?`}
+            title={`Delete ${plural(radius.entries, "entry", "entries")}?`}
             body={
               <>
-                This permanently deletes <b>{radius.entries} {radius.entries === 1 ? "entry" : "entries"}</b>
-                , their <b>{radius.sessions} sessions</b>, and <b>{radius.files} image files</b>. This
-                cannot be undone.
+                This permanently deletes <b>{plural(radius.entries, "entry", "entries")}</b>,{" "}
+                {radius.entries === 1 ? "its" : "their"}{" "}
+                <b>{plural(radius.sessions, "session", "sessions")}</b>, and{" "}
+                <b>{plural(radius.files, "image file", "image files")}</b>. This cannot be undone.
               </>
             }
-            confirmLabel={`Delete ${radius.entries} ${radius.entries === 1 ? "entry" : "entries"}`}
+            confirmLabel={`Delete ${plural(radius.entries, "entry", "entries")}`}
             onConfirm={() => void doDelete()}
             onCancel={() => setConfirmOpen(false)}
           />

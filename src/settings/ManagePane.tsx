@@ -48,6 +48,7 @@ import { ColourPicker, IconPicker } from "./pickers";
 import { KeepsakeEditor } from "./KeepsakeEditor";
 import { HabitCreator, type EditTarget } from "./HabitCreator";
 import { entryAttributesFromJson } from "../db/schema";
+import { nounFor } from "../metrics/format";
 
 // ── queries ──────────────────────────────────────────────────────────────────
 
@@ -518,11 +519,13 @@ export function ManagePane({
           body={
             <>
               This deletes the habit and everything it owns — <strong>{deleting.entries}</strong>{" "}
-              entries · <strong>{deleting.sessions}</strong> sessions
+              {nounFor(deleting.entries, "entry", "entries")} ·{" "}
+              <strong>{deleting.sessions}</strong> {nounFor(deleting.sessions, "session", "sessions")}
               {deleting.covers > 0 && (
                 <>
                   {" "}
-                  · <strong>{deleting.covers}</strong> cover images
+                  · <strong>{deleting.covers}</strong>{" "}
+                  {nounFor(deleting.covers, "cover image", "cover images")}
                 </>
               )}
               . There is no undo; a backup is the only recovery.

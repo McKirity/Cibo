@@ -68,6 +68,7 @@ import {
 } from "../daily/whimsyConfig";
 import { markFirstRunComplete, maybeApplyMacScaleDefault } from "./firstRun";
 import "./firstrun.css";
+import { plural } from "../metrics/format";
 
 interface HabitRow {
   id: unknown;
@@ -431,7 +432,7 @@ export function FirstRunSetup({ onDone }: { onDone: () => void }) {
               <strong>ends any running streak</strong>.
             </>
           }
-          confirmLabel={toArchive.length === 1 ? "Archive 1 habit" : `Archive ${toArchive.length} habits`}
+          confirmLabel={`Archive ${plural(toArchive.length, "habit", "habits")}`}
           /* Not the trash — archiving is reversible and the drawn glyph would
              overstate it (see DangerConfirm's `icon` prop). */
           icon={

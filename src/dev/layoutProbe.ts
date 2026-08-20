@@ -24,7 +24,7 @@
 
 /** One thing worth a human's attention. */
 export interface Finding {
-  rule: "CLIP" | "OVERFLOW" | "TIGHT" | "WRAP" | "FLOOR" | "VIEWPORT";
+  rule: "CLIP" | "OVERFLOW" | "TIGHT" | "WRAP" | "FLOOR" | "VIEWPORT" | "INPUT";
   where: string;
   detail: string;
   /** Sort key — bigger is worse, in CSS px of wrongness. */
@@ -116,7 +116,22 @@ function clipRule(el: HTMLElement, cs: CSSStyleDeclaration, out: Finding[]): voi
   if (el.children.length > 0 && cs.textOverflow !== "ellipsis" && cs.whiteSpace !== "nowrap") return;
   const designed = cs.textOverflow === "ellipsis";
   const ratio = el.clientWidth > 0 ? el.scrollWidth / el.clientWidth : 1;
-  if (designed && ratio < 1.6) return;
+  // ⚠ EIGHTH CALIBRATION (2026-08-19): A REPEATED-GLYPH QUANTITY IS NOT PROSE,
+  // AND THE SEVERITY RATIO ABOVE IS A PROSE TEST. It suppresses a designed
+  // ellipsis until the cut "destroys the reading" — right for a creator line,
+  // which merely gets shorter, and WRONG for a run of identical glyphs, where
+  // every glyph IS the datum. Found in the bulk-edit picker: a FIVE-star rating
+  // rendering `★★★★…`, i.e. reading as FOUR. Ratio 1.1, so the rule threw it
+  // away. Nothing was shortened there — the value was changed.
+  //
+  // The tell is the alphabet: a star run, a pip row, a dot meter all draw from
+  // one or two distinct characters, where prose never does. Such a run is
+  // reported at ANY overflow, and the app's own law is the reason
+  // ("whole-star ratings app-wide — ★★★★, never '★ 4'": if the stars are the
+  // number, a missing star is a wrong number).
+  const glyphs = (el.textContent ?? "").replace(/\s|…/g, "");
+  const isQuantityRun = glyphs.length >= 3 && new Set(glyphs).size <= 2;
+  if (designed && ratio < 1.6 && !isQuantityRun) return;
   if (over > 1 && (el.textContent ?? "").trim() !== "") {
     out.push({
       rule: "CLIP",
@@ -234,6 +249,23 @@ function wrapRule(el: HTMLElement, cs: CSSStyleDeclaration, out: Finding[]): voi
   const lone = kids[centres.findIndex((c) => Math.abs(c - lines[1]) < 12)];
   const fills = lone != null &&
     lone.getBoundingClientRect().width > el.getBoundingClientRect().width * 0.9;
+  // ⚠ TENTH CALIBRATION (2026-08-19): TWO CLUSTERS OF CENTRES ARE NOT TWO LINES
+  // IF THEY OVERLAP VERTICALLY. Reported `.cp-month` — the custom month window
+  // — as wrapped when nothing had: its three children are two label-over-chip
+  // COLUMNS and a bare `→` glyph, and the glyph sits centred on the chip row
+  // while the columns' centres include their labels, so the two centres fall
+  // ~14px apart on ONE line. The fifth calibration moved line-finding from
+  // `top` to CENTRE to survive `align-items: center`; this is the case centres
+  // alone cannot judge, and the honest test is geometric: real lines do not
+  // occupy the same vertical band. Cheap, and it cannot suppress a true wrap —
+  // wrapped lines are disjoint by construction.
+  const bandOf = (line: number) => {
+    const members = kids.filter((_, i) => Math.abs(centres[i] - line) < 12).map((k) => k.getBoundingClientRect());
+    return { top: Math.min(...members.map((r) => r.top)), bottom: Math.max(...members.map((r) => r.bottom)) };
+  };
+  const a = bandOf(lines[0]);
+  const b = bandOf(lines[1]);
+  if (a.bottom > b.top + 1 && b.bottom > a.top + 1) return; // same band — one line
   if (onSecond === 1 && !fills) {
     out.push({
       rule: "WRAP",
@@ -272,6 +304,118 @@ function floorRule(el: HTMLElement, cs: CSSStyleDeclaration, out: Finding[]): vo
       rect: rectOf(el),
     });
   }
+}
+
+/**
+ * TEXT INSIDE A FORM CONTROL — the rule the first twelve-pane sweep proved was
+ * missing (2026-08-19, its seventh calibration and the first that adds a rule
+ * rather than tuning one).
+ *
+ * ⚠ WHY THE OTHER RULES CANNOT SEE THIS. Every rule above reasons from
+ * `scrollWidth > clientWidth`, and **an `<input>` does not report its overflow
+ * that way in WebKit** — it scrolls its own text internally and answers
+ * `scrollWidth === clientWidth` however much is hidden. So the app's entire
+ * population of form fields was invisible to a tool built to find clipped text,
+ * and it stayed invisible across a clean twelve-pane run: Settings reported
+ * ZERO findings on the same pass where the Whimsy pane was rendering a
+ * `-121.4944` longitude as `-121.` and the colour picker was spelling its own
+ * `#RRGGBB` placeholder `#RRGGB`. Both were found by eye afterwards.
+ *
+ * That is the exact defect family this whole Mac pass exists for — a `ch`-sized
+ * box that fits on Windows and does not fit here — so the instrument being
+ * blind to it made every "0 findings" on a form-bearing screen worthless.
+ *
+ * HOW IT MEASURES: the text is drawn into a canvas with the element's own
+ * resolved font and compared against the content box. No DOM is touched, so it
+ * cannot disturb what it is measuring.
+ *
+ * ⚠ TWO GRADES, AND THE DISTINCTION IS THE CALIBRATION:
+ *
+ *   A PLACEHOLDER THAT DOES NOT FIT IS ALWAYS A DEFECT. It is the author's own
+ *   instruction, written to fit the box they drew. When it clips, the box is
+ *   too small — and worse, it now instructs wrongly: `#RRGGB` tells the user a
+ *   hex is six digits. Reported loudly.
+ *
+ *   A VALUE THAT DOES NOT FIT IS ORDINARY UNLESS THE BOX IS FIXED. A long API
+ *   key in a wide field scrolls by design and is nobody's bug. So a value is
+ *   only reported when the field's width is a hard declaration (`ch`/`px`/`rem`
+ *   — never a percentage or a flex-grown auto), which is precisely the shape
+ *   that fits on one platform and clips on the other.
+ *
+ * ⚠ A FOCUSED FIELD IS EXCLUDED. It is being typed into, it has scrolled to the
+ * caret on purpose, and reporting that is reporting the user.
+ */
+const textMetric = (() => {
+  let ctx: CanvasRenderingContext2D | null = null;
+  return (text: string, cs: CSSStyleDeclaration): number => {
+    if (ctx == null) ctx = document.createElement("canvas").getContext("2d");
+    if (ctx == null) return 0;
+    // `cs.font` is empty in WebKit for elements whose font came from longhands,
+    // so it is rebuilt rather than trusted.
+    ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} / ${cs.lineHeight} ${cs.fontFamily}`;
+    return ctx.measureText(text).width;
+  };
+})();
+
+function inputRule(el: HTMLElement, cs: CSSStyleDeclaration, out: Finding[]): void {
+  const tag = el.tagName.toLowerCase();
+  // ⚠ NINTH CALIBRATION (2026-08-19) — TEXTAREAS ARE NOT SINGLE-LINE, AND THIS
+  // RULE MEASURES ONE LINE. The first version accepted `<textarea>` and duly
+  // reported the keepsake editor's snippet box as overflowing by hundreds of
+  // pixels: `measureText` lays the whole multi-line snippet out as ONE run, so
+  // the comparison is meaningless. The box wraps its code correctly and the
+  // editor's own preview drew clean. A wrapping control cannot clip its text
+  // horizontally by construction, so it has nothing to say here.
+  if (tag !== "input") return;
+  if (el === document.activeElement) return; // being typed into — scrolled on purpose
+  const type = (el.getAttribute("type") ?? "text").toLowerCase();
+  // Only controls that render a text run. A checkbox has no text; a password is
+  // bullets whose width says nothing about the value.
+  if (!["", "text", "search", "tel", "url", "email", "number"].includes(type)) return;
+
+  const value = (el as HTMLInputElement).value ?? "";
+  const placeholder = el.getAttribute("placeholder") ?? "";
+  const showingValue = value !== "";
+  const text = showingValue ? value : placeholder;
+  if (text.trim() === "") return;
+
+  const room =
+    el.clientWidth - parseFloat(cs.paddingLeft || "0") - parseFloat(cs.paddingRight || "0");
+  if (!Number.isFinite(room) || room <= 0) return;
+  const ink = textMetric(text, cs);
+  // 1px of grace for the caret column WebKit keeps at the trailing edge.
+  const over = ink - room - 1;
+  if (over <= 0) return;
+
+  // ⚠ THE DISCRIMINATOR HAD TO BE MEASURED, NOT READ. The first cut tested
+  // `/ch|px|rem/.test(cs.width)` for a "hard-declared" width — worthless, since
+  // a COMPUTED width is always in px, so the test was true for every field and
+  // silently disabled the calibration it was written to perform.
+  //
+  // What actually separates the two cases is whether the box was SIZED or
+  // HANDED ITS SPACE: a field sized to its content sits well inside its parent
+  // (the 8ch coordinate box in a wide row), while a field given what was left
+  // fills it (the Nickname input). Measured, so it cannot lie.
+  const parent = el.parentElement;
+  const room_of_parent = parent == null ? 0 : parent.getBoundingClientRect().width;
+  const sized = room_of_parent > 0 && el.getBoundingClientRect().width < room_of_parent * 0.9;
+  if (showingValue && !sized) return;
+
+  // How much is actually lost, in the unit a reader thinks in.
+  const per = ink / text.length;
+  const lost = Math.round(over / per);
+  const shown = Math.max(0, text.length - lost);
+  out.push({
+    rule: "INPUT",
+    where: pathOf(el),
+    detail: showingValue
+      ? `value "${text}" needs ${px(ink)}px in a ${px(room)}px content box — about ${lost} of ${text.length} characters hidden (showing "${text.slice(0, shown)}")`
+      : `PLACEHOLDER "${text}" does not fit its own box — ${px(ink)}px of text in ${px(room)}px, reading "${text.slice(0, shown)}"`,
+    // A clipped placeholder outranks every tightness report but stays below a
+    // visible spill, the same ordering OVERFLOW already uses.
+    amount: showingValue ? over : over + 60,
+    rect: rectOf(el),
+  });
 }
 
 /** Anything reaching past the window — the horizontal-scrollbar hunt. */
@@ -325,6 +469,7 @@ export function runProbe(): Finding[] {
     overflowRule(el, cs, out);
     wrapRule(el, cs, out);
     floorRule(el, cs, out);
+    inputRule(el, cs, out);
     viewportRule(el, out);
   }
   const seen = new Set<string>();

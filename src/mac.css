@@ -211,6 +211,8 @@
       since the screen shipped, so it lands in the BASE sheet."* Repaying it here
       would put the fix in the wrong sheet AND leave Windows still clipping, so
       it is handed to the PC intact rather than half-done from this side.
+      **LANDED PC-SIDE 2026-08-19 in `c62371c`, for `.keyin.num` only** — see
+      the re-derivation at the foot of this block.
 
    ② `ch` UNDER-MEASURES WHAT WEBKIT DRAWS. Measured this machine, at
       `--size-small` (15px) in the mono stack: **1ch resolves to 7.9px while a
@@ -220,22 +222,43 @@
       characters it names, BEFORE ① takes its share. That is engine + typeface,
       which is exactly what this file is for.
 
-   THE VALUES BELOW REPAY BOTH TERMS, because a Mac-only sheet cannot repay one
-   without the other and still fit the text. When the PC lands ① in the base
-   sheet these should be RE-DERIVED, not merely reduced — the honest number is
-   whatever holds the content, and it is written here so the next reader can
-   redo it rather than re-measure it:
+   THE TWO RULES BELOW NOW SIT ON OPPOSITE SIDES OF THAT SPLIT (2026-08-19,
+   evening — the PC landed ① for `.keyin.num` in `c62371c` and did NOT touch
+   `.hxin`, so this file's two values stopped being the same kind of number):
 
-     .keyin.num  9 characters of ink (9 × 9.28 = 83.5px) + 16px padding + 2px
-                 border = 101.5px ÷ 7.9 = 12.85ch → 13ch.
-                 NINE is the worst real case: `-180.0000` (longitude) and a
-                 six-digit ladder threshold both fit inside it.
-     .hxin       7 characters at `--size-caption` (7 × 8.66 = 60.6px) + 12px
+     .keyin.num  RE-DERIVED; ① IS NOW THE BASE SHEET'S. settings.css declares
+                 `calc(10ch + --space-4*2 + --border-hairline*2)` in both scopes
+                 — ten characters of content (nine worst-case, `-180.0000`, plus
+                 one for the caret) with the chrome added back OUTSIDE them.
+                 That leaves only ② here, and ② is unchanged: 10ch resolves to
+                 79.0px on this machine while ten characters of ink draw 92.8px,
+                 so the base's own budget still falls ~1.5 characters short HERE
+                 and only here. Re-derived against its INTENT rather than its
+                 number — 10 × 9.28 = 92.8px ÷ 7.9 = 11.75ch → **12ch**, the whole
+                 character bought as always.
+                 ⚠ THE SHAPE IS THE POINT, not only the value: this restates the
+                 base's `calc()` so the chrome term keeps ONE OWNER and cannot
+                 drift. The old flat `13ch` silently discarded it, which was
+                 invisible only while every theme agreed on the chrome — and
+                 Void already does not (`--border-hairline: 1.5px` against the
+                 Default's 1px). Only the leading term is mine.
+                 ⚠ It is WIDER than the 13ch it replaces (112.8px against
+                 102.7px), which is the honest answer, not a regression: the
+                 stopgap never budgeted the caret column the base now buys.
+     .hxin       UNCHANGED at 11ch — STILL REPAYING BOTH TERMS, deliberately.
+                 The PC's commit left `.hxin` bare (`9ch` at settings.css:557
+                 and creator.css:278), so ① is still live for it on Windows too.
+                 7 characters at `--size-caption` (7 × 8.66 = 60.6px) + 12px
                  padding + 2px border = 74.6px ÷ 7.37 = 10.1ch → 11ch, the extra
                  character buying the caret its column (the `.datefield-in`
-                 practice: buy a whole character, never tune to the edge). */
+                 practice: buy a whole character, never tune to the edge).
+                 ⚠ WHEN THE PC LANDS `.hxin`'S ①, RE-DERIVE THIS ONE THE SAME
+                 WAY — to the base's calc() shape — and expect it to MOVE, not
+                 merely shrink. */
 :root.mac .setscreen .keyin.num,
-:root.mac .hc .keyin.num { width: 13ch; }
+:root.mac .hc .keyin.num {
+  width: calc(12ch + var(--space-4) * 2 + var(--border-hairline) * 2);
+}
 :root.mac .setscreen .pk-custom .hxin,
 :root.mac .hc .pk-custom .hxin { width: 11ch; }
 

@@ -162,11 +162,32 @@
    ⚠ NOT A macOS DEFECT. This is the COMPACT canvas meeting a narrow card, so it
    is equally true in the PC's MacBook preview; `small.css` is the correct home
    and this lives here only under the standing don't-touch-the-PC ruling. */
-:root.mac .daily .cd .cdmeta {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-}
+/* ---- (THE COUNTDOWN CARD'S META COLUMN — RULE DELETED 2026-08-19, evening.
+   THE PC FIXED IT IN THE RIGHT SHEET, AND THIS WAS A COLLISION, NOT A LAYER.)
+
+   ⚠ THE ONE FAILURE THE TWO-MACHINE RULE NAMES, CAUGHT IN THE ACT: both
+   machines repaired the same defect in different sheets. `c6e884c` gave
+   `:root.compact .daily .cd .cdmeta` `flex-wrap: wrap` + a 2px row gap, so the
+   name and date share the first line and the since-note takes its own beneath.
+   This file said `flex-direction: column`. The two never conflicted textually —
+   they merged clean — and at EQUAL specificity (both 0,5,0) with mac.css
+   imported AFTER small.css in bootstrap, **this rule silently won and the PC's
+   fix was inert on the Mac.** Same defect, two owners, two different
+   compositions on two machines, and nothing in git able to say so.
+
+   The block's own comment already named the correct home — *"NOT a macOS
+   defect ... `small.css` is the correct home and this lives here only under the
+   standing don't-touch-the-PC ruling."* That ruling has been honoured and the
+   home is now occupied, so the tenant leaves. Measured with this rule disabled:
+   the PC's composition renders correctly here, "Birthday" whole beside
+   "Aug 17, 2027", and it is a line TIGHTER than the column was.
+
+   ⚠ The probe reports one WRAP on that row (`3 items wrapped to 2 lines, 1
+   alone on the second`) — that lone item is `.cdsince`, which is the 2K
+   ruling's own composition for it. KNOWN-BENIGN, deliberately NOT calibrated
+   away: a designed wrap and an accidental widow are mechanically identical
+   (both need `flex-wrap: wrap` to happen at all), so a rule that suppressed one
+   would blind the probe to the other. */
 
 /* ---- (DISTRIBUTION CHART LABELS — RULE DELETED 2026-08-18.)
 

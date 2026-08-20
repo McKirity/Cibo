@@ -199,7 +199,14 @@
    this guard at the 08-09 bench pass and the VALUE beside it did not — a
    nowrap grid item's own min-width:auto floors its track, so a long mono
    value in a wide theme font pushed the whole tile past its share. */
-.cadash .tile .tv{font-family:var(--font-mono); font-size:var(--size-stat-value); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong); white-space:nowrap; min-width:0; overflow:hidden; text-overflow:ellipsis;}
+/* padding-bottom + the cancelling margin give DESCENDERS room inside the clip
+   (2026-08-18, the Bloodborne walk: "Aug 3"'s g cut flat). This rule's
+   overflow:hidden is the audit-era ellipsis guard and must stay — but at
+   line-height:1 it also clips vertically, and a serif's descender leaves the
+   1em line box (invisible on the Default: system faces at these sizes kept
+   their descenders shallower). The descender paints in the padding, the
+   negative margin returns the outer box, so layout is byte-identical. */
+.cadash .tile .tv{font-family:var(--font-mono); font-size:var(--size-stat-value); font-weight:var(--weight-bold); line-height:1; color:var(--text-strong); white-space:nowrap; min-width:0; overflow:hidden; text-overflow:ellipsis; padding-bottom:.24em; margin-bottom:-.24em;}
 .cadash .tile .tv .u{font-family:var(--font-ui); font-size:var(--size-body); color:var(--text-muted); font-weight:var(--weight-regular); margin-left:2px;}
 .cadash .tile .ts{font-size:var(--size-small); color:var(--text-secondary); min-height:0;}
 .cadash .tile .ts b{color:var(--text-strong); font-weight:var(--weight-medium);}

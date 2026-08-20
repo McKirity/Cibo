@@ -259,8 +259,28 @@
 :root.mac .hc .keyin.num {
   width: calc(12ch + var(--space-4) * 2 + var(--border-hairline) * 2);
 }
-:root.mac .setscreen .pk-custom .hxin,
-:root.mac .hc .pk-custom .hxin { width: 11ch; }
+/* ---- (`.hxin` — RULE DELETED 2026-08-19, evening. The base repaid it whole.)
+
+   `e0eb30d` landed term ① for `.hxin` in BOTH scopes as
+   `calc(10ch + --space-3*2 + --border-hairline*2)`, and budgeted TEN characters
+   rather than nine — the tenth bought because Bloodborne's mono slot is dead by
+   ruling (`--font-mono` resolves to Spectral, a proportional serif) and `ch`,
+   being the width of "0", under-measures a proportional face's letters.
+
+   THAT TENTH CHARACTER IS WHAT RETIRED THIS RULE. The Mac needed ~11.75ch of the
+   base's own budget; ten chrome-added characters resolve to 73.7px of content
+   here against 60.6px for the seven-character `#RRGGBB`, so the placeholder now
+   fits with ~13px to spare and a Mac override would only be padding a box that
+   is already big enough. MEASURED, not reasoned: with this rule disabled the
+   probe reports ZERO on the picker under the Default (14px caption) and under
+   Undertale & Deltarune (18px), and `#RRGGBB` reads whole in both.
+
+   ⚠ THE ONE UNTESTED CASE IS THE ONE THAT MOTIVATED THE BASE FIX: Bloodborne is
+   a bench seat and is not installed here, so its Spectral run was verified on
+   Windows only (75/70.1). A theme SHIPS its font file, so both engines rasterize
+   the same outlines and the gap should be small — but if a proportional mono
+   slot ever clips here, this is the rule that comes back, at the base's calc
+   shape with a larger leading term. */
 
 /* ---- THE BULK PICKER'S RATING COLUMN (`stars-1`, 2026-08-19).
 
@@ -285,10 +305,40 @@
    is copied verbatim from library.css § .plgrid. **If that template changes,
    this must be re-copied.** 80px rather than 76px so the run is not sitting on
    its own floor again. */
-:root.mac .plgrid {
-  grid-template-columns: 22px 24px minmax(0, 1fr) 104px 80px 82px 92px minmax(0, 1.1fr) 34px; }
-:root.mac .listwrap.notype .plgrid {
-  grid-template-columns: 22px 24px minmax(0, 1fr) 104px 80px 82px minmax(0, 1.1fr) 34px; }
+/* ---- (THE BULK PICKER'S RATING TRACK — RULE DELETED 2026-08-19, evening.
+   The track is the BASE SHEET'S now, and holding a competing copy here is the
+   exact failure the two-machine rule exists to prevent.)
+
+   `d067d41` made the track follow the type ramp —
+   `max(74px, calc(var(--size-caption) * 4.7))` — which is the right SHAPE and
+   supersedes the flat 80px this file carried. The 80px was also actively
+   harmful the moment that landed: at UT/DR's 18px caption the base resolves to
+   84.6px and a `:root.mac` 80px would have UNDERCUT it, so keeping this rule
+   would have made the Mac worse than Windows.
+
+   ⚠ BUT THE MULTIPLIER IS SHORT, AND `utdr-stars-1` IS STILL OPEN. Measured on
+   this machine with the base rule in force and this override off:
+
+     --size-caption 14px (Default) : run needs 76px, track 74px  -> 5.43em
+     --size-caption 18px (UT/DR)   : run needs 97px, track 84.6px -> 5.39em
+
+   So the run is a stable ~**5.4em** here and 4.7em cannot cover it at either
+   size: a five-star rating still renders `★★★…` — as THREE — under UT/DR, and
+   the Default is still ~2px short, which is the original `stars-1` unrepaired.
+   `calc(var(--size-caption) * 6)` clears both with about half a star of slack
+   (84px at 14, 108px at 18).
+
+   ⚠ WHY THE TWO MACHINES DISAGREE, and it is not a mistake on either side:
+   `.starrow` is deliberately NOT mono (library.css § the picker's font note),
+   and `★` U+2605 is absent from the themes' shipped UI faces — so the glyph
+   comes from a per-platform SYMBOL FALLBACK (Apple Symbols here, Segoe UI
+   Symbol there) whose advance differs by roughly the 13% between 4.7 and 5.4.
+   **A fixed multiplier must therefore be sized for the WIDER platform, which is
+   this one.** That is the number handed back to the PC; the track stays theirs.
+
+   Nothing is repaid here in the meantime — deliberately. The Mac now renders
+   exactly what Windows renders, which keeps ONE owner for the track and one
+   defect to fix rather than two half-fixes that merge clean and read wrong. */
 
 /* ---- THE ENTRY CREATOR'S CREATORS FIELD (`eccreators-1`, 2026-08-19).
 

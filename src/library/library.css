@@ -410,13 +410,50 @@
    holds. ⚠ mac.css widens this same track as a stopgap (SF Pro's ★ is wider,
    ~5.43px per caption-px); this base change re-derives that rule's premise —
    the Mac's override should become factor-based too, not stay a fixed px. */
+/* THE RATING TRACK FOLLOWS THE CAPTION DIAL, AND STATUS PAYS FOR IT
+   (`utdr-stars-1`, re-derived 2026-08-19 evening on the Mac, over d067d41).
+
+   The stars ARE the value — *"whole-star ratings app-wide: ★★★★, never '★ 4'"* —
+   so a clipped run is a WRONG NUMBER, not a shortened label, and `ellipsis` must
+   reserve its own room, which means a 2px shortfall costs a whole 15px star
+   rather than 2px of one.
+
+   MEASURED, on macOS, with no platform override in force:
+
+     --size-caption 14px  ->  run needs 76px   (5.43 px per caption-px)
+     --size-caption 18px  ->  run needs 97px   (5.39 px per caption-px)
+
+   A stable ~5.4, so 4.7 could not cover it at EITHER size: five stars drew as
+   four under every 14px theme and as THREE under Undertale & Deltarune. × 6
+   clears both with about half a star of slack (84px / 108px).
+
+   ⚠ WHY THIS NUMBER IS BIGGER THAN THE ONE MEASURED ON WINDOWS (4.57, constant
+   across the rack): `.starrow` is deliberately NOT mono, and `★` U+2605 is
+   absent from the themes' shipped UI faces — so the glyph resolves from a
+   per-platform SYMBOL FALLBACK (Apple Symbols · Segoe UI Symbol) whose advance
+   differs by ~19%. A shipped webfont makes the two engines agree; a FALLBACK
+   glyph is exactly where they diverge, so one multiplier must be sized for the
+   WIDER platform. That is macOS. Sizing it for Windows is what left the Mac
+   needing a `:root.mac` copy of this whole template, and that copy is now
+   deleted — one owner, one number.
+
+   STATUS 104px -> 90px, user-ruled 2026-08-19 (*"Move the Status column over
+   some more"*): the widening does not need paying for — the `1fr` title and
+   `1.1fr` genre tracks absorb it by construction — but status is where the dead
+   space actually is. "Finished", the longest SEEDED status, measures ~73px at an
+   18px caption inside a 104px track. At 90px it still clears by ~17px, and the
+   net template change is −4px, so the two text tracks gain rather than pay.
+   ⚠ Status is a MANAGED vocab and a user-added value can be longer than any
+   seeded one; 90px holds roughly ten characters at the widest ramp in the
+   roster. If a long custom status ever clips here, this is the number to raise —
+   not the rating track, which is now sized to its content. */
 .plgrid { display: grid;
-  grid-template-columns: 22px 24px minmax(0, 1fr) 104px max(74px, calc(var(--size-caption) * 4.7)) 82px 92px minmax(0, 1.1fr) 34px;
+  grid-template-columns: 22px 24px minmax(0, 1fr) 90px max(84px, calc(var(--size-caption) * 6)) 82px 92px minmax(0, 1.1fr) 34px;
   align-items: center; gap: var(--space-5); }
 /* no declared type (Gaming): the Type COLUMN drops entirely — user-ruled
    2026-07-27 (type absent, never dashed, anywhere in a typeless library) */
 .listwrap.notype .plgrid {
-  grid-template-columns: 22px 24px minmax(0, 1fr) 104px max(74px, calc(var(--size-caption) * 4.7)) 82px minmax(0, 1.1fr) 34px; }
+  grid-template-columns: 22px 24px minmax(0, 1fr) 90px max(84px, calc(var(--size-caption) * 6)) 82px minmax(0, 1.1fr) 34px; }
 .plhead { padding: 0 var(--space-5); background: var(--inset-background);
   border-bottom: var(--border-hairline) solid var(--divider);
   position: sticky; top: 0; z-index: 2; }

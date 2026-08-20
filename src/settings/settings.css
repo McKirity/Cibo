@@ -554,7 +554,21 @@
                             color: var(--text-muted); flex: 0 0 auto; }
 .setscreen .pk-custom .cs .ico { width: var(--icon-size-small); height: var(--icon-size-small); }
 .setscreen .pk-custom .cl { font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-strong); }
-.setscreen .pk-custom .hxin { margin-left: auto; width: 9ch; font-family: var(--font-mono); font-size: var(--size-caption);
+/* the `.advs-num` shape (the cal-hit-1 rule): 10ch of CONTENT with the chrome
+   added back outside — under border-box the old bare `9ch` was the OUTER
+   width, so the paddings and hairlines came out of the characters (term ① of
+   the Mac briefing's ch-field defect; hxin-1, 2026-08-19). And TEN, not nine:
+   `ch` is the width of "0", which under-measures a proportional face's
+   letters — Bloodborne's deliberately-dead mono slot (Spectral serif) drew
+   the "#RRGGBB" placeholder at 70.1px of ink against the 53.1px the bare 9ch
+   left, i.e. the placeholder taught a four-digit hex; a chrome-added 9ch
+   would still clip it at 67.5. The tenth character is the whole-character
+   buy (the .datefield-in practice) and covers it with +4.9 slack. Verified:
+   Default 77.0/53.9 · UT/DR 90/63 · Bloodborne 75/70.1, all whole.
+   ⚠ mac.css § .hxin repays both terms flat (11ch) and its own comment says to
+   re-derive to this calc shape when ① lands — it has now landed. */
+.setscreen .pk-custom .hxin { margin-left: auto; width: calc(10ch + var(--space-3) * 2 + var(--border-hairline) * 2);
+                              font-family: var(--font-mono); font-size: var(--size-caption);
                               color: var(--text-strong); background: var(--inset-background); border: var(--border-hairline) solid var(--border);
                               border-radius: var(--radius-small); padding: var(--space-2) var(--space-3); outline: none; }
 .setscreen .pk-search { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4);

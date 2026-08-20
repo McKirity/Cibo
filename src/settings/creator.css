@@ -275,7 +275,10 @@
                      color: var(--text-muted); flex: 0 0 auto; }
 .hc .pk-custom .cs .ico { width: var(--icon-size-small); height: var(--icon-size-small); }
 .hc .pk-custom .cl { font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-strong); }
-.hc .pk-custom .hxin { margin-left: auto; width: 9ch; font-family: var(--font-mono); font-size: var(--size-caption);
+/* same chrome-added width as .setscreen .pk-custom .hxin — one arithmetic,
+   two scopes (hxin-1, 2026-08-19; the full derivation lives at settings.css) */
+.hc .pk-custom .hxin { margin-left: auto; width: calc(10ch + var(--space-3) * 2 + var(--border-hairline) * 2);
+                       font-family: var(--font-mono); font-size: var(--size-caption);
                        color: var(--text-strong); background: var(--panel-background); border: var(--border-hairline) solid var(--border);
                        border-radius: var(--radius-small); padding: var(--space-2) var(--space-3); outline: none; }
 

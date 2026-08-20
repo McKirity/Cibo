@@ -90,9 +90,14 @@ export interface History<T> {
   navigate: (next: T) => void;
   /**
    * Swap the current entry in place, recording no new history. For corrections
-   * the user did not ask for — e.g. the habit on screen gets archived and the
-   * shell bails out to Log. Pushing there would leave a phantom entry that back
+   * the user did not ask for — e.g. the habit on screen is DELETED and the shell
+   * bails out to Daily. Pushing there would leave a phantom entry that back
    * returns to, only to bail out again.
+   *
+   * ⚠ This read "gets archived" until 2026-08-19, which has been wrong since the
+   * 2026-08-04 ruling made archived pages browsable AND editable — the bail-out
+   * in Shell.tsx keys off a habit key ABSENT from the store, so only a delete
+   * reaches it. The behaviour was always right; only the example was stale.
    */
   replace: (next: T) => void;
   back: () => void;

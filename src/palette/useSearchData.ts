@@ -4,9 +4,29 @@
  * fetches on the dashboard pattern; the overlay mounts on summon, so nothing
  * subscribes while the palette is closed. Every aggregate derives in TS.
  *
- * Scope: ACTIVE habits only — an archived habit's dashboard is a dead route
- * (the shell bails out of it), so neither the teleport nor the result doors
- * may offer one.
+ * Scope: ACTIVE habits only (`.filter((h) => !h.archived)` below).
+ *
+ * ⚠ THE REASON THIS COMMENT USED TO GIVE IS NO LONGER TRUE, and the filter has
+ * outlived it. It read: *"an archived habit's dashboard is a dead route (the
+ * shell bails out of it), so neither the teleport nor the result doors may offer
+ * one."* That was correct when written and was **struck on 2026-08-04**, when
+ * option A ruled an archived habit's dashboard, library and entry pages
+ * **browsable AND editable**. Shell.tsx's bail-out now fires only when a habit
+ * key is absent from the store — DELETED habits — and Shell.tsx's `archivedHere`
+ * exists precisely to dress those pages with the `.archband` and its restore
+ * door.
+ *
+ * SO THE FILTER IS THE LAST THING KEEPING THOSE PAGES OUT OF REACH: the rail
+ * omits archived habits by design, the Map's Content trunk filters them
+ * (useMapData, a 2026-07-30 decision that also predates the ruling), and a
+ * finalized day's cover wall composes from ACTIVE habits — so nothing routes to
+ * an `.archband` except archiving a habit while already looking at it.
+ *
+ * ⚠ LEFT AS IT IS, DELIBERATELY (user-ruled 2026-08-19: *"fix the comments
+ * only"*). Whether the palette SHOULD offer archived habits is a design call,
+ * not a defect to quietly repair — the behaviour is frozen here and only the
+ * false justification is removed, so the next reader inherits the question
+ * rather than the wrong answer. Found on the Mac visual pass (`archfaces-1`).
  */
 import { useMemo } from "react";
 import { useQuery } from "@evolu/react";

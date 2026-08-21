@@ -36,14 +36,6 @@ import { MONTHS_LONG, MONTHS_SHORT } from "../metrics/format";
 
 /* Header letters follow the configured week start (dates.weekDayLetters). */
 
-/** The calendar icon of the Jump control, verbatim from the frozen frame. */
-const JUMP_ICON = [
-  "M21 12V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h5.6",
-  "M16 2v4",
-  "M8 2v4",
-  "M3 10h18",
-];
-
 /** The 1st of the month `delta` months from `anchor` — Date.UTC rolls the year
  *  over for us, so December + 1 lands on the next January without a special
  *  case. Always the 1st: the anchor only ever names a MONTH here. */
@@ -185,7 +177,22 @@ export function NavCalendar({
             onClick={() => setJumpOpen((o) => !o)}
             title="Jump to a period"
           >
-            <Ico d={JUMP_ICON} size={14} />
+            {/* ICONS.calendar, not a local copy (fixed 2026-08-20, user-reported:
+                *"the calendar icon in the jump button is missing a corner… it's
+                like that for all the themes"*). The local `JUMP_ICON` it replaces
+                was a BROKEN duplicate of the roster glyph: same three tick/divider
+                paths byte-for-byte, but its body was
+                `M21 12V6…h5.6` — lucide's COMPOUND-calendar body, which stops
+                short because a companion glyph normally fills the cut corner
+                (calendar-search ends at h7.25 and adds a circle; calendar-clock at
+                h2.338). Nothing followed it here, so the corner was simply open on
+                every theme. The roster's body is the same rectangle CLOSED (`…z`),
+                so this fixes the hole and changes nothing else.
+                ⚠ Missed by the 2026-08-04 migration wave (~45 literal call sites →
+                ICONS.*) because it was a named const, not an inline literal. If
+                another glyph is ever found half-drawn, that is the sweep to
+                re-run — by CONSTANT, not by literal. */}
+            <Ico d={ICONS.calendar} size={14} />
             Jump
           </button>
           {jumpOpen && (

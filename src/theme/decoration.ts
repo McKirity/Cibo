@@ -21,7 +21,8 @@
  *                                     //   or [t, r, b, l]. REQUIRED on a frame slot.
  *         "fill": true,               // also paint the middle region (default: leave it clear)
  *         "repeat": "round",          // stretch (default) | repeat | round | space
- *         "outset": 8                 // optional px — paint OUTSIDE the box; reflows nothing
+ *         "outset": 8,                // optional px — paint OUTSIDE the box; reflows nothing
+ *         "replace": true             // stamp-milestone ONLY — the asset IS the icon (see below)
  *       }
  *     }
  *   }
@@ -34,6 +35,16 @@
  * border and the dial says how thick it lands — the art may be authored at
  * any resolution and still fills its designed room. `outset` is the one way
  * out of that box, and it costs no reflow.
+ *
+ * `replace` — user-ruled 2026-08-20 (the per-theme milestone icon pass; first
+ * tenant Steven Universe's Garnet gem). The milestone slot paints its asset as
+ * a background BEHIND the code-drawn glyph (the Daily seal's medal, the cadence
+ * card's landmark/pen), which is how the first two stamps were built —
+ * Subnautica's bezel clears the glyph on purpose. `replace: true` publishes
+ * `--deco-stamp-milestone-replace: none`, which decoration.css feeds to the
+ * glyph's `display`, so the asset becomes the whole icon. Opt-in, so nothing
+ * built behind-the-glyph moves. Warned and ignored on every other slot: no
+ * other stamp has a glyph to hide.
  *
  * ⚠ `scale` IS RETIRED from this schema by the same ruling. It existed to map
  * a @2× raster onto a thickness computed from the slice; thickness now comes
@@ -294,6 +305,7 @@ export async function applyDecoration(themeDir: string | null): Promise<void> {
         repeat?: unknown;
         outset?: unknown;
         scale?: unknown;
+        replace?: unknown;
       };
       if (cfg.off === true) {
         summary.off.push(id); // the per-slot switch: nothing publishes
@@ -328,6 +340,16 @@ export async function applyDecoration(themeDir: string | null): Promise<void> {
         summary.warnings.push(
           `slot "${id}": consumes TINT only — the asset publishes into a property nothing reads; use "tint" to re-point the mark's colour`,
         );
+
+      if (cfg.replace !== undefined) {
+        if (id !== "stamp-milestone")
+          summary.warnings.push(`slot "${id}": "replace" is a stamp-milestone-only key — ignored`);
+        else if (cfg.replace !== true)
+          summary.warnings.push(`slot "${id}": "replace" must be true — ignored`);
+        else if (!assetPublished)
+          summary.warnings.push(`slot "${id}": "replace" without a published asset would hide the glyph and draw nothing — ignored`);
+        else publish(`--deco-${id}-replace`, "none");
+      }
 
       if (cfg.scale !== undefined)
         summary.warnings.push(

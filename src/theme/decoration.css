@@ -482,11 +482,24 @@
   background-repeat: no-repeat;
   background-position: center top var(--space-6);
 }
-/* milestone emblem — the daily banner seal + the cadence band card mark */
+/* milestone emblem — the daily banner seal + the cadence band card mark.
+   The asset paints BEHIND the code-drawn glyph (the seal's medal · the card's
+   landmark/pen) — Subnautica's bezel is built on that. `contain` since
+   2026-08-20: a 64px asset in the card's 40px plate was cropping, and a theme
+   that moves --milestone-seal should not have to re-cut its art.
+   With `"replace": true` in the manifest (decoration.ts publishes
+   --deco-stamp-milestone-replace: none) the glyph hides and the asset IS the
+   icon — user-ruled 2026-08-20, first tenant Steven Universe's Garnet gem.
+   Opt-in by construction: an unpublished property leaves `display` at its
+   block default, so every stamp authored behind-the-glyph is untouched. */
 :root .daily .milestone .emblem, :root .cadash .mcard .mmark {
   background-image: var(--deco-stamp-milestone, none);
   background-repeat: no-repeat;
   background-position: center;
+  background-size: contain;
+}
+:root .daily .milestone .emblem > .ico, :root .cadash .mcard .mmark > .ico {
+  display: var(--deco-stamp-milestone-replace, block);
 }
 /* finalize button — the one signature-button carve-out (per-state assets
    permitted: the law-5 exception).

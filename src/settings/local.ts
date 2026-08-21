@@ -150,9 +150,138 @@ export const setParityZoom = (pct: number): void => {
  * 2026-08-01; this is its real home. Reading it is for LAYOUT, not legibility
  * — Phase 2 owns real-hardware tuning.
  */
+/** LEGACY (read-only since 2026-08-20): the size-only record the preview toggle
+ *  wrote when it was switched on. `WIN_GEOM_KEY` superseded it; this is read
+ *  as a fallback so an install upgraded mid-preview still restores. */
 const MB_PRIOR_KEY = "cibo.dev.macbookPriorSize";
 const MB_W = 1512;
 const MB_H = 982;
+
+// ── the desktop window's remembered geometry ─────────────────────────────────
+//
+// THE WINDOW OPENS IN THE MODE IT CLOSED IN — user-ruled 2026-08-20 (*"the
+// window always boots up in macbook dimensions even if it was in 2k mode before
+// it was closed. I want the window to remember what mode it was in and to open
+// in that"*). The MacBook half already re-applied at launch (`macbook-2`); the
+// DESKTOP half never did — `tauri.conf.json` opens at 1600×1000, which on a 2K
+// screen reads as the MacBook canvas. The app has no window-state plugin by
+// design, so this is the small, per-device version of one: in desktop mode the
+// window's logical size + position + maximized flag are recorded (debounced)
+// on every resize/move, and re-applied at launch and when the preview switches
+// off. Recorded ONLY while on the desktop canvas — the preview's 1512×982 and a
+// real small screen must never overwrite the desktop record (same gate the
+// preview's own launch restore uses: the true width knee).
+//
+// Restore is clamped to the CURRENT work area and never writes the record
+// itself: a desktop record replayed on a smaller display fits the display, and
+// the record keeps the size the user actually chose.
+
+const WIN_GEOM_KEY = "cibo.desktopGeometry";
+
+interface WinGeom {
+  w: number;
+  h: number;
+  x: number;
+  y: number;
+  /** Maximized when last seen; w/h/x/y then hold the last UN-maximized frame. */
+  max: boolean;
+}
+
+const readGeom = (): WinGeom | null => {
+  const raw = lsGet(WIN_GEOM_KEY);
+  if (raw) {
+    try {
+      const g = JSON.parse(raw) as Partial<WinGeom>;
+      if (
+        typeof g.w === "number" && typeof g.h === "number" &&
+        typeof g.x === "number" && typeof g.y === "number"
+      )
+        return { w: g.w, h: g.h, x: g.x, y: g.y, max: g.max === true };
+    } catch {
+      /* a malformed record is no record */
+    }
+  }
+  // the legacy size-only record (position unknown → the restore centres it)
+  const m = lsGet(MB_PRIOR_KEY)?.match(/^(\d+)x(\d+)$/);
+  return m ? { w: Number(m[1]), h: Number(m[2]), x: NaN, y: NaN, max: false } : null;
+};
+
+let geomTimer: number | null = null;
+/** Record the desktop geometry, debounced — the live half of the memory. */
+const scheduleGeomRecord = (): void => {
+  if (geomTimer != null) window.clearTimeout(geomTimer);
+  geomTimer = window.setTimeout(() => {
+    geomTimer = null;
+    void recordDesktopGeometry();
+  }, 400);
+};
+
+const recordDesktopGeometry = async (): Promise<void> => {
+  if (!inTauri() || getMacBookPreview()) return;
+  if (trueWindowWidth() < SMALL_CANVAS_BELOW) return; // not the desktop canvas
+  await withAppWindow(async (win) => {
+    const max = await win.isMaximized();
+    const prev = readGeom();
+    if (max) {
+      // keep the last un-maximized frame for the day the user un-maximizes
+      const base = prev ?? { w: 1600, h: 1000, x: NaN, y: NaN, max: false };
+      lsSet(WIN_GEOM_KEY, JSON.stringify({ ...base, max: true }));
+      return;
+    }
+    const scale = await win.scaleFactor();
+    const size = (await win.innerSize()).toLogical(scale);
+    const pos = (await win.outerPosition()).toLogical(scale);
+    lsSet(
+      WIN_GEOM_KEY,
+      JSON.stringify({
+        w: Math.round(size.width),
+        h: Math.round(size.height),
+        x: Math.round(pos.x),
+        y: Math.round(pos.y),
+        max: false,
+      }),
+    );
+  });
+};
+
+/**
+ * Re-apply the remembered desktop geometry — launch (desktop mode) and the
+ * preview's Off. Maximized restores as maximized; otherwise size and position
+ * are clamped into the current monitor's work area (a record from a bigger
+ * display must still land on-screen). No record → the configured 1600×1000.
+ */
+const restoreDesktopGeometry = async (): Promise<void> => {
+  if (!inTauri()) return;
+  const { LogicalSize, LogicalPosition } = await import("@tauri-apps/api/dpi");
+  const g = readGeom();
+  await withAppWindow(async (win) => {
+    if (g?.max) {
+      await win.maximize();
+      return;
+    }
+    let [w, h] = g ? [g.w, g.h] : [1600, 1000];
+    let x = g?.x ?? NaN;
+    let y = g?.y ?? NaN;
+    const { currentMonitor } = await import("@tauri-apps/api/window");
+    const monitor = await currentMonitor();
+    if (monitor) {
+      const area = monitor.workArea.size.toLogical(monitor.scaleFactor);
+      const origin = monitor.workArea.position.toLogical(monitor.scaleFactor);
+      w = Math.min(w, area.width);
+      h = Math.min(h, area.height);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) {
+        // no position on record — centre on the work area (the Rust fit's rule)
+        x = origin.x + Math.max(0, area.width - w) / 2;
+        y = origin.y + Math.max(0, area.height - h) / 2;
+      } else {
+        x = Math.min(Math.max(x, origin.x), origin.x + Math.max(0, area.width - w));
+        y = Math.min(Math.max(y, origin.y), origin.y + Math.max(0, area.height - h));
+      }
+    }
+    await win.setSize(new LogicalSize(w, h));
+    if (Number.isFinite(x) && Number.isFinite(y)) await win.setPosition(new LogicalPosition(x, y));
+  }, "desktop geometry restore");
+};
 
 export const setScreenMode = async (mode: ScreenMode): Promise<void> => {
   const on = mode === "macbook";
@@ -165,18 +294,17 @@ export const setScreenMode = async (mode: ScreenMode): Promise<void> => {
   try {
     const { LogicalSize } = await import("@tauri-apps/api/dpi");
     if (on) {
-      // Remember the prior LOGICAL size once, so Off restores it.
+      // The desktop record is kept live by the resize/move recorder, so there is
+      // nothing to snapshot here; the flag was written above, which gates the
+      // recorder off before the 1512×982 resize below can be mistaken for a
+      // desktop size. A maximized window is un-maximized first — setSize on a
+      // maximized window is ignored on Windows.
       await withAppWindow(async (win) => {
-        const scale = await win.scaleFactor();
-        const size = (await win.innerSize()).toLogical(scale);
-        lsSet(MB_PRIOR_KEY, `${Math.round(size.width)}x${Math.round(size.height)}`);
+        if (await win.isMaximized()) await win.unmaximize();
         await win.setSize(new LogicalSize(MB_W, MB_H));
       }, "MacBook preview resize");
     } else {
-      const prior = lsGet(MB_PRIOR_KEY);
-      const m = prior?.match(/^(\d+)x(\d+)$/);
-      const [w, h] = m ? [Number(m[1]), Number(m[2])] : [1600, 1000];
-      await withAppWindow((win) => win.setSize(new LogicalSize(w, h)), "MacBook preview restore");
+      await restoreDesktopGeometry();
     }
   } catch (e) {
     console.error("settings: MacBook preview resize failed", e);
@@ -244,7 +372,13 @@ const adoptScreenModeForCanvas = (): void => {
  * would make Off restore the preview size instead of the real one.
  */
 const restoreMacBookGeometry = async (): Promise<void> => {
-  if (!inTauri() || !getMacBookPreview()) return;
+  if (!inTauri()) return;
+  // The desktop half (2026-08-20): the mode the window closed in is the mode
+  // it opens in. Below, the MacBook half as it was.
+  if (!getMacBookPreview()) {
+    await restoreDesktopGeometry();
+    return;
+  }
   // Already on the small canvas — real small hardware, sized to the screen's
   // work area by the Rust launch fit. The preview's 1512×982 is a SIMULATION
   // for a big screen; forcing it here would make the window taller than the
@@ -435,6 +569,14 @@ export function initLocalSettings(): void {
   // one and flips it back when the resize finally lands.
   void restoreMacBookGeometry().then(adoptScreenModeForCanvas);
   window.addEventListener("resize", adoptScreenModeForCanvas);
+  // The desktop geometry recorder — Tauri's own events, because a MOVE fires no
+  // DOM event. Registered once; the unlisten is never needed (page lifetime).
+  if (inTauri()) {
+    void withAppWindow(async (win) => {
+      await win.onResized(scheduleGeomRecord);
+      await win.onMoved(scheduleGeomRecord);
+    }, "desktop geometry recorder");
+  }
   // Force-opaque re-derives per theme apply; the first run needs the body.
   const first = () => applyForceOpaque();
   if (document.body) first();

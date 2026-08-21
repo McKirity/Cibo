@@ -47,7 +47,7 @@ import { CoverInner } from "../kit/CoverArt";
 import { pickAndStoreEntryImage } from "../importers/covers";
 import { deleteRefFiles } from "../db/fileDeletion";
 import { useBox } from "./useBox";
-import { DistPanel } from "./CreationDashboard";
+import { DistPanel, DistPanelGroup } from "./CreationDashboard";
 import { deleteEntriesCascade } from "../library/entryDelete";
 import { showErrorToast, showUndoToast } from "../shell/toast";
 import { todayLocal } from "../metrics/clock";
@@ -186,10 +186,28 @@ export function EntryDashboard({
                 </div>
               )}
               {m.dist && (
-                <div className="distrow4" style={m.split ? { marginTop: "var(--space-7)" } : undefined}>
-                  {m.dist.panels.map((p) => (
-                    <DistPanel key={p.title} panel={p} />
-                  ))}
+                /* ONE SECTION, NOT TWO (user-ruled 2026-08-20). `.distrow4` is a
+                   two-column grid, so a habit with two categoricals — Writing's
+                   stage and wiki — spent the zone on two half-width panels. Past
+                   one panel they collapse into a single full-width one whose
+                   head carries a subject toggle; at one panel the grid still
+                   renders exactly as drawn, which is what keeps this
+                   definition-driven rather than a Writing carve-out. */
+                <div
+                  /* ⚠ THE GRID COMES OFF WHEN MERGED. `.distrow4` is
+                     `repeat(2, 1fr)`, so a lone child would sit in column one
+                     at HALF width — the very shortage this change exists to
+                     end, arrived at from the other direction. With one panel
+                     the grid and its gap describe nothing, so the class simply
+                     does not apply. */
+                  className={m.dist.panels.length > 1 ? undefined : "distrow4"}
+                  style={m.split ? { marginTop: "var(--space-7)" } : undefined}
+                >
+                  {m.dist.panels.length > 1 ? (
+                    <DistPanelGroup panels={m.dist.panels} />
+                  ) : (
+                    m.dist.panels.map((p) => <DistPanel key={p.title} panel={p} />)
+                  )}
                 </div>
               )}
             </Panel>

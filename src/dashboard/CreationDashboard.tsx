@@ -14,7 +14,7 @@
  * the hero-card sparklines keep the FINAL's fixed 100×40 painterly viewBox
  * (preserveAspectRatio="none" — a fill texture, not a measured chart).
  */
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useCreationData } from "./useCreationData";
 import { useBox } from "./useBox";
 import { axisGutter } from "./axisGutter";
@@ -208,7 +208,7 @@ export function CreationDashboard({
 
 // ── Distribution panel + the per-metric shape family ──────────────────────────
 
-export function DistPanel({ panel }: { panel: DistPanelSpec }) {
+export function DistPanel({ panel, lead }: { panel: DistPanelSpec; lead?: ReactNode }) {
   const [metric, setMetric] = useState<DistMetricKey>(panel.initial);
   const chart = panel.charts[metric] ?? panel.charts[panel.initial];
   return (
@@ -216,8 +216,10 @@ export function DistPanel({ panel }: { panel: DistPanelSpec }) {
       <div className="chead">
         {/* An empty title is legal since 2026-08-18 (the simple categorical
             split's single toggled panel — the OUTER panel head already names
-            the zone, so the inner head carries only the metric toggle). */}
-        {panel.title !== "" && <span className="ct">{panel.title}</span>}
+            the zone, so the inner head carries only the metric toggle).
+            `lead` REPLACES the title outright (2026-08-20) — DistPanelGroup
+            puts its categorical toggle in this slot. */}
+        {lead ?? (panel.title !== "" && <span className="ct">{panel.title}</span>)}
         {panel.tabs && (
           <div className="mtoggle">
             {panel.tabs.map((t) => (
@@ -230,6 +232,63 @@ export function DistPanel({ panel }: { panel: DistPanelSpec }) {
       </div>
       <div className="dchart">{chart && <Shape chart={chart} />}</div>
     </div>
+  );
+}
+
+/**
+ * TWO OR MORE CATEGORICALS COLLAPSE INTO ONE TOGGLED PANEL (user-ruled
+ * 2026-08-20, on the Mac: *"there's not enough room for two sections, just
+ * make it one"*).
+ *
+ * `buildDistributions` mints one panel PER categorical, so Writing — which
+ * declares `writing_stage` and `writing_wiki` — produced two, and the entry
+ * dashboard sat them side by side in `.distrow4`'s two-column grid. Each
+ * therefore got HALF the zone, which `small.css` § donut legends had already
+ * written down as a shortage from the other end (*"a half-width `.distrow4`
+ * panel on this canvas that is a couple of hundred pixels for a name, a value
+ * and a percent"*). One panel at full width is the same charts with twice the
+ * room, and it relieves that squeeze rather than working around it again.
+ *
+ * TWO AXES, TWO IDIOMS, DELIBERATELY: the SUBJECT (which categorical) wears
+ * the app's ruled segmented pill `.segctl`, the MEASURE keeps `.mtoggle`.
+ * Reading them as one control is the failure mode, and two identical strips in
+ * one head is what would cause it. Neither needed new CSS.
+ *
+ * ⚠ NO HABIT SPECIAL-CASING — the dashboards' standing law. This keys off
+ * `panels.length`, so a creation habit declaring one categorical still renders
+ * exactly as before, and a future third categorical joins the toggle for free.
+ *
+ * The metric selection is DistPanel's own state and deliberately SURVIVES a
+ * subject switch: move Stage→Wiki on "Words" and you stay on Words. Where the
+ * new subject has no chart for it, DistPanel's existing
+ * `charts[metric] ?? charts[initial]` fallback already covers it.
+ */
+export function DistPanelGroup({ panels }: { panels: DistPanelSpec[] }) {
+  const [which, setWhich] = useState(0);
+  // Clamped rather than trusted: the panel list is derived from live data, so
+  // a categorical whose rows drop below the 2-value floor can shorten it
+  // underneath a selection that is already past the end.
+  const i = Math.min(which, panels.length - 1);
+  return (
+    <DistPanel
+      panel={panels[i]}
+      lead={
+        <div className="segctl">
+          {panels.map((p, n) => (
+            <button
+              key={p.title}
+              aria-pressed={n === i}
+              onClick={() => setWhich(n)}
+            >
+              {/* "By Stage" → "Stage": the outer Panel head already says these
+                  are distributions, and the segment is the subject alone. Same
+                  strip EntryDashboard uses to build that head. */}
+              {p.title.replace(/^By /, "")}
+            </button>
+          ))}
+        </div>
+      }
+    />
   );
 }
 

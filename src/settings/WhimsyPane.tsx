@@ -140,7 +140,7 @@ export function WhimsyPane() {
 
       <div className="hgroup">
         <p className="hglbl">
-          Dates &amp; countdowns
+          Dates &amp; Countdowns
           <span className="runline">
             {cfg.events.length} date{cfg.events.length === 1 ? "" : "s"}
           </span>

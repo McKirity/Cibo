@@ -359,14 +359,14 @@ export function buildConsumptionDashboard(
   if (input.typeVocab.length > 0 && typeFilter == null) {
     const typeRows = distribute(ent, (e) => e.type, { order: input.typeVocab });
     distributions.push({
-      title: "By type",
+      title: "By Type",
       rows: typeRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: typeSlot.get(r.key) ?? "--cat-1", tip: `${r.key} · ${r.value} titles` })),
     });
   }
   distributions.push(
-    { title: "By status", rows: statusRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: statusSlot.get(r.key) ?? "--cat-1", tip: `${r.key} · ${r.value} titles` })) },
-    { title: "By genre", rows: genreRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: "--cat-1", tip: `${r.key} · ${r.value} titles` })) },
-    { title: "By rating", rows: ratingRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: "--cat-3", tip: `${r.key} · ${r.value} titles` })) },
+    { title: "By Status", rows: statusRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: statusSlot.get(r.key) ?? "--cat-1", tip: `${r.key} · ${r.value} titles` })) },
+    { title: "By Genre", rows: genreRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: "--cat-1", tip: `${r.key} · ${r.value} titles` })) },
+    { title: "By Rating", rows: ratingRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: "--cat-3", tip: `${r.key} · ${r.value} titles` })) },
   );
   // The degradation rule (Dashboard Composition · the empty-states sheet §03):
   // a distribution over fewer than 2 distinct values doesn't render — the zone
@@ -403,8 +403,8 @@ export function buildConsumptionDashboard(
     .filter((e) => e.rating === 5)
     .map((e) => ({ title: e.title, initial: initialism(e.title), entryId: e.id, cover: e.cover }));
   const leaderboards: LeaderColumnSpec[] = [
-    { title: "Longest runs", rows: longestRuns.map((r, i) => ({ rank: i + 1, title: r.title, value: `${groupInt(r.value / 60)} h`, pct: r.pct, entryId: r.entryId })) },
-    { title: "Most days", rows: mostDays.map((r, i) => ({ rank: i + 1, title: r.title, value: `${groupInt(r.value)} d`, pct: r.pct, entryId: r.entryId })) },
+    { title: "Longest Runs", rows: longestRuns.map((r, i) => ({ rank: i + 1, title: r.title, value: `${groupInt(r.value / 60)} h`, pct: r.pct, entryId: r.entryId })) },
+    { title: "Most Days", rows: mostDays.map((r, i) => ({ rank: i + 1, title: r.title, value: `${groupInt(r.value)} d`, pct: r.pct, entryId: r.entryId })) },
     { title: "5-star hall", meta: `${hall.length} titles`, hall },
   ];
   // Degradation: drop empty leaderboard columns (the 5-star hall hides when a

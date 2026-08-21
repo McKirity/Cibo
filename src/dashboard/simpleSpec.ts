@@ -762,7 +762,7 @@ export function buildSimpleDashboard(input: SimpleBuildInput, sel: ScopeSel): Si
           charts: { days: daysBars, [amtKey]: amtBars },
         },
       ];
-      dist = { title: `By ${catDef.label.toLowerCase()}`, panels };
+      dist = { title: `By ${catDef.label}`, panels };
     }
   }
 

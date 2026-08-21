@@ -195,7 +195,7 @@ export function KeepsakeEditor({
       <div className="mo kseditor" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="mo-head">
           <div>
-            <h3 className="mtitle">Keepsake tile — {habitName}</h3>
+            <h3 className="mtitle">Keepsake Tile — {habitName}</h3>
             <p className="mo-sub">
               Code-drawn art for the cover wall. Paste an HTML/SVG tile snippet; placeholders like{" "}
               <span className="mono">{"{{value}}"}</span> · <span className="mono">{"{{duration}}"}</span> ·{" "}
@@ -214,7 +214,7 @@ export function KeepsakeEditor({
               onChange={(e) => setText(e.target.value)}
             />
             <div className="ksside">
-              <p className="sglbl">Live preview{data != null && data.rows.length > 0 ? ` · ${data.day}` : " · no logged data yet"}</p>
+              <p className="sglbl">Live Preview{data != null && data.rows.length > 0 ? ` · ${data.day}` : " · no logged data yet"}</p>
               <div className="kprev">
                 {values != null && (
                   <KeepsakeTile snippet={text.trim() === "" ? null : text} values={values} colourSlot={colourSlot} />

@@ -127,7 +127,7 @@ export function StoragePane() {
         </p>
       ) : (
         <div className="hgroup">
-          <p className="hglbl">Inside the root</p>
+          <p className="hglbl">Inside the Root</p>
           <div className="mlist">
             {SUBS.map((s) => (
               <div className="mrow" key={s.key}>
@@ -216,7 +216,7 @@ function SyncSection() {
 
   return (
     <div className="hgroup">
-      <p className="hglbl">Sync between devices</p>
+      <p className="hglbl">Sync Between Devices</p>
       <div className="ctrlstack">
         <div className="crow">
           <span className="clabel">Sync</span>

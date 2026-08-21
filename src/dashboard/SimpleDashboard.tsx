@@ -113,7 +113,7 @@ export function SimpleDashboard({ habitKey }: { habitKey: string }) {
 
             {/* ── MEASURED + CATEGORICAL: stat rows · split dist · trends · heatmap ── */}
             {m.statRows && (
-              <Panel title="At a glance">
+              <Panel title="At a Glance">
                 {m.statRows.map((row) => (
                   <StatGroup key={row.label} label={row.label} tiles={row.tiles} tall={row.tall} />
                 ))}
@@ -217,7 +217,7 @@ function DaysparkPanel({
 }) {
   return (
     <Panel
-      title="Days per period"
+      title="Days per Period"
       right={
         d.delta ? (
           <span className="pmeta sparkhead" style={{ gap: "var(--space-5)" }}>
@@ -259,7 +259,7 @@ function SimpleHeatmap({ heatmap }: { heatmap: NonNullable<SimpleModel["heatmap"
 
   return (
     <Panel
-      title="Activity heatmap"
+      title="Activity Heatmap"
       right={
         <span className="pmeta" style={{ display: "flex", alignItems: "center", gap: "var(--space-6)" }}>
           {heatmap.filterLabel && (

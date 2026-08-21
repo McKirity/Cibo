@@ -519,7 +519,7 @@ export function HabitCreator({
     <div className="dimlayer" onMouseDown={onClose} role="presentation">
       <div className="mo hc" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="hc-head">
-          <span className="hc-title">{edit != null ? `Edit ${edit.name}` : "New habit"}</span>
+          <span className="hc-title">{edit != null ? `Edit ${edit.name}` : "New Habit"}</span>
           <button className="iconbtn hc-close" onClick={onClose} aria-label="Cancel">
             <Ico d={ICONS.close} />
           </button>

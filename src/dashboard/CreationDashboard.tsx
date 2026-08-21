@@ -145,7 +145,7 @@ export function CreationDashboard({
 
           <div className="gs-body">
             {/* ── 2 · Stat rows (definition-minted: 2 for time-only, 4 with count) ── */}
-            <Panel title="At a glance">
+            <Panel title="At a Glance">
               {m.statRows.map((row) => (
                 <StatGroup key={row.label} label={row.label} tiles={row.tiles} tall={row.tall} />
               ))}
@@ -528,7 +528,7 @@ function CreationHeatmap({ heatmap }: { heatmap: CreationModel["heatmap"] }) {
   };
 
   return (
-    <Panel title="Activity heatmap">
+    <Panel title="Activity Heatmap">
       <div className="segrow">
         <span className="seglbl">Scope</span>
         <div className="seg5">

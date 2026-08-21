@@ -760,7 +760,7 @@ export function buildDistributions(
         const charts = chartsFor(def);
         if (!charts.days || (charts.days.kind === "hbars" && charts.days.rows.length < 2)) return null;
         return {
-          title: `By ${def.label.toLowerCase()}`,
+          title: `By ${def.label}`,
           tabs: [
             { key: "days", label: "Days" },
             { key: "count", label: capUnit },
@@ -784,7 +784,7 @@ export function buildDistributions(
   const charts = chartsFor(def);
   if (!charts.days || (charts.days.kind === "hbars" && charts.days.rows.length < 2)) return null;
   return {
-    panelTitle: `By ${def.label.toLowerCase()}`,
+    panelTitle: `By ${def.label}`,
     panels: [
       { title: "Days", tabs: null, initial: "days", charts: { days: charts.days } },
       { title: "Time", tabs: null, initial: "time", charts: { time: charts.time } },

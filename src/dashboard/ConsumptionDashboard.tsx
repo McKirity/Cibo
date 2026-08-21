@@ -185,7 +185,7 @@ export function ConsumptionDashboard({
 
           <div className="gs-body">
             {/* ── At a glance ── */}
-            <Panel title="At a glance">
+            <Panel title="At a Glance">
               <StatGroup label="Engagement" tiles={m.engagement} tall />
               <StatGroup label="Volume" tiles={m.volume} />
               {m.catalog.length > 0 && <StatGroup label="Catalog" tiles={m.catalog} />}

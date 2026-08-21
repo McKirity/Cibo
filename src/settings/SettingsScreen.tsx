@@ -563,7 +563,7 @@ function TrackingPane() {
                 </span>
               </div>
               <div className="ladderblock">
-                <p className="hglbl">Milestone ladders</p>
+                <p className="hglbl">Milestone Ladders</p>
                 <p className="vnote">
                   When a threshold milestone fires. Habits can override any of these on their own
                   row.

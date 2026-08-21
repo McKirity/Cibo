@@ -536,7 +536,7 @@ export function Heatmap({
   );
 
   return (
-    <Panel title="Activity heatmap" right={header}>
+    <Panel title="Activity Heatmap" right={header}>
       {/* --pool-x/--pool-y: the activity centroid, for themes that paint the
           block as one emitting surface (see heatPoolStyle). Inert otherwise. */}
       <div className="heat" style={heatPoolStyle(cells, (c) => c.level)}>

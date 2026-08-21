@@ -229,7 +229,7 @@ function SystemTab() {
 
       <div className="hgroup">
         <p className="hglbl">
-          Recent errors
+          Recent Errors
           <span className="runline">{errors.length === 0 ? "none" : `last ${errors.length}`}</span>
         </p>
         {errors.length === 0 ? (

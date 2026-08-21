@@ -1,6 +1,6 @@
-## What is Cibo?
+## What Is Cibo?
 
-### Why I made it
+### Why I Made It
 
 To make a long story short, there are no habit tracker apps in existence that actually track your habits. At best, they just offer to build your habits and then maybe give you a pie chart for $5 every month. No detailed analyses, you can only do boolean values, and if you try to track anything like specific games or books, lol. Lmao, even. I tried all kinds of things like bullet journaling, trying those apps, building excel sheets, and make a whole custom Obsidian app, but in the end, none of them ever went deep enough for me. And so: I made my own app. Or to be more accurate, Claude made it for me, with a ton of handholding and guiding. I'm able to track nearly all kinds of habits, including how long I did them for, what exactly I did, how much effort I put into them, and the app will do the hard work of crunching numbers and spitting them out into dashboards loaded with all sorts of graphs. I can track specific entries too, like games and books. I even loaded it up with timers, themes, and importers.
 
@@ -10,7 +10,7 @@ As for the name itself, I was on a bit of a Tsutomu Nihei kick when I started th
 
 **Important: I will never monetize this app.** This app is purely for personal use and maybe for sharing with friends. It was never made with the goal of monetization in mind, so if you are somehow paying for this, you got fucking scammed my guy.
 
-### How it works
+### How It Works
 
 Cibo is a desktop app — a Rust shell (Tauri) around a React interface, with the data in a local
 SQLite database managed by Evolu. Everything lives on your machine. Your data is never uploaded,
@@ -44,7 +44,7 @@ A few rules follow from this and are worth knowing:
 For how any of this is actually implemented, see the developer manual in the repository; this
 page just summarizes briefly.
 
-### General app layout
+### General App Layout
 
 One window, one screen at a time.
 
@@ -101,7 +101,7 @@ Appearance settings deliberately do **not** travel: a size that reads well on a 
 wrong on a 14-inch laptop. Anywhere a setting stays put, the app marks it **This device** — if
 there is no mark, it travels.
 
-### Getting started
+### Getting Started
 
 Cibo starts with a short setup screen — important dates, roughly where you are (used for sunrise,
 moon phase, and the almanac), and which habits you want to begin with. Every field can be left
@@ -121,7 +121,7 @@ record of what happened, not a task manager.
 
 ## Habits
 
-### What are Habits?
+### What Are Habits?
 
 A **habit** is one thing you track. Cibo comes with several and you can make as many as you like.
 
@@ -158,7 +158,7 @@ recording something new. The one exception: the five statuses Cibo ships with ar
 parts of the app read them by name, so they can never be renamed or removed. Statuses you add
 yourself are fully yours to rename or remove.
 
-### How to log your habits
+### How to Log Your Habits
 
 Open a day and fill in the form. That is the only way in — there is no quick-add, and nothing
 logs itself.
@@ -197,7 +197,7 @@ which is honest — Cibo does not know, so it does not guess.
 Finalizing also builds the day's **cover wall**: the covers of everything you touched that day,
 laid out as a keepsake. Days you have not finalized are listed on Daily so they are easy to find.
 
-### Visualizing your habits
+### Visualizing Your Habits
 
 Every habit has a dashboard, and so does every stretch of time and every entry.
 
@@ -219,7 +219,7 @@ measure a habit tracks adds a statistic, each medium adds a breakdown. Change wh
 tracks and the dashboard changes with it. This is the whole design: you describe the habit, and
 the view follows.
 
-### Archiving your habits
+### Archiving Your Habits
 
 **Archiving** puts a habit away without losing anything. It disappears from the rail and from the
 daily form; its data stays exactly where it is, and every dashboard it ever had still works.
@@ -237,7 +237,7 @@ only way back.
 Smaller deletions are gentler: removing a single entry or session gives you about ten seconds to
 undo it.
 
-### Creating new habits
+### Creating New Habits
 
 New habits are made in **Settings › Habits › New habit**, or straight from the palette. The
 creator asks one thing at a time, and only asks what it needs.
@@ -654,7 +654,7 @@ copy across anything worth keeping, and delete the leftover — that one rides t
 At the scale a personal library actually reaches, a duplicate has a handful of sessions, and a
 merge workflow would be more failure modes than it removes.
 
-### Whimsy & the calendar
+### Whimsy & the Calendar
 
 The Daily dashboard is framed in small cards. The sky's: sunrise and sunset, the weather, the
 season, the moon, what is visible tonight. An almanac of the day: a quote, a word, a fun fact,

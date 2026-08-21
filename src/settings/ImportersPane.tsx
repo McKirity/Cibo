@@ -26,7 +26,7 @@ export function ImportersPane() {
   return (
     <div className="hscroll">
       <div className="hgroup" style={{ marginTop: 0 }}>
-        <p className="hglbl">API keys</p>
+        <p className="hglbl">API Keys</p>
         <div className="ctrlstack">
           <div className="crow two">
             <span className="clabel">Steam</span>

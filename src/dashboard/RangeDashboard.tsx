@@ -112,7 +112,7 @@ export function RangeDashboard({ habitKey }: { habitKey: string }) {
 
           <div className="gs-body">
             {/* ── 2 · The range stat row ── */}
-            <Panel title="At a glance">
+            <Panel title="At a Glance">
               <StatGroup label={m.statRow.label} tiles={m.statRow.tiles} />
             </Panel>
 
@@ -162,8 +162,11 @@ export function RangeDashboard({ habitKey }: { habitKey: string }) {
             )}
 
             {/* ── 5 · Heatmap (duration + one view per declared flag) + trio ── */}
+            {/* The title stays "Activity Heatmap" whatever view is showing
+                (user-ruled 2026-08-20) — the toggle's lit pill names the view,
+                and the other three templates' heatmaps wear the same title. */}
             <Panel
-              title={`${heat.label} heatmap`}
+              title="Activity Heatmap"
               right={
                 <>
                   {m.heatmap.views.length > 1 && (

@@ -140,7 +140,7 @@ function OneLadder({
     <div className="ladbody">
       <p className="vnote">{hint}</p>
       <div className="ladfield">
-        <span className="sglbl">First milestones</span>
+        <span className="sglbl">First Milestones</span>
         <input
           className="keyin wide"
           value={stepText}

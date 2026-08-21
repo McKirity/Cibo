@@ -317,7 +317,7 @@ function AboutTab() {
 
       <div className="hgroup">
         <p className="hglbl">
-          What this app talks to
+          What This App Talks To
           <span className="runline">{HOSTS.length + 1} addresses</span>
         </p>
         <div className="vlist">

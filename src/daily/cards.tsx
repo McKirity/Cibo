@@ -997,7 +997,7 @@ export function TonightSkyCard({ dayKey, lat }: { dayKey: string; lat: number })
   const feat = tonightsFeature(dayKey, lat);
   return (
     <div className="card whimsy tonight-card" style={{ flex: "1.35 0 230px" }}>
-      <Ovl label="Tonight's sky" d={I_STAR} />
+      <Ovl label="Tonight's Sky" d={I_STAR} />
       <div className="field night-field">
         {/* xMax + the right-shifted centre keep the figure clear of the caption,
             which owns the bottom-left; narrow cards crop the empty left instead. */}
@@ -1084,7 +1084,7 @@ export function WordCard({ dayKey }: { dayKey: string }) {
   const w = wordFor(dayKey);
   return (
     <div className="card whimsy word" style={ALMANAC_FLEX}>
-      <Ovl label="Word of the day" d={I_WORD} />
+      <Ovl label="Word of the Day" d={I_WORD} />
       <div className="art" style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
         <div className="w">{w.word}</div>
         <div className="rule" aria-hidden="true" />
@@ -1105,7 +1105,7 @@ export function FactCard({ dayKey }: { dayKey: string }) {
   const f = factFor(dayKey);
   return (
     <div className="card whimsy" style={ALMANAC_FLEX}>
-      <Ovl label="Fun fact" d={I_FACT} />
+      <Ovl label="Fun Fact" d={I_FACT} />
       <div
         className="art"
         style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "flex-start", gap: "var(--space-4)" }}

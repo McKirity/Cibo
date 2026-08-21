@@ -279,7 +279,7 @@ export function FirstRunSetup({ onDone }: { onDone: () => void }) {
 
           <div className="steppanel" id="fu-step-0">
               <div className="stephdr">
-                <span className="st"><span className="num">1</span><span className="lbl">Important dates</span></span>
+                <span className="st"><span className="num">1</span><span className="lbl">Important Dates</span></span>
               </div>
               <div className="frow">
                 <span className="flabel">Your birthday</span>
@@ -377,10 +377,10 @@ export function FirstRunSetup({ onDone }: { onDone: () => void }) {
 
           <div className="steppanel" id="fu-step-2">
               <div className="stephdr">
-                <span className="st"><span className="num">3</span><span className="lbl">Pick your starting habits</span></span>
+                <span className="st"><span className="num">3</span><span className="lbl">Pick Your Starting Habits</span></span>
               </div>
               <div className="pickmeta">
-                <span className="arch-head">Core habits</span>
+                <span className="arch-head">Core Habits</span>
                 <span className="selcount">
                   {selected.size} of {(habits ?? []).length} selected
                 </span>
@@ -395,7 +395,7 @@ export function FirstRunSetup({ onDone }: { onDone: () => void }) {
                     ACTIVE habits — so the tier half is dropped when it would
                     be a lie. */}
                 <span className="arch-head">
-                  {later.some((h) => !h.archived) ? "Also seeded" : "Also seeded · archived tier"}
+                  {later.some((h) => !h.archived) ? "Also Seeded" : "Also Seeded · Archived Tier"}
                 </span>
               </div>
               <div className="hpickgrid">

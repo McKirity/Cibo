@@ -254,7 +254,7 @@ function CadenceView({
       {/* 3 · COMPOSITION (month and up) */}
       {m.compositionRows && m.compositionRows.length > 0 && (
         <div className="cpanel">
-          <div className="phead"><span className="ptitle">Where the time went</span></div>
+          <div className="phead"><span className="ptitle">Where the Time Went</span></div>
           <div className="bars">
             {m.compositionRows.map((r) => (
               <div key={r.habitKey} className="brow" title={`${r.name} · ${Math.round(r.minutes / 60)} h`}>
@@ -268,7 +268,7 @@ function CadenceView({
       )}
       {m.stacked && (
         <div className="cpanel">
-          <div className="phead"><span className="ptitle">Where the year went</span></div>
+          <div className="phead"><span className="ptitle">Where the Year Went</span></div>
           <div className="comphead">
             <div className="ctoggle">
               <button aria-pressed={stackMode === "monthly"} onClick={() => setStackMode("monthly")}>Monthly</button>
@@ -307,7 +307,7 @@ function CadenceView({
       {/* 4 · REVIEW / milestone band */}
       {m.milestoneCards && m.milestoneCards.length > 0 && (
         <div className="cpanel">
-          <div className="phead"><span className="ptitle">Milestones this week</span></div>
+          <div className="phead"><span className="ptitle">Milestones This Week</span></div>
           <div className="mband">
             {m.milestoneCards.map((c, i) => (
               <div key={i} className="mcard">
@@ -343,7 +343,7 @@ function CadenceView({
       {/* 5 · HABIT ROWS */}
       <div className="cpanel">
         <div className="phead">
-          <span className="ptitle">Habits this {m.scale}</span>
+          <span className="ptitle">Habits This {m.scale.charAt(0).toUpperCase() + m.scale.slice(1)}</span>
           <div className="pright">
             <button className="expandall" onClick={expandAll}>
               <Ico d={["m7 15 5 5 5-5", "m7 9 5-5 5 5"]} />

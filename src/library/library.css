@@ -86,7 +86,40 @@
   border-radius: var(--radius-medium); box-shadow: var(--shadow-low); padding: var(--space-4) var(--space-5); }
 /* (A roll-into-the-headliner experiment lived here for an hour on 2026-07-27
    and was REVERSED the same day — the toolbar keeps its own panel, above.) */
-.libscreen .tfilters { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); flex: 1 1 auto; min-width: 0; }
+/* ⚠ `flex-grow: 0` IS THE WHOLE FIX, and it is not a tidy-up (user-ruled
+   2026-08-20, on the Mac, reported first under Undertale & Deltarune:
+   *"the three buttons on the right overflow into the second row… have the
+   content in the first row stretch out to fill in the rest of the row"*).
+
+   `.tbar` wraps, and past a certain content width `.tdoors` drops to a second
+   row of its own. That much is fine. What looked broken was ROW ONE ending
+   ~48 CSS px short of the panel's right edge while a near-empty row sat under
+   it — measured on this machine at a 1200 CSS px toolbar, so it is a real gap,
+   not a rounding artifact.
+
+   THE SPACE WAS NEVER UNALLOCATED. `.tsearch` and `.tfilters` are siblings and
+   BOTH carried `flex-grow: 1`, so the line's free space was split between them
+   — and `.tfilters`' half is invisible by construction: it is a wrap container
+   whose chips are packed left and do not grow, so its share becomes trailing
+   dead space inside it. Half the slack went to a box that cannot show it.
+
+   With grow at 0, the whole remainder lands on `.tsearch`, which is the one
+   item on the row built to stretch. Measured after: trailing gap 48.3 → 7.7 CSS
+   px, and the 7.7 is `.tbar`'s own right padding, which SHOULD be there.
+
+   ⚠ `flex-shrink` stays 1 and `min-width: 0` stays, so the chips still
+   compress and wrap internally when space runs short — only the GROW half
+   changed. Verified flush on Undertale & Deltarune (Reading + Media), the
+   Default (Reading) and Steven Universe; Void is byte-identical to the Default
+   on the type and space dials, so it is covered by that reading rather than
+   left unchecked.
+
+   ⚠ AND THE WRAP IS NOT UT/DR-ONLY — the Default wraps the doors at this
+   canvas too. UT/DR is merely where the gap was noticed. Nothing here tries to
+   stop the wrap: fitting one row needs 121 CSS px that do not exist, and the
+   only donor is the search field's 240px floor. That was offered and DECLINED
+   (*"I don't want everything on one row"*). Do not re-propose it. */
+.libscreen .tfilters { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); flex: 0 1 auto; min-width: 0; }
 .libscreen .tsearch { flex: 1 1 auto; min-width: 240px; display: flex; align-items: center; gap: var(--space-4);
   background: var(--inset-background); border: var(--border-hairline) solid var(--border);
   border-radius: var(--radius-small); padding: var(--space-3) var(--space-5); color: var(--text-muted);

@@ -57,10 +57,23 @@ import {
   setSignalStyle,
   setUiScale,
   UI_SCALE_STEP,
+  AMB_FADE_MAX,
+  AMB_FADE_STEP,
+  AMB_INTERVALS,
+  getAmbienceFade,
+  getAmbienceInterval,
+  getTimerAmbience,
+  intervalLabel,
+  setAmbienceFade,
+  setAmbienceInterval,
+  setTimerAmbience,
   type ScreenMode,
   type SignalStyle,
+  type TimerAmbience,
 } from "./local";
-import { getPick, openThemesFolder, scanThemes, setTheme, type ThemeEntry } from "../theme/loader";
+import { currentTheme, getPick, openThemesFolder, scanThemes, setTheme, type ThemeEntry } from "../theme/loader";
+import { probeAmbienceSets } from "../theme/ambienceAssets";
+import { useReduceEffects } from "../theme/Ambience";
 import { cloudSub } from "./cloudRoot";
 import {
   autosaveQuery,
@@ -603,6 +616,11 @@ function AppearancePane() {
   const [scale, setScale] = useState(getUiScale());
   const [reduce, setReduce] = useState(getReduceEffects());
   const [opaque, setOpaque] = useState(getForceOpaque());
+  // TWO TABS since 2026-08-20 (user-ruled: *"This will fall under Ambience, a
+  // new tab under appearances"*): General = the five per-device levers this
+  // pane always carried; Ambience = the slideshow's three. The `.ttabs` strip
+  // is Health's and Help's — local state, never a route.
+  const [tab, setTab] = useState<"general" | "ambience">("general");
 
   /**
    * Scan on mount, and RE-SCAN whenever the window regains focus.
@@ -639,7 +657,22 @@ function AppearancePane() {
 
   return (
     <Pane title="Appearance">
+      <div className="ttabs">
+        {(
+          [
+            ["general", "General"],
+            ["ambience", "Ambience"],
+          ] as const
+        ).map(([t, label]) => (
+          <button key={t} className={`ttab${tab === t ? " active" : ""}`} onClick={() => setTab(t)}>
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="pbody">
+        {tab === "ambience" ? (
+          <AmbienceTab />
+        ) : (
         <div className="hscroll">
           <div className="ctrlstack">
             <div className="crow">
@@ -745,8 +778,151 @@ function AppearancePane() {
             </div>
           </div>
         </div>
+        )}
       </div>
     </Pane>
+  );
+}
+
+// ── Appearance → Ambience — the slideshow's three levers + the fade preview ──
+//    (ruled 2026-08-20; owning record [[Ambience Slideshow]]). All three are
+//    per-device — appearance levers are local by the sync roster — and the
+//    Ambience layer picks each write up live through settings/local's event.
+
+function AmbienceTab() {
+  const [interval, setIntervalS] = useState(getAmbienceInterval());
+  const [fade, setFade] = useState(getAmbienceFade());
+  const [timerSrc, setTimerSrc] = useState<TimerAmbience>(getTimerAmbience());
+  // What the active theme carries — a list-only probe (no bytes read), re-run
+  // on theme apply so the line follows the Theme row on the other tab.
+  const [counts, setCounts] = useState<{ backdrop: number; timer: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const probe = () =>
+      void probeAmbienceSets(currentTheme()?.dir ?? null).then((c) => {
+        if (!cancelled) setCounts(c);
+      });
+    probe();
+    window.addEventListener("cibo:theme-applied", probe);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("cibo:theme-applied", probe);
+    };
+  }, []);
+
+  const themeName = currentTheme()?.name ?? "This theme";
+  const note =
+    counts == null
+      ? null
+      : counts.backdrop > 1
+        ? `${themeName} carries ${counts.backdrop} backdrops` +
+          (counts.timer > 1 ? ` and ${counts.timer} timer backdrops.` : counts.timer === 1 ? " and one timer backdrop." : ".")
+        : counts.backdrop === 1
+          ? `${themeName} has one backdrop — the slideshow needs several pictures in its backdrops/ folder.`
+          : `${themeName} has no backdrop.`;
+  const fadeLabel = fade === 0 ? "Cut" : `${(fade / 1000).toFixed(1)} s`;
+
+  return (
+    <div className="hscroll">
+      <div className="ctrlstack">
+        {note && <p className="ambnote">{note}</p>}
+        <div className="crow">
+          <span className="clabel">Change every</span>
+          <DevMark />
+          <span className="cright">
+            <Select
+              label={intervalLabel(interval)}
+              items={AMB_INTERVALS.map((s) => ({ key: String(s), label: intervalLabel(s), selected: s === interval }))}
+              onPick={(k) => {
+                const s = Number(k);
+                setAmbienceInterval(s);
+                setIntervalS(s);
+              }}
+            />
+          </span>
+        </div>
+        <div className="crow">
+          <span className="clabel">Fade</span>
+          <DevMark />
+          <span className="cright">
+            <Stepper
+              value={fadeLabel}
+              onStep={(d) => {
+                const next = Math.min(AMB_FADE_MAX, Math.max(0, fade + d * AMB_FADE_STEP));
+                setAmbienceFade(next);
+                setFade(next);
+              }}
+            />
+          </span>
+        </div>
+        <div className="crow two">
+          <span className="clabel">Preview</span>
+          <span className="cright">
+            <FadePreview fadeMs={fade} />
+          </span>
+        </div>
+        <div className="crow">
+          <span className="clabel">Timer backdrop</span>
+          <DevMark />
+          <span className="cright">
+            <Seg
+              value={timerSrc}
+              options={[
+                { v: "own", label: "Own folder" },
+                { v: "shared", label: "Share with backdrop" },
+              ]}
+              onPick={(v) => {
+                setTimerAmbience(v);
+                setTimerSrc(v);
+              }}
+            />
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** How long each panel holds before the next fades in over it. */
+const PREVIEW_HOLD_MS = 2000;
+
+/**
+ * THE FADE PREVIEW — a LIVE demo, never a video (judged 2026-08-20: a clip has
+ * one speed and would lie the moment the Fade stepper moved). Two generic
+ * dial-drawn panels; the top one wears `.ambfade`, so it reads the SAME
+ * `--amb-fade` property and the SAME keyframes the real backdrop layers use —
+ * one owner, no drift. It previews the FADE only (an interval cannot be
+ * demoed). Under reduce-effects it shows the paused face, because the real
+ * slideshow is frozen there and a preview animating while the thing it
+ * previews will not is a lie. `fadeMs` is only the commit timer's length; the
+ * animation itself reads the root property.
+ */
+function FadePreview({ fadeMs }: { fadeMs: number }) {
+  const reduced = useReduceEffects();
+  // base = the panel beneath · top = the one fading in (null while holding) ·
+  // n keys each fade so a remount restarts the animation.
+  const [s, setS] = useState<{ base: "a" | "b"; top: "a" | "b" | null; n: number }>({ base: "a", top: null, n: 0 });
+  useEffect(() => {
+    if (reduced) return;
+    const id = setTimeout(
+      () =>
+        setS((p) =>
+          p.top == null ? { base: p.base, top: p.base === "a" ? "b" : "a", n: p.n + 1 } : { base: p.top, top: null, n: p.n },
+        ),
+      s.top == null ? PREVIEW_HOLD_MS : fadeMs + 60,
+    );
+    return () => clearTimeout(id);
+  }, [s, fadeMs, reduced]);
+  return (
+    <div className="ambprev" aria-hidden>
+      <div className={`pv ${s.base}`}>{s.base.toUpperCase()}</div>
+      {s.top && !reduced && (
+        <div key={s.n} className={`pv ${s.top} ambfade`}>
+          {s.top.toUpperCase()}
+        </div>
+      )}
+      {reduced && <div className="pvnote">Paused — Reduce effects is on, so the slideshow holds its picture.</div>}
+    </div>
   );
 }
 

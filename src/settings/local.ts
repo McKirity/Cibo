@@ -553,6 +553,70 @@ export const getLucideSeen = (): LucideSeen | null => {
   }
 };
 
+// ── the ambience slideshow (ruled 2026-08-20 — [[Ambience Slideshow]]) ──────
+//
+// Three per-device levers for the backdrop SET a theme may carry (backdrops/ ·
+// timers/): how often the picture changes · how long the crossfade takes ·
+// whether the Timers screen has its own surface or just keeps the backdrop.
+// Appearance levers are local by the [[Sync & Per-Device Settings]] roster, so
+// none of these sync. Settings → Appearance → Ambience owns the rows; the
+// Ambience layer reads the values live through AMBIENCE_SETTINGS_EVENT.
+
+/** Seconds between swaps; 0 = Off (a set shows its FIRST picture by filename, never swaps). */
+export const AMB_INTERVAL_KEY = "cibo.ambienceInterval";
+/** The preset list IS the domain — a value outside it (a hand-edited file) falls to the default. */
+export const AMB_INTERVALS = [0, 30, 60, 120, 300, 600, 900, 1800, 3600] as const;
+export const AMB_INTERVAL_DEFAULT = 600;
+export const intervalLabel = (s: number): string => (s === 0 ? "Off" : s < 60 ? `${s} s` : `${s / 60} min`);
+export const getAmbienceInterval = (): number => {
+  const v = Number(lsGet(AMB_INTERVAL_KEY) ?? AMB_INTERVAL_DEFAULT);
+  return (AMB_INTERVALS as readonly number[]).includes(v) ? v : AMB_INTERVAL_DEFAULT;
+};
+
+/** Crossfade length in ms; 0 = a hard cut. A SETTING, not a constant and not a roster dial (user's B). */
+export const AMB_FADE_KEY = "cibo.ambienceFade";
+export const AMB_FADE_DEFAULT = 1500;
+export const AMB_FADE_STEP = 500;
+export const AMB_FADE_MAX = 5000;
+export const clampAmbienceFade = (ms: number): number =>
+  !Number.isFinite(ms) ? AMB_FADE_DEFAULT : Math.min(AMB_FADE_MAX, Math.max(0, Math.round(ms / AMB_FADE_STEP) * AMB_FADE_STEP));
+export const getAmbienceFade = (): number => clampAmbienceFade(Number(lsGet(AMB_FADE_KEY) ?? AMB_FADE_DEFAULT));
+/**
+ * The fade is published as ONE custom property on the root, and BOTH the real
+ * backdrop layers and the Settings preview read it — one owner (the `probe-1`
+ * callee rule), so the preview cannot drift from the thing it previews.
+ */
+export const AMB_FADE_PROP = "--amb-fade";
+export const applyAmbienceFade = (): void => {
+  document.documentElement.style.setProperty(AMB_FADE_PROP, `${getAmbienceFade()}ms`);
+};
+
+/** "own" = the Timers screen shows its own surface (today's behaviour, the default);
+ *  "shared" = NO timer surface at all — the backdrop simply continues (user-ruled). */
+export type TimerAmbience = "own" | "shared";
+export const TIMER_AMB_KEY = "cibo.timerAmbience";
+export const getTimerAmbience = (): TimerAmbience => (lsGet(TIMER_AMB_KEY) === "shared" ? "shared" : "own");
+
+/** Fired on every ambience-setting write; the Ambience layer re-reads on it. */
+export const AMBIENCE_SETTINGS_EVENT = "cibo:ambience-settings";
+const announceAmbience = (): void => {
+  window.dispatchEvent(new Event(AMBIENCE_SETTINGS_EVENT));
+};
+
+export const setAmbienceInterval = (s: number): void => {
+  lsSet(AMB_INTERVAL_KEY, String((AMB_INTERVALS as readonly number[]).includes(s) ? s : AMB_INTERVAL_DEFAULT));
+  announceAmbience();
+};
+export const setAmbienceFade = (ms: number): void => {
+  lsSet(AMB_FADE_KEY, String(clampAmbienceFade(ms)));
+  applyAmbienceFade();
+  announceAmbience();
+};
+export const setTimerAmbience = (v: TimerAmbience): void => {
+  lsSet(TIMER_AMB_KEY, v);
+  announceAmbience();
+};
+
 // ── launch wiring ────────────────────────────────────────────────────────────
 
 /** bootstrap.tsx, beside initCompact — apply every persisted per-device lever. */
@@ -560,6 +624,7 @@ export function initLocalSettings(): void {
   // Stamp the icon set's install date before any surface asks for it.
   noteLucideVersion(LUCIDE_VERSION);
   document.documentElement.classList.toggle("reduce-effects", getReduceEffects());
+  applyAmbienceFade();
   void applyZoom();
   // The geometry half of the MacBook preview — persisted as a flag since it was
   // built, re-applied to the window only since 2026-08-08.

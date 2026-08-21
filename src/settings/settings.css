@@ -611,3 +611,26 @@
 .kseditor .ksreasons { display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--size-caption);
                        color: var(--text-secondary); max-width: 300px; }
 .kseditor .ksreasons.ok { color: var(--verdict-done); }
+
+/* --- Appearance → Ambience: the fade preview (ruled 2026-08-20) ---------------
+   Owning record [[Ambience Slideshow]]. A LIVE demo, never a video: two generic
+   dial-drawn panels crossfading on a short loop, the top one wearing .ambfade
+   so it reads `--amb-fade` — the SAME property and the SAME `amb-in` keyframes
+   (declared once, shell.css) the real backdrop layers use. One owner; the
+   preview cannot drift from the thing it previews. No art ships with it, so it
+   works on the Default. The labels carry their own ground via paint-order (the
+   banner-tile device) so contrast never depends on the panel behind them. */
+.setscreen .ambprev { position: relative; width: 24rem; max-width: 100%; aspect-ratio: 16 / 9; overflow: hidden;
+                      border-radius: var(--radius-medium); border: var(--border-hairline) solid var(--divider);
+                      background: var(--inset-background); }
+.setscreen .ambprev .pv { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+                          font-family: var(--font-heading); font-size: var(--size-display); font-weight: var(--weight-bold);
+                          color: var(--text-strong); -webkit-text-stroke: 3px var(--window-background); paint-order: stroke fill; }
+.setscreen .ambprev .pv.a { background: linear-gradient(135deg, var(--accent), var(--panel-background)); }
+.setscreen .ambprev .pv.b { background: linear-gradient(315deg, var(--text-secondary), var(--inset-background)); }
+.setscreen .ambprev .pv.ambfade { animation: amb-in var(--amb-fade, 0ms) linear both; }
+.setscreen .ambprev .pvnote { position: absolute; left: 0; right: 0; bottom: 0; padding: var(--space-3) var(--space-4);
+                              font-family: var(--font-ui); font-size: var(--size-caption); color: var(--text-muted);
+                              background: var(--raised-background); border-top: var(--border-hairline) solid var(--divider); }
+/* The tab's quiet line — what the active theme carries (one backdrop · N in a set). */
+.setscreen .ambnote { font-family: var(--font-ui); font-size: var(--size-caption); color: var(--text-muted); margin: 0; }

@@ -17,6 +17,7 @@ at launch. The folder rides your cloud drive, so it appears on both devices auto
 | `backdrop_loop/`                 | Motion — patch loops (animated crops of the still)   | per patch  | No        |
 | `timer.<ext>`                    | Still — the Timers-screen backdrop                   | 2560×1440  | No        |
 | `timer_loop.mp4` · `timer_loop/` | Timer motion — the same two types                    | —          | No        |
+| `backdrops/` · `timers/`         | A SET of stills — the slideshow (see below)          | any        | No        |
 | `fonts/`                         | Font files this theme's type dials name              | —          | No        |
 | `decoration/`                    | Per-slot ornament art + its manifest                 | per slot   | No        |
 
@@ -37,6 +38,35 @@ theme's flat `--window-background`.
   visible at a time. Absent → falls back to `backdrop`. Crop: **dead center to dead center** —
   compose the important parts around the image's centre (the Timers screen runs rail-minimized
   by design).
+
+## Several backdrops — the slideshow *(2026-08-20)*
+
+Instead of one `backdrop.<ext>`, a theme may carry a **`backdrops/`** folder holding **any number
+of stills**; the app **shuffles through them on a timer with a crossfade**. The same goes for
+**`timers/`** on the Timers screen.
+
+```
+My Theme/
+├── theme.css
+└── backdrops/
+    ├── 01-dawn.jpg
+    ├── 02-noon.jpg
+    └── 03-dusk.jpg
+```
+
+- **Filename order is the only ordering** — number the files. The deck is shuffled on top of it,
+  and when the slideshow is set to *Off* the **first file by name** is the one shown.
+- **Mixed sizes are fine** — each picture is cropped by its own dimensions under the same
+  right-corners / dead-centre law.
+- **Stills only.** No `_loop` motion inside a set; motion stays with the single-file form.
+- **If both `backdrop.<ext>` and `backdrops/` exist, the folder wins** and the loose file is
+  reported as a packaging slip in the console.
+- **2560×1440 is plenty.** Only two pictures are ever in memory at once, however many you drop
+  in — but each one costs roughly width × height × 4 bytes once decoded, so a 4K source buys
+  nothing but memory.
+
+How often it changes, how long the fade takes, and whether Timers keeps its own folder or
+simply continues the backdrop are all set **per device** in Settings → Appearance → Ambience.
 
 ## Motion — exactly two types, never both on one surface
 

@@ -3,7 +3,9 @@
  * folder contract; the loading rules quoted there govern this module).
  *
  * TWO surfaces per theme (the vignette was abandoned 2026-07-26): `backdrop`
- * and `timer`. Per surface:
+ * and `timer`. Each surface takes ONE of two forms:
+ *
+ *   THE SINGLE-FILE FORM (step 6a)
  *   still  — `<base>.<ext>`, matched down a fixed priority (PNG wins ties);
  *            REQUIRED whenever the surface carries motion — no still means the
  *            surface is silent and any motion is a packaging error, skipped.
@@ -12,11 +14,25 @@
  *            `{x, y, fps}` in 2560×1440 master coordinates; fps clamped ≤24).
  *            MUTUALLY EXCLUSIVE per surface: an .mp4 present means the folder
  *            is ignored and flagged as a packaging error.
+ *
+ *   THE SET FORM (ruled 2026-08-20 — [[Ambience Slideshow]])
+ *   `backdrops/` · `timers/` — any number of stills, SORTED BY FILENAME
+ *            (numeric-aware, so `2.jpg` precedes `10.jpg`), mixed sizes legal
+ *            (the crop law is computed per image), STILLS ONLY — motion stays
+ *            bound to the single-file form. The scan LISTS the folder and
+ *            loads nothing; the slideshow (Ambience.tsx) loads ONE member at a
+ *            time through `loadStill` and releases it after the swap, so a
+ *            forty-picture set costs the memory of two pictures.
+ *            If both forms are present THE SET WINS and the loose file is
+ *            warned as a packaging slip (the mp4-vs-folder exclusivity shape).
+ *
  *   soft-fail — a malformed patch is skipped; a broken video falls back to
  *            the still (the renderer's job); nothing here ever throws out.
  *
  * Art travels as blob URLs (bytes read Rust-side via plugin-fs) — no asset
- * protocol, no CSP surface. Re-scanning revokes the previous URLs.
+ * protocol, no CSP surface. Re-scanning revokes the previous URLs; a set
+ * member's URL is revoked by its own `release()` when the slideshow is done
+ * with it.
  */
 
 const EXTS = ["png", "jpg", "jpeg", "webp", "avif", "svg"] as const;
@@ -29,6 +45,9 @@ const MIME: Record<string, string> = {
   svg: "image/svg+xml",
   mp4: "video/mp4",
 };
+
+/** The set folder per surface base name. */
+const SET_DIR: Record<"backdrop" | "timer", string> = { backdrop: "backdrops", timer: "timers" };
 
 export interface PatchLoop {
   /** Crop top-left in master (still-image) pixel coordinates. */
@@ -49,15 +68,39 @@ export interface SurfaceAssets {
   patches: PatchLoop[];
 }
 
+/** One member of a set — a PATH, not a loaded picture. */
+export interface SetFile {
+  path: string;
+  ext: string;
+  name: string;
+}
+
+/** A set member once loaded; `release()` revokes its blob URL (idempotent). */
+export interface LoadedStill {
+  url: string;
+  w: number;
+  h: number;
+  release: () => void;
+}
+
+export type Surface = { kind: "single"; assets: SurfaceAssets } | { kind: "set"; files: SetFile[] };
+
 export interface AmbienceAssets {
-  backdrop: SurfaceAssets | null;
-  timer: SurfaceAssets | null;
+  backdrop: Surface | null;
+  timer: Surface | null;
 }
 
 let liveUrls: string[] = [];
 const track = (url: string): string => {
   liveUrls.push(url);
   return url;
+};
+const untrack = (url: string): void => {
+  const i = liveUrls.indexOf(url);
+  if (i >= 0) {
+    liveUrls.splice(i, 1);
+    URL.revokeObjectURL(url);
+  }
 };
 /** Revoke every blob URL of the previous scan (called on re-scan). */
 export function revokeAmbience(): void {
@@ -73,33 +116,108 @@ async function blobUrl(path: string, ext: string): Promise<string> {
   return track(URL.createObjectURL(new Blob([data], { type: MIME[ext] ?? "" })));
 }
 
+/**
+ * Load AND DECODE — `decode()` is what makes a crossfade's first frame free:
+ * an image that has only loaded still owes its decode to the first paint, and
+ * a 2560×1440 decode on the main thread at the fade's first frame is a visible
+ * hitch. Falls back to the bare load where decode() is unsupported.
+ */
 const imageDims = (url: string): Promise<{ w: number; h: number }> =>
   new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onload = () => {
+      const done = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      if (typeof img.decode === "function") img.decode().then(done, done);
+      else done();
+    };
     img.onerror = () => reject(new Error("image failed to decode"));
     img.src = url;
   });
 
-async function scanSurface(themeDir: string, base: string): Promise<SurfaceAssets | null> {
+const extOf = (name: string): string | null => {
+  const dot = name.lastIndexOf(".");
+  if (dot < 0) return null;
+  const ext = name.slice(dot + 1).toLowerCase();
+  return (EXTS as readonly string[]).includes(ext) ? ext : null;
+};
+
+/** Numeric-aware filename sort, so an author's `1, 2, …, 10` numbering holds. */
+const byName = (a: SetFile, b: SetFile): number =>
+  a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+
+/** List a set folder's stills (paths only — nothing is read). Absent/empty → []. */
+async function listSet(themeDir: string, dirName: string): Promise<SetFile[]> {
+  const fs = await import("@tauri-apps/plugin-fs");
+  const { join } = await import("@tauri-apps/api/path");
+  const dir = await join(themeDir, dirName);
+  if (!(await fs.exists(dir))) return [];
+  let entries: Awaited<ReturnType<typeof fs.readDir>> = [];
+  try {
+    entries = await fs.readDir(dir);
+  } catch (e) {
+    console.warn(`Ambience: ${dirName}/ unreadable — treated as absent:`, e);
+    return [];
+  }
+  const files: SetFile[] = [];
+  for (const e of entries) {
+    if (!e.isFile) continue;
+    const ext = extOf(e.name);
+    if (!ext) continue;
+    files.push({ path: await join(dir, e.name), ext, name: e.name });
+  }
+  return files.sort(byName);
+}
+
+/** Load one set member. Rejects on an unreadable file (the caller skips it). */
+export async function loadStill(file: SetFile): Promise<LoadedStill> {
+  const url = await blobUrl(file.path, file.ext);
+  try {
+    const { w, h } = await imageDims(url);
+    return { url, w, h, release: () => untrack(url) };
+  } catch (e) {
+    untrack(url);
+    throw e;
+  }
+}
+
+/** The single-file still's path, down the fixed priority; null when none. */
+async function findStill(themeDir: string, base: string): Promise<{ path: string; ext: string } | null> {
+  const fs = await import("@tauri-apps/plugin-fs");
+  const { join } = await import("@tauri-apps/api/path");
+  for (const ext of EXTS) {
+    const p = await join(themeDir, `${base}.${ext}`);
+    if (await fs.exists(p)) return { path: p, ext };
+  }
+  return null;
+}
+
+async function scanSurface(themeDir: string, base: "backdrop" | "timer"): Promise<Surface | null> {
   const fs = await import("@tauri-apps/plugin-fs");
   const { join } = await import("@tauri-apps/api/path");
 
-  // The still — fixed priority, PNG wins ties, one file per base name.
-  let still: SurfaceAssets["still"] | null = null;
-  for (const ext of EXTS) {
-    const p = await join(themeDir, `${base}.${ext}`);
-    if (await fs.exists(p)) {
-      try {
-        const url = await blobUrl(p, ext);
-        still = { url, ...(await imageDims(url)) };
-      } catch (e) {
-        console.warn(`Ambience: ${base} still unreadable, surface silent:`, e);
-      }
-      break;
-    }
+  const single = await findStill(themeDir, base);
+
+  // The set form wins over the loose file; motion beside a set is ignored too.
+  const set = await listSet(themeDir, SET_DIR[base]);
+  if (set.length) {
+    if (single)
+      console.warn(`Ambience: ${SET_DIR[base]}/ present — ${base}.${single.ext} ignored (packaging slip: the set wins).`);
+    const mp4 = await fs.exists(await join(themeDir, `${base}_loop.mp4`));
+    const dir = await fs.exists(await join(themeDir, `${base}_loop`));
+    if (mp4 || dir) console.warn(`Ambience: ${base}_loop motion ignored — a set carries stills only.`);
+    return { kind: "set", files: set };
   }
-  if (!still) return null; // silence is always valid; motion without a still is skipped
+
+  // The still — fixed priority, PNG wins ties, one file per base name.
+  if (!single) return null; // silence is always valid; motion without a still is skipped
+  let still: SurfaceAssets["still"];
+  try {
+    const url = await blobUrl(single.path, single.ext);
+    still = { url, ...(await imageDims(url)) };
+  } catch (e) {
+    console.warn(`Ambience: ${base} still unreadable, surface silent:`, e);
+    return null;
+  }
 
   // Motion — mutually exclusive per surface; the .mp4 wins, the folder flags.
   const mp4Path = await join(themeDir, `${base}_loop.mp4`);
@@ -116,10 +234,10 @@ async function scanSurface(themeDir: string, base: string): Promise<SurfaceAsset
       }
     }
     try {
-      return { still, video: await blobUrl(mp4Path, "mp4"), patches: [] };
+      return { kind: "single", assets: { still, video: await blobUrl(mp4Path, "mp4"), patches: [] } };
     } catch (e) {
       console.warn(`Ambience: ${base}_loop.mp4 unreadable — the still stands:`, e);
-      return { still, video: null, patches: [] };
+      return { kind: "single", assets: { still, video: null, patches: [] } };
     }
   }
 
@@ -159,7 +277,7 @@ async function scanSurface(themeDir: string, base: string): Promise<SurfaceAsset
       }
     }
   }
-  return { still, video: null, patches };
+  return { kind: "single", assets: { still, video: null, patches } };
 }
 
 /** Scan both surfaces of a theme folder. Never throws; silence on failure. */
@@ -175,4 +293,23 @@ export async function scanAmbience(themeDir: string | null): Promise<AmbienceAss
     console.warn("Ambience scan failed — surfaces silent:", e);
     return { backdrop: null, timer: null };
   }
+}
+
+/**
+ * Settings → Appearance → Ambience's question: how many pictures does the
+ * active theme's each surface carry? A LIST-ONLY probe — reads no bytes, loads
+ * no blobs, never touches the live scan. A single-file surface counts as 1.
+ */
+export async function probeAmbienceSets(themeDir: string | null): Promise<{ backdrop: number; timer: number }> {
+  if (!inTauri() || !themeDir) return { backdrop: 0, timer: 0 };
+  const count = async (base: "backdrop" | "timer"): Promise<number> => {
+    try {
+      const set = await listSet(themeDir, SET_DIR[base]);
+      if (set.length) return set.length;
+      return (await findStill(themeDir, base)) ? 1 : 0;
+    } catch {
+      return 0;
+    }
+  };
+  return { backdrop: await count("backdrop"), timer: await count("timer") };
 }

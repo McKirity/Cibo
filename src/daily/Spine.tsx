@@ -1683,6 +1683,21 @@ function VocabSelect({
   // dead-ends on a missing value). The row flips to an inline input; commit
   // reuses an existing value case-insensitively (canonical casing wins) or
   // mints the new one and picks it.
+  //
+  // ⚠ THE LABEL READS "New", NOT "New value" — user-ruled 2026-08-20, on the
+  // Mac, against the measured box rather than taste. `.pkdrop` is
+  // `left:0; right:0` on its field, so a narrow field gives a narrow panel:
+  // Writing's KIND select resolves to 115.5 CSS px here, and the row needs
+  // ~120.8 (14px icon + 6 gap + 74.8 of text + 24 padding + 2 borders), so
+  // "New value" WRAPPED to two lines. The offered font shrink was declined
+  // and could not have carried it alone: --size-caption (14px) is the
+  // smallest type dial, one step buys ~5.0px against a ~5.3px deficit, and
+  // anything below it is a raw value the no-raw-values law forbids.
+  // The RULED NAME of the affordance is unchanged — only the word on screen
+  // is shorter. ⚠ The inline input's placeholder still reads "New value" and
+  // is deliberately untouched (it appears only after the row is clicked, in a
+  // flex:1 box); if it is ever seen truncating, this is the note that says
+  // the two strings were split on purpose.
   const [adding, setAdding] = useState(false);
   const [newVal, setNewVal] = useState("");
   const nearMatch =
@@ -1776,7 +1791,7 @@ function VocabSelect({
             }}
           >
             <IPlus />
-            New value
+            New
           </div>
         ) : (
           <div className="pk-new" onMouseDown={(e) => e.stopPropagation()}>

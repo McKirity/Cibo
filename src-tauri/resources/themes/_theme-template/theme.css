@@ -309,7 +309,7 @@
   --modal-import-w:    1320px;
   --modal-bulk-w:      1680px;
   --modal-bulk-h:      1040px;
-  --import-grid-cols:  6;
+  --import-grid-cols:  5;
   --bulk-grid-cols:    7;
   --bulk-rail-w:       380px;
   --import-progress-h: 6px;

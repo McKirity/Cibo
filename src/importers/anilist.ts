@@ -90,8 +90,11 @@ const creatorsOf = (m: AlMedia, kind: MediaKind): string[] => {
   return out;
 };
 
+// perPage 10, not 12 (2026-08-20): the results grid is 5 columns wide and every
+// source returns a multiple of 5 (Steam's storesearch hard-caps at 10), so the
+// grid's rows always fill — a count is the grid's business here, not AniList's.
 const SEARCH_QUERY = `query ($search: String, $type: MediaType, $isAdult: Boolean) {
-  Page(page: 1, perPage: 12) {
+  Page(page: 1, perPage: 10) {
     media(search: $search, type: $type, isAdult: $isAdult) {
       id title { english romaji } startDate { year }
       coverImage { large medium }

@@ -52,6 +52,9 @@ import { deleteEntriesCascade } from "../library/entryDelete";
 import { showErrorToast, showUndoToast } from "../shell/toast";
 import { todayLocal } from "../metrics/clock";
 import { MONTHS_SHORT, stars } from "../metrics/format";
+// The priority chevrons + chooser — the library's atoms, already drawn on four
+// screens (library · bulk picker · palette · settings): a kit-block candidate.
+import { PrioGlyph, PrioPicker, prioTitle } from "../library/bits";
 import type { CreationHeatCell, CreationModel } from "./creationSpec";
 import "../dashboard.css";
 import "./screen.css";
@@ -143,7 +146,7 @@ export function EntryDashboard({
           )}
 
           {/* ── Stats strip (measure-grouped rows) ── */}
-          <Panel title="At a glance">
+          <Panel title="At a Glance">
             {m.statRows.map((row) => (
               <StatGroup key={row.label} label={row.label} tiles={row.tiles} tall={row.tall} />
             ))}
@@ -199,7 +202,7 @@ export function EntryDashboard({
           {/* ── Word-growth curve (creation two-measure only) — beneath the
                heatmap (user-ruled 2026-07-24) ── */}
           {m.growth && (
-            <Panel title={`${cap((data.countUnit ?? "count").replace(/s$/, ""))}-growth curve`}>
+            <Panel title={`${cap((data.countUnit ?? "count").replace(/s$/, ""))}-Growth Curve`}>
               <GrowthCurve g={m.growth} colorVar={m.colorVar} />
             </Panel>
           )}
@@ -210,7 +213,7 @@ export function EntryDashboard({
           <WaveZone waves={m.waves} colorVar={m.colorVar} />
 
           {/* ── Day log ── */}
-          <Panel title="Day log">
+          <Panel title="Day Log">
             <DayLog log={m.daylog} onOpenDay={onOpenDay} />
           </Panel>
         </div>
@@ -298,7 +301,15 @@ function RailView({
         {r.facts.map((f) => (
           <div className="f" key={f.label}>
             <b>{f.label}</b>
-            <span>{f.strong ? <strong>{f.value}</strong> : f.value}</span>
+            <span>
+              {f.priority != null ? (
+                <span title={prioTitle(f.priority)}><PrioGlyph p={f.priority} /></span>
+              ) : f.strong ? (
+                <strong>{f.value}</strong>
+              ) : (
+                f.value
+              )}
+            </span>
           </div>
         ))}
       </div>
@@ -342,7 +353,7 @@ function RailEdit({
   const [genre, setGenre] = useState<string[]>(e.genre);
   const [genreAdd, setGenreAdd] = useState("");
   const [rating, setRating] = useState(e.rating != null ? String(e.rating) : "");
-  const [priority, setPriority] = useState(e.priority != null ? String(e.priority) : "");
+  const [priority, setPriority] = useState<number | null>(e.priority);
   const [purchased, setPurchased] = useState(e.purchased === true);
   const [series, setSeries] = useState(e.series ?? "");
   const [seriesOrder, setSeriesOrder] = useState(e.seriesOrder != null ? String(e.seriesOrder) : "");
@@ -431,7 +442,7 @@ function RailEdit({
                   ? stringListToJson(genre.map((x) => NonEmptyString1000.orThrow(x)))
                   : null,
               rating: rating === "" ? null : PositiveInt.orThrow(Number(rating)),
-              priority: priority === "" ? null : NonNegativeInt.orThrow(Number(priority)),
+              priority: priority == null ? null : NonNegativeInt.orThrow(priority),
               purchased: hasBundle("purchased") ? (purchased ? 1 : 0) : null,
               series: series.trim() === "" ? null : NonEmptyString1000.orThrow(series.trim()),
               series_order: ord != null ? PositiveInt.orThrow(ord) : null,
@@ -575,14 +586,9 @@ function RailEdit({
             {hasBundle("priority") && (
               <div className="finput">
                 <span className="flabel">Priority</span>
-                <select className="fbox" value={priority} onChange={(ev) => setPriority(ev.target.value)}>
-                  <option value="">—</option>
-                  {[0, 1, 2, 3].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
+                {/* the creation modal's chooser, not a numeral select
+                    (user-ruled 2026-08-20: chevrons, never numbers) */}
+                <PrioPicker value={priority} onPick={setPriority} />
               </div>
             )}
           </div>
@@ -745,7 +751,7 @@ function WaveZone({ waves, colorVar }: { waves: WavesSpec; colorVar: string }) {
   }, [sel, open]);
 
   return (
-    <Panel title="Wave timeline">
+    <Panel title="Wave Timeline">
       <div className="waveheadrow">
         <span className="wavecount">
           {waves.countLabel}

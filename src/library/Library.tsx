@@ -39,7 +39,7 @@ import {
 } from "./librarySpec";
 import { stars } from "../metrics/format";
 import { useLibraryData } from "./useLibraryData";
-import { CoverArt, FilterChip, Ico, ICON, PrioGlyph, Stars, StatusPill } from "./bits";
+import { CoverArt, FilterChip, Ico, ICON, PrioGlyph, prioTitle, Stars, StatusPill } from "./bits";
 import { Pager } from "../kit/Pager";
 import { EntryCreationModal } from "./EntryCreationModal";
 import { BulkEditModal } from "./BulkEditModal";
@@ -362,13 +362,18 @@ export function Library({
             {has("priority") && (
               <FilterChip
                 k="Priority"
-                value={state.priority == null ? "All" : String(state.priority)}
+                value={
+                  state.priority == null ? "All" : state.priority === 0 ? "None" : (
+                    <span title={prioTitle(state.priority)}><PrioGlyph p={state.priority} /></span>
+                  )
+                }
                 active={state.priority != null}
                 items={[
                   { key: "", label: "All", selected: state.priority == null, onPick: () => patch({ priority: null }) },
+                  // chevrons, never numerals (user-ruled 2026-08-20); the count rides the title
                   ...[0, 1, 2, 3].map((p) => ({
                     key: String(p),
-                    label: p === 0 ? "None (0)" : String(p),
+                    label: p === 0 ? "None" : <span title={prioTitle(p)}><PrioGlyph p={p} /></span>,
                     selected: state.priority === p,
                     onPick: () => patch({ priority: p }),
                   })),

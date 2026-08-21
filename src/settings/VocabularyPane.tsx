@@ -59,6 +59,8 @@ import { entryMediumColumn } from "../db/entryMedium";
 import { Ico, ICONS } from "../shell/icons";
 import { HabitIcon, hasIcon } from "../shell/habitIcons";
 import { showErrorToast } from "../shell/toast";
+// The priority chevrons — the library's atom, drawn on every priority surface.
+import { PrioGlyph, prioTitle } from "../library/bits";
 
 /** The anchors, in their ruled order — matched case-insensitively. */
 const ANCHORS = ["Current", "Dropped", "Finished", "Hiatus", "Planned"];
@@ -448,7 +450,15 @@ export function VocabularyPane() {
                 <div className="vlist">
                   {current.fixed.map((v) => (
                     <span className="vrow" key={v}>
-                      <span className="vval">{v}</span>
+                      {/* the priority scale wears its chevrons, never the
+                          numeral (user-ruled 2026-08-20); the count is the title */}
+                      <span className="vval">
+                        {current.id === "priority" ? (
+                          <span title={prioTitle(Number(v))}><PrioGlyph p={Number(v)} /></span>
+                        ) : (
+                          v
+                        )}
+                      </span>
                     </span>
                   ))}
                 </div>

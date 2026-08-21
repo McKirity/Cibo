@@ -18,7 +18,7 @@
  * counts follow the live selection (entries · summed sessions · image files).
  * No type-to-confirm, no hold, no armed delay (user-ruled).
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { NonEmptyString100, NonEmptyString1000, NonNegativeInt, PositiveInt } from "@evolu/common";
 import { evolu } from "../db/evolu";
 import { stringListToJson, type EntryId } from "../db/schema";
@@ -39,7 +39,7 @@ import { isFilterActive } from "./librarySpec";
 import { stars, plural } from "../metrics/format";
 import { useLibraryData, type LibraryData } from "./useLibraryData";
 import { useOverlayEsc } from "../shell/overlayHooks";
-import { CoverArt, Ico, ICON, Menu, PrioGlyph, StatusPill, type MenuItem } from "./bits";
+import { CoverArt, Ico, ICON, Menu, PrioGlyph, prioTitle, StatusPill, type MenuItem } from "./bits";
 import { deleteEntriesCascade } from "./entryDelete";
 
 const PICKER_SORT_LABELS: Record<PickerSortKey, string> = {
@@ -177,7 +177,7 @@ export function BulkEditModal({
         {/* header */}
         <div className="mo-head">
           <span className="mo-title">
-            Bulk edit — <b>{n} selected</b>
+            Bulk Edit — <b>{n} selected</b>
           </span>
           <div className="mo-esc">
             <span className="escnote">Esc closes · confirms may stack</span>
@@ -282,13 +282,18 @@ export function BulkEditModal({
               />
               <BfChip
                 k="Priority"
-                value={pf.priority == null ? "All" : String(pf.priority)}
+                value={
+                  pf.priority == null ? "All" : pf.priority === 0 ? "None" : (
+                    <span title={prioTitle(pf.priority)}><PrioGlyph p={pf.priority} /></span>
+                  )
+                }
                 active={pf.priority != null}
                 items={[
                   { key: "", label: "All", selected: pf.priority == null, onPick: () => setPf((s) => ({ ...s, priority: null })) },
+                  // chevrons, never numerals (user-ruled 2026-08-20); the count rides the title
                   ...[0, 1, 2, 3].map((p) => ({
                     key: String(p),
-                    label: p === 0 ? "None (0)" : String(p),
+                    label: p === 0 ? "None" : <span title={prioTitle(p)}><PrioGlyph p={p} /></span>,
                     selected: pf.priority === p,
                     onPick: () => setPf((s) => ({ ...s, priority: p })),
                   })),
@@ -353,7 +358,7 @@ export function BulkEditModal({
                 ).map(([key, label]) => (
                   <button
                     key={key}
-                    className={`h sortable${sortKey === key ? " on" : ""}`}
+                    className={`h sortable${sortKey === key ? " on" : ""}${key === "priority" || key === "status" ? " pc" : ""}`}
                     onClick={() => setSort(key)}
                   >
                     {label}
@@ -415,14 +420,13 @@ export function BulkEditModal({
             {data.bundle.has("priority") && (
               <FieldBlock
                 name="Priority"
-                value={
-                  fields.priority === undefined
-                    ? undefined
-                    : fields.priority === 0
-                      ? "None (0)"
-                      : String(fields.priority)
-                }
-                options={[0, 1, 2, 3].map((p) => ({ label: p === 0 ? "None (0)" : String(p), value: p }))}
+                value={fields.priority === undefined ? undefined : String(fields.priority)}
+                options={[0, 1, 2, 3].map((p) => ({
+                  label: String(p),
+                  // chevrons, never numerals (user-ruled 2026-08-20)
+                  display: p === 0 ? "None" : <span title={prioTitle(p)}><PrioGlyph p={p} /></span>,
+                  value: p,
+                }))}
                 onPick={(v) => setFields((f) => ({ ...f, priority: v as number | undefined }))}
               />
             )}
@@ -523,7 +527,7 @@ function BfChip({
   items,
 }: {
   k: string;
-  value: string;
+  value: ReactNode;
   active: boolean;
   items: MenuItem[];
 }) {
@@ -532,7 +536,7 @@ function BfChip({
     <span className="tselwrap">
       <button className={`bf${active ? " on" : ""}`} onClick={() => setOpen((o) => !o)}>
         <span className="k">{k}</span>
-        {value}
+        <b>{value}</b>
         <Ico d={ICON.chevron} size={14} />
       </button>
       {open && <Menu items={items} onClose={() => setOpen(false)} />}
@@ -563,7 +567,7 @@ function PickerRow({
       </span>
       <CoverArt title={e.title} cover={e.cover} className="lthumb" />
       <span className="lt">{e.title}</span>
-      <span className="cell">
+      <span className="cell pc">
         {e.status != null && <StatusPill status={e.status} vocab={vocab} />}
       </span>
       <span className="cell">
@@ -575,7 +579,8 @@ function PickerRow({
           <span className="dim">Unrated</span>
         )}
       </span>
-      <span className="cell">
+      {/* `.pc` — centred on its track, like Status above (user-ruled 2026-08-20) */}
+      <span className="cell pc">
         <PrioGlyph p={e.priority ?? 0} />
       </span>
       {hasType && <span className="cell">{e.type ?? ""}</span>}
@@ -601,17 +606,20 @@ function FieldBlock({
   onPick,
 }: {
   name: string;
+  /** The picked option's `label` — identity; what is DRAWN is its `display`. */
   value: string | undefined;
-  options: { label: string; value: unknown }[];
+  /** `display` is optional — a glyph face for the label (priority's chevrons). */
+  options: { label: string; display?: ReactNode; value: unknown }[];
   onPick: (v: unknown) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const picked = options.find((o) => o.label === value);
   return (
     <div className="fblock">
       <p className="fname">{name}</p>
       <span className="tselwrap block">
         <button className="fsel" onClick={() => setOpen((o) => !o)}>
-          {value ?? "No change"}
+          {value === undefined ? "No change" : (picked?.display ?? value)}
           <Ico d={ICON.chevron} size={14} />
         </button>
         {open && (
@@ -626,7 +634,7 @@ function FieldBlock({
               },
               ...options.map((o) => ({
                 key: String(o.value),
-                label: o.label,
+                label: o.display ?? o.label,
                 selected: value === o.label,
                 onPick: () => onPick(o.value),
               })),

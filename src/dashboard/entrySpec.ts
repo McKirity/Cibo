@@ -120,6 +120,9 @@ export interface RailFact {
   label: string;
   value: string;
   strong: boolean;
+  /** Set on the Priority fact: the renderer draws the chevrons, never the
+   *  numeral (user-ruled 2026-08-20); `value` stays the count for tests/titles. */
+  priority?: number;
 }
 
 export interface RailSpec {
@@ -478,7 +481,12 @@ function buildRail(input: EntryBuildInput): RailSpec {
         { label: "Completed", value: entry.completed ? fmtDMY(entry.completed) : "—", strong: entry.completed != null },
       ]
     : [
-        { label: "Priority", value: entry.priority != null ? String(entry.priority) : "—", strong: entry.priority != null },
+        {
+          label: "Priority",
+          value: entry.priority != null ? String(entry.priority) : "—",
+          strong: entry.priority != null,
+          ...(entry.priority != null ? { priority: entry.priority } : {}),
+        },
         { label: "Purchased", value: entry.purchased == null ? "—" : entry.purchased ? "Yes" : "No", strong: false },
         {
           label: "Series",

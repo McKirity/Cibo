@@ -9,7 +9,7 @@
  * enumerated at build time, so the tint rule reads the dial through the
  * property — the `--cell-ink`/`--rail-hue` precedent).
  */
-import { useState, type CSSProperties } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { stars } from "../metrics/format";
 import { Menu, type MenuItem } from "../kit/Menu";
 import { Ico, ICONS } from "../shell/icons";
@@ -86,6 +86,10 @@ export function Stars({ rating }: { rating: number | null }) {
   );
 }
 
+/** The priority count's hover caption — the chevrons carry the reading, the
+ *  title keeps the number reachable (the Advanced Search precedent, 08-15). */
+export const prioTitle = (p: number): string => (p === 0 ? "Priority 0 — none" : `Priority ${p}`);
+
 /** The read-only priority chevrons (0–3), a glance — never a control. */
 export function PrioGlyph({ p }: { p: number }) {
   return (
@@ -106,6 +110,56 @@ export function PrioGlyph({ p }: { p: number }) {
   );
 }
 
+/**
+ * The 0–3 priority CHOOSER — the creation modal's `.ec-prio` face, hoisted
+ * 2026-08-20 so the entry dashboard's edit face stops offering a native
+ * `<select>` of numerals (user-ruled: chevrons, never numbers, everywhere a
+ * priority shows). `value` null = nothing chosen yet (an imported entry that
+ * never had one); None writes 0, which is what every filter already reads null
+ * as (`e.priority ?? 0`).
+ */
+export function PrioPicker({
+  value,
+  onPick,
+}: {
+  value: number | null;
+  onPick: (p: number) => void;
+}) {
+  return (
+    <span className="ec-prio">
+      {[0, 1, 2, 3].map((p) => (
+        <button
+          key={p}
+          type="button"
+          className={`po${value === p ? " on" : ""}`}
+          title={prioTitle(p)}
+          onClick={() => onPick(p)}
+        >
+          {p === 0 ? (
+            <span className="dash">—</span>
+          ) : (
+            <span className="prio">
+              {Array.from({ length: p }, (_, i) => (
+                <svg key={i} className="ar on" viewBox="0 0 12 7">
+                  <path
+                    d="M1 6 6 1l5 5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              ))}
+            </span>
+          )}
+          <span className="pl">{p === 0 ? "None" : p}</span>
+        </button>
+      ))}
+    </span>
+  );
+}
+
 /** A trigger + menu pairing for the drawn `.tsel` filter chip. */
 export function FilterChip({
   k,
@@ -114,7 +168,8 @@ export function FilterChip({
   items,
 }: {
   k: string;
-  value: string;
+  /** A string, or a glyph — the priority chip shows its chevrons (2026-08-20). */
+  value: ReactNode;
   active: boolean;
   items: MenuItem[];
 }) {

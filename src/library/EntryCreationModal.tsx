@@ -30,7 +30,7 @@ import { DateOnly, stringListToJson } from "../db/schema";
 import { findDuplicate } from "./librarySpec";
 import { useLibraryData, type LibraryData } from "./useLibraryData";
 import { useOverlayEsc } from "../shell/overlayHooks";
-import { Ico, ICON, Menu, StatusPill } from "./bits";
+import { Ico, ICON, Menu, StatusPill, PrioPicker } from "./bits";
 
 export function EntryCreationModal({
   habitKey,
@@ -213,7 +213,7 @@ export function EntryCreationModal({
         {/* header */}
         <div className="mo-head">
           <div className="mo-titlewrap">
-            <span className="mo-title">New entry — {data.name}</span>
+            <span className="mo-title">New Entry — {data.name}</span>
           </div>
           <div className="mo-esc">
             <span className="escnote">Esc to close</span>
@@ -445,35 +445,9 @@ export function EntryCreationModal({
                   Priority<span className="opt">fixed 0–3</span>
                 </span>
                 <span className="ec-ctrl">
-                  <span className="ec-prio">
-                    {[0, 1, 2, 3].map((p) => (
-                      <button
-                        key={p}
-                        className={`po${priority === p ? " on" : ""}`}
-                        onClick={() => setPriority(p)}
-                      >
-                        {p === 0 ? (
-                          <span className="dash">—</span>
-                        ) : (
-                          <span className="prio">
-                            {Array.from({ length: p }, (_, i) => (
-                              <svg key={i} className="ar on" viewBox="0 0 12 7">
-                                <path
-                                  d="M1 6 6 1l5 5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            ))}
-                          </span>
-                        )}
-                        <span className="pl">{p === 0 ? "None" : p}</span>
-                      </button>
-                    ))}
-                  </span>
+                  {/* the chooser lives in bits.tsx since 2026-08-20 — the
+                      entry dashboard's edit face draws the same one */}
+                  <PrioPicker value={priority} onPick={setPriority} />
                 </span>
               </div>
             )}

@@ -388,6 +388,11 @@
 /* an ACTIVE (non-default) picker filter reads accent — the .tsel.on rule */
 .bf.on { border-color: var(--accent); color: var(--accent); background: var(--selected-wash); }
 .bf.on .k, .bf.on .ico { color: var(--accent); }
+/* the picked VALUE goes bold once it is something other than the default
+   (user-ruled 2026-08-20: "Status > Current — bold the value"); at rest the
+   <b> is weightless so "All" reads as the chip's plain text */
+.bf b { font-weight: inherit; }
+.bf.on b { font-weight: var(--weight-bold); }
 /* THE PICKER TABLE — the 2026-07-27 exhibit ruling (v3 "list"): the cover
    grid is GONE; every quality is a COLUMN, aligned; headers sort (status by
    lifecycle order); rows toggle selection. Translated verbatim from
@@ -463,6 +468,20 @@
 .plhead .h.sortable { cursor: pointer; }
 .plhead .h.sortable:hover { color: var(--text-secondary); }
 .plhead .h.on { color: var(--text-strong); }
+/* the STATUS and PRIORITY columns centre — header label and content alike
+   (user-ruled 2026-08-20: "make sure the chevrons are centered on the column"
+   · "make sure the contents in the status column are centered"). The chevron
+   stack is 12px in an 82px track and the pill ~50–73px in a 90px one, so
+   left-packed both read as hugging the column to their left. `.pc` is set in
+   BulkEditModal on each header + cell pair. */
+.plhead .h.pc { justify-content: center; }
+/* The sort caret is only FADED when the column is unsorted (`.car` at opacity
+   0), so it still holds its width — centring label+caret as a pair puts the
+   visible word ~6px left of the track's centre, and the glyphs below then read
+   as sitting right of it. A mirrored invisible caret on the left balances it;
+   the flex gap applies on both sides, so the label lands dead centre. */
+.plhead .h.pc::before { content: "↓"; opacity: 0; }
+.picker2 .cell.pc { display: flex; justify-content: center; }
 .plhead .h .car { opacity: 0; }
 .plhead .h.on .car { opacity: 1; }
 .plrow { padding: var(--space-3) var(--space-5); border: 0; border-top: var(--border-hairline) solid var(--divider);

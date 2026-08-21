@@ -18,6 +18,18 @@
  *
  * EXCLUSIVITY still reads through the rows: one clock per simple habit, per
  * ENTRY for project habits (picked here at join).
+ *
+ * CATEGORICALS ARE PICKED AT JOIN TOO (2026-08-20, user-ruled — Coding's
+ * language): a habit declaring session-scope picklists opens the same sub-pick
+ * with one chip roster per picklist, and the answers ride the tracked item into
+ * the hand-off so the landed bout is complete. Before this the hand-off
+ * committed Coding bouts with NO language, silently — the timer rulings predate
+ * the categorical flavor (named 2026-07-23) and never saw the gap. The entry's
+ * precedent governs: picked here, the log step confirms. Implementation: a
+ * habit with picklists is not a valid pick until at least one is answered (the
+ * project-entry rule's shape); two or more picklists are ALTERNATIVES, as
+ * Daily's Kind switch treats them (Writing's Stage vs Wiki) — picking one
+ * clears the other.
  */
 import { Fragment, useMemo, useState } from "react";
 import { useQuery } from "@evolu/react";
@@ -67,12 +79,77 @@ const entriesQuery = evolu.createQuery((db) =>
     ),
 );
 
+// Session-scope picklists of the eligible roster + their vocab — the sub-pick's
+// categorical sections. Same ordering discipline as useDayData's definitions
+// query (createdAt ties within a seed batch; the key breaks them).
+const definitionsQuery = evolu.createQuery((db) =>
+  db
+    .selectFrom("subunit_definitions")
+    .select(["id", "habit_fk", "key", "label", "data_type"])
+    .where("scope", "=", "session")
+    .where("data_type", "<>", "flag")
+    .where("isDeleted", "is not", 1)
+    .where("habit_fk", "in", (eb) =>
+      eb
+        .selectFrom("habits")
+        .select("habits.id")
+        .where("measures_time", "=", 1)
+        .where("isDeleted", "is not", 1),
+    )
+    .orderBy("createdAt")
+    .orderBy("key"),
+);
+
+const vocabQuery = evolu.createQuery((db) =>
+  db
+    .selectFrom("vocab_options")
+    .select(["definition_fk", "value", "sort_order"])
+    .where("definition_fk", "is not", null)
+    .where("isDeleted", "is not", 1)
+    .orderBy("sort_order"),
+);
+
+export interface PickerDefinition {
+  id: string;
+  key: string;
+  label: string;
+  vocab: string[];
+}
+
+/** Per-habit session picklists with their vocab, in declaration order. */
+export const usePickerDefinitions = (): ReadonlyMap<string, PickerDefinition[]> => {
+  const defRows = useQuery(definitionsQuery);
+  const vocabRows = useQuery(vocabQuery);
+  return useMemo(() => {
+    const vocabByDef = new Map<string, string[]>();
+    for (const v of vocabRows) {
+      if (v.definition_fk == null || v.value == null) continue;
+      const list = vocabByDef.get(v.definition_fk) ?? [];
+      list.push(v.value);
+      vocabByDef.set(v.definition_fk, list);
+    }
+    const out = new Map<string, PickerDefinition[]>();
+    for (const d of defRows) {
+      if (d.habit_fk == null || d.key == null) continue;
+      const list = out.get(d.habit_fk) ?? [];
+      list.push({
+        id: d.id,
+        key: d.key,
+        label: d.label ?? d.key,
+        vocab: vocabByDef.get(d.id) ?? [],
+      });
+      out.set(d.habit_fk, list);
+    }
+    return out;
+  }, [defRows, vocabRows]);
+};
+
 /** The consumption search face shows this many rows at once. */
 const RESULT_CAP = 8;
 
 export type PickerSelection = Record<
   string,
-  { on: boolean; entryId: string | null } | undefined
+  { on: boolean; entryId: string | null; cats?: Record<string, string> } | undefined
 >;
 
 /** The picked units as ready tracked items (empty until a valid pick exists). */
@@ -86,6 +163,7 @@ export const selectionToItems = (
     colour_slot: string | null;
   }>,
   entryTitles: ReadonlyMap<string, string>,
+  defsByHabit: ReadonlyMap<string, PickerDefinition[]>,
 ): Omit<TrackedItem, "baseMs">[] => {
   const items: Omit<TrackedItem, "baseMs">[] = [];
   for (const h of habits) {
@@ -93,6 +171,14 @@ export const selectionToItems = (
     if (!sel?.on) continue;
     const isProject = h.kind === "project";
     if (isProject && sel.entryId == null) continue; // the entry is picked at join
+    const defs = defsByHabit.get(h.id) ?? [];
+    // only answers to picklists the habit still declares, in declaration order
+    const cats: Record<string, string> = {};
+    for (const d of defs) {
+      const v = sel.cats?.[d.key];
+      if (v) cats[d.key] = v;
+    }
+    if (defs.length > 0 && Object.keys(cats).length === 0) continue; // picked at join, like the entry
     items.push({
       habitId: h.id,
       habitKey: h.key ?? "",
@@ -101,6 +187,7 @@ export const selectionToItems = (
       colourSlot: h.colour_slot ?? "habit-1",
       entryId: isProject ? sel.entryId : null,
       entryTitle: isProject ? (entryTitles.get(sel.entryId ?? "") ?? null) : null,
+      cats: defs.length > 0 ? cats : undefined,
     });
   }
   return items;
@@ -131,7 +218,8 @@ export function TrackedPicker({
 }) {
   const habits = useQuery(habitsQuery);
   const entries = useQuery(entriesQuery);
-  // which project rows have their sub-pick disclosed (independent of membership)
+  const defsByHabit = usePickerDefinitions();
+  // which rows have their sub-pick disclosed (independent of membership)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   // per-habit search query (the consumption face)
   const [queries, setQueries] = useState<Record<string, string>>({});
@@ -170,20 +258,37 @@ export function TrackedPicker({
   const { clocks } = useTimers();
   const taken = takenUnits(clocks);
 
-  const toggleRow = (habitId: string, isProject: boolean) => {
+  const toggleRow = (habitId: string, needsPick: boolean) => {
     const cur = selection[habitId];
     const next = !(cur?.on ?? false);
-    onChange({ ...selection, [habitId]: { on: next, entryId: next ? (cur?.entryId ?? null) : null } });
-    // joining a project opens the sub-pick (the entry is picked at join);
-    // leaving collapses it
-    if (isProject) setExpanded((x) => ({ ...x, [habitId]: next }));
+    onChange({
+      ...selection,
+      [habitId]: {
+        on: next,
+        entryId: next ? (cur?.entryId ?? null) : null,
+        cats: next ? cur?.cats : undefined,
+      },
+    });
+    // joining a habit with something to pick (entry · picklist) opens the
+    // sub-pick — the pick happens at join; leaving collapses it
+    if (needsPick) setExpanded((x) => ({ ...x, [habitId]: next }));
   };
 
   const toggleDisclosure = (habitId: string) =>
     setExpanded((x) => ({ ...x, [habitId]: !x[habitId] }));
 
   const pickEntry = (habitId: string, entryId: string) =>
-    onChange({ ...selection, [habitId]: { on: true, entryId } });
+    onChange({ ...selection, [habitId]: { ...selection[habitId], on: true, entryId } });
+
+  // Two or more picklists are alternatives (Daily's Kind switch) — an answer
+  // to one clears the others; a single picklist simply takes the value.
+  const pickCat = (habitId: string, defKey: string, value: string) => {
+    const cur = selection[habitId];
+    onChange({
+      ...selection,
+      [habitId]: { on: true, entryId: cur?.entryId ?? null, cats: { [defKey]: value } },
+    });
+  };
 
   const quickCreate = (habit: (typeof eligible)[number]) => {
     const title = newTitle.trim();
@@ -244,10 +349,12 @@ export function TrackedPicker({
     <div className="picklist">
       {eligible.map((h) => {
         const isProject = h.kind === "project";
+        const defs = defsByHabit.get(h.id) ?? [];
+        const needsPick = isProject || defs.length > 0;
         const sel = selection[h.id];
         const habitTaken = !isProject && taken.habitIds.has(h.id);
         const list = byHabit.get(h.id) ?? [];
-        const open = isProject && (expanded[h.id] ?? false);
+        const open = needsPick && (expanded[h.id] ?? false);
         const q = (queries[h.id] ?? "").trim().toLowerCase();
         const searchFace = h.sub_type === "consumption"; // hundreds of entries
         const results = searchFace
@@ -262,7 +369,7 @@ export function TrackedPicker({
               aria-disabled={habitTaken ? "true" : undefined}
               onClick={() => {
                 if (habitTaken) return;
-                toggleRow(h.id, isProject);
+                toggleRow(h.id, needsPick);
               }}
             >
               <span className="box">
@@ -280,11 +387,11 @@ export function TrackedPicker({
               <span className="pnwrap">
                 <span className="pn">{h.name}</span>
               </span>
-              {isProject && (
+              {needsPick && (
                 <button
                   className="pe needs"
                   aria-expanded={open}
-                  title="Choose the entry"
+                  title={isProject ? "Choose the entry" : `Choose the ${defs[0].label.toLowerCase()}`}
                   onClick={(e) => {
                     e.stopPropagation(); // two verbs, two targets
                     toggleDisclosure(h.id);
@@ -296,6 +403,8 @@ export function TrackedPicker({
             </div>
             {open && (
               <div className="entrypick">
+                {isProject && (
+                <>
                 <span className="eplbl">Select</span>
                 <span className="epbody">
                   {searchFace ? (
@@ -356,6 +465,31 @@ export function TrackedPicker({
                     </span>
                   )}
                 </span>
+                </>
+                )}
+                {/* one chip roster per declared session picklist — the same
+                    `.epopts` face the creation habits' entry roster wears */}
+                {defs.map((d) => (
+                  <Fragment key={d.key}>
+                    <span className="eplbl">{d.label}</span>
+                    <span className="epbody">
+                      <span className="epopts">
+                        {d.vocab.map((v) => (
+                          <button
+                            key={v}
+                            className={`epopt${sel?.cats?.[d.key] === v ? " on" : ""}`}
+                            onClick={() => pickCat(h.id, d.key, v)}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                        {d.vocab.length === 0 && (
+                          <span className="eplbl">No values yet — add them in Settings → Habits → Vocabulary</span>
+                        )}
+                      </span>
+                    </span>
+                  </Fragment>
+                ))}
               </div>
             )}
           </Fragment>

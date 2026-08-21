@@ -16,6 +16,8 @@
 export interface HandoffItem {
   habitId: string;
   entryId: string | null;
+  /** Session-scope categorical answers picked at join (definition key → value). */
+  cats?: Record<string, string>;
   minutes: number;
 }
 

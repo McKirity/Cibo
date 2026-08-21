@@ -712,7 +712,9 @@ function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
   // Staged accumulators (logHandoff.ts) become PREFILLED drafts, committed
   // immediately — the user's "Log" in the management window was the intent, and
   // the commit still rides the ordinary buffer, so nothing is official until
-  // the flush. One summed session per tracked item, `source: "timer"`.
+  // the flush. One summed session per tracked item, `source: "timer"`, carrying
+  // the categorical answers the timer picked at join (2026-08-20 — before that
+  // a timed Coding bout landed with no language and nothing said so).
   // TODAY only: a staged item must never land on a browsed past day.
   useEffect(() => {
     const consume = () => {
@@ -724,6 +726,7 @@ function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
       const made = items.map((it) => ({
         ...newDraft(),
         entryId: it.entryId,
+        cats: { ...(it.cats ?? {}) },
         time: String(it.minutes),
         fromTimer: true,
       }));

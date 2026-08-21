@@ -17,7 +17,7 @@
  * review).
  */
 import { useState } from "react";
-import { clockMs, fmtMs, fmtTarget, itemMs, pomoPlanDone, remainingMs, type Clock, modeLabel} from "./timerCore";
+import { clockMs, fmtMs, fmtTarget, itemMs, pomoPlanDone, remainingMs, type Clock, modeLabel, catsLabel} from "./timerCore";
 import { focusClock, pauseClock, runClock, stopClock, useTimers } from "./timerStore";
 import { CreateClockModal } from "./TimerOverlays";
 import { clockChipReadout } from "./GlobalTimerTray";
@@ -82,6 +82,7 @@ function TrackedRows({
             {t.habitName}
           </button>
           {t.entryTitle != null && <em>· {t.entryTitle}</em>}
+          {catsLabel(t) !== "" && <em>· {catsLabel(t)}</em>}
           <b>{fmtMs(itemMs(clock, t, now))}</b>
         </span>
       ))}

@@ -27,7 +27,7 @@ import {
   MIN_INTERVALS,
   type Clock,
   type TimerMode,
-  type TrackedItem, modeLabel} from "./timerCore";
+  type TrackedItem, modeLabel, catsLabel} from "./timerCore";
 import {
   addTracked,
   closeManage,
@@ -50,6 +50,7 @@ import {
   timerHabitsQuery,
   TrackedPicker,
   type PickerSelection,
+  usePickerDefinitions,
 } from "./TrackedPicker";
 import { Ico, ICONS } from "../shell/icons";
 import { useOverlayEsc } from "../shell/overlayHooks";
@@ -75,14 +76,17 @@ const usePickerData = () => {
     for (const e of entries) if (e.title != null) m.set(e.id, e.title);
     return m;
   }, [entries]);
-  return { habits, entryTitles };
+  const defsByHabit = usePickerDefinitions();
+  return { habits, entryTitles, defsByHabit };
 };
 
-/** Every hand-off is one summed session per tracked item, source "timer". */
+/** Every hand-off is one summed session per tracked item, source "timer" —
+ *  the categorical answers picked at join ride along (2026-08-20). */
 const toHandoff = (items: TrackedItem[], clock: Clock) =>
   items.map((t) => ({
     habitId: t.habitId,
     entryId: t.entryId,
+    cats: t.cats,
     minutes: handoffMinutes(itemMs(clock, t, Date.now())),
   }));
 
@@ -93,7 +97,7 @@ const toHandoff = (items: TrackedItem[], clock: Clock) =>
 const DEFAULT_TARGET = "25:00";
 
 export function CreateClockModal({ onClose }: { onClose: () => void }) {
-  const { habits, entryTitles } = usePickerData();
+  const { habits, entryTitles, defsByHabit } = usePickerData();
   const [mode, setMode] = useState<TimerMode>("stopwatch");
   const [selection, setSelection] = useState<PickerSelection>({});
   const [target, setTarget] = useState(DEFAULT_TARGET);
@@ -104,7 +108,7 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
   // Esc closes — the shared overlay stack (top overlay only).
   useOverlayEsc(onClose);
 
-  const items = selectionToItems(selection, habits, entryTitles);
+  const items = selectionToItems(selection, habits, entryTitles, defsByHabit);
   const targetMs = parseTarget(target);
   const workMs = parseTarget(work);
   const breakMs = parseTarget(brk);
@@ -139,7 +143,7 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
       >
         <div className="mo-head">
           <div className="mo-titlewrap">
-            <span className="mo-title">New session</span>
+            <span className="mo-title">New Session</span>
           </div>
           {/* no escnote — user-ruled 2026-07-28: no annotations in the timer modals */}
           <div className="mo-esc">
@@ -316,7 +320,7 @@ function PomoRerun({ clock }: { clock: Clock }) {
 function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => void }) {
   const [adding, setAdding] = useState(false);
   const [selection, setSelection] = useState<PickerSelection>({});
-  const { habits, entryTitles } = usePickerData();
+  const { habits, entryTitles, defsByHabit } = usePickerData();
   const now = Date.now();
   // The one state that gets the re-run instead of Resume.
   const planDone = pomoPlanDone(clock);
@@ -346,7 +350,7 @@ function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => v
     onGoToForm();
   };
   const addPicked = () => {
-    const items = selectionToItems(selection, habits, entryTitles);
+    const items = selectionToItems(selection, habits, entryTitles, defsByHabit);
     if (items.length === 0) return;
     addTracked(clock.id, items); // a newly added item starts at 0
     setSelection({});
@@ -365,7 +369,7 @@ function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => v
       >
         <div className="mo-head">
           <div className="mo-titlewrap">
-            <span className="mo-title">Manage clock</span>
+            <span className="mo-title">Manage Clock</span>
             {/* the modal's SUBJECT rides the chassis's subtitle slot (2026-07-28) */}
             <span className="mo-sub">
               {modeLabel(clock.mode)} ·{" "}
@@ -392,6 +396,7 @@ function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => v
                   <div className="mn">
                     {t.habitName}
                     {t.entryTitle != null && <span className="ent"> · {t.entryTitle}</span>}
+                    {catsLabel(t) !== "" && <span className="ent"> · {catsLabel(t)}</span>}
                   </div>
                 </span>
                 <span className="macc">{fmtMs(itemMs(clock, t, now))}</span>
@@ -488,6 +493,7 @@ function RecoveryDialog({ clock }: { clock: Clock }) {
                   <div className="mn">
                     {t.habitName}
                     {t.entryTitle != null && <span className="ent"> · {t.entryTitle}</span>}
+                    {catsLabel(t) !== "" && <span className="ent"> · {catsLabel(t)}</span>}
                   </div>
                 </span>
                 <span className="macc">{fmtMs(itemMs(clock, t, now))}</span>

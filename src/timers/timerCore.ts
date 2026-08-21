@@ -42,9 +42,23 @@ export interface TrackedItem {
   colourSlot: string;
   entryId: string | null;
   entryTitle: string | null;
+  /**
+   * Session-scope categorical answers picked AT JOIN (2026-08-20, user-ruled
+   * — Coding's language), keyed by definition key, travelling with the item
+   * into the hand-off so the landed bout is complete. The entry's precedent,
+   * extended: "the log step confirms rather than first attaches it."
+   * ABSENT on a clock persisted by an older build — read as no answers.
+   */
+  cats?: Record<string, string>;
   /** accumulated ms, EXCLUDING the live running span (folded base). */
   baseMs: number;
 }
+
+/** The picked categorical values as one " · "-joined caption ("" when none). */
+export const catsLabel = (item: Pick<TrackedItem, "cats">): string =>
+  Object.values(item.cats ?? {})
+    .filter((v) => v !== "")
+    .join(" · ");
 
 export interface Clock {
   id: number;

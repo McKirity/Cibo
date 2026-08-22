@@ -19,6 +19,12 @@ in the planning vault's Longevity & Future-Proofing record.
   a standalone decision**. Evolu and Tauri are the priority reviews — Evolu
   especially for any future compaction/reclamation support (the growth spike
   proved it never compacts today).
+- **The relay is coupled to the app's Evolu version.** The self-hosted sync
+  relay (sync-relay.md) runs `@evolu/nodejs` + `@evolu/common` on the same
+  release train as the app's `@evolu/web` / `@evolu/common`; they speak one
+  wire protocol and a skewed relay fails as a generic connection error. **An
+  Evolu bump in this repo means a relay bump in the same sitting** — the relay
+  is outside the repo, so nothing automated will remind you.
 - **Updates ship as rebuilds.** The installed app can never install a
   dependency update — npm deps compile into the bundle, so an update is a new
   release delivered by the auto-updater. Dependency hygiene is repo-side work,

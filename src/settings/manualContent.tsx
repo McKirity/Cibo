@@ -6,13 +6,15 @@
  * over it and the reader follows.
  *
  * Structure contract (the ruled roster, [[Settings & Configuration]] § Help):
- * `##` = the three groups · `###` = the 23 articles (22 until **Sync** was
- * added to Tools 2026-08-10, user-asked at the step-4 walk; 21 before Bulk
- * Editor). HEADING TEXT IS THE DRAWN DOOR — renaming one is a conform
+ * `##` = the three groups · `###` = the 29 articles (23 until the 2026-08-21
+ * v1.0.0 docs pass added Daily & the Cover Wall · Milestones · Entries ·
+ * Tracking Settings · Ambience · Updates; 22 until **Sync** was added to
+ * Tools 2026-08-10, user-asked at the step-4 walk; 21 before Bulk Editor).
+ * HEADING TEXT IS THE DRAWN DOOR — renaming one is a conform
  * re-freeze; editing a body is free. ADDING one is cheap by construction: the
  * roster renders from the parsed headings and the palette's deep links are
  * generated, so a new article needs no registration anywhere. The FINAL still
- * draws 22 doors and is knowingly stale by one.
+ * draws 22 doors and is knowingly stale by seven.
  *
  * The renderer is a deliberately tiny markdown subset — exactly what the 22
  * articles use (paragraphs · bold/italic/code · bullet lists · pipe tables ·

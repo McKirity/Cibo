@@ -56,14 +56,16 @@ collapsed entirely when you want the room; the content reflows to fill the space
 **The app opens on Daily.** There is no homepage — today is the front page. If days are waiting
 to be finalized, Daily says so at the top.
 
-**Three kinds of dashboard**, and everything you click leads to one of them: a **cadence**
-dashboard for a stretch of time (day, week, month, quarter, year), a **habit** dashboard for one
-habit across all time, and an **entry** dashboard for one specific game, book, or project.
+**Four kinds of dashboard**, and everything you click leads to one of them: **Daily** (the day's
+form, and its cover wall once the day is finalized), a **cadence** dashboard for a stretch of
+time (day, week, month, quarter, year), a **habit** dashboard for one habit across all time, and
+an **entry** dashboard for one specific game, book, or project.
 
 Navigation behaves like a browser — back and forward work, including the mouse's side buttons
 and `Alt` with the arrow keys. `Ctrl K` opens the command palette from anywhere, and `Ctrl E`
-takes you back to today. Overlays and dialogs are never places you can navigate back to; they
-just close.
+takes you back to today (on a Mac, `⌘` stands in for `Ctrl`; the full list is under
+**Settings › Help › Hotkeys**). Overlays and dialogs are never places you can navigate back to;
+they just close.
 
 **Identity is clickable, numbers are not.** If something names a thing — a habit, a title, a
 date — it is a door. If it is a measurement, it is just telling you something.
@@ -90,23 +92,27 @@ machine facts stay put**:
 
 | Travels | Stays on this device |
 |---|---|
-| All your data — habits, entries, sessions, days | Theme choice |
-| Day cutoff, week start | UI scale, compact mode, reduce effects |
-| Saved presets, palette curation | Window size and position |
-| Whimsy settings — dates, location, countdowns | The cloud-root path, the Calibre path |
-| Importer API keys | Timer sound and the default pomodoro plan |
+| All your data — habits, entries, sessions, days | Theme choice, and the slideshow's timing |
+| Day cutoff, week start, wave gap, auto-save interval | UI scale, reduce effects, force-opaque panels |
+| Milestone ladders | Window size and position |
+| Saved presets, palette curation | The cloud-root path, the Calibre path |
+| Whimsy settings — dates, location, countdowns | Timer sound and the default pomodoro plan |
+| Importer API keys | Whether sync and automatic backups are on |
 | Muted Data Doctor findings | How you left the Library — its sort and filters |
 
 Appearance settings deliberately do **not** travel: a size that reads well on a large monitor is
-wrong on a 14-inch laptop. Anywhere a setting stays put, the app marks it **This device** — if
-there is no mark, it travels.
+wrong on a 14-inch laptop. (Density is not a setting at all — the layout tightens on its own when
+the window is narrower than a desktop monitor.) Anywhere a setting stays put, the app marks it
+**This device** — if there is no mark, it travels.
 
 ### Getting Started
 
 Cibo starts with a short setup screen — important dates, roughly where you are (used for sunrise,
-moon phase, and the almanac), and which habits you want to begin with. Every field can be left
-empty and everything can be changed later; the one door out is Finish, and it works no matter how
-much you filled in.
+moon phase, and the almanac), and which habits you want to begin with. **Your location is the one
+thing it insists on** — Finish stays off until both coordinates are in, because the sky cards
+cannot draw without them. It is stored as two plain numbers; no address, no lookup. Every other
+field can be left empty, everything can be changed later in Settings, and the one door out is
+Finish.
 
 Then it opens on today. **Log something.** Pick a habit, fill in the form, save. That is the
 whole loop, and everything else in the app is downstream of it.
@@ -177,6 +183,12 @@ Some habits measure nothing at all. For those, the record is simply that it happ
 form for you with the elapsed time. Only habits that measure time can use one. Anything a timer
 does you could have typed.
 
+**One measurement can be borrowed from another habit.** Keyboard's word count is read off
+Writing's: log your words under Writing, and the Keyboard row fills in on its own — you never type
+a Keyboard word count, only which board you used. If you ever hand-edit that borrowed number it
+becomes yours and stops following; a **Refresh** on the row puts it back under Writing's control
+for good.
+
 **Back-dating is normal.** Open any past day and log into it. Nothing is locked, nothing expires,
 and there is no penalty for catching up a week late.
 
@@ -196,6 +208,32 @@ which is honest — Cibo does not know, so it does not guess.
 
 Finalizing also builds the day's **cover wall**: the covers of everything you touched that day,
 laid out as a keepsake. Days you have not finalized are listed on Daily so they are easy to find.
+
+### Daily & the Cover Wall
+
+Daily is the front page and the only place logging happens. It has two faces: the **working day**,
+and the **cover wall** the day becomes once you finalize it.
+
+**The working day** is a column of habit strips — one per active habit — framed by the whimsy
+cards. Open a strip, fill in a session, and move on; the rail's calendar marks the day you are
+looking at, and the **Jump** control on it takes you to any month or year. Days you have opened
+but not finalized are listed at the top of today's page so they are easy to find again.
+
+**The form saves itself.** What you type is held and written out on a timer — every ten minutes
+by default, adjustable in **Settings › Tracking** — so a crash between saves can lose at most
+that interval. **Finalize is the one deliberate save**: it writes everything pending first, then
+seals the day.
+
+**Edit day never un-finalizes.** Open a finalized day, press **Edit day**, change what you like —
+the day stays finalized throughout. The flag means "I have settled this day," not "this day is
+locked," and nothing in the app takes it back off.
+
+**The cover wall** is what a finalized day turns into: the cover of every game, book, or film you
+touched, the banner of anything you made, a keepsake tile for each simple or range habit, and
+the whimsy cards of the day as they were. The wall is packed from the centre outwards, the
+biggest art first, and any **milestones** the day earned are stamped on it (see *Milestones*).
+Nothing on the wall is stored — it is drawn fresh from the day's sessions every time, which is
+why editing a day later simply redraws it.
 
 ### Visualizing Your Habits
 
@@ -218,6 +256,41 @@ which dashboard you are reading it on.
 measure a habit tracks adds a statistic, each medium adds a breakdown. Change what the habit
 tracks and the dashboard changes with it. This is the whole design: you describe the habit, and
 the view follows.
+
+### Milestones
+
+A milestone is a threshold crossed — your hundredth day of a habit, a thousand hours, ten
+thousand words, a streak longer than any before it. Cibo notices them on its own. The day's
+banner counts how many the day earned; the full list is on that day's cover wall, and each one
+is stamped with the habit's seal.
+
+**Milestones are never stored.** They are worked out again from the sessions every time they are
+asked for, and they belong to the day they were *earned*, not the day you typed the session in —
+so back-dating a week of logging can light milestones across that week, and editing a day can
+take one away again. A record needs something to beat, so the first time a habit sees a value it
+sets the bar quietly; a streak record fires only when you *overtake* your longest-ever run, never
+on every day that extends it.
+
+The **ladders** — which numbers count as milestones for days, hours, words, sessions — are yours
+to edit. The global defaults live in **Settings › Tracking › Milestone Ladders**; any habit can
+carry its own override on its Manage row.
+
+### Entries
+
+An entry's dashboard is where everything about one title lives, and its **edit mode** is where
+you change it. The fields the importers fill — type, genre, status, priority, rating, series,
+description, creators — are all editable here; so is the art:
+
+- **Cover** — pick or replace the picture from your disk. Covers are filed under `images/` in
+  your cloud root and travel to the other machine with it.
+- **Banner** — for creation habits, the wide picture behind the entry's hero card and on the
+  cover wall. *Set banner…* and *Replace banner…* live on the same edit face.
+
+**Ratings are whole stars** (★★★★, never "4.2") and **priority is chevrons** (›, ››, ›››) —
+the same two faces wherever they appear in the app. Sessions are listed on the dashboard too;
+from a session's row you can move it to another entry, which is how a duplicate gets untangled
+(see *Bulk Editor*). Deleting the entry itself takes its sessions and its cover file with it,
+with the usual ten seconds to undo.
 
 ### Archiving Your Habits
 
@@ -283,6 +356,28 @@ blocks you, and none of it is an error:
 A habit is fully usable the day it is made. Finishing it is only ever about the art on its cover
 wall, or an importer that has not been built yet.
 
+**Settings › Habits** has three tabs. **Manage** is every habit's row — archive, colour, icon,
+its own milestone ladder and wave gap, the keepsake tile slot for simple and range habits, and
+for project habits an **Image folder** door that opens that habit's corner of `images/`.
+**Vocabulary** is where the shared status list and every habit's mediums are edited. **Icons**
+shows the icon set the app draws from.
+
+### Tracking Settings
+
+A handful of rules shape how every day is read, all in **Settings › Tracking**, and all of them
+travel between your machines:
+
+- **Day cutoff** — when a "day" rolls over. It only sets the *default* date on the log form for
+  a late-night session; the form always wins, and changing the cutoff never re-files anything
+  already logged.
+- **Week start** — Monday or Sunday. Every week grid, heatmap row and week label follows it.
+  Week *numbers* stay ISO whichever you pick.
+- **Wave gap** — how long a pause has to be before an entry's sessions count as a new wave of
+  engagement rather than the same one. Thirty days by default; any habit can override it.
+- **Auto-save interval** — how often the Daily form writes out what you have typed (see *Daily
+  & the Cover Wall*).
+- **Milestone Ladders** — the thresholds that count as milestones (see *Milestones*).
+
 ---
 
 ## Tools
@@ -290,17 +385,22 @@ wall, or an importer that has not been built yet.
 ### Themes
 
 A theme re-skins the whole app — colours, spacing, corners, type, and any artwork it carries.
-Pick one in **Settings › Appearance**. The choice is per-machine, so your desktop and your laptop
-can wear different themes.
+Pick one in **Settings › Appearance › General**. The choice is per-machine, so your desktop and
+your laptop can wear different themes. The same tab has **Reduce effects** (strips motion, blur
+and glow — a theme's stills stay) and **Force-opaque panels** (for themes that let the backdrop
+show through their panels), both per-machine as well.
 
 **Two themes ship with Cibo:** **Default**, a light neutral, and **Void**, a hard dark inversion
 with a magenta accent. Default is the one that can never be missing — if a theme you picked is
 gone, Cibo falls back to it and says so once.
 
-**Adding a theme is dropping a folder in.** Themes live in `themes/` inside your cloud root. Put a
-theme folder there, open **Settings › Appearance**, and it is in the list — no restart, nothing to
-install. That is the entire procedure — and because the folder is on your cloud drive, the theme
-shows up on your other machine too.
+**Adding a theme is dropping a folder in.** Themes live in `themes/` inside your cloud root — the
+**Open themes folder** door on the Appearance tab (or in the palette) takes you straight there,
+and creates the folder if it does not exist yet. Put a theme folder in, open **Settings ›
+Appearance**, and it is in the list — no restart, nothing to install. That is the entire
+procedure — and because the folder is on your cloud drive, the theme shows up on your other
+machine too. (The list is read when the pane opens, so a folder dropped in while you are already
+looking at it needs a step out and back.)
 
 **A theme is one folder, and the folder name is the theme name.** Inside it:
 
@@ -308,11 +408,14 @@ shows up on your other machine too.
 themes/
 └── My Theme/
     ├── theme.css          ← the only required file
-    ├── backdrop.png       ← optional, 2560×1440 — the window background
-    ├── backdrop_loop/     ← optional, animated crops of the backdrop
-    ├── timer.png          ← optional — a different backdrop for the Timers screen
-    ├── timer_loop.mp4     ← optional, the whole scene as a video loop
-    └── fonts/             ← optional — the theme's own typefaces
+    ├── backdrop.jpg       ← optional, 2560×1440 — the window background (png/jpg/webp/avif/svg)
+    ├── backdrops/         ← optional — several backdrops, shown as a slideshow (see Ambience)
+    ├── backdrop_loop.mp4  ← optional — the whole scene as a video loop
+    ├── backdrop_loop/     ← optional — animated crops of the still
+    ├── timer.jpg          ← optional — a different backdrop for the Timers screen
+    ├── timers/            ← optional — a slideshow for the Timers screen
+    ├── fonts/             ← optional — the theme's own typefaces
+    └── decoration/        ← optional — ornament art for the app's frames and stamps
 ```
 
 **`theme.css` is the only thing a theme actually needs.** It holds the colour and shape values —
@@ -324,16 +427,52 @@ Everything else is optional, with a few rules:
 - **Backdrops are stills.** If a surface has motion, it still needs its still image — that is what
   shows before the motion starts and what you get when effects are turned off.
 - **A surface gets one kind of motion, not both** — either a `_loop.mp4` video or a `_loop/`
-  folder of frames, never both at once.
+  folder of frames, never both at once. A slideshow folder carries stills only.
 - **Fonts travel in the folder.** Font files dropped into `fonts/` are used while the theme is
   active — the file's name is the name the theme's CSS calls it by, nothing is installed on the
   machine, and there is no extra step on either device.
+- **Decoration is optional ornament** — frames around panels and cards, stamps on milestones and
+  finalized days, a strip along the titlebar — supplied as image files plus a small manifest that
+  says which of the app's slots each one fills. The app's layouts already reserve the room, so
+  ornament never moves anything.
+- **A theme's CSS cannot point at a file.** Fonts go in `fonts/`, art in `decoration/`; a
+  picture referenced from `theme.css` by path will quietly fail to load.
 - **Anything malformed is skipped, quietly.** A broken video falls back to the still image; a
-  broken animation is simply not played. The app does not break over a theme.
+  broken animation is simply not played; a broken decoration set leaves the slot bare. The app
+  does not break over a theme.
 
-**To start one, copy `_theme-template/`** — it sits alongside the themes and holds a commented
-skeleton plus a README. Folders whose names begin with `_` are skipped by the loader, so the
-template never shows up as a theme itself.
+**To start one, copy `_theme-template/`.** It is not in your themes folder — it ships inside the
+app (in the repository under `src-tauri/resources/themes/`, and in the installed app's resources
+folder) and holds a commented skeleton of every value plus a README that is the full format
+spec. Folders whose names begin with `_` are skipped by the loader, so the template never shows
+up as a theme itself.
+
+### Ambience
+
+A theme's backdrop can be one picture or many. Put several stills in a **`backdrops/`** folder
+inside the theme instead of a single `backdrop` file and Cibo plays them as a **slideshow**: a
+shuffled deck, never the same picture twice in a row, each change a crossfade. The Timers screen
+can have its own set in **`timers/`**, or simply keep the backdrop going.
+
+The timing is yours, per machine, in **Settings › Appearance › Ambience**:
+
+- **Change every** — from 30 seconds to an hour, ten minutes by default. **Off** stops the
+  rotation and shows the first picture by filename.
+- **Fade** — how long the crossfade takes, up to five seconds. The row carries a live preview so
+  you can see the fade you are setting.
+- **Timer backdrop** — whether the Timers screen uses its **own folder** or **shares** the
+  backdrop. Sharing means there is no separate timer picture at all; the backdrop just continues.
+
+A few things worth knowing:
+
+- **The clock only runs while you are looking.** Minimize or hide the window and the rotation
+  pauses where it is; it does not skip ahead to catch up.
+- **Reduce effects freezes it** on the current picture, fade and all.
+- **Only two pictures are ever loaded** — the one showing and the next — however many are in
+  the folder. Mixed sizes are fine; each is cropped on its own.
+- **The folder is read when the theme is applied.** A picture dropped in while that theme is
+  active joins the deck the next time the theme is applied or the app opens.
+- **If a theme has both a single `backdrop` file and a `backdrops/` folder, the folder wins.**
 
 ### Timers
 
@@ -356,6 +495,11 @@ Three modes:
 Stopping a clock yourself and reaching the end of a run are the same event: you get the same
 prompt, and logging writes an ordinary session into today's form. Anything a timer produces you
 could have typed by hand.
+
+**A clock asks its questions when you join a habit to it**, not when you log. A project habit
+asks which entry; a habit with a per-session category — Coding's language, Writing's stage — asks
+that too, so the session arrives in the form already complete. Only habits that measure time are
+offered.
 
 Timers make a sound at the end of an interval by default. Minimizing Cibo puts running clocks in
 the tray. There is no global hotkey — a timer is something you start on purpose.
@@ -426,6 +570,12 @@ Recovery, in one line each:
 - **The PC is lost** — the backups on the cloud drive rebuild it, and the Mac then follows the
   rebuilt PC by sync.
 
+**The automatic part has a switch.** **Settings › Backups › Automatic backups** turns the
+close-and-launch backups off for this machine — the pane, the last-backup line and the Health row
+all say *paused* while it is — but **Back up now** (same pane, or the palette) always runs
+regardless. The switch exists for the odd occasion you do not want a close to claim the day's
+slot; leaving it on is the normal state.
+
 Backups go to `backups/` in your cloud root. One slot per day, so a busy day of opening and closing
 leaves one backup rather than twenty. Daily backups are kept for about three months; the last
 backup of each month is kept indefinitely.
@@ -485,12 +635,17 @@ Cibo waits for your data to arrive rather than starting you off empty, and it ar
 will not end up with two of everything. After that the setup screen never appears again on that
 device, because "setup is done" is one of the things that syncs.
 
+**The relay has to be reachable while you join.** Your data comes through it, so the PC that runs
+it must be on. If it is not, Cibo does not start you off empty and hope — it holds on the
+"waiting for your data" screen with a **Try again** door, and a deliberate **Start fresh** for
+the case where you really do want an empty store.
+
 #### What syncs, and what does not
 
 - **Syncs:** your habits, everything you have logged, your entries, and the preferences that are
   meant to be the same everywhere.
-- **Stays on each device:** the theme you picked, UI scale, compact, and where your cloud folder
-  lives. These are deliberately per-device, because the two screens are not the same size.
+- **Stays on each device:** the theme you picked, UI scale, reduce effects, and where your cloud
+  folder lives. These are deliberately per-device, because the two screens are not the same size.
 - **Cover art does not travel by sync.** Images live in your cloud folder and reach the other device
   through the cloud drive.
 
@@ -523,7 +678,9 @@ This one is worth reading twice.
 
 So while sync is running, the **recovery phrase** is the everyday way to get your data onto a
 device, including a replacement one. The **backup** is the deep net — for when the data itself is
-wrong and you want to go back to how it was.
+wrong and you want to go back to how it was. When you do reach for it, **have the other device
+closed first** — a device still running could push the history you are trying to undo straight
+back.
 
 ### Data Doctor
 
@@ -533,14 +690,23 @@ same book entered twice. The checks are quick and run quietly when the app start
 of the things that lights the health dot — and again when you open **Settings › Health**. What
 they never do is act on their own: a finding waits for you, and fixing it is always your click.
 
+The ten checks, in plain words: sessions pointing at an entry that no longer exists · a category
+value that was removed from its list · a sleep that ends before it starts · a sleep longer than a
+habit allows · a session dated in the future · an icon name the app cannot draw · an entry with
+no cover art · a cover file that has gone missing · an image file no entry owns · the same thing
+entered twice. Only the first kind — actual errors — lights the dot; the rest wait quietly for
+your next visit.
+
 Findings are described plainly and are usually fixable in a click. If something it flags is
 actually fine and you would rather not see it again, mute it — the finding is remembered as muted
-rather than deleted, and muting travels between your machines.
+rather than deleted, and muting travels between your machines. When a check turns up a pile of
+stray files, a **Delete all** button clears the visible lot in one confirmed go — muted findings
+are left alone by construction.
 
 The same Health section holds the rest of the app's status: when the last backup ran, a
-**Test connection** button for each importer, and any recent errors. The dot on the rail's
-Settings entry lights when something in here wants attention, and clicking it brings you straight
-here.
+**Test connection** button for each importer, the sync row with its **Check for updates** button,
+and any recent errors. The dot on the rail's Settings entry lights when something in here wants
+attention, and clicking it brings you straight here.
 
 Data Doctor has far less to do than its predecessor did. Most of what the old vault's linter
 caught were formatting mistakes in text files — quoting, casing, name collisions. Those cannot
@@ -553,10 +719,12 @@ happen now.
 **It teleports.** Type the name of a habit, an entry, a date, a settings section, or a manual page
 and go straight there. Every page in this manual is a destination.
 
-**It runs a short list of actions** — back up now, create a habit, switch the theme, and so on. The
-list is deliberately small and fixed; the palette is not a hidden second menu with everything in
-it. You can turn individual actions off in **Settings › Palette** if you never use them, which
-hides them without removing them.
+**It runs a short list of actions.** Ten, and the list is deliberately small and fixed; the
+palette is not a hidden second menu with everything in it: **New habit** · **New entry** ·
+**Back up now** · **Open backups folder** · **Open themes folder** · **Switch theme** ·
+**Run data checks** · **Test connection** · **Check for updates** · **Advanced Search**. You can
+turn individual actions off in **Settings › Palette** if you never use them, which hides them
+without removing them.
 
 `Esc` closes it, as it closes anything.
 
@@ -671,11 +839,30 @@ whole of it, and **Settings › Help › About** lists every outside service the
 why.
 
 Every card can be turned off individually, in the same place, and turning most of them off is a
-perfectly reasonable thing to do.
+perfectly reasonable thing to do. The weather card reads in °F by default; the same pane switches
+it to °C. One card is about your tracking rather than the sky — the **lifetime** card, which
+counts everything you have ever logged in the app.
 
 These settings travel between your machines. They are facts about you, not about a particular
 computer, so the laptop does not ask you again.
 
 None of it affects your data. It is the part of the app that exists because a calendar you look at
 every day may as well tell you when the sun sets.
+
+### Updates
+
+Cibo updates itself, and it does so quietly. Each time it opens it checks the app's release page
+for a newer version and, if there is one, downloads it in the background; the update is
+**installed when you next quit**, and the next launch is the new version. Nothing is announced —
+an update is maintenance, not news — and an offline launch simply skips the check.
+
+If you want to know rather than wait, **Check for updates** is in the palette and on the sync row
+of **Settings › Health**. That door does talk: it tells you whether you are current, and it
+reports a failure plainly, because you asked.
+
+There is one channel and no rollback. If an update ever leaves the app unable to open, the fix is
+to **download the latest installer from the release page and run it over the top** — your data,
+settings, backups and themes all live outside the install folder and are untouched by an
+install, an uninstall, or an update. The version you are running is shown in
+**Settings › Help › About**.
 

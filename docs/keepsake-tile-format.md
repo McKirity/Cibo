@@ -62,7 +62,11 @@ no loops, no conditionals, no expressions.
 | `{{range-start-pct}}` / `{{range-end-pct}}` | those ends as 0–100 positions on the night axis, for drawing a span | `23.6` / `57.3` |
 
 **Categorical keys** are the habit's own field keys — `keyboard_board`, `coding_language`,
-`writing_stage`, `sleep_med`. A habit's keys are listed in its Manage row.
+`writing_stage`, `sleep_med`. The rule is `<habit-key>_<field>`: the habit's key (its name
+lowercased, spaces to hyphens — `keyboard`, `my-habit`) joined to the field's label lowercased
+with runs of non-alphanumerics collapsed to `_` (`Board` → `board`, `Wiki page` → `wiki_page`).
+The seeded habits' keys are in `src/db/seed.ts`; a hand-made habit's follow the rule from the
+names you gave in the creator.
 
 ## Conditionals are CSS, never logic
 
@@ -102,7 +106,9 @@ The app strips these before drawing. A snippet containing them is not an error �
 part is simply removed, or the tile falls back:
 
 - `<script>` tags and any `on…` attribute (`onclick`, `onload`, …)
-- `<iframe>`, `<object>`, `<embed>`, `<link>`
+- `<iframe>`, `<object>`, `<embed>`, `<link>`, `<base>`, `<meta>` — and the interactive
+  elements `<a>`, `<form>`, `<input>`, `<textarea>`, `<button>`, `<select>` (a tile is a
+  picture, not a control)
 - **anything fetched from the internet** — remote images, web fonts, external stylesheets
 
 **Images from your own images folder are allowed.** A root-relative path into the app's

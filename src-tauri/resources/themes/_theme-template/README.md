@@ -11,7 +11,7 @@ at launch. The folder rides your cloud drive, so it appears on both devices auto
 
 | File / folder                    | What it is                                          | Dimensions | Required? |
 | -------------------------------- | --------------------------------------------------- | ---------- | --------- |
-| `theme.css`                      | The `:root` values — 252 dials                      | —          | **Yes**   |
+| `theme.css`                      | The `:root` values — 255 dials                      | —          | **Yes**   |
 | `backdrop.<ext>`                 | Still — the main backdrop, painting the whole window | 2560×1440  | No        |
 | `backdrop_loop.mp4`              | Motion — the whole scene as a seamless opaque loop   | 2560×1440  | No        |
 | `backdrop_loop/`                 | Motion — patch loops (animated crops of the still)   | per patch  | No        |
@@ -167,7 +167,7 @@ never touch another theme.
 - **Own your reduce-effects fallbacks**: pure decoration disappears under `.reduce-effects`;
   anything carrying meaning flattens to a solid instead.
 - Rules target the app's class names, and those can change between app versions — if a mark
-  quietly stops painting after an update, check the hook list in the docs and re-point it.
+  quietly stops painting after an update, check the app's stylesheets (the repo's `docs/theme-authoring.md` says where to look) and re-point it.
 
 ## `decoration/` — ornament, and overriding it
 

@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 import {
   advance,
   clockMs,
+  clockSpent,
   MIN_INTERVALS,
   parseIntervals,
   pomoPlanDone,
@@ -165,6 +166,27 @@ describe("pomodoro interval plans", () => {
     expect(pomoPlanDone(midBreak)).toBe(false);
     const pausedMidWork = { ...pomo(4), running: false, phaseBaseMs: WORK / 2, resumedAt: null };
     expect(pomoPlanDone(pausedMidWork)).toBe(false);
+  });
+});
+
+describe("clockSpent — what Resume-all must leave alone (2026-08-22)", () => {
+  it("is true for a pomodoro whose plan is done and a countdown that hit zero", () => {
+    const done = advance(pomo(2), T0 + WORK).clock; // break starts
+    const next = advance(done, T0 + WORK + BREAK).clock; // interval 2
+    const end = advance(next, T0 + 2 * WORK + BREAK).clock; // pomo-end, paused
+    expect(end.running).toBe(false);
+    expect(clockSpent(end)).toBe(true);
+    const cd: Clock = { ...pomo(null), mode: "countdown", targetMs: 10_000, workMs: null, breakMs: null };
+    const zero = advance(cd, T0 + 10_000).clock;
+    expect(zero.running).toBe(false);
+    expect(clockSpent(zero)).toBe(true);
+  });
+
+  it("is false for a clock merely paused mid-run", () => {
+    const paused: Clock = { ...pomo(4), running: false, resumedAt: null, phaseBaseMs: 1000 };
+    expect(clockSpent(paused)).toBe(false);
+    const cd: Clock = { ...pomo(null), mode: "countdown", targetMs: 10_000, running: false, resumedAt: null, clockBaseMs: 5000 };
+    expect(clockSpent(cd)).toBe(false);
   });
 });
 

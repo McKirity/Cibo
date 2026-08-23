@@ -20,6 +20,7 @@
 import { useSyncExternalStore } from "react";
 import {
   advance,
+  clockSpent,
   fold,
   pomoPlanDone,
   restartPomo,
@@ -260,6 +261,40 @@ export const runClock = (id: number): void => {
     return;
   }
   patchClock(id, (x) => resumeClock(x, Date.now()));
+};
+
+/**
+ * Pause all / Resume all (user-asked 2026-08-22): the board-wide pair. Pause
+ * folds every running clock; Resume re-anchors every paused one that has
+ * somewhere to go — a SPENT clock (a countdown at zero, a pomodoro past its
+ * last interval) stays put, because resuming it would only re-open its
+ * management window; it waits for its own Resume / "Run another set…".
+ * No-ops when nothing qualifies, so the buttons can sit on the board freely.
+ */
+export const pauseAll = (): void => {
+  if (!state.clocks.some((c) => c.running)) return;
+  const now = Date.now();
+  mutateAnd((s) => ({
+    ...s,
+    clocks: s.clocks.map((c) =>
+      c.running ? { ...fold(c, now), running: false, resumedAt: null } : c,
+    ),
+  }));
+};
+
+export const canResumeAll = (clocks: Clock[]): boolean =>
+  clocks.some((c) => !c.running && !clockSpent(c));
+
+export const resumeAll = (): void => {
+  if (!canResumeAll(state.clocks)) return;
+  unlockAudio();
+  const now = Date.now();
+  mutateAnd((s) => ({
+    ...s,
+    clocks: s.clocks.map((c) =>
+      !c.running && !clockSpent(c) ? resumeClock(c, now) : c,
+    ),
+  }));
 };
 
 /** A user stop: fold + pause + open the management window. */

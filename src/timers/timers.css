@@ -133,6 +133,11 @@
 .timerscreen .swnew { display: inline-flex; align-items: center; gap: var(--space-3); font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--accent); background: transparent; border: var(--border-standard) dashed color-mix(in oklch, var(--accent), var(--panel-background) var(--tint-border)); border-radius: var(--radius-full); padding: var(--space-3) var(--space-5); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard); }
 .timerscreen .swnew:hover { background: var(--selected-wash); }
 .timerscreen .swnew svg { width: var(--icon-size-small); height: var(--icon-size-small); display: block; }
+/* Pause all / Resume all (2026-08-22) — the board-wide pair, chip-shaped beside the New-clock
+   door: a solid hairline where the door is dashed (a door mints, these act), secondary ink. */
+.timerscreen .swall { display: inline-flex; align-items: center; gap: var(--space-3); font-family: var(--font-ui); font-size: var(--size-small); font-weight: var(--weight-medium); color: var(--text-secondary); background: transparent; border: var(--border-hairline) solid var(--border); border-radius: var(--radius-full); padding: var(--space-3) var(--space-5); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.timerscreen .swall:hover { background: var(--hover-wash); color: var(--text-strong); }
+.timerscreen .swall svg { width: var(--icon-size-small); height: var(--icon-size-small); display: block; color: currentColor; }
 
 /* ── shared small buttons (board controls + manage-row actions) ── */
 .timerscreen .cbtn,

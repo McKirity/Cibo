@@ -163,6 +163,16 @@ export const pomoPlanDone = (c: Clock): boolean =>
   isLastInterval(c);
 
 /**
+ * Is this clock sitting at the END of its run — a countdown at zero or a
+ * pomodoro whose plan is done? Such a clock has nothing to resume INTO: a plain
+ * re-anchor would cross its boundary again on the next tick and re-open the
+ * management window. `runClock` routes it there; "Resume all" skips it.
+ */
+export const clockSpent = (c: Clock): boolean =>
+  pomoPlanDone(c) ||
+  (c.mode === "countdown" && c.targetMs != null && c.clockBaseMs >= c.targetMs);
+
+/**
  * Advance a clock across a phase boundary if one has been reached.
  *  - countdown at zero: functionally a stop — fold + pause (the caller opens
  *    the management window and sounds the signal);

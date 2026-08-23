@@ -18,7 +18,7 @@
  */
 import { useState } from "react";
 import { clockMs, fmtMs, fmtTarget, itemMs, pomoPlanDone, remainingMs, type Clock, modeLabel, catsLabel} from "./timerCore";
-import { focusClock, pauseClock, runClock, stopClock, useTimers } from "./timerStore";
+import { canResumeAll, focusClock, pauseAll, pauseClock, resumeAll, runClock, stopClock, useTimers } from "./timerStore";
 import { CreateClockModal } from "./TimerOverlays";
 import { clockChipReadout } from "./GlobalTimerTray";
 import { Ico, ICONS } from "../shell/icons";
@@ -178,6 +178,13 @@ export function TimersScreen({
   const c = focused;
   const mode =
     modeLabel(c.mode);
+  // The board-wide pair (user-asked 2026-08-22) — only worth drawing once there
+  // are two clocks to act on; a lone clock's own controls already cover it.
+  // Each button shows only while it has something to do, so a mixed board
+  // (one running, one paused) offers both.
+  const showAll = state.clocks.length >= 2;
+  const anyRunning = state.clocks.some((sc) => sc.running);
+  const anyResumable = canResumeAll(state.clocks);
 
   return (
     <section className="timerscreen">
@@ -297,6 +304,18 @@ export function TimersScreen({
             <IPlus />
             New clock
           </button>
+          {showAll && anyRunning && (
+            <button className="swall" onClick={pauseAll} title="Pause every running clock">
+              <IPause />
+              Pause all
+            </button>
+          )}
+          {showAll && anyResumable && (
+            <button className="swall" onClick={resumeAll} title="Resume every paused clock">
+              <IPlay />
+              Resume all
+            </button>
+          )}
         </div>
       </div>
       {createOpen && <CreateClockModal onClose={() => setCreateOpen(false)} />}

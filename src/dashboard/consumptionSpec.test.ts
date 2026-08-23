@@ -82,3 +82,81 @@ describe("archive ends a running streak", () => {
     expect(filed.distributions).toEqual(active.distributions);
   });
 });
+
+/**
+ * The distributions + Catalog re-ruling of 2026-08-22 (user: *"By Status
+ * should show ALL entry statuses… it should've shown Planned"* · *"By rating
+ * isn't appearing either even though one entry has already been rated"* ·
+ * *"there shouldn't be any catalog sections except for Youtube"*).
+ */
+const FRESH: EntryRow[] = [
+  { id: "e1", title: "Alpha", status: "Planned", genre: [], rating: 4, type: null },
+  { id: "e2", title: "Beta", status: "Planned", genre: [], rating: null, type: null },
+];
+
+const freshInput = (entries: EntryRow[], typeVocab: string[] = []): BuildInput => ({
+  colourSlot: "habit-2",
+  name: "Gaming",
+  archived: false,
+  sessions: [sess("2026-01-14", "e1")],
+  entries,
+  finalized: new Set(["2026-01-14"]),
+  today: "2026-01-14",
+  typeVocab,
+  appActiveDays: ["2026-01-14"],
+});
+
+const dist = (m: ReturnType<typeof buildConsumptionDashboard>, title: string) =>
+  m.distributions.find((d) => d.title === title);
+
+describe("a fresh habit's distributions", () => {
+  it("shows By Status with a single value — every entry Planned reads Planned", () => {
+    const m = buildConsumptionDashboard(freshInput(FRESH), { kind: "all" });
+    expect(dist(m, "By Status")?.rows.map((r) => [r.label, r.value])).toEqual([["Planned", "2"]]);
+  });
+
+  it("shows By Rating once ONE entry is rated", () => {
+    const m = buildConsumptionDashboard(freshInput(FRESH), { kind: "all" });
+    expect(dist(m, "By Rating")?.rows).toHaveLength(1);
+  });
+
+  it("still drops a distribution with nothing in it (no genres yet)", () => {
+    const m = buildConsumptionDashboard(freshInput(FRESH), { kind: "all" });
+    expect(dist(m, "By Genre")).toBeUndefined();
+  });
+
+  it("never merges a non-YouTube habit into a Catalog zone, however sparse", () => {
+    const m = buildConsumptionDashboard(freshInput([FRESH[1]]), { kind: "all" });
+    expect(m.mergedCatalog).toBeNull();
+    expect(m.catalog.map((t) => t.label)).toEqual(["Titles tracked"]);
+  });
+});
+
+describe("the YouTube Catalog zone", () => {
+  const CHANNELS: EntryRow[] = [
+    { id: "e1", title: "Kurzgesagt", status: "Current", genre: ["Science"], rating: null, type: "Youtube" },
+    { id: "e2", title: "Noclip", status: "Current", genre: ["Gaming"], rating: null, type: "Youtube" },
+  ];
+
+  it("merges the channel count + By Genre on the YouTube face only", () => {
+    const input = freshInput(CHANNELS, ["Youtube", "Film"]);
+    const yt = buildConsumptionDashboard(input, { kind: "all" }, "Youtube");
+    expect(yt.mergedCatalog?.hallTitle).toBe("Channels");
+    expect(yt.mergedCatalog?.dist?.title).toBe("By Genre");
+    // the hall ranks by logged time, so only the channel with a session lists
+    expect(yt.mergedCatalog?.tile.list?.rows.map((r) => r.k)).toEqual(["Kurzgesagt"]);
+    // the merged pieces leave their old homes; the one-value status stays a distribution
+    expect(yt.catalog).toEqual([]);
+    expect(yt.distributions.map((d) => d.title)).toEqual(["By Status"]);
+    // the All-types face of the same habit is NOT merged
+    const all = buildConsumptionDashboard(input, { kind: "all" }, null);
+    expect(all.mergedCatalog).toBeNull();
+  });
+
+  it("keeps the hall when no channel carries a genre yet", () => {
+    const bare = CHANNELS.map((c) => ({ ...c, genre: [] }));
+    const yt = buildConsumptionDashboard(freshInput(bare, ["Youtube"]), { kind: "all" }, "Youtube");
+    expect(yt.mergedCatalog).not.toBeNull();
+    expect(yt.mergedCatalog?.dist).toBeNull();
+  });
+});

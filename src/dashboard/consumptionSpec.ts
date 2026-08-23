@@ -107,14 +107,16 @@ export interface DashboardModel {
   catalog: TileSpec[];
   distributions: DistColumnSpec[];
   /**
-   * The degradation-rule survivor merge (media-stats wireframe · Canvas C): when
-   * the catalog collapses to one tile AND the distributions to one panel, they
-   * relocate into a single "Catalog" zone. Non-null replaces the separate
-   * catalog group + Distributions panel. hallTitle carries the type-specific
-   * noun ("Channels" for YouTube, else "Titles") so the renderer never
-   * hardcodes it.
+   * The YouTube "Catalog" zone (media-stats wireframe · Canvas C): the
+   * channels-tracked tile carrying a ranked hall of every channel, plus the
+   * By-Genre bars. Non-null ONLY on the YouTube face (user-ruled 2026-08-22 —
+   * *"there shouldn't be any catalog sections except for Youtube"*; until then
+   * it was a count-keyed degradation "survivor merge" — one catalog tile + one
+   * surviving distribution — which a fresh habit with every entry Planned
+   * tripped). `dist` is null when the channels carry no genres yet; the hall
+   * still draws. hallTitle carries the noun so the renderer never hardcodes it.
    */
-  mergedCatalog: { tile: TileSpec; dist: DistColumnSpec; hallTitle: string } | null;
+  mergedCatalog: { tile: TileSpec; dist: DistColumnSpec | null; hallTitle: string } | null;
   leaderboards: LeaderColumnSpec[];
   trend: {
     caption: string;
@@ -368,20 +370,28 @@ export function buildConsumptionDashboard(
     { title: "By Genre", rows: genreRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: "--cat-1", tip: `${r.key} · ${r.value} titles` })) },
     { title: "By Rating", rows: ratingRows.map((r) => ({ label: r.key, value: String(r.value), pct: r.pct, colorVar: "--cat-3", tip: `${r.key} · ${r.value} titles` })) },
   );
-  // The degradation rule (Dashboard Composition · the empty-states sheet §03):
-  // a distribution over fewer than 2 distinct values doesn't render — the zone
-  // compresses, survivors relocate; never skeletons. This is what a sparse
-  // Medium (Media → YouTube: no ratings, one status) triggers.
-  const shownDistributions = distributions.filter((d) => d.rows.length >= 2);
+  // The degradation rule, RE-RULED 2026-08-22 (user: *"By Status should show
+  // ALL entry statuses… it should've shown Planned"* · *"By rating isn't
+  // appearing either even though one entry has already been rated"*): a
+  // distribution renders whenever it has ANY row. Only an EMPTY one drops —
+  // nothing rated, no genres, no statuses. The old "fewer than 2 distinct
+  // values" floor (the empty-states sheet §03) hid a one-value breakdown, which
+  // on a fresh habit is every breakdown there is.
+  const shownDistributions = distributions.filter((d) => d.rows.length >= 1);
 
-  // Survivor merge: a lone catalog tile + a lone distribution become one zone.
-  // The count tile carries an in-tile LIST of every entry (channel) ranked by
-  // total time, most first (the list-tile idiom — not a bar chart).
+  // The YouTube Catalog zone (user-ruled 2026-08-22 — YouTube ONLY, never a
+  // count-keyed merge): the channel-count tile carries an in-tile LIST of every
+  // channel ranked by total time, most first (the list-tile idiom — not a bar
+  // chart), beside the By-Genre bars. Its tile leaves the At-a-glance catalog
+  // row and its distribution leaves the Distributions panel; anything else
+  // (a rating tile, a status breakdown) stays where it always lived.
+  const countTile = catalog.find((t) => t.label === `${Noun} tracked`) ?? null;
+  const genreDist = shownDistributions.find((d) => d.title === "By Genre") ?? null;
   const mergedCatalog =
-    catalog.length === 1 && shownDistributions.length === 1
+    isYouTube && countTile != null
       ? {
           tile: {
-            ...catalog[0],
+            ...countTile,
             list: {
               dateLine: "",
               rows: leaderboard(sessScoped, ent, "minutes", ent.length).map((lr) => ({
@@ -391,7 +401,7 @@ export function buildConsumptionDashboard(
               })),
             },
           } as TileSpec,
-          dist: shownDistributions[0],
+          dist: genreDist,
           hallTitle: Noun,
         }
       : null;
@@ -507,8 +517,8 @@ export function buildConsumptionDashboard(
     },
     engagement,
     volume,
-    catalog: mergedCatalog ? [] : catalog,
-    distributions: mergedCatalog ? [] : shownDistributions,
+    catalog: mergedCatalog ? catalog.filter((t) => t !== countTile) : catalog,
+    distributions: mergedCatalog ? shownDistributions.filter((d) => d !== genreDist) : shownDistributions,
     mergedCatalog,
     leaderboards: shownLeaderboards,
     trend: {

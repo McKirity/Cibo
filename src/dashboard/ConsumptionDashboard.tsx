@@ -191,11 +191,14 @@ export function ConsumptionDashboard({
               {m.catalog.length > 0 && <StatGroup label="Catalog" tiles={m.catalog} />}
             </Panel>
 
-            {/* ── Catalog (degradation survivor merge — e.g. YouTube). Designed
-                 in Claude Design: stacked sections — the By-genre bars, then a
-                 "Channels" hall of ranked cover-cards (name → hours). ── */}
+            {/* ── Catalog (the YouTube face ONLY since 2026-08-22, user-ruled).
+                 Designed in Claude Design: stacked sections — the By-genre
+                 bars, then a "Channels" hall of ranked cover-cards
+                 (name → hours). The bars section skips when no channel carries
+                 a genre yet. ── */}
             {m.mergedCatalog && (
               <Panel title="Catalog">
+                {m.mergedCatalog.dist && (
                 <div className="catsec">
                   <div className="dcol">
                     <div className="chead">
@@ -214,6 +217,7 @@ export function ConsumptionDashboard({
                     </div>
                   </div>
                 </div>
+                )}
                 <div className="catsec">
                   <div className="dcol">
                     <div className="chead">

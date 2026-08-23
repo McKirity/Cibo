@@ -1447,34 +1447,30 @@
      and the `:has(> img.art)` reset that went with it. That composition made
      the picture fit a drawn box; this tile exists to show the picture. ---- */
   .banner:has(> .bnart) { padding:0; justify-content:flex-start; }
-  /* A CEILING, never a size. The tile stretches its drawn columns and stops at
-     4u wide; the height is then whatever the ratio makes at that width. The
-     second term binds ONLY on portrait art — a cover promoted for want of a
-     banner — where a width cap alone builds a tower.
-     THE TWO CEILINGS ARE DERIVED FROM --wall-unit, NOT MINTED (2026-08-07): the
-     exhibit proposed --banner-max-w/-max-h as roster dials at 512/384px, which
-     is exactly 4u and 3u. One use-site, and a literal pair would silently stop
-     tracking a theme that moved the unit — so they are written as the
-     derivation they are. `align-self:start` + `height:auto` are the pair the
-     cover already carries inline, written into the sheet: the packer still
-     reserves the measured rows. Nothing may crop this art either. */
-  .banner[data-art] { width:auto; height:auto; align-self:start;
-                      max-width:min(calc(var(--wall-unit) * 4),
-                                    calc(var(--wall-unit) * 3 / var(--art-ratio))); }
+  /* THE CEILINGS MOVED JS-SIDE (2026-08-23) — the sheet no longer sizes this
+     tile at all. The 2026-08-07 ruling stands untouched (the banner is FULLY
+     SHOWN, capped at ~4u wide, the 3u height term binding only on promoted
+     portrait art); what changed is the MECHANICS: the sheet's `max-width:
+     min(4u, 3u/ratio)` sized the drawn box in fixed --wall-unit multiples
+     while the wall's columns are fluid `1fr`, so the box stopped short of the
+     columns the pass had reserved and the remainder stood open in the wall as
+     a dead strip the packer believed occupied — most of a column at a ~1920
+     window, where 15 columns run ~95px against the 140px design pitch
+     (user-reported 2026-08-23). Now the banner pass in CoverWall.tsx floors
+     those same ceilings to WHOLE columns, the tile fills its grid area
+     exactly (no width/max-width/align-self here — the reservation IS the
+     box), and `contain` below letterboxes the sub-half-row remainder onto the
+     slot field inside the card. RETIRED HERE: `.banner[data-art]` (the
+     shrink-to-art pair + the max-width ceiling) and its `.bnart` aspect-ratio
+     twin — a banner no longer wears `data-art` at all; that attribute is the
+     cover tile's alone. */
   .bnart { position:relative; flex:1 1 auto; min-height:0; width:100%; }
-  /* THE FLOOR THAT SEATS THE WORDS AND THE HERO COVER. Both are sized by their
-     own content, so on a very short picture — a 21:9 banner at a narrow drawn
-     span — they stood taller than the art and spilled off it. Clamping THEM is
-     not the fix: a clamp stops the box while the text keeps going. So the ART
-     CARD carries a floor — the cover's own height plus its room — and the
-     picture stays whole inside it: object-fit is `contain`, so when the floor
-     binds the art letterboxes onto the tile's slot gradient rather than being
-     cropped. That trade is already settled law next door on the cover tile:
-     *a whole picture with a sliver of slot showing beats a cropped one.* At
-     every ordinary size the box IS the art's aspect, so `contain` and `cover`
-     draw the same pixels and the floor is invisible. */
-  .banner[data-art] .bnart { flex:0 0 auto; aspect-ratio:1 / var(--art-ratio);
-                             min-height:calc(var(--cover-h) + var(--space-8) * 2); }
+  /* THE FLOOR THAT SEATS THE WORDS AND THE HERO COVER now lives in the
+     reservation (grid.bannerFloor in the banner pass — same derivation,
+     cover-h + 2·space-8): on very short art the reserved rows hold at the
+     floor and the picture letterboxes inside them. `contain` is what keeps
+     every one of these trades crop-free: *a whole picture with a sliver of
+     slot showing beats a cropped one*, the cover tile's settled law. */
   .bnart .art { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
   /* THE VEIL — the readability method, replacing every panel the words used to
      sit on (user-ruled 2026-08-07: the opaque panel *"blocks out the artwork"*).

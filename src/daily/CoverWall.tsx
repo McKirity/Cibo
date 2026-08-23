@@ -405,19 +405,32 @@ export function CoverWall({
       if (t.body.kind !== "banner") continue;
       const ratio = aspects.get(t.id);
       if (ratio == null) continue; // no art → the drawn 6×2 span stands
-      const drawn = widthOf(BANNER_COLS);
-      const w = Math.min(drawn, grid.unit * 4, (grid.unit * 3) / ratio);
-      // The art card's floor (the sheet's min-height): on very short art the
-      // box holds at the floor and the picture letterboxes inside it, so the
-      // reservation has to follow the floor, not the ratio.
-      const h = Math.max(w * ratio, grid.bannerFloor);
-      // Reserve only the columns the tile actually draws into — a promoted
-      // portrait cover can come out barely two columns wide, and reserving six
-      // would punch a hole in the wall beside it.
+      // THE BANNER FILLS ITS RESERVATION (2026-08-23). The first cut sized the
+      // TILE to the art — ceil to whole columns, draw at the fixed-unit 4u cap
+      // — and the rounding remainder pooled beside and below the tile as a
+      // dead strip the packer had marked occupied, so no filler could ever
+      // take it. At the design pitch (~140px columns) that mortar was slim; at
+      // a ~1920 window the fifteen 1fr columns run ~95px, the 512px cap spans
+      // ~5.5 of them, and the strip grew to most of a column (user-reported,
+      // the 08-23 wall). So the ceilings now pick a WHOLE-column width — floor,
+      // never ceil, so the ruled 4u / 3u caps still bind from above — the tile
+      // spans exactly those columns, and the half-row remainder letterboxes
+      // INSIDE the card on its slot field via `contain` (the cover tile's own
+      // settled trade: a whole picture with a sliver of slot beats a cropped
+      // one) instead of standing open in the wall.
+      const wCap = Math.min(widthOf(BANNER_COLS), grid.unit * 4, (grid.unit * 3) / ratio);
       const cols = Math.max(
         2,
-        Math.min(BANNER_COLS, Math.ceil((w + grid.gap) / (grid.colW + grid.gap))),
+        Math.min(BANNER_COLS, Math.floor((wCap + grid.gap) / (grid.colW + grid.gap))),
       );
+      // The art's width inside the tile — the columns' own width, except in
+      // the promoted-portrait corner where even the two-column minimum exceeds
+      // the 3u height ceiling; there `contain` letterboxes the sides too.
+      const artW = Math.min(widthOf(cols), wCap);
+      // The art card's floor (grid.bannerFloor): on very short art the box
+      // holds at the floor and the picture letterboxes inside it, so the
+      // reservation has to follow the floor, not the ratio.
+      const h = Math.max(artW * ratio, grid.bannerFloor);
       const halfRows = Math.max(2, Math.ceil((h + grid.gap) / grid.step));
       boxes.set(t.id, { span: { cols, halfRows }, ratio, capPx: null });
     }
@@ -458,11 +471,25 @@ export function CoverWall({
   // The text probe and the cover pass measure disjoint tiles; the pack reads
   // one map.
   const spans = useMemo(() => {
-    if (coverBoxes.size === 0) return measured;
     const merged = new Map(measured);
     for (const [id, box] of coverBoxes) merged.set(id, box.span);
+    // THE TAROT'S COLUMN (2026-08-23, the banner fix's sibling). The drawn
+    // "1×2 small vertical" priced its one column at the wall unit (~128px);
+    // on the 1600–2180 desktop band a `1fr` column runs ~67–105px, and a card
+    // that must keep its 104:182 aspect inside that column shrinks to a
+    // ~56px-wide stamp floating mid-plate (measured 55.6×97 in an 81×268
+    // tile) — the empty plate around it reads as a hole in the wall. So when
+    // the live column has fallen well under the unit the tile takes TWO whole
+    // columns and the card stands at its full drawn size; at the design pitch
+    // and on compact (columns ≈ the unit) the drawn single column is
+    // untouched. Same law as the banner pass above: fixed-unit anatomy is
+    // re-expressed in real columns, never left to strand its remainder.
+    if (grid != null && grid.colW < grid.unit * 0.9) {
+      for (const t of tiles)
+        if (t.body.kind === "tarot") merged.set(t.id, { cols: 2, halfRows: 4 });
+    }
     return merged;
-  }, [measured, coverBoxes]);
+  }, [measured, coverBoxes, grid, tiles]);
 
   const layout = useMemo(() => {
     const opts = { cols: wallCols(), ...(budget != null ? { budgetHalfRows: budget } : {}) };
@@ -516,10 +543,14 @@ export function CoverWall({
               <div
                 key={p.item.id}
                 className={`tile ${tileClass(p.item)}`}
-                /* Set only once the box IS the art's shape. Until then the art
-                   draws `contain` — a whole cover with a sliver of slot beats a
-                   cropped one, every time. */
-                data-art={coverBoxes.has(p.item.id) ? "fit" : undefined}
+                /* Set only once the box IS the art's shape — COVERS only.
+                   Until then the art draws `contain` — a whole cover with a
+                   sliver of slot beats a cropped one, every time. A banner
+                   never wears it (2026-08-23): its box is the grid area and
+                   `contain` is its permanent mode. */
+                data-art={
+                  coverBoxes.has(p.item.id) && p.item.body.kind !== "banner" ? "fit" : undefined
+                }
                 style={{
                   ...tileStyle(p.item),
                   ...coverBox(p.item, coverBoxes),
@@ -610,6 +641,11 @@ const BAND_ESTIMATE = 78;
 const coverBox = (t: WallTile, boxes: ReadonlyMap<string, CoverBox>): Record<string, string> => {
   const box = boxes.get(t.id);
   if (box == null) return {};
+  // A banner takes NO inline shape (2026-08-23): its pass floors the ceilings
+  // to whole columns, so the grid area IS the tile's box and the art
+  // letterboxes the remainder inside it. Shrinking it to the art is what left
+  // reserved-but-undrawn strips in the wall.
+  if (t.body.kind === "banner") return {};
   const shape: Record<string, string> = {
     ["--art-ratio"]: `${box.ratio}`,
     alignSelf: "start",
@@ -882,13 +918,16 @@ function Banner({
   // slot field, exactly as the cover tile's does. Only art defeats text.
   if (src == null) return info;
 
-  // THE ART CARD (2026-08-07). `.bnart` is an in-flow box at the picture's own
-  // aspect, exactly like the cover tile's `.cvart` — the banner is SHOWN WHOLE
-  // and the tile flexes to it rather than the picture being cropped into a
-  // drawn 6×2. The art reports its natural size the moment it loads, which is
-  // what lets the banner pass above reserve the right number of rows; nothing
-  // is fetched twice. The words then ride ON the picture in `.bvinfo` —
-  // outlined ink over the veil, no panel anywhere.
+  // THE ART CARD (2026-08-07; re-mechanised 2026-08-23). The banner is SHOWN
+  // WHOLE — never cropped into a drawn 6×2 — but the TILE no longer shrinks to
+  // the picture: the banner pass floors its ceilings to whole columns, the
+  // tile fills that reservation exactly, and `.bnart`'s `contain` letterboxes
+  // the sub-half-row remainder onto the slot field inside the card (shrinking
+  // the tile to the art left the remainder as a dead strip in the wall). The
+  // art reports its natural size the moment it loads, which is what lets the
+  // pass reserve the right columns and rows; nothing is fetched twice. The
+  // words ride ON the picture in `.bvinfo` — outlined ink over the veil, no
+  // panel anywhere.
   return (
     <>
       <div className="bnart">

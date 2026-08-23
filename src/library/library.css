@@ -578,6 +578,8 @@
   border-radius: var(--radius-full); border: var(--border-hairline) dashed var(--border); color: var(--text-muted);
   cursor: pointer; font-size: var(--size-small); background: none; font-family: var(--font-ui); }
 .addtag:hover { color: var(--accent); border-color: var(--accent); }
+/* the ADD lane's inline "New genre…" field (2026-08-22) — caption-sized to sit in the tag row */
+.mo2 .lane .lanein { font-size: var(--size-caption); padding: var(--space-1) var(--space-4); width: 140px; box-shadow: none; }
 .applyrow { flex: 0 0 auto; margin-top: var(--space-2); }
 .applyrow .btn-accent { width: 100%; justify-content: center; }
 .applynote { font-size: var(--size-caption); color: var(--text-muted); margin: var(--space-3) 0 0; }

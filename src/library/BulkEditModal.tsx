@@ -151,6 +151,14 @@ export function BulkEditModal({
       }
     }
     if (failures > 0) showErrorToast(`Bulk edit: ${failures} of ${n} updates were rejected.`);
+    // A genre typed into the ADD lane joins the picklist (user-asked 2026-08-22
+    // — until then a new genre meant a trip to Settings → Habits → Vocabulary
+    // or to an entry's own page). The creation modal's rule applies: the vocab
+    // write lands only once at least one entry actually took it, so a rail
+    // reset never leaves a phantom picklist value behind.
+    if (failures < n && data.genreDefinitionId != null) {
+      for (const g of fields.genreAdd) quickAddVocab(data.genreDefinitionId, data.genreVocab, g);
+    }
     // Re-editable by design: the selection stays, the field rail resets.
     setFields(EMPTY_BULK_STATE);
   };
@@ -658,6 +666,16 @@ function GenreLanes({
   remove: string[];
   onChange: (add: string[], remove: string[]) => void;
 }) {
+  // The ADD lane takes a NEW genre too (user-asked 2026-08-22). Normalized to
+  // the vocab's own casing so no entry stores a case-divergent twin; the
+  // picklist row itself is written at Apply, never here.
+  const addNew = (raw: string) => {
+    const v = raw.trim();
+    if (v === "") return;
+    const canon = vocab.find((g) => g.toLowerCase() === v.toLowerCase()) ?? v;
+    if (add.includes(canon)) return;
+    onChange([...add, canon], remove.filter((x) => x !== canon));
+  };
   return (
     <div className="fblock">
       <p className="fname">Genre</p>
@@ -667,6 +685,7 @@ function GenreLanes({
         options={vocab.filter((v) => !add.includes(v) && !remove.includes(v))}
         onAdd={(v) => onChange([...add, v], remove)}
         onDrop={(v) => onChange(add.filter((x) => x !== v), remove)}
+        onNew={addNew}
       />
       <Lane
         label="REMOVE"
@@ -685,14 +704,22 @@ function Lane({
   options,
   onAdd,
   onDrop,
+  onNew,
 }: {
   label: string;
   picked: string[];
   options: string[];
   onAdd: (v: string) => void;
   onDrop: (v: string) => void;
+  /** Present = the lane's menu ends in "＋ New genre…", which opens an inline field. */
+  onNew?: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null);
+  const commitDraft = () => {
+    if (draft != null && onNew != null) onNew(draft);
+    setDraft(null);
+  };
   return (
     <div className="lane">
       <span className="lk">{label}</span>
@@ -704,17 +731,58 @@ function Lane({
           </span>
         </span>
       ))}
-      <span className="tselwrap">
-        <button className="addtag" onClick={() => setOpen((o) => !o)}>
-          +
-        </button>
-        {open && (
-          <Menu
-            onClose={() => setOpen(false)}
-            items={options.map((v) => ({ key: v, label: v, onPick: () => onAdd(v) }))}
-          />
-        )}
-      </span>
+      {draft != null ? (
+        <input
+          className="ec-input mini lanein"
+          type="text"
+          value={draft}
+          placeholder="New genre…"
+          autoFocus
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitDraft();
+            else if (e.key === "Escape") {
+              e.stopPropagation();
+              setDraft(null);
+            }
+          }}
+          onBlur={commitDraft}
+        />
+      ) : (
+        <span className="tselwrap">
+          <button className="addtag" onClick={() => setOpen((o) => !o)}>
+            +
+          </button>
+          {open && (
+            <Menu
+              onClose={() => setOpen(false)}
+              items={[
+                ...options.map((v) => ({ key: v, label: v, onPick: () => onAdd(v) })),
+                ...(onNew != null
+                  ? [{ key: "\u0000new", label: "＋ New genre…", onPick: () => setDraft("") }]
+                  : []),
+              ]}
+            />
+          )}
+        </span>
+      )}
     </div>
   );
+}
+
+/** Insert a vocab_options row when the value is new (ordering = append) —
+ *  the creation modal's helper, repeated here rather than exported across
+ *  two modals that each own their names. */
+function quickAddVocab(
+  definitionId: import("../db/schema").SubunitDefinitionId,
+  existing: string[],
+  value: string,
+) {
+  if (existing.some((v) => v.toLowerCase() === value.toLowerCase())) return;
+  const res = evolu.insert("vocab_options", {
+    definition_fk: definitionId,
+    value: NonEmptyString100.orThrow(value),
+    sort_order: existing.length + 1,
+  });
+  if (!res.ok) console.error("Vocab quick-add rejected", res.error);
 }

@@ -1231,20 +1231,19 @@ function SessionBlock({
           }}
         />
       ) : (
-        spec.measures.length > 0 && (
-          <div className="row">
-            <span className="flbl">
-              {spec.measures.length > 1
-                ? "Measures"
-                : spec.measures[0].kind === "time"
-                  ? "Duration"
-                  : spec.measures[0].unit}
-            </span>
-            {spec.measures.map((m) => {
-              const row = m.kind === "time" ? bout.time : bout.count;
-              return (
-                <MeasureField
-                  key={m.kind}
+        // ONE ROW PER MEASURE (user-ruled 2026-08-23: the time and words
+        // measures "should be in their own rows instead of one row and
+        // overflowing"). The shared "Measures" row put both fields on one
+        // line; on a narrow spine the second overflowed or wrapped. Each
+        // measure now carries the same label the single-measure face always
+        // used — "Duration" for time, the unit word for count.
+        spec.measures.length > 0 &&
+        spec.measures.map((m) => {
+          const row = m.kind === "time" ? bout.time : bout.count;
+          return (
+            <div className="row" key={m.kind}>
+              <span className="flbl">{m.kind === "time" ? "Duration" : m.unit}</span>
+              <MeasureField
                   kind={m.kind}
                   unit={m.unit}
                   value={row?.value ?? null}
@@ -1270,11 +1269,10 @@ function SessionBlock({
                     onOptimistic(`${m.kind}|measure`, String(v));
                     queue(`${m.kind}-value`, () => updateMeasureValue(row.id, v));
                   }}
-                />
-              );
-            })}
-          </div>
-        )
+              />
+            </div>
+          );
+        })
       )}
 
       {spec.flags.length > 0 && (
@@ -1382,30 +1380,24 @@ function DraftBlock({
           }}
         />
       ) : (
-        spec.measures.length > 0 && (
-          <div className="row">
-            <span className="flbl">
-              {spec.measures.length > 1
-                ? "Measures"
-                : spec.measures[0].kind === "time"
-                  ? "Duration"
-                  : spec.measures[0].unit}
-            </span>
-            {spec.measures.map((m) => (
-              <MeasureField
-                key={m.kind}
-                kind={m.kind}
-                unit={m.unit}
-                value={null}
-                draftText={m.kind === "time" ? draft.time : draft.count}
-                onDraftChange={(t) =>
-                  onChange(m.kind === "time" ? { ...draft, time: t } : { ...draft, count: t })
-                }
-                onCommit={() => undefined}
-              />
-            ))}
+        // One row per measure — the same 2026-08-23 ruling as the bout face
+        // above; the two faces must not drift.
+        spec.measures.length > 0 &&
+        spec.measures.map((m) => (
+          <div className="row" key={m.kind}>
+            <span className="flbl">{m.kind === "time" ? "Duration" : m.unit}</span>
+            <MeasureField
+              kind={m.kind}
+              unit={m.unit}
+              value={null}
+              draftText={m.kind === "time" ? draft.time : draft.count}
+              onDraftChange={(t) =>
+                onChange(m.kind === "time" ? { ...draft, time: t } : { ...draft, count: t })
+              }
+              onCommit={() => undefined}
+            />
           </div>
-        )
+        ))
       )}
 
       {spec.flags.length > 0 && (

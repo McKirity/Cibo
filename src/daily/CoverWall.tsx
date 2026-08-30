@@ -405,34 +405,65 @@ export function CoverWall({
       if (t.body.kind !== "banner") continue;
       const ratio = aspects.get(t.id);
       if (ratio == null) continue; // no art → the drawn 6×2 span stands
-      // THE BANNER FILLS ITS RESERVATION (2026-08-23). The first cut sized the
-      // TILE to the art — ceil to whole columns, draw at the fixed-unit 4u cap
-      // — and the rounding remainder pooled beside and below the tile as a
-      // dead strip the packer had marked occupied, so no filler could ever
-      // take it. At the design pitch (~140px columns) that mortar was slim; at
-      // a ~1920 window the fifteen 1fr columns run ~95px, the 512px cap spans
-      // ~5.5 of them, and the strip grew to most of a column (user-reported,
-      // the 08-23 wall). So the ceilings now pick a WHOLE-column width — floor,
-      // never ceil, so the ruled 4u / 3u caps still bind from above — the tile
-      // spans exactly those columns, and the half-row remainder letterboxes
-      // INSIDE the card on its slot field via `contain` (the cover tile's own
-      // settled trade: a whole picture with a sliver of slot beats a cropped
-      // one) instead of standing open in the wall.
-      const wCap = Math.min(widthOf(BANNER_COLS), grid.unit * 4, (grid.unit * 3) / ratio);
+      // THE BANNER FILLS ITS RESERVATION (2026-08-23) — AND THE ART FILLS THE
+      // BANNER (2026-08-30, user-reported: slot-field gaps above and below the
+      // picture). The 08-23 cut CEILED the height to whole half-rows and let
+      // `contain` letterbox the remainder — but a half-row step is ~70px, and
+      // art whose natural height lands just past a row multiple bought nearly
+      // a whole step of centred letterbox (~33px of bare slot at each edge).
+      // Now the reservation ROUNDS to the NEAREST half-row, so the tile hugs
+      // the picture's height as closely as the grid allows, and the art
+      // cover-fills the tile (`data-art="fill"` → object-fit:cover), turning
+      // the sub-half-step mismatch into an invisible few-px edge crop instead
+      // of a gap. The crop-free `contain` face survives ONLY where cover
+      // would gouge the picture: art shorter than the words' seat (the floor
+      // binds) and the promoted-portrait corner (tile wider than the 3u-capped
+      // art) — there the letterbox is the designed trade, not a defect.
+      // Width mechanics unchanged from 08-23: whole-column width — floor,
+      // never ceil, so the ruled caps still bind from above — and the tile
+      // spans exactly those columns. THE CEILINGS WEAR BANNER_GROW since
+      // 2026-08-30 (user-ruled: "both the banner and portrait are slightly
+      // hard to see… about 20% increase") — the 08-07 4u/3u anatomy stays
+      // legible under the factor, and the hero cover thumb grows for free
+      // (its height is the tile's inset height). Whole-column flooring
+      // quantises the growth per canvas (~+20% on the 1920 band, one whole
+      // column at the design pitch).
+      const wCap = Math.min(
+        widthOf(BANNER_COLS),
+        grid.unit * 4 * BANNER_GROW,
+        (grid.unit * 3 * BANNER_GROW) / ratio,
+      );
       const cols = Math.max(
         2,
         Math.min(BANNER_COLS, Math.floor((wCap + grid.gap) / (grid.colW + grid.gap))),
       );
       // The art's width inside the tile — the columns' own width, except in
       // the promoted-portrait corner where even the two-column minimum exceeds
-      // the 3u height ceiling; there `contain` letterboxes the sides too.
+      // the height ceiling; there `contain` letterboxes the sides too.
       const artW = Math.min(widthOf(cols), wCap);
-      // The art card's floor (grid.bannerFloor): on very short art the box
-      // holds at the floor and the picture letterboxes inside it, so the
-      // reservation has to follow the floor, not the ratio.
-      const h = Math.max(artW * ratio, grid.bannerFloor);
-      const halfRows = Math.max(2, Math.ceil((h + grid.gap) / grid.step));
-      boxes.set(t.id, { span: { cols, halfRows }, ratio, capPx: null });
+      const natural = artW * ratio;
+      // The art card's floor, grown with the rest of the anatomy: on very
+      // short art the box holds at the floor and the picture letterboxes
+      // inside it, so the reservation has to follow the floor, not the ratio.
+      const bnFloor = grid.bannerFloor * BANNER_GROW;
+      const h = Math.max(natural, bnFloor);
+      // Nearest half-row — but never under the floor's own seat, so the words
+      // and the hero cover always keep their room.
+      const minRows = Math.ceil((bnFloor + grid.gap) / grid.step);
+      const halfRows = Math.max(2, minRows, Math.round((h + grid.gap) / grid.step));
+      const reserved = halfRows * grid.step - grid.gap;
+      // Cover-fill only when the crop it costs is a sliver: a shorter tile
+      // crops the remainder vertically (always ≤ half a step — fine); a taller
+      // one crops width by 1 − natural/reserved, capped at 15% of the picture.
+      const fill =
+        artW >= widthOf(cols) - 0.5 &&
+        (reserved <= natural || 1 - natural / reserved <= 0.15);
+      boxes.set(t.id, {
+        span: { cols, halfRows },
+        ratio,
+        capPx: null,
+        ...(fill ? { fill: true as const } : {}),
+      });
     }
     for (const t of tiles) {
       if (t.body.kind !== "cover") continue;
@@ -543,14 +574,13 @@ export function CoverWall({
               <div
                 key={p.item.id}
                 className={`tile ${tileClass(p.item)}`}
-                /* Set only once the box IS the art's shape — COVERS only.
-                   Until then the art draws `contain` — a whole cover with a
-                   sliver of slot beats a cropped one, every time. A banner
-                   never wears it (2026-08-23): its box is the grid area and
-                   `contain` is its permanent mode. */
-                data-art={
-                  coverBoxes.has(p.item.id) && p.item.body.kind !== "banner" ? "fit" : undefined
-                }
+                /* Covers wear "fit" once measured (the box IS the art's
+                   shape); banners wear "fill" when their picture may
+                   cover-fill the reservation (2026-08-30 — before that a
+                   banner never wore the attribute and `contain` letterboxed
+                   the half-row remainder as bare slot gaps, user-reported).
+                   Unmeasured art draws `contain` either way. */
+                data-art={artMode(p.item, coverBoxes)}
                 style={{
                   ...tileStyle(p.item),
                   ...coverBox(p.item, coverBoxes),
@@ -618,11 +648,35 @@ interface CoverBox {
   ratio: number;
   /** Set only when the ceiling bound — the height is then fixed and the width follows. */
   capPx: number | null;
+  /** Banners only (2026-08-30): the art may cover-fill its tile — the banner
+   *  pass sets it whenever the sub-half-row mismatch is a sliver, and omits it
+   *  where cover would gouge the picture (floor-bound short art, the
+   *  promoted-portrait corner). */
+  fill?: true;
 }
+
+/** The tile's `data-art` mode: a measured cover wears "fit" (the box IS the
+ *  art's shape); a banner wears "fill" when its picture may cover-fill the
+ *  reservation (see the banner pass), else nothing — `contain` letterboxes. */
+const artMode = (
+  t: WallTile,
+  boxes: ReadonlyMap<string, CoverBox>,
+): "fit" | "fill" | undefined => {
+  const box = boxes.get(t.id);
+  if (box == null) return undefined;
+  if (t.body.kind === "banner") return box.fill === true ? "fill" : undefined;
+  return "fit";
+};
 
 /** Stand-in band height until the first real measurement lands — the eyebrow
  *  line, the title line and the chip row, plus the band's padding. */
 const BAND_ESTIMATE = 78;
+
+/** The banner tile's growth factor (user-ruled 2026-08-30: "both the banner
+ *  and portrait are slightly hard to see… about 20% increase"). Multiplies
+ *  the 08-07 4u width / 3u height ceilings and the words'-seat floor in the
+ *  banner pass — one owner, so the ruled anatomy stays legible beside it. */
+const BANNER_GROW = 1.2;
 
 
 /**
@@ -918,12 +972,13 @@ function Banner({
   // slot field, exactly as the cover tile's does. Only art defeats text.
   if (src == null) return info;
 
-  // THE ART CARD (2026-08-07; re-mechanised 2026-08-23). The banner is SHOWN
-  // WHOLE — never cropped into a drawn 6×2 — but the TILE no longer shrinks to
-  // the picture: the banner pass floors its ceilings to whole columns, the
-  // tile fills that reservation exactly, and `.bnart`'s `contain` letterboxes
-  // the sub-half-row remainder onto the slot field inside the card (shrinking
-  // the tile to the art left the remainder as a dead strip in the wall). The
+  // THE ART CARD (2026-08-07; re-mechanised 2026-08-23; fill mode 2026-08-30).
+  // The TILE fills its whole-column reservation exactly (shrinking it to the
+  // art left dead strips in the wall — 08-23), and the PICTURE cover-fills the
+  // tile when the pass stamps `data-art="fill"` — the nearest-half-row
+  // mismatch reads as a few px of edge crop instead of slot-field gaps
+  // (user-reported 08-30). `contain` letterboxes only where cover would gouge
+  // the art (floor-bound short art, the promoted-portrait corner). The
   // art reports its natural size the moment it loads, which is what lets the
   // pass reserve the right columns and rows; nothing is fetched twice. The
   // words ride ON the picture in `.bvinfo` — outlined ink over the veil, no

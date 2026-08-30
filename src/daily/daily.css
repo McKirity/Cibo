@@ -1459,19 +1459,27 @@
      (user-reported 2026-08-23). Now the banner pass in CoverWall.tsx floors
      those same ceilings to WHOLE columns, the tile fills its grid area
      exactly (no width/max-width/align-self here — the reservation IS the
-     box), and `contain` below letterboxes the sub-half-row remainder onto the
-     slot field inside the card. RETIRED HERE: `.banner[data-art]` (the
-     shrink-to-art pair + the max-width ceiling) and its `.bnart` aspect-ratio
-     twin — a banner no longer wears `data-art` at all; that attribute is the
-     cover tile's alone. */
+     box). RETIRED HERE: the 08-23 shrink-to-art `.banner[data-art]` pair and
+     its `.bnart` aspect-ratio twin; since 2026-08-30 a banner wears
+     `data-art="fill"` (JS-decided — the fill rule below) while
+     `data-art="fit"` stays the cover tile's alone. */
   .bnart { position:relative; flex:1 1 auto; min-height:0; width:100%; }
   /* THE FLOOR THAT SEATS THE WORDS AND THE HERO COVER now lives in the
      reservation (grid.bannerFloor in the banner pass — same derivation,
      cover-h + 2·space-8): on very short art the reserved rows hold at the
-     floor and the picture letterboxes inside them. `contain` is what keeps
-     every one of these trades crop-free: *a whole picture with a sliver of
-     slot showing beats a cropped one*, the cover tile's settled law. */
+     floor and the picture letterboxes inside them via `contain` — the
+     designed trade for art that cover-fill would gouge. */
   .bnart .art { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  /* THE ART FILLS THE BANNER (2026-08-30, user-reported: bare slot-field gaps
+     above and below the picture). The 08-23 contain-always face letterboxed
+     the half-row rounding remainder — up to a whole ~70px step of it, centred
+     into two gaps. The banner pass now ROUNDS the reservation to the NEAREST
+     half-row and stamps `data-art="fill"` whenever the residual mismatch is a
+     sliver; `cover` absorbs it as a few px of edge crop nobody can see. The
+     pass withholds the stamp — and `contain` above letterboxes as before —
+     where cover would eat real picture: floor-bound short art and the
+     promoted-portrait corner. */
+  .banner[data-art="fill"] .bnart .art { object-fit:cover; }
   /* THE VEIL — the readability method, replacing every panel the words used to
      sit on (user-ruled 2026-08-07: the opaque panel *"blocks out the artwork"*).
      It shades the picture's bottom edge rather than covering it, and the art

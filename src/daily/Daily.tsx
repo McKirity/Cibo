@@ -60,6 +60,7 @@ import { appAnniversary, ensureAppStartDate } from "../db/appStart";
 import { cardOn, loadWhimsyConfig, type WhimsyConfig } from "./whimsyConfig";
 import { parseFeedSnapshot } from "./feedData";
 import { catchUpDays, unfinalizedQuery } from "./catchUp";
+import { stagedCount, subscribeHandoff } from "../timers/logHandoff";
 import { ensureTodayFeeds } from "./feeds";
 import "./daily.css";
 
@@ -136,6 +137,21 @@ export function Daily({
   const finalized = dayState[0]?.finalized === 1;
 
   const isToday = dayKey === todayLocal();
+
+  // A timer logged onto a FINALIZED today must still land (user-ruled
+  // 2026-08-30): the spine is the hand-off's only consumer and the wall never
+  // mounts it, so staged items sat in the mailbox until quit. Entering the
+  // Edit-day view is the whole fix — the flag never moves, the spine mounts
+  // and consumes, and the bouts ride the ordinary buffered commit. Subscribed
+  // live because the manage window is shell-mounted and can stage while the
+  // wall is on screen behind it.
+  useEffect(() => {
+    const check = () => {
+      if (isToday && stagedCount() > 0) setEditing(true);
+    };
+    check();
+    return subscribeHandoff(check);
+  }, [isToday]);
 
   // THE CAPTURE MOMENT — fetch-on-open, for the current day only ("Calendar &
   // Whimsy" § network behaviour). Past days never fetch: their snapshot is

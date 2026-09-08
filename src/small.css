@@ -2144,11 +2144,22 @@
                            100-unit box, so the pitch is .09 × the dial — 11.9px at 132 against a 5px
                            stroke, 6.9px of daylight. Below ~78px the daylight falls under 2px and the
                            five tracks read as one disc. */
-  --tp-arc-w:     5px;  /* the arc AND track weight — one instrument, one line weight. Finer than the
-                           retired --donut-stroke (7px on a 64px donut, ratio .11): five tracks on a
-                           132px dial want .04. Drawn at 6 first and measured: 4.8px of gap against a
-                           5.8px stroke read as a ripple rather than as five tracks. Non-scaling, so
-                           this is the rendered pixel weight at any dial size. */
+  --tp-arc-w:    3.79;  /* the arc AND track weight — one instrument, one line weight — in USER UNITS
+                           now (5px rendered at the 132px dial: 5 / 1.32). Finer than the retired
+                           --donut-stroke (7px on a 64px donut, ratio .11): five tracks on a 132px
+                           dial want .04. Drawn at 6 first and measured: 4.8px of gap against a
+                           5.8px stroke read as a ripple rather than as five tracks.
+                           ⚠ WAS `5px` + `vector-effect: non-scaling-stroke` ("the rendered pixel
+                           weight at any dial size") until 2026-09-07. WebView2 is evergreen, and
+                           Chromium 152 computes the DASH PATTERN against the SCREEN-space path
+                           length whenever non-scaling-stroke is set — `pathLength="100"` is
+                           ignored, so `calc(fraction * 100)` stopped meaning "fraction of the
+                           circle" and became "~fraction·100 rendered px on, 100 off, repeating":
+                           every arc chopped into scattered dashes, no app change involved. A
+                           screen-space stroke and the pathLength dash arithmetic can no longer
+                           coexist, so the weight is user-space and scales with the dial; the dial
+                           is FIXED (above), so the rendered weight is unchanged at 5px. Verified
+                           against JS-computed reference arcs in headless Edge 152, 2026-09-07. */
 }
 
 /* THE CARD. Alone in the whimsy set it carries `flex: 1 0 auto` — no declared
@@ -2225,12 +2236,15 @@
    arc. Neutral is what makes empty read as empty; the hue is for what has elapsed. */
 :root.compact .daily .timeprog .tp-trk {
   fill: none; stroke: var(--inset-background); stroke-width: var(--tp-arc-w);
-  vector-effect: non-scaling-stroke;
 }
 
+/* ⚠ NO `vector-effect: non-scaling-stroke` on trk/arc — it breaks the
+   pathLength dash arithmetic in Chromium 152+ (the --tp-arc-w comment above is
+   the record). The track carries no dashes and could keep it, but the two are
+   one instrument and must share one stroke arithmetic. */
 :root.compact .daily .timeprog .tp-arc {
   fill: none; stroke-width: var(--tp-arc-w); stroke-linecap: butt;
-  vector-effect: non-scaling-stroke; stroke-dashoffset: 0;
+  stroke-dashoffset: 0;
   stroke: color-mix(in oklch, var(--tp-ink), var(--panel-background) var(--whimsy-line-mix));
 }
 

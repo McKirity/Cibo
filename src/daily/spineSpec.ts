@@ -195,6 +195,64 @@ const catSignature = (m: SubunitMap): string =>
     .map((k) => `${k}=${m[k]}`)
     .join("\u0001");
 
+// ── Bout identity: one block per identity per day ────────────────────────────
+
+/**
+ * ONE BLOCK PER IDENTITY PER DAY — user-ruled 2026-09-18 (*"it should add to
+ * the already existing entry in the daily form rather than making a separate
+ * one"*, widened the same day from project habits to *"other habits that fall
+ * under this purview like coding does"*). A bout's IDENTITY is its entry plus
+ * its categorical answers — exactly the key `groupBouts` pairs rows on. Minutes
+ * or words logged against an identity the day already holds ADD ONTO that
+ * block instead of opening a second one; the timer hand-off and a hand-added
+ * session both merge. This SUPERSEDES the manual's "an hour after lunch and an
+ * hour at night is two sessions" for every habit the rule reaches.
+ *
+ * Reach = every habit whose block carries measures a second bout could add to:
+ * project habits (identity = the title, + any picklist) and simple habits with
+ * or without picklists (Coding by language; Drawing's identity is empty, so it
+ * holds ONE block a day). Range habits are excluded (a night is not summable),
+ * measureless ones have a single toggle already, and the derived Keyboard
+ * board never drafts a bout.
+ */
+export const mergesBouts = (
+  spec: Pick<StripSpec, "isRange" | "isMeasureless" | "derivesCount">,
+): boolean => !spec.isRange && !spec.isMeasureless && !spec.derivesCount;
+
+/**
+ * The answers a block's identity is read from, NORMALISED the way `commit`
+ * writes them: a picklist counts only when answered, a flag is always present
+ * as "true"/"false". Both sides of a comparison pass through this so a draft
+ * (flags held apart, picklists possibly "") and a stored bout (every flag
+ * written; a legacy row may lack one) hash the same.
+ */
+export const identityCats = (
+  spec: Pick<StripSpec, "categoricals" | "flags">,
+  cats: Readonly<Record<string, string>>,
+  flags: Readonly<Record<string, boolean>> = {},
+): SubunitMap => {
+  const out: Record<string, string> = {};
+  for (const d of spec.categoricals) if (cats[d.key]) out[d.key] = cats[d.key];
+  for (const d of spec.flags)
+    out[d.key] = flags[d.key] === true || cats[d.key] === "true" ? "true" : "false";
+  return out;
+};
+
+/** Entry + normalised answers, joined the way `groupBouts` keys its buckets. */
+export const boutSignature = (entryId: string | null, cats: SubunitMap): string =>
+  `${entryId ?? ""}|${catSignature(cats)}`;
+
+/**
+ * The FIRST candidate sharing an identity — the oldest block wins, so a day
+ * that already carries legacy twins still merges into one of them rather than
+ * minting a third. `null` when the identity is new to the day.
+ */
+export const findMergeTarget = <T>(
+  candidates: ReadonlyArray<T>,
+  signatureOf: (c: T) => string,
+  signature: string,
+): T | null => candidates.find((c) => signatureOf(c) === signature) ?? null;
+
 /**
  * Day-revision hash — "did today's rows change" for the milestone snapshot
  * (useMilestoneDay). ONE builder for both tenants (Spine banner · CoverWall).

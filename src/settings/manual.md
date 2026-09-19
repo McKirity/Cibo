@@ -169,8 +169,11 @@ yourself are fully yours to rename or remove.
 Open a day and fill in the form. That is the only way in — there is no quick-add, and nothing
 logs itself.
 
-**One session is one bout.** If you read for an hour after lunch and another hour at night, that
-is two sessions, not one two-hour session. They add up on their own.
+**One session per thing per day.** If you read the same book for an hour after lunch and another
+hour at night, the second hour is added onto the first session rather than opening a second one —
+whether it comes from a timer or from Add Session. A different book, or a different picklist answer
+(a different language in Coding, a different stage in Writing), is its own session. Sleep is the
+exception: a night is never added onto another night.
 
 **A session carries exactly one measurement.** If a habit tracks both time and a count — Writing
 tracks minutes and words — those are logged as separate sessions. This is deliberate: it keeps

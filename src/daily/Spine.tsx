@@ -29,11 +29,15 @@ import { syncDerivedKeyboardForDay, WRITING_KEY } from "../db/derivedKeyboard";
 import { showErrorToast, showUndoToast } from "../shell/toast";
 import { useMilestoneDay } from "./useMilestoneDay";
 import {
+  boutSignature,
   buildStripSpec,
   dayRevision,
   derivedReadout,
+  findMergeTarget,
   groupBouts,
+  identityCats,
   lettermark,
+  mergesBouts,
   minutesHint,
   orderStrips,
   type Bout,
@@ -95,6 +99,13 @@ const IX = () => (
   <Svg cls="ico sm">
     <path d="M18 6 6 18" />
     <path d="m6 6 12 12" />
+  </Svg>
+);
+/** lucide `copy` — the duplicate control's glyph (2026-09-18). */
+const ICopy = () => (
+  <Svg cls="ico sm">
+    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
   </Svg>
 );
 const IPlus = () => (
@@ -563,6 +574,21 @@ function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
   const [pendingMeasures, setPendingMeasures] = useState<Record<string, number>>({});
   const queuedDrafts = useRef<Set<number>>(new Set());
 
+  // THE MERGE READS THE LATEST FORM, NOT THE RENDER IT WAS BORN IN. The
+  // hand-off consumer is an effect keyed on habit + day, so its closure holds
+  // the first render's bouts and drafts; and two staged items can arrive in
+  // ONE tick, the second needing the overlay the first just set. A ref mirror
+  // of everything the identity lookup reads (2026-09-18) is what makes both
+  // safe — every merge reads `latest.current`, never a captured value.
+  const latest = useRef({ bouts, drafts, pendingCats, pendingEntry });
+  latest.current = { bouts, drafts, pendingCats, pendingEntry };
+  const pendingMeasuresRef = useRef<Record<string, number>>({});
+  /** The one writer of the measure overlay — state for paint, ref for reads. */
+  const setPendingMeasure = (slot: string, value: number) => {
+    pendingMeasuresRef.current = { ...pendingMeasuresRef.current, [slot]: value };
+    setPendingMeasures(pendingMeasuresRef.current);
+  };
+
   // A flush emptied the queue, so the store now holds what the drafts held:
   // drop them and let the real bouts render.
   useEffect(
@@ -651,19 +677,165 @@ function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
     setDrafts((d) => d.filter((x) => x.key !== key));
   };
 
-  /** A draft commits the moment it holds enough to be a valid bout. */
-  const commit = (draft: Draft) => {
-    const measures: Array<{ kind: "time" | "count"; value: number }> = [];
+  type Measures = Array<{ kind: "time" | "count"; value: number }>;
+
+  /** The measures a draft's text fields currently hold — blanks skipped. */
+  const measuresOf = (draft: Draft): Measures => {
+    const out: Measures = [];
     for (const m of spec.measures) {
       const raw = m.kind === "time" ? draft.time : draft.count;
-      if (raw.trim() === "") continue;
       const v = Number(raw);
-      if (!Number.isFinite(v)) {
+      if (raw.trim() !== "" && Number.isFinite(v)) out.push({ kind: m.kind, value: v });
+    }
+    return out;
+  };
+
+  /**
+   * BUFFERED, not written: the draft stays on screen until the flush replaces
+   * it with the real bout. Re-queuing under the same key means editing a
+   * still-unflushed bout rewrites its pending create rather than stacking a
+   * second one.
+   */
+  const queueDraft = (
+    draft: Draft,
+    measures: Measures,
+    range: { start: string; end: string } | null,
+  ) => {
+    const cats = [
+      ...spec.categoricals.flatMap((d) =>
+        draft.cats[d.key] ? [{ definitionId: d.id, value: draft.cats[d.key] }] : [],
+      ),
+      ...spec.flags.map((d) => ({
+        definitionId: d.id,
+        value: draft.flags[d.key] ? "true" : "false",
+      })),
+    ];
+    queueWrite(`draft|${habit.id}|${draft.key}`, () =>
+      createBout({
+        habit,
+        day: dayKey,
+        entryId: draft.entryId,
+        measures,
+        range,
+        measureless: spec.isMeasureless,
+        cats,
+        source: draft.fromTimer ? "timer" : undefined,
+      }),
+    );
+    queuedDrafts.current.add(draft.key);
+  };
+
+  // ── ONE BLOCK PER IDENTITY PER DAY (user-ruled 2026-09-18) ─────────────────
+  // "It should add to the already existing entry in the daily form rather than
+  // making a separate one" — a second bout on the same title (and the same
+  // picklist answers) ADDS its minutes or words onto the block the day already
+  // holds, whether it arrives from the timer or from Add Session. The rule and
+  // its reach are spelled out at `mergesBouts` in spineSpec.ts; the identity
+  // is the same key `groupBouts` pairs rows on, read through the pending
+  // overlays so an unflushed re-title or re-pick already counts.
+  const canMerge = mergesBouts(spec);
+  const boutSig = (b: Bout) => {
+    const L = latest.current;
+    return boutSignature(
+      L.pendingEntry[b.key] ?? b.entryId,
+      identityCats(spec, { ...b.cats, ...(L.pendingCats[b.key] ?? {}) }),
+    );
+  };
+  const draftSig = (d: Draft) => boutSignature(d.entryId, identityCats(spec, d.cats, d.flags));
+
+  /**
+   * Add measures onto a block the day already holds. A measure the block
+   * carries is bumped in place (its pending edit, if any, is the base); one it
+   * lacks is inserted as a row sharing the block's identity, which is exactly
+   * how `groupBouts` folds it in. Cumulative across unflushed merges: the
+   * overlay is the running total, and re-queuing under the same key replaces
+   * the earlier write rather than stacking a second.
+   */
+  const mergeIntoBout = (target: Bout, measures: Measures, fromTimer: boolean) => {
+    const L = latest.current;
+    const entryId = L.pendingEntry[target.key] ?? target.entryId;
+    const cats = { ...target.cats, ...(L.pendingCats[target.key] ?? {}) };
+    for (const m of measures) {
+      const row = m.kind === "time" ? target.time : target.count;
+      const slot = `${target.key}|${m.kind}`;
+      const total = (pendingMeasuresRef.current[slot] ?? row?.value ?? 0) + m.value;
+      setPendingMeasure(slot, total);
+      publishWordsIfWriting({ [slot]: total });
+      if (row == null) {
+        queueWrite(`sess|${target.key}|add-${m.kind}`, () =>
+          createBout({
+            habit,
+            day: dayKey,
+            entryId,
+            measures: [{ kind: m.kind, value: total }],
+            range: null,
+            measureless: false,
+            cats: spec.categoricals.flatMap((d) =>
+              cats[d.key] ? [{ definitionId: d.id, value: cats[d.key] }] : [],
+            ),
+            source: fromTimer ? "timer" : undefined,
+          }),
+        );
+      } else {
+        queueWrite(`sess|${target.key}|${m.kind}-value`, () => updateMeasureValue(row.id, total));
+      }
+    }
+  };
+
+  /** The same addition, onto a draft that has not flushed yet. */
+  const bumpDraft = (d: Draft, measures: Measures, fromTimer: boolean): Draft => {
+    let next: Draft = { ...d, fromTimer: d.fromTimer === true || fromTimer };
+    for (const m of measures) {
+      const held = Number(m.kind === "time" ? next.time : next.count) || 0;
+      const text = String(held + m.value);
+      next = m.kind === "time" ? { ...next, time: text } : { ...next, count: text };
+    }
+    return next;
+  };
+
+  // ── DUPLICATE a block (user-ruled 2026-09-18) ──────────────────────────────
+  // "For writing I'm entering Series and Series: Book 1, which has the same
+  // stage/wiki, word count, and hour and I'm getting tired of putting it in
+  // twice." A copy of a committed block lands as a NEW DRAFT below it carrying
+  // everything but the identity's leading field — the title where the habit
+  // has one, the picklist answers where it does not (Coding's language) — so
+  // the copy can never be caught by the one-block-per-identity rule unchanged,
+  // and the one thing you have to type is the one thing that differs. Reach:
+  // "anything that requires more than just one input" — project habits and
+  // picklist habits; a night (range) is never duplicated.
+  const canDuplicate = !spec.isRange && (spec.needsEntry || spec.categoricals.length > 0);
+  const duplicate = (bout: Bout) => {
+    const cats = catsOf(bout);
+    const held = (kind: "time" | "count") =>
+      pendingMeasuresRef.current[`${bout.key}|${kind}`] ??
+      (kind === "time" ? bout.time : bout.count)?.value ??
+      null;
+    const text = (v: number | null) => (v == null ? "" : String(v));
+    const copy: Draft = {
+      ...newDraft(),
+      entryId: null,
+      cats: spec.needsEntry
+        ? Object.fromEntries(
+            spec.categoricals.flatMap((d) => (cats[d.key] ? [[d.key, cats[d.key]]] : [])),
+          )
+        : {},
+      flags: Object.fromEntries(spec.flags.map((d) => [d.key, cats[d.key] === "true"])),
+      time: text(held("time")),
+      count: bout.countDerived ? "" : text(held("count")),
+    };
+    setDrafts((d) => [...d, copy]);
+  };
+
+  /** A draft commits the moment it holds enough to be a valid bout. */
+  const commit = (draft: Draft) => {
+    for (const m of spec.measures) {
+      const raw = m.kind === "time" ? draft.time : draft.count;
+      if (raw.trim() !== "" && !Number.isFinite(Number(raw))) {
         setError("That is not a number.");
         return false;
       }
-      measures.push({ kind: m.kind, value: v });
     }
+    const measures = measuresOf(draft);
     const range =
       spec.isRange &&
       draft.startDate !== "" && draft.startTime !== "" &&
@@ -678,32 +850,32 @@ function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
       setError("Pick a title first.");
       return false;
     }
-    const cats = [
-      ...spec.categoricals.flatMap((d) =>
-        draft.cats[d.key] ? [{ definitionId: d.id, value: draft.cats[d.key] }] : [],
-      ),
-      ...spec.flags.map((d) => ({
-        definitionId: d.id,
-        value: draft.flags[d.key] ? "true" : "false",
-      })),
-    ];
-    // BUFFERED, not written: the draft stays on screen until the flush replaces
-    // it with the real bout. Re-queuing under the same key means editing a
-    // still-unflushed bout rewrites its pending create rather than stacking a
-    // second one.
-    queueWrite(`draft|${habit.id}|${draft.key}`, () =>
-      createBout({
-        habit,
-        day: dayKey,
-        entryId: draft.entryId,
-        measures,
-        range,
-        measureless: spec.isMeasureless,
-        cats,
-        source: draft.fromTimer ? "timer" : undefined,
-      }),
-    );
-    queuedDrafts.current.add(draft.key);
+    if (canMerge && measures.length > 0) {
+      const sig = draftSig(draft);
+      const bout = findMergeTarget(latest.current.bouts, boutSig, sig);
+      if (bout != null) {
+        mergeIntoBout(bout, measures, draft.fromTimer === true);
+        dropDraft(draft.key);
+        setError(null);
+        return true;
+      }
+      // Two drafts sharing an identity inside one buffer window: the earlier
+      // one absorbs this one and re-queues under its own key.
+      const other = findMergeTarget(
+        latest.current.drafts.filter((d) => d.key !== draft.key),
+        draftSig,
+        sig,
+      );
+      if (other != null) {
+        const next = bumpDraft(other, measures, draft.fromTimer === true);
+        setDrafts((d) => d.map((x) => (x.key === next.key ? next : x)));
+        queueDraft(next, measuresOf(next), null);
+        dropDraft(draft.key);
+        setError(null);
+        return true;
+      }
+    }
+    queueDraft(draft, measures, range);
     setError(null);
     return true;
   };
@@ -716,6 +888,12 @@ function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
   // the categorical answers the timer picked at join (2026-08-20 — before that
   // a timed Coding bout landed with no language and nothing said so).
   // TODAY only: a staged item must never land on a browsed past day.
+  //
+  // ONE BLOCK PER IDENTITY PER DAY (2026-09-18): an item whose title (+ answers)
+  // the day already holds ADDS its minutes onto that block — a saved bout, a
+  // draft still in the buffer, or an earlier item of this same batch — and
+  // only a new identity opens a new block. The user's example: an hour of
+  // Elden Ring, a break, another timer → one Elden Ring session, two hours.
   useEffect(() => {
     const consume = () => {
       if (dayKey !== todayLocal()) return;
@@ -723,14 +901,42 @@ function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
       if (items.length === 0) return;
       // suppress the empty-session auto-seed — it REPLACES drafts when it fires
       seeded.current = `${habit.id}|${dayKey}`;
-      const made = items.map((it) => ({
-        ...newDraft(),
-        entryId: it.entryId,
-        cats: { ...(it.cats ?? {}) },
-        time: String(it.minutes),
-        fromTimer: true,
-      }));
-      setDrafts((prev) => [...prev, ...made]);
+      const made: Draft[] = [];
+      const bumped = new Map<number, Draft>();
+      for (const it of items) {
+        const measures: Measures = [{ kind: "time", value: it.minutes }];
+        if (canMerge) {
+          const sig = boutSignature(it.entryId, identityCats(spec, it.cats ?? {}));
+          const bout = findMergeTarget(latest.current.bouts, boutSig, sig);
+          if (bout != null) {
+            mergeIntoBout(bout, measures, true);
+            continue;
+          }
+          const fresh = findMergeTarget(made, draftSig, sig);
+          if (fresh != null) {
+            made[made.indexOf(fresh)] = bumpDraft(fresh, measures, true);
+            continue;
+          }
+          const existing = findMergeTarget(
+            latest.current.drafts.map((d) => bumped.get(d.key) ?? d),
+            draftSig,
+            sig,
+          );
+          if (existing != null) {
+            bumped.set(existing.key, bumpDraft(existing, measures, true));
+            continue;
+          }
+        }
+        made.push({
+          ...newDraft(),
+          entryId: it.entryId,
+          cats: { ...(it.cats ?? {}) },
+          time: String(it.minutes),
+          fromTimer: true,
+        });
+      }
+      setDrafts((prev) => [...prev.map((d) => bumped.get(d.key) ?? d), ...made]);
+      for (const d of bumped.values()) commit(d);
       for (const m of made) commit(m);
       setOpen(true);
     };
@@ -803,12 +1009,17 @@ function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
                 bout={bout}
                 cats={catsOf(bout)}
                 entryId={entryOf(bout)}
+                measureValue={(kind) =>
+                  pendingMeasures[`${bout.key}|${kind}`] ??
+                  (kind === "time" ? bout.time : bout.count)?.value ??
+                  null
+                }
                 queue={(field, run) => queueWrite(`sess|${bout.key}|${field}`, run)}
                 onOptimistic={(field, value) => {
                   if (field.endsWith("|measure")) {
                     const kind = field.slice(0, field.indexOf("|"));
                     const num = Number(value);
-                    setPendingMeasures((p) => ({ ...p, [`${bout.key}|${kind}`]: num }));
+                    setPendingMeasure(`${bout.key}|${kind}`, num);
                     publishWordsIfWriting({ [`${bout.key}|${kind}`]: num });
                     return;
                   }
@@ -825,6 +1036,7 @@ function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
                 entries={entries}
                 showEntry={spec.needsEntry}
                 onRemove={() => remove(bout, `${habit.name} bout ${i + 1}`)}
+                onDuplicate={canDuplicate ? () => duplicate(bout) : undefined}
                 onError={setError}
               />
             ))}
@@ -1122,6 +1334,8 @@ function SessionBlock({
   bout,
   cats,
   entryId,
+  measureValue,
+  onDuplicate,
   spec,
   data,
   dayKey,
@@ -1137,6 +1351,15 @@ function SessionBlock({
   /** The bout's answers WITH anything still buffered laid over them. */
   cats: Readonly<Record<string, string>>;
   entryId: string | null;
+  /**
+   * A measure as the form currently reads it — the buffered total when a
+   * merge or an edit has not flushed yet, else the stored row's value. Read
+   * through the overlay since 2026-09-18 so a timer topping up this block
+   * shows the new total at once.
+   */
+  measureValue: (kind: "time" | "count") => number | null;
+  /** Copy this block into a new draft (absent where the habit has one input). */
+  onDuplicate?: () => void;
   spec: StripSpec;
   data: DayData;
   dayKey: string;
@@ -1172,24 +1395,42 @@ function SessionBlock({
     <div className="sess">
       <div className="stag">
         <span>Session {index}</span>
-        {/* Provenance is the CLOCK GLYPH ALONE (ruled 2026-07-13). A timer
-            session is dismissed differently, so it carries no `remove`. */}
-        {bout.fromTimer ? (
-          <span className="src">
-            <ITimer />
-          </span>
-        ) : (
-          <span
-            className="rm"
-            role="button"
-            tabIndex={0}
-            onClick={onRemove}
-            onKeyDown={onActivate(onRemove)}
-          >
-            <IX />
-            remove
-          </span>
-        )}
+        <span className="stagctl">
+          {/* "Duplicate" sits LEFT of remove (user-ruled 2026-09-18: "an option
+              to the left of the remove button"); on a timer block it sits left
+              of the clock glyph instead. */}
+          {onDuplicate != null && (
+            <span
+              className="rm dup"
+              role="button"
+              tabIndex={0}
+              title="Copy this session into a new one — everything but what sets it apart"
+              onClick={onDuplicate}
+              onKeyDown={onActivate(onDuplicate)}
+            >
+              <ICopy />
+              duplicate
+            </span>
+          )}
+          {/* Provenance is the CLOCK GLYPH ALONE (ruled 2026-07-13). A timer
+              session is dismissed differently, so it carries no `remove`. */}
+          {bout.fromTimer ? (
+            <span className="src">
+              <ITimer />
+            </span>
+          ) : (
+            <span
+              className="rm"
+              role="button"
+              tabIndex={0}
+              onClick={onRemove}
+              onKeyDown={onActivate(onRemove)}
+            >
+              <IX />
+              remove
+            </span>
+          )}
+        </span>
       </div>
 
       {showEntry && (
@@ -1246,7 +1487,7 @@ function SessionBlock({
               <MeasureField
                   kind={m.kind}
                   unit={m.unit}
-                  value={row?.value ?? null}
+                  value={measureValue(m.kind)}
                   onCommit={(v) => {
                     if (row == null) {
                       // A measure the bout does not yet carry: add its row,

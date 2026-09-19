@@ -661,6 +661,11 @@
           color:var(--text-muted); text-transform:none; letter-spacing:0; font-weight:var(--weight-regular); cursor:pointer;
           transition:color var(--motion-fast) var(--ease-standard); }
   .rm:hover { color:var(--danger); }
+  /* The tag row's trailing controls (2026-09-18): "duplicate" sits LEFT of remove
+     (or of the timer glyph) — one wrapper so the row's space-between still sees
+     two children. Duplicate is not destructive, so its hover is the accent. */
+  .sess .stagctl { display:inline-flex; align-items:center; gap:var(--space-5); }
+  .rm.dup:hover { color:var(--accent); }
   .addsess { align-self:flex-start; display:inline-flex; align-items:center; gap:var(--space-3);
                font-family:var(--font-ui); font-size:var(--size-small); font-weight:var(--weight-medium);
                color:var(--accent); background:transparent; border:var(--border-hairline) dashed var(--border);

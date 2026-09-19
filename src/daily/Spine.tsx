@@ -804,6 +804,22 @@ function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
   // "anything that requires more than just one input" — project habits and
   // picklist habits; a night (range) is never duplicated.
   const canDuplicate = !spec.isRange && (spec.needsEntry || spec.categoricals.length > 0);
+  /** The copy itself — one shape whether the source is a saved bout or a draft. */
+  const cloneInto = (src: Pick<Draft, "cats" | "flags" | "time" | "count">) => {
+    const copy: Draft = {
+      ...newDraft(),
+      entryId: null,
+      cats: spec.needsEntry
+        ? Object.fromEntries(
+            spec.categoricals.flatMap((d) => (src.cats[d.key] ? [[d.key, src.cats[d.key]]] : [])),
+          )
+        : {},
+      flags: { ...src.flags },
+      time: src.time,
+      count: src.count,
+    };
+    setDrafts((d) => [...d, copy]);
+  };
   const duplicate = (bout: Bout) => {
     const cats = catsOf(bout);
     const held = (kind: "time" | "count") =>
@@ -811,20 +827,18 @@ function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
       (kind === "time" ? bout.time : bout.count)?.value ??
       null;
     const text = (v: number | null) => (v == null ? "" : String(v));
-    const copy: Draft = {
-      ...newDraft(),
-      entryId: null,
-      cats: spec.needsEntry
-        ? Object.fromEntries(
-            spec.categoricals.flatMap((d) => (cats[d.key] ? [[d.key, cats[d.key]]] : [])),
-          )
-        : {},
+    cloneInto({
+      cats,
       flags: Object.fromEntries(spec.flags.map((d) => [d.key, cats[d.key] === "true"])),
       time: text(held("time")),
       count: bout.countDerived ? "" : text(held("count")),
-    };
-    setDrafts((d) => [...d, copy]);
+    });
   };
+  // A block you just logged is a DRAFT until the auto-save flush (up to ten
+  // minutes) — and the Series / Series: Book 1 case duplicates exactly then.
+  // Found live at 1.0.5 (user: "there's no duplicate option"): the control
+  // sat on saved blocks only, so a fresh block never showed it.
+  const duplicateDraft = (d: Draft) => cloneInto(d);
 
   /** A draft commits the moment it holds enough to be a valid bout. */
   const commit = (draft: Draft) => {
@@ -1053,6 +1067,7 @@ function Strip({ spec, data, dayKey, flushNow, words }: StripProps) {
                   setDrafts((d) => d.map((x) => (x.key === draft.key ? next : x)))
                 }
                 onCommit={commit}
+                onDuplicate={canDuplicate ? () => duplicateDraft(draft) : undefined}
                 onDiscard={() => dropDraft(draft.key)}
                 onError={setError}
               />
@@ -1541,6 +1556,7 @@ function DraftBlock({
   showEntry,
   onChange,
   onCommit,
+  onDuplicate,
   onDiscard,
   onError,
 }: {
@@ -1551,6 +1567,8 @@ function DraftBlock({
   showEntry: boolean;
   onChange: (d: Draft) => void;
   onCommit: (d: Draft) => boolean;
+  /** Copy this draft into a new one (absent where the habit has one input). */
+  onDuplicate?: () => void;
   onDiscard: () => void;
   onError: (m: string | null) => void;
 }) {
@@ -1570,24 +1588,42 @@ function DraftBlock({
     <div className="sess" onBlur={onBlurBlock}>
       <div className="stag">
         <span>Session {index}</span>
-        {/* A draft that never committed needs no toast — discarding it writes
-            nothing (ruling 4's parenthesis). `mousedown` beats the block's own
-            blur, so discarding never races the commit it would undo. */}
-        <span
-          className="rm"
-          role="button"
-          tabIndex={0}
-          onMouseDown={() => {
-            discarding.current = true;
-          }}
-          onClick={onDiscard}
-          onKeyDown={onActivate(() => {
-            discarding.current = true;
-            onDiscard();
-          })}
-        >
-          <IX />
-          remove
+        <span className="stagctl">
+          {/* "duplicate" on a draft too (2026-09-18, found live): the control
+              is focusable, so clicking it keeps focus inside the block and the
+              source draft commits when focus later leaves for the copy. */}
+          {onDuplicate != null && (
+            <span
+              className="rm dup"
+              role="button"
+              tabIndex={0}
+              title="Copy this session into a new one — everything but what sets it apart"
+              onClick={onDuplicate}
+              onKeyDown={onActivate(onDuplicate)}
+            >
+              <ICopy />
+              duplicate
+            </span>
+          )}
+          {/* A draft that never committed needs no toast — discarding it writes
+              nothing (ruling 4's parenthesis). `mousedown` beats the block's own
+              blur, so discarding never races the commit it would undo. */}
+          <span
+            className="rm"
+            role="button"
+            tabIndex={0}
+            onMouseDown={() => {
+              discarding.current = true;
+            }}
+            onClick={onDiscard}
+            onKeyDown={onActivate(() => {
+              discarding.current = true;
+              onDiscard();
+            })}
+          >
+            <IX />
+            remove
+          </span>
         </span>
       </div>
 

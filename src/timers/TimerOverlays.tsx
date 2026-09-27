@@ -56,6 +56,15 @@ import { Ico, ICONS } from "../shell/icons";
 import { useOverlayEsc } from "../shell/overlayHooks";
 import { getPomoBreak, getPomoIntervals, getPomoWork } from "../settings/local";
 import "./timers.css";
+import { recordPicks } from "../kit/entryPicks";
+
+// A clock TAKING an entry is the timer ledger's pick (2026-09-27) — never a
+// click inside the picker, so a changed mind reorders nothing.
+const recordTimerPicks = (items: ReadonlyArray<{ entryId: string | null }>) =>
+  recordPicks(
+    "timer",
+    items.flatMap((t) => (t.entryId != null ? [t.entryId] : [])),
+  );
 
 // Glyphs from the shell roster (dedup pass 2026-07-30) — paths verified
 // identical per glyph before adopting.
@@ -122,6 +131,7 @@ export function CreateClockModal({ onClose }: { onClose: () => void }) {
 
   const start = () => {
     if (!canStart) return;
+    recordTimerPicks(items);
     createClock({
       mode,
       tracked: items,
@@ -353,6 +363,7 @@ function ManageWindow({ clock, onGoToForm }: { clock: Clock; onGoToForm: () => v
     const items = selectionToItems(selection, habits, entryTitles, defsByHabit);
     if (items.length === 0) return;
     addTracked(clock.id, items); // a newly added item starts at 0
+    recordTimerPicks(items);
     setSelection({});
     setAdding(false);
   };

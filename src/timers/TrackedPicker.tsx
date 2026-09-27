@@ -39,6 +39,7 @@ import { entryAttributesFromJson } from "../db/schema";
 import { takenUnits, type TrackedItem } from "./timerCore";
 import { useTimers } from "./timerStore";
 import { Ico, ICONS } from "../shell/icons";
+import { byRecentPick, readPicks } from "../kit/entryPicks";
 
 const habitsQuery = evolu.createQuery((db) =>
   db
@@ -233,6 +234,10 @@ export function TrackedPicker({
     [habits],
   );
 
+  // The timer's pick ledger, read once per mount — picks land when a clock
+  // takes them (TimerOverlays), and the modal closes or the add row resets then.
+  const [picks] = useState(() => readPicks("timer"));
+
   type EntryRow = (typeof entries)[number];
   const byHabit = useMemo(() => {
     const m = new Map<string, EntryRow[]>();
@@ -242,17 +247,15 @@ export function TrackedPicker({
       if (list) list.push(e);
       else m.set(e.habit_fk, [e]);
     }
-    // Current first, then most recently touched — the pick is usually "what
-    // I'm playing now".
-    for (const list of m.values())
-      list.sort((a, b) => {
-        const ac = a.status === "Current" ? 0 : 1;
-        const bc = b.status === "Current" ? 0 : 1;
-        if (ac !== bc) return ac - bc;
-        return a.updatedAt < b.updatedAt ? 1 : -1;
-      });
+    // Most recently picked for a timer first (user-ruled 2026-09-27 — pure
+    // recency, superseding the Current-first tier); never-picked entries
+    // follow, most recently touched first.
+    for (const [habitId, list] of m) {
+      list.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+      m.set(habitId, byRecentPick(list, picks));
+    }
     return m;
-  }, [entries]);
+  }, [entries, picks]);
 
   // Subscribed, not a snapshot — the rows must re-close when clocks change.
   const { clocks } = useTimers();

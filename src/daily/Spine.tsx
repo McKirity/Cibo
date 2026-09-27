@@ -66,6 +66,7 @@ import {
   updateRange,
 } from "./spineWrites";
 import { DateTimePicker } from "./DateTimePicker";
+import { byRecentPick, readPicks, recordPicks } from "../kit/entryPicks";
 import { DangerConfirm } from "../shell/DangerConfirm";
 import { subscribeHandoff, takeHandoffFor } from "../timers/logHandoff";
 import {
@@ -1720,9 +1721,17 @@ function EntryRow({
   // Closing is a STATE, not a blur: the field keeps focus and its place in the
   // tab order, so Tab goes on to the next field and Shift+Tab comes back here.
   const [shut, setShut] = useState(false);
+  // Most recently picked HERE first (user-ruled 2026-09-27 — the field's own
+  // per-device ledger, kit/entryPicks); never-picked titles stay alphabetical.
+  const [picks, setPicks] = useState(() => readPicks("daily"));
+  const ordered = useMemo(() => byRecentPick(entries, picks), [entries, picks]);
+  const pick = (id: string) => {
+    setPicks(recordPicks("daily", [id]));
+    onPick(id);
+  };
   const picked = entries.find((e) => e.id === value) ?? null;
   const q = query.trim().toLowerCase();
-  const matches = q === "" ? entries.slice(0, 8) : entries.filter((e) => e.title.toLowerCase().includes(q)).slice(0, 8);
+  const matches = q === "" ? ordered.slice(0, 8) : ordered.filter((e) => e.title.toLowerCase().includes(q)).slice(0, 8);
   const exact = entries.some((e) => e.title.trim().toLowerCase() === q);
 
   const create = () => {
@@ -1732,7 +1741,7 @@ function EntryRow({
       return;
     }
     onError(null);
-    onPick(res.id);
+    pick(res.id);
     setQuery("");
   };
 
@@ -1786,7 +1795,7 @@ function EntryRow({
               e.preventDefault();
               const hit = matches[cursor];
               if (hit != null) {
-                onPick(hit.id);
+                pick(hit.id);
                 setQuery("");
                 setShut(true);
               } else if (q !== "" && !exact) {
@@ -1810,7 +1819,7 @@ function EntryRow({
                 // runs AFTER this one — a pick must not bubble into it, or the
                 // panel it just closed snaps straight back open.
                 ev.stopPropagation();
-                onPick(e.id);
+                pick(e.id);
                 setQuery("");
                 setShut(true);
               }}
